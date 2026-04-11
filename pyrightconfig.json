@@ -1,0 +1,10 @@
+{
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "standard",
+  "reportMissingImports": false,
+  "reportUndefinedVariable": false,
+  "reportMissingTypeStubs": true,
+  "reportGeneralTypeIssues": true,
+  "reportAttributeAccessIssue": false,
+  "reportArgumentType": false
+}

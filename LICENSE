@@ -1,0 +1,124 @@
+MIT License
+
+Copyright (c) 2026 Cogist Team
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## Third-Party Licenses
+
+This project depends on third-party libraries that are licensed under their 
+own terms. The most notable dependency is:
+
+### PySide6 (Qt for Python)
+
+**License:** GNU Lesser General Public License v3 (LGPL-3.0)  
+**Website:** https://www.qt.io/product/python  
+**Source:** https://github.com/qt/pyside6  
+**License Text:** https://www.gnu.org/licenses/lgpl-3.0.html
+
+#### What This Means for You:
+
+**If you use this project:**
+- ✅ Your own code can remain proprietary (closed source)
+- ✅ You can distribute your applications commercially
+- ✅ You don't need to pay licensing fees to Qt Company
+- ⚠️ You must allow users to replace the PySide6 library
+- ⚠️ If you modify PySide6 itself, you must release those modifications under LGPL-3.0
+
+**Compliance Requirements:**
+
+1. **Dynamic Linking**: PySide6 must be used as a dynamically linked library
+   - ✅ Standard Python `import` statements satisfy this requirement
+   - ❌ Do not statically link or embed PySide6 into your executable
+
+2. **User's Right to Replace**: Users must be able to replace PySide6 with 
+   their own compiled version
+   - ✅ Install PySide6 separately via pip/uv
+   - ✅ Document how to install/upgrade PySide6
+
+3. **License Notice**: Include this notice in your documentation:
+   ```
+   This software uses PySide6 (Qt for Python), which is licensed under 
+   LGPL-3.0. See https://www.gnu.org/licenses/lgpl-3.0.html for details.
+   ```
+
+4. **Source Code for Modifications**: If you modify PySide6 itself (not just 
+   use it), you must:
+   - Make your modifications available under LGPL-3.0
+   - Provide clear notices about the modified files
+   - Allow users to relink the application with the modified library
+
+#### How We Comply:
+
+This project complies with LGPL-3.0 requirements by:
+
+1. **Separate Installation**: PySide6 is listed as a dependency in 
+   `pyproject.toml` and installed separately via package managers (pip/uv)
+
+2. **No Modification**: We do not modify PySide6 source code; we use it as-is 
+   through standard Python imports
+
+3. **Documentation**: This LICENSE file includes LGPL compliance information
+
+4. **User Freedom**: Users can uninstall/replace PySide6 independently:
+   ```bash
+   # User can replace PySide6 at any time
+   pip uninstall pyside6
+   pip install pyside6==6.8.0  # Any version they prefer
+   ```
+
+#### Additional Resources:
+
+- **LGPL-3.0 Full Text**: https://www.gnu.org/licenses/lgpl-3.0.txt
+- **Qt Licensing FAQ**: https://www.qt.io/licensing/
+- **PySide6 Documentation**: https://doc.qt.io/qtforpython-6/
+
+---
+
+### Other Dependencies
+
+Other dependencies are listed in `pyproject.toml` and are licensed under 
+their respective terms:
+
+- **qdarkstyle**: MIT License
+- **qt-material**: MIT License  
+- **numpy**: BSD License
+- (See individual packages for full license text)
+
+All third-party licenses are compatible with this project's MIT license.
+
+---
+
+## Summary
+
+**Your Rights:**
+- ✅ Use this software for any purpose (including commercial)
+- ✅ Modify and distribute your modifications
+- ✅ Keep your own code closed source
+- ⚠️ Respect PySide6's LGPL license terms
+
+**Your Obligations:**
+- ✅ Include this LICENSE file in distributions
+- ✅ Preserve copyright notices
+- ⚠️ Allow users to replace PySide6
+- ⚠️ Open-source any modifications to PySide6 itself
+
+For questions about licensing, please contact the project maintainers.
