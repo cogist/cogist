@@ -11,6 +11,7 @@ from cogist.application.commands.command_history import CommandHistory
 from cogist.application.services.node_service import NodeService
 from cogist.domain.entities.node import Node
 from cogist.domain.layout import DefaultLayout, LayoutConfig, DEFAULT_LAYOUT_CONFIG
+from cogist.domain.repositories import MindMapRepositoryInterface
 from cogist.infrastructure.repositories.mindmap_repository import MindMapRepository
 
 
@@ -22,15 +23,21 @@ class MindMapService:
     and loading mind maps.
     """
 
-    def __init__(self, layout_config: LayoutConfig | None = None):
+    def __init__(
+        self,
+        repository: MindMapRepositoryInterface | None = None,
+        layout_config: LayoutConfig | None = None,
+    ):
         """Initialize the mind map service.
         
         Args:
+            repository: Repository implementation (uses MindMapRepository if not provided)
             layout_config: Optional layout configuration (uses default if not provided)
         """
         self.command_history = CommandHistory()
         self.node_service = NodeService(self.command_history)
-        self.repository = MindMapRepository()
+        # Dependency injection: accept interface, provide default implementation
+        self.repository = repository or MindMapRepository()
         self.layout_engine = DefaultLayout(layout_config or DEFAULT_LAYOUT_CONFIG)
 
         self.root_node: Node | None = None
