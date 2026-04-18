@@ -991,13 +991,16 @@ class StylePanel(QWidget):
         """Update preview by applying styles to the mind map."""
         self._save_current_layer_style()
         
-        # Notify parent window to apply styles
+        # Find main window by traversing parent chain
         parent = self.parent()
-        if parent and hasattr(parent, 'mindmap_view'):
-            from typing import TYPE_CHECKING
-            if TYPE_CHECKING:
-                from main import MainWindow
-            main_window = parent  # type: ignore
+        main_window = None
+        while parent:
+            if hasattr(parent, 'mindmap_view'):
+                main_window = parent
+                break
+            parent = parent.parent()
+        
+        if main_window:
             mindmap_view = main_window.mindmap_view  # type: ignore
             
             # Apply canvas background color
@@ -1013,3 +1016,5 @@ class StylePanel(QWidget):
             # TODO: Apply node styles and trigger layout refresh
             # This requires integrating with MindMapService
             print(f"Style updated for {self.current_layer}")
+        else:
+            print(f"[DEBUG] Could not find main window")
