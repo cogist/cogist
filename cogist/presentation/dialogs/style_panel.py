@@ -996,12 +996,84 @@ class StylePanel(QWidget):
         app_context = get_app_context()
         mindmap_view = app_context.get_mindmap_view()
         
-        if mindmap_view:
-            # Apply canvas background color
-            if "canvas" in self.layer_styles:
-                canvas_bg = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
-                from PySide6.QtGui import QBrush, QColor
-                mindmap_view.scene.setBackgroundBrush(QBrush(QColor(canvas_bg)))
-            
-            # TODO: Apply node styles and trigger layout refresh
-            # This requires integrating with MindMapService
+        if not mindmap_view:
+            return
+        
+        # Apply canvas background color
+        if "canvas" in self.layer_styles:
+            canvas_bg = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
+            from PySide6.QtGui import QBrush, QColor
+            mindmap_view.scene.setBackgroundBrush(QBrush(QColor(canvas_bg)))
+        
+        # Apply node styles - convert layer_styles to MindMapStyle format
+        self._apply_node_styles_to_mindmap(mindmap_view)
+    
+    def _apply_node_styles_to_mindmap(self, mindmap_view):
+        """Apply node layer styles to the mind map view.
+        
+        This updates the style_config and triggers re-layout.
+        """
+        from cogist.domain.styles import MindMapStyle, NodeStyleConfig, PriorityScheme, PriorityLevel
+        
+        # Create a new style config based on current layer styles
+        style = MindMapStyle()
+        
+        # Map panel layers to depth-based styles
+        # root -> depth 0
+        root_style = self._convert_layer_to_node_style(self.layer_styles.get("root", {}))
+        style.depth_styles[0] = root_style
+        
+        # level_1 -> depth 1
+        level1_style = self._convert_layer_to_node_style(self.layer_styles.get("level_1", {}))
+        style.depth_styles[1] = level1_style
+        
+        # level_2 -> depth 2
+        level2_style = self._convert_layer_to_node_style(self.layer_styles.get("level_2", {}))
+        style.depth_styles[2] = level2_style
+        
+        # level_3_plus -> depth 3 (and all deeper levels)
+        level3_style = self._convert_layer_to_node_style(self.layer_styles.get("level_3_plus", {}))
+        style.depth_styles[3] = level3_style
+        
+        # Map priority overrides (critical/minor are special priorities)
+        # Critical -> LEVEL_2 (Important)
+        critical_style = self._convert_layer_to_node_style(self.layer_styles.get("critical", {}))
+        style.priority_scheme.levels[PriorityLevel.LEVEL_2].style_override = critical_style
+        
+        # Minor -> LEVEL_0 (Unimportant)
+        minor_style = self._convert_layer_to_node_style(self.layer_styles.get("minor", {}))
+        style.priority_scheme.levels[PriorityLevel.LEVEL_0].style_override = minor_style
+        
+        # Update canvas background color
+        if "canvas" in self.layer_styles:
+            style.canvas_bg_color = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
+        
+        # Update mindmap view's style config
+        mindmap_view.style_config = style
+        
+        # Trigger re-layout by calling refresh_layout
+        # This will re-measure nodes with new styles and reposition them
+        if hasattr(mindmap_view, '_refresh_layout'):
+            mindmap_view._refresh_layout()
+    
+    def _convert_layer_to_node_style(self, layer_data: dict):
+        """Convert layer style dictionary to NodeStyleConfig object."""
+        from cogist.domain.styles import NodeStyleConfig
+        
+        return NodeStyleConfig(
+            shape=layer_data.get("shape", "rounded_rect"),
+            bg_color=layer_data.get("bg_color"),
+            text_color=layer_data.get("text_color"),
+            border_color=layer_data.get("border_color"),
+            font_family=layer_data.get("font_family", "Arial"),
+            font_size=layer_data.get("font_size", 16),
+            font_weight=layer_data.get("font_weight", "Normal"),
+            font_italic=layer_data.get("font_italic", False),
+            font_underline=layer_data.get("font_underline", False),
+            font_strikeout=layer_data.get("font_strikeout", False),
+            padding_width=layer_data.get("padding_w", 10),
+            padding_height=layer_data.get("padding_h", 8),
+            border_radius=layer_data.get("radius", 8),
+            border_style=layer_data.get("border_style", "solid").lower(),
+            border_width=layer_data.get("border_width", 2),
+        )
