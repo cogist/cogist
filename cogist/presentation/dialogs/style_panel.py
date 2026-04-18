@@ -767,23 +767,13 @@ class StylePanel(QWidget):
         }
         current_weight = weight_map.get(current_weight_str, QFont.Normal)
         
-        # Create initial font with larger size for better visibility in dialog
-        initial_font = QFont(current_family, max(current_size, 18), current_weight)
+        # Create initial font
+        initial_font = QFont(current_family, current_size, current_weight)
         
-        # Use Qt's font dialog (not native) for better control
-        # Don'tUseNativeDialog allows Qt to use its own implementation
-        dialog = QFontDialog(initial_font, self)
-        dialog.setOption(QFontDialog.DontUseNativeDialog)
-        dialog.setWindowTitle("Select Font")
+        # Use native system font dialog (macOS will use NSFontPanel)
+        font, ok = QFontDialog.getFont(initial_font, self, "Select Font")
         
-        # Set dialog font to larger size for better readability
-        dialog_font = dialog.font()
-        dialog_font.setPointSize(13)
-        dialog.setFont(dialog_font)
-        
-        if dialog.exec() == QFontDialog.Accepted:
-            font = dialog.selectedFont()
-            
+        if ok:
             # Update all font properties
             self.layer_styles[self.current_layer]["font_family"] = font.family()
             self.layer_styles[self.current_layer]["font_size"] = font.pointSize()
