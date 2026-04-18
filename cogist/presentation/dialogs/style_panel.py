@@ -6,6 +6,7 @@ Allows developers to tweak style parameters by layer and see immediate results.
 """
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QCheckBox,
     QColorDialog,
@@ -808,10 +809,12 @@ class StylePanel(QWidget):
         else:
             current_color = self.layer_styles[self.current_layer].get(param_name, "#000000")
         
-        color = QColorDialog.getColor(current_color, self)
+        # Enable alpha channel support
+        color = QColorDialog.getColor(current_color, self, options=QColorDialog.ShowAlphaChannel)
 
         if color.isValid():
-            hex_color = color.name()
+            # Use ARGB format to preserve alpha channel
+            hex_color = color.name(QColor.HexArgb)
             
             if param_name == "canvas_bg":
                 self.layer_styles["canvas"]["bg_color"] = hex_color
