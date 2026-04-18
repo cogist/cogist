@@ -988,7 +988,24 @@ class StylePanel(QWidget):
         self.connector_width_spin.setValue(ui_width)
 
     def _update_preview(self):
-        """Update preview (placeholder for now)."""
+        """Update preview by applying styles to the mind map."""
         self._save_current_layer_style()
-        print(f"Style updated for {self.current_layer}: {self.layer_styles[self.current_layer]}")
-        # TODO: Apply to preview node in main window
+        
+        # Notify parent window to apply styles
+        parent = self.parent()
+        if parent and hasattr(parent, 'mindmap_view'):
+            from typing import TYPE_CHECKING
+            if TYPE_CHECKING:
+                from main import MainWindow
+            main_window = parent  # type: ignore
+            mindmap_view = main_window.mindmap_view  # type: ignore
+            
+            # Apply canvas background color
+            if "canvas" in self.layer_styles:
+                canvas_bg = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
+                from PySide6.QtGui import QBrush, QColor
+                mindmap_view.scene.setBackgroundBrush(QBrush(QColor(canvas_bg)))
+            
+            # TODO: Apply node styles and trigger layout refresh
+            # This requires integrating with MindMapService
+            print(f"Style updated for {self.current_layer}")
