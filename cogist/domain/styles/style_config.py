@@ -37,9 +37,6 @@ class NodeStyleConfig:
     bg_color: str | None = None  # None means use template default
     text_color: str | None = "#000000"
     border_color: str | None = None
-    
-    # Special flags
-    no_background: bool = False
 
     def merge(self, other: "NodeStyleConfig") -> "NodeStyleConfig":
         """Merge another config on top of this one (other takes precedence)
@@ -80,7 +77,8 @@ class EdgeConfig:
 
     connector_type: str = "bezier"  # straight, orthogonal, bezier
     connector_style: str = "solid"  # solid, dashed, dotted
-    width: float = 2.0
+    start_width: float = 6.0  # Width at source node
+    end_width: float = 2.0    # Width at target node
     color: str = "#666666"
 
 
@@ -213,7 +211,6 @@ class MindMapStyle:
                 text_color="#FFFFFF",
                 border_color="#757575",
                 max_text_width=MAX_TEXT_WIDTH,
-                no_background=True,
             ),
         }
 

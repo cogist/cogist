@@ -211,7 +211,8 @@ class StylePanel(QWidget):
         return {
             "connector_type": "bezier",  # straight, orthogonal, bezier
             "connector_style": "solid",  # solid, dashed, dotted
-            "connector_width": 2,
+            "start_width": 6.0,  # Width at source node
+            "end_width": 2.0,    # Width at target node (6 - 4 = 2)
             "connector_color": "#666666",
         }
 
@@ -673,7 +674,7 @@ class StylePanel(QWidget):
         self.connector_width_spin.setRange(1, 10)
         self.connector_width_spin.setValue(2)
         self.connector_width_spin.setAlignment(Qt.AlignCenter)
-        self.connector_width_spin.valueChanged.connect(self._update_preview)
+        self.connector_width_spin.valueChanged.connect(self._set_connector_width)
         connector_grid.addWidget(self.connector_width_spin, 2, 1)
 
         # Connector color
@@ -786,7 +787,15 @@ class StylePanel(QWidget):
             "Orthogonal": "orthogonal",
             "Bezier": "bezier",
         }
-        self.connector_style["connector_type"] = type_map.get(value, "bezier")
+        new_type = type_map.get(value, "bezier")
+        old_type = self.connector_style.get("connector_type", "bezier")
+        self.connector_style["connector_type"] = new_type
+        
+        # Recalculate widths when switching between straight and tapered
+        if new_type != old_type:
+            current_ui_width = self.connector_width_spin.value()
+            self._set_connector_width(current_ui_width)
+        
         self._update_preview()
 
     def _set_connector_style(self, value: str):
@@ -798,6 +807,25 @@ class StylePanel(QWidget):
             "Dotted": "dotted",
         }
         self.connector_style["connector_style"] = style_map.get(value, "solid")
+        self._update_preview()
+
+    def _set_connector_width(self, value: int):
+        """Set connector width with mapping logic.
+        
+        For tapered lines (bezier/orthogonal): end_width = start_width + 4
+        For straight lines: start_width = end_width = value
+        """
+        is_straight = (self.connector_style.get("connector_type") == "straight")
+        
+        if is_straight:
+            # Equal width for straight lines
+            self.connector_style["start_width"] = float(value)
+            self.connector_style["end_width"] = float(value)
+        else:
+            # Tapered width for bezier/orthogonal
+            self.connector_style["start_width"] = float(value)
+            self.connector_style["end_width"] = float(value + 4)
+        
         self._update_preview()
 
     def _pick_color(self, param_name):
@@ -943,7 +971,21 @@ class StylePanel(QWidget):
         self.connector_style_combo.setText(
             connector_style_map.get(self.connector_style.get("connector_style", "solid"), "Solid")
         )
-        self.connector_width_spin.setValue(self.connector_style.get("connector_width", 2))
+        
+        # Connector width: reverse mapping from start_width
+        start_width = self.connector_style.get("start_width", 6.0)
+        is_straight = (self.connector_style.get("connector_type") == "straight")
+        
+        if is_straight:
+            # For straight lines, UI value = start_width
+            ui_width = int(start_width)
+        else:
+            # For tapered lines, UI value = start_width (end_width = start_width + 4)
+            ui_width = int(start_width)
+        
+        # Clamp to valid range
+        ui_width = max(1, min(10, ui_width))
+        self.connector_width_spin.setValue(ui_width)
 
     def _update_preview(self):
         """Update preview (placeholder for now)."""
