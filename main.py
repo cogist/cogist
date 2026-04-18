@@ -754,17 +754,13 @@ class MindMapView(QGraphicsView):
         create_items_recursive(root)
 
     def _get_main_window(self):
-        """Get the main window reference, handling QSplitter nesting.
+        """Get the main window reference using AppContext.
 
         Returns:
             MainWindow instance or None
         """
-        parent = self.parent()
-        while parent:
-            if isinstance(parent, MainWindow):
-                return parent
-            parent = parent.parent()
-        return None
+        from cogist.application.services import get_app_context
+        return get_app_context().get_main_window()
 
     def eventFilter(self, obj, event):  # noqa: N802
         """Handle keyboard shortcuts for editing commands."""

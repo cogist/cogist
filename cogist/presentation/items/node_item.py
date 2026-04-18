@@ -647,13 +647,3 @@ class NodeItem(QGraphicsRectItem):
 
         # Show text item again (text remains unchanged)
         self.text_item.setVisible(True)
-
-    def _get_main_window(self):
-        """Get the main window reference."""
-        parent = self.parentItem()
-        while parent:
-            # Try to find MainWindow by checking if it has the expected attributes
-            if hasattr(parent, '_add_child_after_edit'):
-                return parent
-            parent = parent.parentItem()
-        return None
