@@ -12,8 +12,8 @@ from cogist.application.services.node_service import NodeService
 from cogist.domain.entities.node import Node
 from cogist.domain.layout import (
     DEFAULT_LAYOUT_CONFIG,
-    DefaultLayout,
     DefaultLayoutConfig,
+    layout_registry,
 )
 from cogist.domain.repositories import MindMapRepositoryInterface
 from cogist.infrastructure.repositories.mindmap_repository import MindMapRepository
@@ -42,7 +42,12 @@ class MindMapService:
         self.node_service = NodeService(self.command_history)
         # Dependency injection: accept interface, provide default implementation
         self.repository = repository or MindMapRepository()
-        self.layout_engine = DefaultLayout(layout_config or DEFAULT_LAYOUT_CONFIG)
+        
+        # Layout management with registry
+        self.layout_registry = layout_registry
+        self.current_layout_name = "default"
+        self.layout_config = layout_config or DEFAULT_LAYOUT_CONFIG
+        self.layout_engine = self._create_layout_engine()
 
         self.root_node: Node | None = None
         self.current_file: Path | None = None
@@ -213,14 +218,46 @@ class MindMapService:
             return
 
         self.layout_engine.layout(self.root_node, canvas_width, canvas_height, context)
+    
+    def _create_layout_engine(self):
+        """Create layout engine instance using registry
+        
+        Returns:
+            Layout algorithm instance
+        """
+        return self.layout_registry.get_layout(
+            self.current_layout_name,
+            self.layout_config
+        )
+
+    def set_layout_algorithm(self, algorithm_name: str) -> None:
+        """Switch to a different layout algorithm
+        
+        Args:
+            algorithm_name: Name of the layout algorithm (e.g., "default", "tree")
+        
+        Raises:
+            ValueError: If layout algorithm is not registered
+        """
+        if not self.layout_registry.has_layout(algorithm_name):
+            available = ", ".join(self.layout_registry.get_available_layouts())
+            raise ValueError(
+                f"Unknown layout algorithm: '{algorithm_name}'. "
+                f"Available layouts: {available}"
+            )
+        
+        self.current_layout_name = algorithm_name
+        self.layout_engine = self._create_layout_engine()
+        # Note: Caller should trigger relayout if needed
 
     def set_layout_config(self, config: DefaultLayoutConfig) -> None:
-        """Update the layout configuration and relayout.
+        """Update the layout configuration and recreate layout engine.
 
         Args:
             config: New layout configuration
         """
-        self.layout_engine = DefaultLayout(config)
+        self.layout_config = config
+        self.layout_engine = self._create_layout_engine()
 
     def get_root_node(self) -> Node | None:
         """Get the root node of the current mind map."""

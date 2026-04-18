@@ -12,6 +12,7 @@ from .base import (
     DEFAULT_LAYOUT_CONFIG,
 )
 from .default_layout import DefaultLayout
+from .registry import LayoutRegistry, layout_registry
 
 __all__ = [
     'BaseLayout',
@@ -21,4 +22,6 @@ __all__ = [
     'LayoutMetadata',
     'DEFAULT_LAYOUT_CONFIG',
     'DefaultLayout',
+    'LayoutRegistry',
+    'layout_registry',
 ]
