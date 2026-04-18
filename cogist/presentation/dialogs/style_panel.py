@@ -382,7 +382,7 @@ class StylePanel(QWidget):
         font_family_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         font_family_label.setMinimumWidth(label_width)
         node_grid.addWidget(font_family_label, 3, 0)
-        self.font_family_combo = QPushButton("Arial")
+        self.font_family_combo = QPushButton(self._get_localized_font_name("Arial"))
         self.font_family_combo.setFixedHeight(widget_height)
         self.font_family_combo.setStyleSheet("""
             QPushButton {
@@ -391,6 +391,7 @@ class StylePanel(QWidget):
                 border-radius: 6px;
                 padding: 4px 24px 4px 12px;
                 font-size: 13px;
+                text-align: left;
             }
             QPushButton:hover {
                 background-color: #F0F0F0;
@@ -748,42 +749,203 @@ class StylePanel(QWidget):
         self.layer_styles[self.current_layer]["shape"] = shape_map.get(value, "rounded_rect")
         self._update_preview()
 
-    def _show_font_menu(self):
-        """Show font family selection menu with scroll support."""
-        from PySide6.QtWidgets import QMenu
-        from PySide6.QtGui import QFont, QAction, QFontDatabase
+    def _get_localized_font_name(self, font_family: str) -> str:
+        """Get localized font name for display.
         
-        # Create menu
-        menu = QMenu(self)
-        menu.setMinimumWidth(300)  # Set wider width for better readability
-        menu.setMaximumHeight(400)  # Limit height to avoid taking full screen
+        Uses platform-specific APIs to get the localized font name:
+        - macOS: Core Text via PyObjC
+        - Windows: ctypes with GDI
+        - Linux: fontconfig
+        Falls back to English name if localized name not available.
+        """
+        import platform
+        system = platform.system()
+        
+        try:
+            if system == "Darwin":  # macOS
+                # Try to use Core Text via PyObjC
+                try:
+                    from CoreText import CTFontCreateWithName, CTFontCopyDisplayName  # type: ignore
+                    
+                    print(f"DEBUG: Trying to get localized name for: {font_family}")
+                    
+                    # Create a CTFontRef
+                    ct_font = CTFontCreateWithName(font_family, 12.0, None)
+                    if ct_font:
+                        # Get display name (localized)
+                        display_name = CTFontCopyDisplayName(ct_font)
+                        if display_name:
+                            result = str(display_name)
+                            print(f"DEBUG: Display name: {result}")
+                            return result
+                        else:
+                            print(f"DEBUG: No display name found")
+                    else:
+                        print(f"DEBUG: Failed to create CTFont")
+                except ImportError as e:
+                    print(f"DEBUG: PyObjC not available: {e}")
+                except Exception as e:
+                    print(f"DEBUG: Error getting localized name: {e}")
+            
+            elif system == "Windows":
+                # Try to use ctypes with GDI
+                try:
+                    import ctypes
+                    from ctypes import wintypes
+                    
+                    # Load gdi32
+                    gdi32 = ctypes.windll.gdi32
+                    
+                    # Create DC
+                    hdc = gdi32.CreateDCW("DISPLAY", None, None, None)
+                    
+                    # Create LOGFONT structure
+                    class LOGFONTW(ctypes.Structure):
+                        _fields_ = [
+                            ("lfHeight", wintypes.LONG),
+                            ("lfWidth", wintypes.LONG),
+                            ("lfEscapement", wintypes.LONG),
+                            ("lfOrientation", wintypes.LONG),
+                            ("lfWeight", wintypes.LONG),
+                            ("lfItalic", wintypes.BYTE),
+                            ("lfUnderline", wintypes.BYTE),
+                            ("lfStrikeOut", wintypes.BYTE),
+                            ("lfCharSet", wintypes.BYTE),
+                            ("lfOutPrecision", wintypes.BYTE),
+                            ("lfClipPrecision", wintypes.BYTE),
+                            ("lfQuality", wintypes.BYTE),
+                            ("lfPitchAndFamily", wintypes.BYTE),
+                            ("lfFaceName", wintypes.WCHAR * 32),
+                        ]
+                    
+                    logfont = LOGFONTW()
+                    logfont.lfHeight = 0
+                    logfont.lfFaceName = font_family
+                    
+                    # Create font
+                    hfont = gdi32.CreateFontIndirectW(ctypes.byref(logfont))
+                    
+                    # Select font into DC
+                    old_font = gdi32.SelectObject(hdc, hfont)
+                    
+                    # Get font name (this is simplified, full implementation would be more complex)
+                    # For now, just return the family name as-is
+                    gdi32.SelectObject(hdc, old_font)
+                    gdi32.DeleteObject(hfont)
+                    gdi32.DeleteDC(hdc)
+                    
+                except Exception:
+                    pass  # Fall through to default
+            
+            elif system == "Linux":
+                # Try to use fontconfig
+                try:
+                    import subprocess
+                    result = subprocess.run(
+                        ["fc-match", "-f", "%{family}", font_family],
+                        capture_output=True,
+                        text=True,
+                        timeout=2
+                    )
+                    if result.returncode == 0 and result.stdout.strip():
+                        return result.stdout.strip()
+                except Exception:
+                    pass  # Fall through to default
+        
+        except Exception as e:
+            print(f"DEBUG: Unexpected error: {e}")
+        
+        # Fallback: return the original font family name
+        return font_family
+    
+    def _show_font_menu(self):
+        """Show font family selection dialog with localized names."""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QListWidget, QLineEdit, QLabel
+        from PySide6.QtGui import QFont, QFontDatabase
+        
+        # Create dialog
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Select Font")
+        dialog.setFixedSize(350, 450)
+        
+        # Layout
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Font list
+        font_list = QListWidget()
+        font_list.setFont(QFont("Arial", 15))
+        layout.addWidget(font_list)
         
         # Get all available fonts
         font_db = QFontDatabase()
         families = font_db.families()
         
+        # Filter out bitmap/system fonts that cause warnings
+        filtered_families = []
+        for family in families:
+            # Skip bitmap fonts and system fonts
+            if any(keyword in family.lower() for keyword in ['bitmap', 'dingbats', 'symbol', 'icon']):
+                continue
+            # Skip if font has no styles
+            if not font_db.styles(family):
+                continue
+            filtered_families.append(family)
+        
+        families = filtered_families
+        
         current_family = self.layer_styles[self.current_layer].get("font_family", "Arial")
         
-        # Add font actions
-        for family in families:
-            action = QAction(family, self)
-            # Use localized font name if available
-            localized_name = font_db.family(family)
-            action.setFont(QFont(localized_name))  # Display with the actual font
-            action.triggered.connect(lambda checked, f=family: self._set_font_family(f))
-            if family == current_family:
-                action.setCheckable(True)
-                action.setChecked(True)
-            menu.addAction(action)
+        # Build font list with localized names
+        font_name_map = {}  # Maps display name -> actual font family
         
-        # Show menu below the button
-        pos = self.font_family_combo.mapToGlobal(self.font_family_combo.rect().bottomLeft())
-        menu.exec(pos)
+        for family in families:
+            # Get localized name
+            localized_name = self._get_localized_font_name(family)
+            font_name_map[localized_name] = family
+            
+            from PySide6.QtWidgets import QListWidgetItem
+            item = QListWidgetItem(localized_name)
+            item.setFont(QFont(family))  # Use actual font for rendering
+            font_list.addItem(item)
+            
+            if family == current_family:
+                font_list.setCurrentItem(item)
+        
+        # Double-click to select
+        def on_item_double_clicked(item):
+            display_name = item.text()
+            actual_family = font_name_map.get(display_name, display_name)
+            self._set_font_family(actual_family)
+            dialog.accept()
+        
+        font_list.itemDoubleClicked.connect(on_item_double_clicked)
+        
+        # Position dialog near the font button
+        # Dialog's right edge aligns with button's left edge
+        button_pos = self.font_family_combo.mapToGlobal(self.font_family_combo.rect().topLeft())
+        dialog_x = button_pos.x() - dialog.width() - 10  # 10px gap
+        dialog_y = button_pos.y() - 48  # Move up ~1.5 button heights
+        dialog.move(dialog_x, dialog_y)
+        
+        # Click outside to close
+        dialog.setMouseTracking(True)
+        def on_mouse_press(event):
+            if event.button() == Qt.LeftButton:
+                dialog.reject()
+        dialog.mousePressEvent = on_mouse_press
+        
+        # ESC to close
+        dialog.keyPressEvent = lambda event: dialog.reject() if event.key() == Qt.Key_Escape else QDialog.keyPressEvent(dialog, event)
+        
+        # Show dialog
+        dialog.exec()
     
     def _set_font_family(self, family):
         """Set font family and update preview."""
         self.layer_styles[self.current_layer]["font_family"] = family
-        self.font_family_combo.setText(family)
+        self.font_family_combo.setText(self._get_localized_font_name(family))
         self._update_preview()
     def _set_font_weight(self, value: str):
         """Set font weight."""
@@ -949,7 +1111,7 @@ class StylePanel(QWidget):
         )
         
         # Font
-        self.font_family_combo.setText(style.get("font_family", "Arial"))
+        self.font_family_combo.setText(self._get_localized_font_name(style.get("font_family", "Arial")))
         self.font_size_spin.setValue(style.get("font_size", 22))
         self.font_weight_combo.setText(style.get("font_weight", "Bold"))
         
