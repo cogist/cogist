@@ -398,7 +398,7 @@ class StylePanel(QWidget):
             }
         """)
         # Directly open font dialog on click
-        self.font_family_combo.clicked.connect(self._open_font_dialog)
+        self.font_family_combo.clicked.connect(self._show_font_menu)
         node_grid.addWidget(self.font_family_combo, 3, 1)
 
         # Font size
@@ -748,59 +748,43 @@ class StylePanel(QWidget):
         self.layer_styles[self.current_layer]["shape"] = shape_map.get(value, "rounded_rect")
         self._update_preview()
 
-    def _open_font_dialog(self):
-        """Open system font dialog for font selection."""
-        from PySide6.QtWidgets import QFontDialog
-        from PySide6.QtGui import QFont
+    def _show_font_menu(self):
+        """Show font family selection menu with scroll support."""
+        from PySide6.QtWidgets import QMenu
+        from PySide6.QtGui import QFont, QAction, QFontDatabase
         
-        # Get current font settings
+        # Create menu
+        menu = QMenu(self)
+        menu.setMinimumWidth(300)  # Set wider width for better readability
+        menu.setMaximumHeight(400)  # Limit height to avoid taking full screen
+        
+        # Get all available fonts
+        font_db = QFontDatabase()
+        families = font_db.families()
+        
         current_family = self.layer_styles[self.current_layer].get("font_family", "Arial")
-        current_size = self.layer_styles[self.current_layer].get("font_size", 16)
-        current_weight_str = self.layer_styles[self.current_layer].get("font_weight", "Normal")
         
-        # Convert weight string to QFont weight
-        weight_map = {
-            "Light": QFont.Light,
-            "Normal": QFont.Normal,
-            "Bold": QFont.Bold,
-            "ExtraBold": QFont.ExtraBold,
-        }
-        current_weight = weight_map.get(current_weight_str, QFont.Normal)
+        # Add font actions
+        for family in families:
+            action = QAction(family, self)
+            # Use localized font name if available
+            localized_name = font_db.family(family)
+            action.setFont(QFont(localized_name))  # Display with the actual font
+            action.triggered.connect(lambda checked, f=family: self._set_font_family(f))
+            if family == current_family:
+                action.setCheckable(True)
+                action.setChecked(True)
+            menu.addAction(action)
         
-        # Create initial font
-        initial_font = QFont(current_family, current_size, current_weight)
-        
-        # Create dialog instance
-        dialog = QFontDialog(initial_font, self)
-        dialog.setWindowTitle("Select Font")
-        
-        if dialog.exec() == QFontDialog.Accepted:
-            font = dialog.selectedFont()
-            
-            # Update all font properties
-            self.layer_styles[self.current_layer]["font_family"] = font.family()
-            self.layer_styles[self.current_layer]["font_size"] = font.pointSize()
-            
-            # Convert QFont weight back to string
-            reverse_weight_map = {
-                QFont.Light: "Light",
-                QFont.Normal: "Normal",
-                QFont.Bold: "Bold",
-                QFont.ExtraBold: "ExtraBold",
-            }
-            # Find closest match
-            font_weight_int = font.weight()
-            closest_weight = min(reverse_weight_map.keys(), key=lambda w: abs(w - font_weight_int))
-            weight_text = reverse_weight_map[closest_weight]
-            self.layer_styles[self.current_layer]["font_weight"] = weight_text
-            
-            # Update UI controls
-            self.font_family_combo.setText(font.family())
-            self.font_size_spin.setValue(font.pointSize())
-            self.font_weight_combo.setText(weight_text)
-            
-            self._update_preview()
-
+        # Show menu below the button
+        pos = self.font_family_combo.mapToGlobal(self.font_family_combo.rect().bottomLeft())
+        menu.exec(pos)
+    
+    def _set_font_family(self, family):
+        """Set font family and update preview."""
+        self.layer_styles[self.current_layer]["font_family"] = family
+        self.font_family_combo.setText(family)
+        self._update_preview()
     def _set_font_weight(self, value: str):
         """Set font weight."""
         self.font_weight_combo.setText(value)
