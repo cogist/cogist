@@ -7,10 +7,12 @@ Allows developers to tweak style parameters by layer and see immediate results.
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QCheckBox,
     QColorDialog,
     QComboBox,
     QGridLayout,
     QGroupBox,
+    QHBoxLayout,
     QLabel,
     QMenu,
     QPushButton,
@@ -448,36 +450,38 @@ class StylePanel(QWidget):
         self.font_weight_combo.setMenu(self.font_weight_menu)
         node_grid.addWidget(self.font_weight_combo, 5, 1)
 
-        # Font style (radio-like: None/Italic/Underline)
+        # Font style checkboxes (Italic, Underline, Strikeout)
         font_style_label = QLabel("Style:")
         font_style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         font_style_label.setMinimumWidth(label_width)
         node_grid.addWidget(font_style_label, 6, 0)
-        self.font_style_combo = QPushButton("None")
-        self.font_style_combo.setFixedHeight(widget_height)
-        self.font_style_combo.setStyleSheet("""
-            QPushButton {
-                background-color: #FFFFFF;
-                border: 1px solid #C8C8C8;
-                border-radius: 6px;
-                padding: 4px 24px 4px 12px;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background-color: #F0F0F0;
-                border-color: #A0A0A0;
-            }
-        """)
-        self.font_style_menu = QMenu()
-        self.font_style_menu.aboutToShow.connect(
-            lambda: self._adjust_menu_width(self.font_style_menu, self.font_style_combo)
-        )
-        style_options = ["None", "Italic", "Underline"]
-        for option in style_options:
-            action = self.font_style_menu.addAction(option)
-            action.triggered.connect(lambda _, opt=option: self._set_font_style(opt))
-        self.font_style_combo.setMenu(self.font_style_menu)
-        node_grid.addWidget(self.font_style_combo, 6, 1)
+        
+        # Create a horizontal layout for the three checkboxes
+        style_layout = QHBoxLayout()
+        style_layout.setSpacing(8)
+        style_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.font_italic_check = QCheckBox("Italic")
+        self.font_italic_check.setStyleSheet("QCheckBox { background: transparent; }")
+        self.font_italic_check.toggled.connect(self._update_preview)
+        style_layout.addWidget(self.font_italic_check)
+        
+        self.font_underline_check = QCheckBox("Underline")
+        self.font_underline_check.setStyleSheet("QCheckBox { background: transparent; }")
+        self.font_underline_check.toggled.connect(self._update_preview)
+        style_layout.addWidget(self.font_underline_check)
+        
+        self.font_strikeout_check = QCheckBox("Strikeout")
+        self.font_strikeout_check.setStyleSheet("QCheckBox { background: transparent; }")
+        self.font_strikeout_check.toggled.connect(self._update_preview)
+        style_layout.addWidget(self.font_strikeout_check)
+        
+        style_layout.addStretch()
+        
+        # Create a container widget for the checkboxes
+        style_container = QWidget()
+        style_container.setLayout(style_layout)
+        node_grid.addWidget(style_container, 6, 1)
 
         # Padding
         padding_w_label = QLabel("Padding W:")
@@ -761,14 +765,6 @@ class StylePanel(QWidget):
         self.layer_styles[self.current_layer]["font_weight"] = value
         self._update_preview()
 
-    def _set_font_style(self, value: str):
-        """Set font style (None/Italic/Underline)."""
-        self.font_style_combo.setText(value)
-        # Update style dict
-        self.layer_styles[self.current_layer]["font_italic"] = (value == "Italic")
-        self.layer_styles[self.current_layer]["font_underline"] = (value == "Underline")
-        self._update_preview()
-
     def _set_border_style(self, value: str):
         """Set border style."""
         self.border_style_combo.setText(value)
@@ -855,6 +851,10 @@ class StylePanel(QWidget):
             "padding_h": self.padding_h_spin.value(),
             "radius": self.radius_spin.value(),
             "border_width": self.border_width_spin.value(),
+            # Font style checkboxes
+            "font_italic": self.font_italic_check.isChecked(),
+            "font_underline": self.font_underline_check.isChecked(),
+            "font_strikeout": self.font_strikeout_check.isChecked(),
         })
 
     def _load_current_layer_style(self):
@@ -898,13 +898,10 @@ class StylePanel(QWidget):
         self.font_size_spin.setValue(style.get("font_size", 22))
         self.font_weight_combo.setText(style.get("font_weight", "Bold"))
         
-        # Font style (None/Italic/Underline)
-        if style.get("font_italic", False):
-            self.font_style_combo.setText("Italic")
-        elif style.get("font_underline", False):
-            self.font_style_combo.setText("Underline")
-        else:
-            self.font_style_combo.setText("None")
+        # Font style checkboxes
+        self.font_italic_check.setChecked(style.get("font_italic", False))
+        self.font_underline_check.setChecked(style.get("font_underline", False))
+        self.font_strikeout_check.setChecked(style.get("font_strikeout", False))
         
         # Padding and radius
         self.padding_w_spin.setValue(style.get("padding_w", 20))

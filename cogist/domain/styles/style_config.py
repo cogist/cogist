@@ -21,6 +21,7 @@ class NodeStyleConfig:
     font_family: str = "Arial"
     font_italic: bool = False
     font_underline: bool = False
+    font_strikeout: bool = False  # Strikethrough text
     
     # Padding and sizing
     padding_width: int = 10
