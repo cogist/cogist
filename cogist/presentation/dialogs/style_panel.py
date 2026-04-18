@@ -770,10 +770,13 @@ class StylePanel(QWidget):
         # Create initial font
         initial_font = QFont(current_family, current_size, current_weight)
         
-        # Use native system font dialog (macOS will use NSFontPanel)
-        font, ok = QFontDialog.getFont(initial_font, self, "Select Font")
+        # Create dialog instance
+        dialog = QFontDialog(initial_font, self)
+        dialog.setWindowTitle("Select Font")
         
-        if ok:
+        if dialog.exec() == QFontDialog.Accepted:
+            font = dialog.selectedFont()
+            
             # Update all font properties
             self.layer_styles[self.current_layer]["font_family"] = font.family()
             self.layer_styles[self.current_layer]["font_size"] = font.pointSize()
@@ -788,18 +791,13 @@ class StylePanel(QWidget):
             # Find closest match
             font_weight_int = font.weight()
             closest_weight = min(reverse_weight_map.keys(), key=lambda w: abs(w - font_weight_int))
-            self.layer_styles[self.current_layer]["font_weight"] = reverse_weight_map[closest_weight]
+            weight_text = reverse_weight_map[closest_weight]
+            self.layer_styles[self.current_layer]["font_weight"] = weight_text
             
             # Update UI controls
             self.font_family_combo.setText(font.family())
             self.font_size_spin.setValue(font.pointSize())
-            
-            # Update font weight combo
-            weight_text = reverse_weight_map[closest_weight]
-            for i in range(self.font_weight_combo.count()):
-                if self.font_weight_combo.itemText(i) == weight_text:
-                    self.font_weight_combo.setCurrentIndex(i)
-                    break
+            self.font_weight_combo.setText(weight_text)
             
             self._update_preview()
 
