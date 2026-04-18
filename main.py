@@ -189,7 +189,7 @@ class MainWindow(QMainWindow):
                 border: 1px solid #CCCCCC;
                 border-radius: 5px;
                 margin-top: 15px;
-                padding-top: 18px;
+                padding: 18px 0 0 0;
                 background-color: white;
             }
             QGroupBox::title {
@@ -198,18 +198,16 @@ class MainWindow(QMainWindow):
                 left: 10px;
                 top: 0px;
                 padding: 0 8px;
-                background-color: white;
+                background-color: transparent;
             }
 
             /* Separator between dock widget and main area */
             QSplitter::handle {
-                background-color: #E0E0E0;
-                width: 2px;
+                background-color: transparent;
+                width: 0;
             }
             QSplitter::handle:horizontal {
-                width: 2px;
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 transparent, stop:0.5 #D0D0D0, stop:1 transparent);
+                width: 0;
             }
 
             /* Unified widget styles for the debugger panel */
@@ -508,9 +506,9 @@ class MainWindow(QMainWindow):
             splitter.setStretchFactor(0, 1)  # Mind map takes most space
             splitter.setStretchFactor(1, 0)  # Panel has fixed width
             splitter.setCollapsible(1, False)  # Panel cannot be collapsed
-
-            # Set initial widths (mind map: 1100px, panel: 300px)
-            splitter.setSizes([1100, 300])
+            
+            # Set initial widths (mind map: 1100px, panel: 260px)
+            splitter.setSizes([1100, StylePanel.PANEL_WIDTH])
 
             # Set as central widget
             self.setCentralWidget(splitter)

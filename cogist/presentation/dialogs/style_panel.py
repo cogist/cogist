@@ -1,19 +1,21 @@
 """
-Style Panel - Development Tool
+Style Panel - Advanced Mode for Template Creation
 
 A dockable panel for real-time style debugging and template creation.
-Allows developers to tweak style parameters and see immediate results.
+Allows developers to tweak style parameters by layer and see immediate results.
 """
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QColorDialog,
+    QComboBox,
     QGridLayout,
     QGroupBox,
     QLabel,
     QMenu,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -21,37 +23,60 @@ from PySide6.QtWidgets import (
 
 
 class StylePanel(QWidget):
-    """Panel for debugging and testing node styles."""
+    """Advanced style panel for template creation with layer-based editing."""
+
+    # Panel dimensions
+    PANEL_WIDTH = 260
+    LABEL_WIDTH = 75
+    WIDGET_WIDTH = 133  # Calculated: 260 - 12*2 - 1*2 - 10*2 - 75 - 6 = 133
+    WIDGET_HEIGHT = 32
+    PANEL_MARGIN = 12  # Left/right margins for panel edges
+    GROUP_MARGIN = 10  # Left/right margins inside group boxes
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # Set initial width
-        self.setMinimumWidth(250)
-        self.setMaximumWidth(375)
+        # Set initial width (fixed, non-resizable)
+        self.setMinimumWidth(self.PANEL_WIDTH)
+        self.setMaximumWidth(self.PANEL_WIDTH)
 
         # Create main widget
         self.main_widget = QWidget()
 
-        # Store current style parameters
-        self.current_depth = 0
-        self.style_params = {}
+        # Store style parameters by layer
+        self.current_layer = "canvas"
+        self.layer_styles = {
+            "canvas": self._get_default_canvas_style(),
+            "root": self._get_default_layer_style("root"),
+            "level_1": self._get_default_layer_style("level_1"),
+            "level_2": self._get_default_layer_style("level_2"),
+            "level_3_plus": self._get_default_layer_style("level_3_plus"),
+            "critical": self._get_default_layer_style("critical"),
+            "minor": self._get_default_layer_style("minor"),
+        }
+
+        # Connector style (shared across all node layers)
+        self.connector_style = self._get_default_connector_style()
 
         # Apply custom styles
         self._apply_styles()
 
         self._init_ui()
-        self._load_default_style()
+        
+        # Set initial visibility based on default layer (canvas)
+        self.canvas_group.setVisible(True)
+        self.node_style_group.setVisible(False)
+        self.border_group.setVisible(False)
+        self.connector_group.setVisible(False)
+        
+        self._load_current_layer_style()
 
     def _apply_styles(self):
         """Apply custom QSS styles to the panel."""
-        # Set main widget background
         self.setStyleSheet("""
-            /* Use class selector to avoid affecting child widgets */
             StylePanel {
                 background-color: #F5F5F5;
             }
-            /* Group box styling */
             QGroupBox {
                 background-color: #FFFFFF;
                 border: 1px solid #C8C8C8;
@@ -65,92 +90,161 @@ class StylePanel(QWidget):
                 subcontrol-origin: margin;
                 subcontrol-position: top center;
                 padding: 0 12px;
-                background-color: #F5F5F5;
+                background-color: transparent;
                 font-weight: bold;
                 font-size: 13px;
             }
-            /* Use specific selectors instead of global QPushButton/QSpinBox */
             QGroupBox QPushButton,
             QGroupBox QSpinBox,
             QGroupBox QComboBox,
-            QGroupBox QLineEdit {
+            QGroupBox QLineEdit,
+            QGroupBox QCheckBox {
                 border: 1px solid #C8C8C8;
                 border-radius: 6px;
                 background-color: #FFFFFF;
             }
             QGroupBox QPushButton:hover,
             QGroupBox QSpinBox:hover,
-            QGroupBox QComboBox:hover,
-            QGroupBox QLineEdit:hover {
+            QGroupBox QComboBox:hover {
                 border-color: #A0A0A0;
             }
-            /* Remove background from labels */
             QLabel {
                 background-color: transparent;
             }
-            /* Exclude color picker buttons from general style */
-            QPushButton#bg_color_btn, QPushButton#text_color_btn, QPushButton#edge_color_btn {
+            QPushButton#bg_color_btn, QPushButton#text_color_btn, 
+            QPushButton#border_color_btn, QPushButton#connector_color_btn {
                 border: 1px solid #C8C8C8;
             }
         """)
+
+    def _get_default_canvas_style(self):
+        """Get default canvas style."""
+        return {
+            "bg_color": "#FFFFFF",
+        }
+
+    def _get_default_layer_style(self, layer_type):
+        """Get default style for a layer."""
+        # Base defaults
+        style = {
+            # Shape
+            "shape": "rounded_rect",  # rect, rounded_rect, circle
+            
+            # Background
+            "bg_color": "#2196F3",
+            
+            # Text
+            "text_color": "#FFFFFF",
+            "font_family": "Arial",
+            "font_size": 22,
+            "font_weight": "Bold",
+            "font_italic": False,
+            "font_underline": False,
+            
+            # Border
+            "border_style": "solid",  # solid, dashed, dotted, dash_dot
+            "border_width": 2,
+            "border_color": "#1976D2",
+            
+            # Padding
+            "padding_w": 20,
+            "padding_h": 16,
+            
+            # Corner radius
+            "radius": 10,
+        }
+        
+        # Adjust based on layer type
+        if layer_type == "root":
+            style.update({
+                "bg_color": "#2196F3",
+                "text_color": "#FFFFFF",
+                "font_size": 22,
+                "font_weight": "Bold",
+            })
+        elif layer_type == "level_1":
+            style.update({
+                "bg_color": "#4CAF50",
+                "text_color": "#FFFFFF",
+                "font_size": 18,
+                "font_weight": "Normal",
+            })
+        elif layer_type == "level_2":
+            style.update({
+                "bg_color": "#FF9800",
+                "text_color": "#FFFFFF",
+                "font_size": 16,
+                "font_weight": "Normal",
+            })
+        elif layer_type == "level_3_plus":
+            style.update({
+                "bg_color": "#9E9E9E",
+                "text_color": "#FFFFFF",
+                "font_size": 14,
+                "font_weight": "Normal",
+            })
+        elif layer_type == "critical":
+            style.update({
+                "bg_color": "#D32F2F",
+                "text_color": "#FFFFFF",
+                "font_size": 24,
+                "font_weight": "ExtraBold",
+                "border_width": 4,
+                "border_color": "#B71C1C",
+            })
+        elif layer_type == "minor":
+            style.update({
+                "bg_color": "#BDBDBD",
+                "text_color": "#FFFFFF",
+                "font_size": 18,
+                "font_weight": "Light",
+                "border_width": 1,
+            })
+        
+        return style
+
+    def _get_default_connector_style(self):
+        """Get default connector (edge) style."""
+        return {
+            "connector_type": "bezier",  # straight, orthogonal, bezier
+            "connector_style": "solid",  # solid, dashed, dotted
+            "connector_width": 2,
+            "connector_color": "#666666",
+        }
 
     def _init_ui(self):
         """Initialize the user interface."""
-        # Create scroll area for content
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.NoFrame)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        # Use system default scrollbar style (no custom QSS)
 
         content_widget = QWidget()
+        content_widget.setMinimumWidth(self.PANEL_WIDTH)
+        content_widget.setMaximumWidth(self.PANEL_WIDTH)
         layout = QVBoxLayout(content_widget)
         layout.setSpacing(10)
 
-        # Fixed label width for all forms to align colons
-        label_width = 90
-        widget_height = 32  # Fixed height for all input widgets
-        # Widgets will use layout to determine width automatically
+        label_width = self.LABEL_WIDTH
+        widget_height = self.WIDGET_HEIGHT
 
-        # Depth selector
-        depth_group = QGroupBox("Layer Selection")
-        depth_group.setFlat(False)
-        depth_group.setStyleSheet("""
-            QGroupBox {
-                background-color: #FFFFFF;
-                border: 1px solid #C8C8C8;
-                border-radius: 8px;
-                margin-top: 24px;
-                padding-top: 12px;
-                padding-bottom: 12px;
-                margin-bottom: 8px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top center;
-                padding: 0 12px;
-                background-color: #F5F5F5;
-                font-weight: bold;
-                font-size: 13px;
-            }
-            QGroupBox QLabel {
-                background-color: transparent;
-            }
-        """)
-        depth_grid = QGridLayout()
-        depth_grid.setSpacing(6)
-        depth_grid.setContentsMargins(10, 16, 10, 16)
-        depth_grid.setColumnStretch(0, 0)  # Label column takes needed space
-        depth_grid.setColumnStretch(1, 1)  # Widget column takes remaining space
-        depth_label = QLabel("Depth:")
-        depth_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        depth_label.setMinimumWidth(label_width)
-        depth_grid.addWidget(depth_label, 0, 0)
+        # === Layer Selection ===
+        layer_group = QGroupBox("Layer Selection")
+        layer_grid = QGridLayout()
+        layer_grid.setSpacing(6)
+        layer_grid.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
+        layer_grid.setColumnStretch(0, 0)
+        layer_grid.setColumnStretch(1, 1)
+        
+        layer_label = QLabel("Layer:")
+        layer_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        layer_label.setMinimumWidth(label_width)
+        layer_grid.addWidget(layer_label, 0, 0)
 
-        # Use QPushButton + QMenu for macOS compatibility
-        self.depth_combo = QPushButton("Root (0)")
-        self.depth_combo.setFixedHeight(widget_height)
-        self.depth_combo.setStyleSheet("""
+        self.layer_combo = QPushButton("Canvas")
+        self.layer_combo.setFixedHeight(widget_height)
+        self.layer_combo.setStyleSheet("""
             QPushButton {
                 background-color: #FFFFFF;
                 border: 1px solid #C8C8C8;
@@ -162,52 +256,74 @@ class StylePanel(QWidget):
                 background-color: #F0F0F0;
                 border-color: #A0A0A0;
             }
-            QPushButton:pressed {
-                background-color: #E0E0E0;
-            }
-            QPushButton::menu-indicator {
-                subcontrol-position: center right;
-                right: 8px;
-                width: 8px;
-                height: 8px;
-            }
         """)
-        self.depth_menu = QMenu()
-        self.depth_menu.aboutToShow.connect(
-            lambda: self._adjust_menu_width(self.depth_menu, self.depth_combo)
+        self.layer_menu = QMenu()
+        self.layer_menu.aboutToShow.connect(
+            lambda: self._adjust_menu_width(self.layer_menu, self.layer_combo)
         )
-        depth_options = [
-            "Root (0)",
+        layer_options = [
+            "Canvas",
+            "---",
+            "Root",
             "Level 1",
             "Level 2",
             "Level 3+",
-            "Individual Node",
+            "---",
+            "Critical",
+            "Minor",
         ]
-        for option in depth_options:
-            action = self.depth_menu.addAction(option)
-            action.triggered.connect(lambda _, opt=option: self._set_depth(opt))
-        self.depth_combo.setMenu(self.depth_menu)
-        depth_grid.addWidget(self.depth_combo, 0, 1)
-        depth_group.setLayout(depth_grid)
-        layout.addWidget(depth_group)
+        for option in layer_options:
+            if option == "---":
+                self.layer_menu.addSeparator()
+            else:
+                action = self.layer_menu.addAction(option)
+                action.triggered.connect(lambda _, opt=option: self._set_layer(opt))
+        self.layer_combo.setMenu(self.layer_menu)
+        layer_grid.addWidget(self.layer_combo, 0, 1)
+        layer_group.setLayout(layer_grid)
+        layout.addWidget(layer_group)
 
-        # Importance selector (only visible when "Individual Node" is selected)
-        self.importance_group = QGroupBox("Importance Level")
-        self.importance_group.setVisible(False)  # Hidden by default
-        importance_grid = QGridLayout()
-        importance_grid.setSpacing(6)
-        importance_grid.setContentsMargins(10, 16, 10, 16)
-        importance_grid.setColumnStretch(0, 0)
-        importance_grid.setColumnStretch(1, 1)
+        # === Canvas Background (only visible for canvas layer) ===
+        self.canvas_group = QGroupBox("Canvas Background")
+        canvas_grid = QGridLayout()
+        canvas_grid.setSpacing(6)
+        canvas_grid.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
+        canvas_grid.setColumnStretch(0, 0)
+        canvas_grid.setColumnStretch(1, 1)
+        
+        canvas_bg_label = QLabel("Background:")
+        canvas_bg_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        canvas_bg_label.setMinimumWidth(label_width)
+        canvas_grid.addWidget(canvas_bg_label, 0, 0)
+        
+        self.canvas_bg_btn = QPushButton()
+        self.canvas_bg_btn.setFixedHeight(widget_height)
+        self.canvas_bg_btn.setStyleSheet(
+            "background-color: #FFFFFF; border: 1px solid #ccc; border-radius: 6px;"
+        )
+        self.canvas_bg_btn.clicked.connect(lambda: self._pick_color("canvas_bg"))
+        canvas_grid.addWidget(self.canvas_bg_btn, 0, 1)
+        
+        self.canvas_group.setLayout(canvas_grid)
+        layout.addWidget(self.canvas_group)
 
-        imp_label = QLabel("Level:")
-        imp_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        imp_label.setMinimumWidth(label_width)
-        importance_grid.addWidget(imp_label, 0, 0)
+        # === Node Style ===
+        self.node_style_group = QGroupBox("Node Style")
+        node_grid = QGridLayout()
+        node_grid.setSpacing(6)
+        node_grid.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
+        node_grid.setColumnStretch(0, 0)
+        node_grid.setColumnStretch(1, 1)
 
-        self.importance_combo = QPushButton("Normal")
-        self.importance_combo.setFixedHeight(widget_height)
-        self.importance_combo.setStyleSheet("""
+        # Shape (first item)
+        shape_label = QLabel("Shape:")
+        shape_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        shape_label.setMinimumWidth(label_width)
+        node_grid.addWidget(shape_label, 0, 0)
+        
+        self.shape_combo = QPushButton("Rounded Rect")
+        self.shape_combo.setFixedHeight(widget_height)
+        self.shape_combo.setStyleSheet("""
             QPushButton {
                 background-color: #FFFFFF;
                 border: 1px solid #C8C8C8;
@@ -219,122 +335,93 @@ class StylePanel(QWidget):
                 background-color: #F0F0F0;
                 border-color: #A0A0A0;
             }
-            QPushButton:pressed {
-                background-color: #E0E0E0;
-            }
-            QPushButton::menu-indicator {
-                subcontrol-position: center right;
-                right: 8px;
-                width: 8px;
-                height: 8px;
-            }
         """)
-        self.importance_menu = QMenu()
-        self.importance_menu.aboutToShow.connect(
-            lambda: self._adjust_menu_width(self.importance_menu, self.importance_combo)
+        self.shape_menu = QMenu()
+        self.shape_menu.aboutToShow.connect(
+            lambda: self._adjust_menu_width(self.shape_menu, self.shape_combo)
         )
-        importance_options = ["Important", "Normal", "Unimportant"]
-        for option in importance_options:
-            action = self.importance_menu.addAction(option)
-            action.triggered.connect(lambda _, opt=option: self._set_importance(opt))
-        self.importance_combo.setMenu(self.importance_menu)
-        importance_grid.addWidget(self.importance_combo, 0, 1)
-
-        self.importance_group.setLayout(importance_grid)
-        layout.addWidget(self.importance_group)
-
-        # Node style group
-        node_group = QGroupBox("Node Style")
-        node_group.setFlat(False)
-        node_group.setStyleSheet("""
-            QGroupBox {
-                background-color: #FFFFFF;
-                border: 1px solid #C8C8C8;
-                border-radius: 8px;
-                margin-top: 24px;
-                padding-top: 12px;
-                padding-bottom: 12px;
-                margin-bottom: 8px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top center;
-                padding: 0 12px;
-                background-color: #F5F5F5;
-                font-weight: bold;
-                font-size: 13px;
-            }
-            QGroupBox QLabel {
-                background-color: transparent;
-            }
-        """)
-        node_grid = QGridLayout()
-        node_grid.setSpacing(6)
-        node_grid.setContentsMargins(10, 16, 10, 16)
-        node_grid.setColumnStretch(0, 0)  # Label column takes needed space
-        node_grid.setColumnStretch(1, 1)  # Widget column takes remaining space
+        shape_options = ["Rectangle", "Rounded Rect", "Circle"]
+        for option in shape_options:
+            action = self.shape_menu.addAction(option)
+            action.triggered.connect(lambda _, opt=option: self._set_shape(opt))
+        self.shape_combo.setMenu(self.shape_menu)
+        node_grid.addWidget(self.shape_combo, 0, 1)
 
         # Background color
         bg_label = QLabel("Background:")
         bg_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         bg_label.setMinimumWidth(label_width)
-        node_grid.addWidget(bg_label, 0, 0)
+        node_grid.addWidget(bg_label, 1, 0)
         self.bg_color_btn = QPushButton()
         self.bg_color_btn.setFixedHeight(widget_height)
         self.bg_color_btn.setStyleSheet(
             "background-color: #2196F3; border: 1px solid #ccc; border-radius: 6px;"
         )
         self.bg_color_btn.clicked.connect(lambda: self._pick_color("bg_color"))
-        node_grid.addWidget(self.bg_color_btn, 0, 1)
+        node_grid.addWidget(self.bg_color_btn, 1, 1)
 
         # Text color
-        text_label = QLabel("Text:")
+        text_label = QLabel("Text Color:")
         text_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         text_label.setMinimumWidth(label_width)
-        node_grid.addWidget(text_label, 1, 0)
+        node_grid.addWidget(text_label, 2, 0)
         self.text_color_btn = QPushButton()
         self.text_color_btn.setFixedHeight(widget_height)
         self.text_color_btn.setStyleSheet(
             "background-color: #FFFFFF; border: 1px solid #ccc; border-radius: 6px;"
         )
         self.text_color_btn.clicked.connect(lambda: self._pick_color("text_color"))
-        node_grid.addWidget(self.text_color_btn, 1, 1)
+        node_grid.addWidget(self.text_color_btn, 2, 1)
+
+        # Font family
+        font_family_label = QLabel("Font:")
+        font_family_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        font_family_label.setMinimumWidth(label_width)
+        node_grid.addWidget(font_family_label, 3, 0)
+        self.font_family_combo = QPushButton("Arial")
+        self.font_family_combo.setFixedHeight(widget_height)
+        self.font_family_combo.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                border: 1px solid #C8C8C8;
+                border-radius: 6px;
+                padding: 4px 24px 4px 12px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #F0F0F0;
+                border-color: #A0A0A0;
+            }
+        """)
+        self.font_family_menu = QMenu()
+        self.font_family_menu.aboutToShow.connect(
+            lambda: self._adjust_menu_width(self.font_family_menu, self.font_family_combo)
+        )
+        font_families = ["Arial", "Helvetica", "Times New Roman", "Courier New", "Georgia", "Verdana"]
+        for family in font_families:
+            action = self.font_family_menu.addAction(family)
+            action.triggered.connect(lambda _, f=family: self._set_font_family(f))
+        self.font_family_combo.setMenu(self.font_family_menu)
+        node_grid.addWidget(self.font_family_combo, 3, 1)
 
         # Font size
         font_size_label = QLabel("Font Size:")
         font_size_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         font_size_label.setMinimumWidth(label_width)
-        node_grid.addWidget(font_size_label, 2, 0)
+        node_grid.addWidget(font_size_label, 4, 0)
         self.font_size_spin = QSpinBox()
         self.font_size_spin.setFixedHeight(widget_height)
         self.font_size_spin.setRange(8, 72)
         self.font_size_spin.setValue(22)
         self.font_size_spin.setAlignment(Qt.AlignCenter)
-        self.font_size_spin.setStyleSheet("""
-            QSpinBox {
-                background-color: #FFFFFF;
-                border: 1px solid #C8C8C8;
-                border-radius: 6px;
-                padding: 4px 8px;
-                font-size: 13px;
-            }
-            QSpinBox:hover {
-                border-color: #A0A0A0;
-            }
-            QSpinBox:focus {
-                border-color: #2196F3;
-            }
-        """)
         self.font_size_spin.valueChanged.connect(self._update_preview)
-        node_grid.addWidget(self.font_size_spin, 2, 1)
+        node_grid.addWidget(self.font_size_spin, 4, 1)
 
         # Font weight
-        font_weight_label = QLabel("Font Weight:")
+        font_weight_label = QLabel("Weight:")
         font_weight_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         font_weight_label.setMinimumWidth(label_width)
-        node_grid.addWidget(font_weight_label, 3, 0)
-
-        # Use QPushButton + QMenu for macOS compatibility
+        node_grid.addWidget(font_weight_label, 5, 0)
         self.font_weight_combo = QPushButton("Bold")
         self.font_weight_combo.setFixedHeight(widget_height)
         self.font_weight_combo.setStyleSheet("""
@@ -349,405 +436,517 @@ class StylePanel(QWidget):
                 background-color: #F0F0F0;
                 border-color: #A0A0A0;
             }
-            QPushButton:pressed {
-                background-color: #E0E0E0;
-            }
-            QPushButton::menu-indicator {
-                subcontrol-position: center right;
-                right: 8px;
-                width: 8px;
-                height: 8px;
-            }
         """)
         self.font_weight_menu = QMenu()
         self.font_weight_menu.aboutToShow.connect(
-            lambda: self._adjust_menu_width(
-                self.font_weight_menu, self.font_weight_combo
-            )
+            lambda: self._adjust_menu_width(self.font_weight_menu, self.font_weight_combo)
         )
-        weight_options = ["Normal", "Bold"]
+        weight_options = ["Light", "Normal", "Bold", "ExtraBold"]
         for option in weight_options:
             action = self.font_weight_menu.addAction(option)
             action.triggered.connect(lambda _, opt=option: self._set_font_weight(opt))
         self.font_weight_combo.setMenu(self.font_weight_menu)
-        node_grid.addWidget(self.font_weight_combo, 3, 1)
+        node_grid.addWidget(self.font_weight_combo, 5, 1)
 
-        # Padding width
+        # Font style (radio-like: None/Italic/Underline)
+        font_style_label = QLabel("Style:")
+        font_style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        font_style_label.setMinimumWidth(label_width)
+        node_grid.addWidget(font_style_label, 6, 0)
+        self.font_style_combo = QPushButton("None")
+        self.font_style_combo.setFixedHeight(widget_height)
+        self.font_style_combo.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                border: 1px solid #C8C8C8;
+                border-radius: 6px;
+                padding: 4px 24px 4px 12px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #F0F0F0;
+                border-color: #A0A0A0;
+            }
+        """)
+        self.font_style_menu = QMenu()
+        self.font_style_menu.aboutToShow.connect(
+            lambda: self._adjust_menu_width(self.font_style_menu, self.font_style_combo)
+        )
+        style_options = ["None", "Italic", "Underline"]
+        for option in style_options:
+            action = self.font_style_menu.addAction(option)
+            action.triggered.connect(lambda _, opt=option: self._set_font_style(opt))
+        self.font_style_combo.setMenu(self.font_style_menu)
+        node_grid.addWidget(self.font_style_combo, 6, 1)
+
+        # Padding
         padding_w_label = QLabel("Padding W:")
         padding_w_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         padding_w_label.setMinimumWidth(label_width)
-        node_grid.addWidget(padding_w_label, 4, 0)
+        node_grid.addWidget(padding_w_label, 7, 0)
         self.padding_w_spin = QSpinBox()
         self.padding_w_spin.setFixedHeight(widget_height)
         self.padding_w_spin.setRange(0, 50)
         self.padding_w_spin.setValue(20)
         self.padding_w_spin.setAlignment(Qt.AlignCenter)
-        self.padding_w_spin.setStyleSheet("""
-            QSpinBox {
-                background-color: #FFFFFF;
-                border: 1px solid #C8C8C8;
-                border-radius: 6px;
-                padding: 4px 8px;
-                font-size: 13px;
-            }
-            QSpinBox:hover {
-                border-color: #A0A0A0;
-            }
-            QSpinBox:focus {
-                border-color: #2196F3;
-            }
-        """)
         self.padding_w_spin.valueChanged.connect(self._update_preview)
-        node_grid.addWidget(self.padding_w_spin, 4, 1)
+        node_grid.addWidget(self.padding_w_spin, 7, 1)
 
-        # Padding height
         padding_h_label = QLabel("Padding H:")
         padding_h_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         padding_h_label.setMinimumWidth(label_width)
-        node_grid.addWidget(padding_h_label, 5, 0)
+        node_grid.addWidget(padding_h_label, 8, 0)
         self.padding_h_spin = QSpinBox()
         self.padding_h_spin.setFixedHeight(widget_height)
         self.padding_h_spin.setRange(0, 50)
         self.padding_h_spin.setValue(16)
         self.padding_h_spin.setAlignment(Qt.AlignCenter)
-        self.padding_h_spin.setStyleSheet("""
-            QSpinBox {
-                background-color: #FFFFFF;
-                border: 1px solid #C8C8C8;
-                border-radius: 6px;
-                padding: 4px 8px;
-                font-size: 13px;
-            }
-            QSpinBox:hover {
-                border-color: #A0A0A0;
-            }
-            QSpinBox:focus {
-                border-color: #2196F3;
-            }
-        """)
         self.padding_h_spin.valueChanged.connect(self._update_preview)
-        node_grid.addWidget(self.padding_h_spin, 5, 1)
+        node_grid.addWidget(self.padding_h_spin, 8, 1)
 
-        # Border radius
-        radius_label = QLabel("Border Radius:")
+        # Corner radius
+        radius_label = QLabel("Radius:")
         radius_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         radius_label.setMinimumWidth(label_width)
-        node_grid.addWidget(radius_label, 6, 0)
+        node_grid.addWidget(radius_label, 9, 0)
         self.radius_spin = QSpinBox()
         self.radius_spin.setFixedHeight(widget_height)
         self.radius_spin.setRange(0, 30)
         self.radius_spin.setValue(10)
         self.radius_spin.setAlignment(Qt.AlignCenter)
-        self.radius_spin.setStyleSheet("""
-            QSpinBox {
-                background-color: #FFFFFF;
-                border: 1px solid #C8C8C8;
-                border-radius: 6px;
-                padding: 4px 8px;
-                font-size: 13px;
-            }
-            QSpinBox:hover {
-                border-color: #A0A0A0;
-            }
-            QSpinBox:focus {
-                border-color: #2196F3;
-            }
-        """)
         self.radius_spin.valueChanged.connect(self._update_preview)
-        node_grid.addWidget(self.radius_spin, 6, 1)
+        node_grid.addWidget(self.radius_spin, 9, 1)
 
-        node_group.setLayout(node_grid)
-        layout.addWidget(node_group)
+        self.node_style_group.setLayout(node_grid)
+        layout.addWidget(self.node_style_group)
 
-        # Layout spacing group (only visible for depth levels, not for Individual Node)
-        self.spacing_group = QGroupBox("Layout Spacing")
-        self.spacing_group.setVisible(False)  # Hidden by default
-        spacing_grid = QGridLayout()
-        spacing_grid.setSpacing(6)
-        spacing_grid.setContentsMargins(10, 16, 10, 16)
-        spacing_grid.setColumnStretch(0, 0)
-        spacing_grid.setColumnStretch(1, 1)
+        # === Border Style ===
+        self.border_group = QGroupBox("Border Style")
+        border_grid = QGridLayout()
+        border_grid.setSpacing(6)
+        border_grid.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
+        border_grid.setColumnStretch(0, 0)
+        border_grid.setColumnStretch(1, 1)
 
-        # Horizontal spacing (level spacing)
-        h_spacing_label = QLabel("Horizontal:")
-        h_spacing_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        h_spacing_label.setMinimumWidth(label_width)
-        spacing_grid.addWidget(h_spacing_label, 0, 0)
-        self.h_spacing_spin = QSpinBox()
-        self.h_spacing_spin.setFixedHeight(widget_height)
-        self.h_spacing_spin.setRange(20, 200)
-        self.h_spacing_spin.setValue(80)
-        self.h_spacing_spin.setAlignment(Qt.AlignCenter)
-        spacing_grid.addWidget(self.h_spacing_spin, 0, 1)
-
-        # Vertical spacing (sibling spacing)
-        v_spacing_label = QLabel("Vertical:")
-        v_spacing_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        v_spacing_label.setMinimumWidth(label_width)
-        spacing_grid.addWidget(v_spacing_label, 1, 0)
-        self.v_spacing_spin = QSpinBox()
-        self.v_spacing_spin.setFixedHeight(widget_height)
-        self.v_spacing_spin.setRange(20, 200)
-        self.v_spacing_spin.setValue(60)
-        self.v_spacing_spin.setAlignment(Qt.AlignCenter)
-        spacing_grid.addWidget(self.v_spacing_spin, 1, 1)
-
-        self.spacing_group.setLayout(spacing_grid)
-        layout.addWidget(self.spacing_group)
-
-        # Edge style group
-        edge_group = QGroupBox("Edge Style")
-        edge_group.setFlat(False)
-        edge_group.setStyleSheet("""
-            QGroupBox {
+        # Border style (solid/dashed/etc)
+        border_style_label = QLabel("Style:")
+        border_style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        border_style_label.setMinimumWidth(label_width)
+        border_grid.addWidget(border_style_label, 0, 0)
+        self.border_style_combo = QPushButton("Solid")
+        self.border_style_combo.setFixedHeight(widget_height)
+        self.border_style_combo.setStyleSheet("""
+            QPushButton {
                 background-color: #FFFFFF;
                 border: 1px solid #C8C8C8;
-                border-radius: 8px;
-                margin-top: 24px;
-                padding-top: 12px;
-                padding-bottom: 12px;
-                margin-bottom: 8px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top center;
-                padding: 0 12px;
-                background-color: #F5F5F5;
-                font-weight: bold;
+                border-radius: 6px;
+                padding: 4px 24px 4px 12px;
                 font-size: 13px;
             }
-            QGroupBox QLabel {
-                background-color: transparent;
+            QPushButton:hover {
+                background-color: #F0F0F0;
+                border-color: #A0A0A0;
             }
         """)
-        edge_grid = QGridLayout()
-        edge_grid.setSpacing(6)
-        edge_grid.setContentsMargins(10, 16, 10, 16)
-        edge_grid.setColumnStretch(0, 0)  # Label column takes needed space
-        edge_grid.setColumnStretch(1, 1)  # Widget column takes remaining space
-
-        # Edge color
-        edge_color_label = QLabel("Color:")
-        edge_color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        edge_color_label.setMinimumWidth(label_width)
-        edge_grid.addWidget(edge_color_label, 0, 0)
-        self.edge_color_btn = QPushButton()
-        self.edge_color_btn.setFixedHeight(widget_height)
-        self.edge_color_btn.setStyleSheet(
-            "background-color: #2196F3; border: 1px solid #ccc; border-radius: 6px;"
+        self.border_style_menu = QMenu()
+        self.border_style_menu.aboutToShow.connect(
+            lambda: self._adjust_menu_width(self.border_style_menu, self.border_style_combo)
         )
-        self.edge_color_btn.clicked.connect(lambda: self._pick_color("edge_color"))
-        edge_grid.addWidget(self.edge_color_btn, 0, 1)
+        border_styles = ["Solid", "Dashed", "Dotted", "Dash-Dot"]
+        for style in border_styles:
+            action = self.border_style_menu.addAction(style)
+            action.triggered.connect(lambda _, s=style: self._set_border_style(s))
+        self.border_style_combo.setMenu(self.border_style_menu)
+        border_grid.addWidget(self.border_style_combo, 0, 1)
 
-        # Edge width
-        edge_width_label = QLabel("Width:")
-        edge_width_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        edge_width_label.setMinimumWidth(label_width)
-        edge_grid.addWidget(edge_width_label, 1, 0)
-        self.edge_width_spin = QSpinBox()
-        self.edge_width_spin.setFixedHeight(widget_height)
-        self.edge_width_spin.setRange(1, 10)
-        self.edge_width_spin.setValue(3)
-        self.edge_width_spin.setAlignment(Qt.AlignCenter)
-        self.edge_width_spin.setStyleSheet("""
-            QSpinBox {
-                background-color: #FFFFFF;
-                border: 1px solid #C8C8C8;
-                border-radius: 6px;
-                padding: 4px 8px;
-                font-size: 13px;
-            }
-            QSpinBox:hover {
-                border-color: #A0A0A0;
-            }
-            QSpinBox:focus {
-                border-color: #2196F3;
-            }
-        """)
-        self.edge_width_spin.valueChanged.connect(self._update_preview)
-        edge_grid.addWidget(self.edge_width_spin, 1, 1)
+        # Border width
+        border_width_label = QLabel("Width:")
+        border_width_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        border_width_label.setMinimumWidth(label_width)
+        border_grid.addWidget(border_width_label, 1, 0)
+        self.border_width_spin = QSpinBox()
+        self.border_width_spin.setFixedHeight(widget_height)
+        self.border_width_spin.setRange(0, 10)
+        self.border_width_spin.setValue(2)
+        self.border_width_spin.setAlignment(Qt.AlignCenter)
+        self.border_width_spin.valueChanged.connect(self._update_preview)
+        border_grid.addWidget(self.border_width_spin, 1, 1)
 
-        edge_group.setLayout(edge_grid)
-        layout.addWidget(edge_group)
+        # Border color
+        border_color_label = QLabel("Color:")
+        border_color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        border_color_label.setMinimumWidth(label_width)
+        border_grid.addWidget(border_color_label, 2, 0)
+        self.border_color_btn = QPushButton()
+        self.border_color_btn.setFixedHeight(widget_height)
+        self.border_color_btn.setStyleSheet(
+            "background-color: #1976D2; border: 1px solid #ccc; border-radius: 6px;"
+        )
+        self.border_color_btn.clicked.connect(lambda: self._pick_color("border_color"))
+        border_grid.addWidget(self.border_color_btn, 2, 1)
 
-        # Action buttons
-        layout.addSpacing(10)
-        button_layout = QVBoxLayout()
-        button_layout.setAlignment(Qt.AlignCenter)
+        self.border_group.setLayout(border_grid)
+        layout.addWidget(self.border_group)
 
-        reset_btn = QPushButton("Reset to Default")
-        reset_btn.setFixedWidth(180)
-        reset_btn.clicked.connect(self._reset_style)
-        reset_btn.setStyleSheet("""
+        # === Connector Style ===
+        self.connector_group = QGroupBox("Connector Style")
+        connector_grid = QGridLayout()
+        connector_grid.setSpacing(6)
+        connector_grid.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
+        connector_grid.setColumnStretch(0, 0)
+        connector_grid.setColumnStretch(1, 1)
+
+        # Connector type
+        connector_type_label = QLabel("Type:")
+        connector_type_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        connector_type_label.setMinimumWidth(label_width)
+        connector_grid.addWidget(connector_type_label, 0, 0)
+        self.connector_type_combo = QPushButton("Bezier")
+        self.connector_type_combo.setFixedHeight(widget_height)
+        self.connector_type_combo.setStyleSheet("""
             QPushButton {
                 background-color: #FFFFFF;
                 border: 1px solid #C8C8C8;
                 border-radius: 6px;
-                padding: 8px 16px;
+                padding: 4px 24px 4px 12px;
                 font-size: 13px;
             }
             QPushButton:hover {
                 background-color: #F0F0F0;
                 border-color: #A0A0A0;
             }
-            QPushButton:pressed {
-                background-color: #E0E0E0;
-            }
         """)
-        button_layout.addWidget(reset_btn)
+        self.connector_type_menu = QMenu()
+        self.connector_type_menu.aboutToShow.connect(
+            lambda: self._adjust_menu_width(self.connector_type_menu, self.connector_type_combo)
+        )
+        connector_types = ["Straight", "Orthogonal", "Bezier"]
+        for ctype in connector_types:
+            action = self.connector_type_menu.addAction(ctype)
+            action.triggered.connect(lambda _, t=ctype: self._set_connector_type(t))
+        self.connector_type_combo.setMenu(self.connector_type_menu)
+        connector_grid.addWidget(self.connector_type_combo, 0, 1)
 
-        export_btn = QPushButton("Export as Template")
-        export_btn.setFixedWidth(180)
-        export_btn.clicked.connect(self._export_template)
-        export_btn.setStyleSheet("""
+        # Connector style
+        connector_style_label = QLabel("Style:")
+        connector_style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        connector_style_label.setMinimumWidth(label_width)
+        connector_grid.addWidget(connector_style_label, 1, 0)
+        self.connector_style_combo = QPushButton("Solid")
+        self.connector_style_combo.setFixedHeight(widget_height)
+        self.connector_style_combo.setStyleSheet("""
             QPushButton {
                 background-color: #FFFFFF;
                 border: 1px solid #C8C8C8;
                 border-radius: 6px;
-                padding: 8px 16px;
+                padding: 4px 24px 4px 12px;
                 font-size: 13px;
             }
             QPushButton:hover {
                 background-color: #F0F0F0;
                 border-color: #A0A0A0;
             }
-            QPushButton:pressed {
-                background-color: #E0E0E0;
-            }
         """)
-        button_layout.addWidget(export_btn)
+        self.connector_style_menu = QMenu()
+        self.connector_style_menu.aboutToShow.connect(
+            lambda: self._adjust_menu_width(self.connector_style_menu, self.connector_style_combo)
+        )
+        connector_styles = ["Solid", "Dashed", "Dotted"]
+        for cstyle in connector_styles:
+            action = self.connector_style_menu.addAction(cstyle)
+            action.triggered.connect(lambda _, s=cstyle: self._set_connector_style(s))
+        self.connector_style_combo.setMenu(self.connector_style_menu)
+        connector_grid.addWidget(self.connector_style_combo, 1, 1)
 
-        layout.addLayout(button_layout)
+        # Connector width
+        connector_width_label = QLabel("Width:")
+        connector_width_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        connector_width_label.setMinimumWidth(label_width)
+        connector_grid.addWidget(connector_width_label, 2, 0)
+        self.connector_width_spin = QSpinBox()
+        self.connector_width_spin.setFixedHeight(widget_height)
+        self.connector_width_spin.setRange(1, 10)
+        self.connector_width_spin.setValue(2)
+        self.connector_width_spin.setAlignment(Qt.AlignCenter)
+        self.connector_width_spin.valueChanged.connect(self._update_preview)
+        connector_grid.addWidget(self.connector_width_spin, 2, 1)
+
+        # Connector color
+        connector_color_label = QLabel("Color:")
+        connector_color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        connector_color_label.setMinimumWidth(label_width)
+        connector_grid.addWidget(connector_color_label, 3, 0)
+        self.connector_color_btn = QPushButton()
+        self.connector_color_btn.setFixedHeight(widget_height)
+        self.connector_color_btn.setStyleSheet(
+            "background-color: #666666; border: 1px solid #ccc; border-radius: 6px;"
+        )
+        self.connector_color_btn.clicked.connect(lambda: self._pick_color("connector_color"))
+        connector_grid.addWidget(self.connector_color_btn, 3, 1)
+
+        self.connector_group.setLayout(connector_grid)
+        layout.addWidget(self.connector_group)
+
         layout.addStretch()
 
         scroll.setWidget(content_widget)
 
-        # Set main layout
         main_layout = QVBoxLayout(self.main_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(scroll)
 
-        # Set outer layout for the panel
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(0, 0, 0, 0)
         outer_layout.addWidget(self.main_widget)
-
-    def _load_default_style(self):
-        """Load default style for root node."""
-        self.style_params = {
-            "bg_color": "#2196F3",
-            "text_color": "#FFFFFF",
-            "font_size": 22,
-            "font_weight": "Bold",
-            "padding_w": 20,
-            "padding_h": 16,
-            "radius": 10,
-            "edge_color": "#2196F3",
-            "edge_width": 3,
-        }
-        self._update_ui_from_params()
 
     def _adjust_menu_width(self, menu: QMenu, button: QPushButton):
         """Adjust the menu width to match the button width."""
         menu.setFixedWidth(button.width())
 
-    def _set_depth(self, value: str):
-        """Set the depth value and update preview."""
-        self.depth_combo.setText(value)
+    def _set_layer(self, value: str):
+        """Set the current layer and update UI visibility."""
+        # Save current layer style before switching
+        self._save_current_layer_style()
+        
+        # Update layer name
+        self.layer_combo.setText(value)
+        
+        # Map display name to internal name
+        layer_map = {
+            "Canvas": "canvas",
+            "Root": "root",
+            "Level 1": "level_1",
+            "Level 2": "level_2",
+            "Level 3+": "level_3_plus",
+            "Critical": "critical",
+            "Minor": "minor",
+        }
+        self.current_layer = layer_map.get(value, "canvas")
+        
+        # Show/hide sections based on layer type
+        is_canvas = (self.current_layer == "canvas")
+        is_priority = (self.current_layer in ["critical", "minor"])
+        
+        self.canvas_group.setVisible(is_canvas)
+        self.node_style_group.setVisible(not is_canvas)
+        self.border_group.setVisible(not is_canvas)
+        # Connector style: hide for canvas and priority layers
+        self.connector_group.setVisible(not is_canvas and not is_priority)
+        
+        # Load style for selected layer
+        self._load_current_layer_style()
+        
+        print(f"Switched to layer: {self.current_layer}")
 
-        # Show/hide sections based on selection
-        if value == "Individual Node":
-            self.importance_group.setVisible(True)
-            self.spacing_group.setVisible(False)
-        else:
-            self.importance_group.setVisible(False)
-            self.spacing_group.setVisible(True)
-
-        print(f"Selected depth: {value}")
-
-    def _set_importance(self, value: str):
-        """Set the importance level."""
-        self.importance_combo.setText(value)
-        print(f"Selected importance: {value}")
-
-    def _set_font_weight(self, value: str):
-        """Set the font weight value and update preview."""
-        self.font_weight_combo.setText(value)
+    def _set_shape(self, value: str):
+        """Set node shape."""
+        self.shape_combo.setText(value)
+        shape_map = {
+            "Rectangle": "rect",
+            "Rounded Rect": "rounded_rect",
+            "Circle": "circle",
+        }
+        self.layer_styles[self.current_layer]["shape"] = shape_map.get(value, "rounded_rect")
         self._update_preview()
 
-    def _on_depth_changed(self):
-        """Handle depth selection change."""
-        depth_map = {"Root (0)": 0, "Level 1": 1, "Level 2": 2, "Level 3+": 3}
-        self.current_depth = depth_map.get(self.depth_combo.text(), 0)
-        # TODO: Load style for selected depth
-        print(f"Selected depth: {self.current_depth}")
+    def _set_font_family(self, value: str):
+        """Set font family."""
+        self.font_family_combo.setText(value)
+        self.layer_styles[self.current_layer]["font_family"] = value
+        self._update_preview()
+
+    def _set_font_weight(self, value: str):
+        """Set font weight."""
+        self.font_weight_combo.setText(value)
+        self.layer_styles[self.current_layer]["font_weight"] = value
+        self._update_preview()
+
+    def _set_font_style(self, value: str):
+        """Set font style (None/Italic/Underline)."""
+        self.font_style_combo.setText(value)
+        # Update style dict
+        self.layer_styles[self.current_layer]["font_italic"] = (value == "Italic")
+        self.layer_styles[self.current_layer]["font_underline"] = (value == "Underline")
+        self._update_preview()
+
+    def _set_border_style(self, value: str):
+        """Set border style."""
+        self.border_style_combo.setText(value)
+        style_map = {
+            "Solid": "solid",
+            "Dashed": "dashed",
+            "Dotted": "dotted",
+            "Dash-Dot": "dash_dot",
+        }
+        self.layer_styles[self.current_layer]["border_style"] = style_map.get(value, "solid")
+        self._update_preview()
+
+    def _set_connector_type(self, value: str):
+        """Set connector type."""
+        self.connector_type_combo.setText(value)
+        type_map = {
+            "Straight": "straight",
+            "Orthogonal": "orthogonal",
+            "Bezier": "bezier",
+        }
+        self.connector_style["connector_type"] = type_map.get(value, "bezier")
+        self._update_preview()
+
+    def _set_connector_style(self, value: str):
+        """Set connector line style."""
+        self.connector_style_combo.setText(value)
+        style_map = {
+            "Solid": "solid",
+            "Dashed": "dashed",
+            "Dotted": "dotted",
+        }
+        self.connector_style["connector_style"] = style_map.get(value, "solid")
+        self._update_preview()
 
     def _pick_color(self, param_name):
         """Open color picker dialog."""
-        current_color = self.style_params.get(param_name, "#000000")
+        if param_name == "canvas_bg":
+            current_color = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
+        elif param_name == "connector_color":
+            current_color = self.connector_style.get("connector_color", "#666666")
+        else:
+            current_color = self.layer_styles[self.current_layer].get(param_name, "#000000")
+        
         color = QColorDialog.getColor(current_color, self)
 
         if color.isValid():
             hex_color = color.name()
-            self.style_params[param_name] = hex_color
-
-            # Update button appearance
-            if param_name == "bg_color":
-                self.bg_color_btn.setStyleSheet(
-                    f"background-color: {hex_color}; color: white;"
+            
+            if param_name == "canvas_bg":
+                self.layer_styles["canvas"]["bg_color"] = hex_color
+                self.canvas_bg_btn.setStyleSheet(
+                    f"background-color: {hex_color}; border: 1px solid #ccc; border-radius: 6px;"
                 )
-            if param_name == "text_color":
-                self.bg_color_btn.setStyleSheet(
-                    f"background-color: {hex_color}; color: black; border: 1px solid #ccc;"
+            elif param_name == "connector_color":
+                self.connector_style["connector_color"] = hex_color
+                self.connector_color_btn.setStyleSheet(
+                    f"background-color: {hex_color}; border: 1px solid #ccc; border-radius: 6px;"
                 )
-            elif param_name == "edge_color":
-                self.edge_color_btn.setStyleSheet(f"background-color: {hex_color};")
+            else:
+                self.layer_styles[self.current_layer][param_name] = hex_color
+                if param_name == "bg_color":
+                    self.bg_color_btn.setStyleSheet(
+                        f"background-color: {hex_color}; border: 1px solid #ccc; border-radius: 6px;"
+                    )
+                elif param_name == "text_color":
+                    self.text_color_btn.setStyleSheet(
+                        f"background-color: {hex_color}; border: 1px solid #ccc; border-radius: 6px;"
+                    )
+                elif param_name == "border_color":
+                    self.border_color_btn.setStyleSheet(
+                        f"background-color: {hex_color}; border: 1px solid #ccc; border-radius: 6px;"
+                    )
 
             self._update_preview()
 
-    def _update_ui_from_params(self):
-        """Update UI controls from style parameters."""
-        self.font_size_spin.setValue(self.style_params.get("font_size", 22))
-        self.font_weight_combo.setText(self.style_params.get("font_weight", "Bold"))
-        self.padding_w_spin.setValue(self.style_params.get("padding_w", 20))
-        self.padding_h_spin.setValue(self.style_params.get("padding_h", 16))
-        self.radius_spin.setValue(self.style_params.get("radius", 10))
-        self.edge_width_spin.setValue(self.style_params.get("edge_width", 3))
+    def _save_current_layer_style(self):
+        """Save current UI state to layer style."""
+        if self.current_layer == "canvas":
+            return
+        
+        self.layer_styles[self.current_layer].update({
+            "font_size": self.font_size_spin.value(),
+            "padding_w": self.padding_w_spin.value(),
+            "padding_h": self.padding_h_spin.value(),
+            "radius": self.radius_spin.value(),
+            "border_width": self.border_width_spin.value(),
+        })
+
+    def _load_current_layer_style(self):
+        """Load style from current layer to UI."""
+        if self.current_layer == "canvas":
+            # Load canvas style
+            bg_color = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
+            self.canvas_bg_btn.setStyleSheet(
+                f"background-color: {bg_color}; border: 1px solid #ccc; border-radius: 6px;"
+            )
+            return
+        
+        # Load node layer style
+        style = self.layer_styles[self.current_layer]
+        
+        # Shape
+        shape_map = {
+            "rect": "Rectangle",
+            "rounded_rect": "Rounded Rect",
+            "circle": "Circle",
+        }
+        self.shape_combo.setText(shape_map.get(style.get("shape", "rounded_rect"), "Rounded Rect"))
+        
+        # Colors
+        bg_color = style.get("bg_color", "#2196F3")
+        text_color = style.get("text_color", "#FFFFFF")
+        border_color = style.get("border_color", "#1976D2")
+        
+        self.bg_color_btn.setStyleSheet(
+            f"background-color: {bg_color}; border: 1px solid #ccc; border-radius: 6px;"
+        )
+        self.text_color_btn.setStyleSheet(
+            f"background-color: {text_color}; border: 1px solid #ccc; border-radius: 6px;"
+        )
+        self.border_color_btn.setStyleSheet(
+            f"background-color: {border_color}; border: 1px solid #ccc; border-radius: 6px;"
+        )
+        
+        # Font
+        self.font_family_combo.setText(style.get("font_family", "Arial"))
+        self.font_size_spin.setValue(style.get("font_size", 22))
+        self.font_weight_combo.setText(style.get("font_weight", "Bold"))
+        
+        # Font style (None/Italic/Underline)
+        if style.get("font_italic", False):
+            self.font_style_combo.setText("Italic")
+        elif style.get("font_underline", False):
+            self.font_style_combo.setText("Underline")
+        else:
+            self.font_style_combo.setText("None")
+        
+        # Padding and radius
+        self.padding_w_spin.setValue(style.get("padding_w", 20))
+        self.padding_h_spin.setValue(style.get("padding_h", 16))
+        self.radius_spin.setValue(style.get("radius", 10))
+        
+        # Border
+        border_style_map = {
+            "solid": "Solid",
+            "dashed": "Dashed",
+            "dotted": "Dotted",
+            "dash_dot": "Dash-Dot",
+        }
+        self.border_style_combo.setText(
+            border_style_map.get(style.get("border_style", "solid"), "Solid")
+        )
+        self.border_width_spin.setValue(style.get("border_width", 2))
+        
+        # Connector style
+        self.connector_color_btn.setStyleSheet(
+            f"background-color: {self.connector_style.get('connector_color', '#666666')}; border: 1px solid #ccc; border-radius: 6px;"
+        )
+        connector_type_map = {
+            "straight": "Straight",
+            "orthogonal": "Orthogonal",
+            "bezier": "Bezier",
+        }
+        self.connector_type_combo.setText(
+            connector_type_map.get(self.connector_style.get("connector_type", "bezier"), "Bezier")
+        )
+        connector_style_map = {
+            "solid": "Solid",
+            "dashed": "Dashed",
+            "dotted": "Dotted",
+        }
+        self.connector_style_combo.setText(
+            connector_style_map.get(self.connector_style.get("connector_style", "solid"), "Solid")
+        )
+        self.connector_width_spin.setValue(self.connector_style.get("connector_width", 2))
 
     def _update_preview(self):
-        """Update style parameters from UI controls."""
-        self.style_params.update(
-            {
-                "font_size": self.font_size_spin.value(),
-                "font_weight": self.font_weight_combo.text(),
-                "padding_w": self.padding_w_spin.value(),
-                "padding_h": self.padding_h_spin.value(),
-                "radius": self.radius_spin.value(),
-                "edge_width": self.edge_width_spin.value(),
-            }
-        )
-        print(f"Style updated: {self.style_params}")
+        """Update preview (placeholder for now)."""
+        self._save_current_layer_style()
+        print(f"Style updated for {self.current_layer}: {self.layer_styles[self.current_layer]}")
         # TODO: Apply to preview node in main window
-
-    def _apply_to_layer(self):
-        """Apply current style to the selected layer."""
-        print(f"Applying style to depth {self.current_depth}: {self.style_params}")
-        # TODO: Send style to main window to apply
-
-    def _reset_style(self):
-        """Reset to default style."""
-        self._load_default_style()
-        print("Style reset to defaults")
-
-    def _export_template(self):
-        """Export current style as template JSON."""
-        import json
-
-        template = {
-            "name": "Custom Template",
-            "depth_styles": {str(self.current_depth): self.style_params},
-        }
-
-        json_str = json.dumps(template, indent=2)
-        print(json_str)
-        # TODO: Show save dialog and write to file
