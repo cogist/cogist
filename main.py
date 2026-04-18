@@ -76,6 +76,11 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        # Register this window in the global application context
+        from cogist.application.services import get_app_context
+        app_context = get_app_context()
+        app_context.set_main_window(self)
+
         # Initialize style system
         from cogist.domain.styles import templates
 

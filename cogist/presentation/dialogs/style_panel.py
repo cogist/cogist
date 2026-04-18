@@ -991,18 +991,12 @@ class StylePanel(QWidget):
         """Update preview by applying styles to the mind map."""
         self._save_current_layer_style()
         
-        # Find main window by traversing parent chain
-        parent = self.parent()
-        main_window = None
-        while parent:
-            if hasattr(parent, 'mindmap_view'):
-                main_window = parent
-                break
-            parent = parent.parent()
+        # Use global app context to get mindmap view
+        from cogist.application.services import get_app_context
+        app_context = get_app_context()
+        mindmap_view = app_context.get_mindmap_view()
         
-        if main_window:
-            mindmap_view = main_window.mindmap_view  # type: ignore
-            
+        if mindmap_view:
             # Apply canvas background color
             if "canvas" in self.layer_styles:
                 canvas_bg = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
