@@ -25,10 +25,10 @@ class ColorTheme:
         priority_colors: Colors for different priority levels (hex)
     """
     name: str
-    
+
     # Canvas
     canvas_bg: str = "#FFFFFF"
-    
+
     # Node colors by depth (level 0 = root, level 1 = first children, etc.)
     node_colors: dict[int, str] = field(default_factory=lambda: {
         0: "#2196F3",  # Root - Blue
@@ -37,20 +37,20 @@ class ColorTheme:
         3: "#9C27B0",  # Level 3 - Purple
         4: "#F44336",  # Level 4+ - Red
     })
-    
+
     # Edges
     edge_color: str = "#666666"
-    
+
     # Text
     text_color: str = "#333333"
-    
+
     # Priority colors (override node colors for priority nodes)
     priority_colors: dict[str, str | None] = field(default_factory=lambda: {
         "critical": "#D32F2F",  # Dark red for critical
         "normal": None,          # Use default node color
         "low": "#9E9E9E",       # Gray for low priority
     })
-    
+
     def get_node_color(self, depth: int) -> str:
         """Get node color for a specific depth level
         
@@ -63,16 +63,16 @@ class ColorTheme:
         # Return color for specific depth, or use last defined color
         if depth in self.node_colors:
             return self.node_colors[depth]
-        
+
         # For depths beyond defined levels, cycle through available colors
         max_depth = max(self.node_colors.keys())
         if depth > max_depth:
             # Cycle: use modulo to repeat colors
             cycle_depth = ((depth - max_depth - 1) % (max_depth + 1))
             return self.node_colors.get(cycle_depth, self.node_colors[max_depth])
-        
+
         return self.node_colors.get(0, "#000000")
-    
+
     def get_priority_color(self, priority: str, base_color: str | None = None) -> str:
         """Get color for a priority level
         
@@ -84,11 +84,11 @@ class ColorTheme:
             Hex color code for priority node
         """
         priority_color = self.priority_colors.get(priority)
-        
+
         if priority_color is None:
             # No override, use base color
             return base_color or self.get_node_color(0)
-        
+
         return priority_color
 
 

@@ -24,7 +24,7 @@ class MindMapRepositoryInterface(ABC):
     2. Single Responsibility: Only handles persistence operations
     3. Testability: Easy to mock for unit tests
     """
-    
+
     @abstractmethod
     def save(self, root_node: Any, file_path: str | Path) -> Path:
         """Save a mind map to storage
@@ -41,7 +41,7 @@ class MindMapRepositoryInterface(ABC):
             ValueError: If root_node is invalid
         """
         pass
-    
+
     @abstractmethod
     def load(self, file_path: str | Path) -> Any:
         """Load a mind map from storage
@@ -58,7 +58,7 @@ class MindMapRepositoryInterface(ABC):
             OSError: If loading fails
         """
         pass
-    
+
     @abstractmethod
     def exists(self, file_path: str | Path) -> bool:
         """Check if a mind map file exists
@@ -70,7 +70,7 @@ class MindMapRepositoryInterface(ABC):
             True if file exists, False otherwise
         """
         pass
-    
+
     @abstractmethod
     def delete(self, file_path: str | Path) -> None:
         """Delete a mind map file
@@ -83,7 +83,7 @@ class MindMapRepositoryInterface(ABC):
             OSError: If deletion fails
         """
         pass
-    
+
     @property
     @abstractmethod
     def current_file(self) -> Path | None:
@@ -93,7 +93,7 @@ class MindMapRepositoryInterface(ABC):
             Path to current file, or None if no file is active
         """
         pass
-    
+
     @property
     @abstractmethod
     def last_saved(self) -> Any | None:

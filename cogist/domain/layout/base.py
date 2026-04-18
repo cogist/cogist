@@ -12,7 +12,6 @@ from typing import Any, Union
 
 from cogist.domain.entities.node import Node
 
-
 # === Base Configuration Classes ===
 
 @dataclass
@@ -36,7 +35,7 @@ class DefaultLayoutConfig(BaseLayoutConfig):
         1: 45.0,   # Level 2 siblings
         2: 35.0,   # Level 3+ siblings
     })
-    
+
     def get_level_spacing(self, depth: int) -> float:
         """Get level spacing for a specific depth
         
@@ -49,7 +48,7 @@ class DefaultLayoutConfig(BaseLayoutConfig):
         if depth in self.level_spacing_by_depth:
             return self.level_spacing_by_depth[depth]
         return self.level_spacing
-    
+
     def get_sibling_spacing(self, depth: int) -> float:
         """Get sibling spacing for a specific depth
         
@@ -132,7 +131,7 @@ class BaseLayout(ABC):
             config: Layout configuration (uses default if not provided)
         """
         self.config = config or self._get_default_config()
-    
+
     @abstractmethod
     def _get_default_config(self) -> LayoutConfigType:
         """Return default configuration for this layout

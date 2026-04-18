@@ -4,12 +4,12 @@ Provides layout algorithm implementations and base classes.
 """
 
 from .base import (
+    DEFAULT_LAYOUT_CONFIG,
     BaseLayout,
     BaseLayoutConfig,
     DefaultLayoutConfig,
     LayoutConfigType,
     LayoutMetadata,
-    DEFAULT_LAYOUT_CONFIG,
 )
 from .default_layout import DefaultLayout
 from .registry import LayoutRegistry, layout_registry

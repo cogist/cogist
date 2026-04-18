@@ -42,7 +42,7 @@ class MindMapService:
         self.node_service = NodeService(self.command_history)
         # Dependency injection: accept interface, provide default implementation
         self.repository = repository or MindMapRepository()
-        
+
         # Layout management with registry
         self.layout_registry = layout_registry
         self.current_layout_name = "default"
@@ -218,7 +218,7 @@ class MindMapService:
             return
 
         self.layout_engine.layout(self.root_node, canvas_width, canvas_height, context)
-    
+
     def _create_layout_engine(self):
         """Create layout engine instance using registry
         
@@ -245,7 +245,7 @@ class MindMapService:
                 f"Unknown layout algorithm: '{algorithm_name}'. "
                 f"Available layouts: {available}"
             )
-        
+
         self.current_layout_name = algorithm_name
         self.layout_engine = self._create_layout_engine()
         # Note: Caller should trigger relayout if needed

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Literal
 
 
 class NodeShape(Enum):
@@ -29,15 +28,15 @@ class PriorityRule:
     # Border adjustments
     border_width_override: int | None = None  # Absolute override
     border_width_delta: int = 0  # Relative adjustment
-    
+
     # Font adjustments
     font_weight_override: str | None = None  # "normal", "bold", etc.
     font_size_delta: int = 0  # Points to add/subtract
-    
+
     # Visual indicators
     icon: str | None = None  # Emoji or symbol prefix
     badge: str | None = None  # Badge text (e.g., "P1", "HIGH")
-    
+
     # Color adjustments (relative to theme)
     brightness_delta: float = 0.0  # -1.0 to 1.0 (darker to lighter)
 
@@ -62,20 +61,20 @@ class NodeTemplate:
     """
     name: str
     shape: NodeShape = NodeShape.ROUNDED_RECT
-    
+
     # Geometric properties
     corner_radius: int = 8
     border_width: int = 2
     padding: int = 12
     min_width: int = 60
     min_height: int = 30
-    
+
     # Layout recommendations
     recommended_layouts: list[str] = field(default_factory=list)
-    
+
     # Priority rules (template-specific overrides)
     priority_rules: dict[str, PriorityRule] = field(default_factory=dict)
-    
+
     def get_priority_rule(self, priority: str) -> PriorityRule | None:
         """Get priority rule for a specific priority level
         

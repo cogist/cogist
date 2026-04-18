@@ -10,7 +10,6 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QCheckBox,
     QColorDialog,
-    QComboBox,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -18,7 +17,6 @@ from PySide6.QtWidgets import (
     QMenu,
     QPushButton,
     QScrollArea,
-    QSizePolicy,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -65,13 +63,13 @@ class StylePanel(QWidget):
         self._apply_styles()
 
         self._init_ui()
-        
+
         # Set initial visibility based on default layer (canvas)
         self.canvas_group.setVisible(True)
         self.node_style_group.setVisible(False)
         self.border_group.setVisible(False)
         self.connector_group.setVisible(False)
-        
+
         self._load_current_layer_style()
 
     def _apply_styles(self):
@@ -114,7 +112,7 @@ class StylePanel(QWidget):
             QLabel {
                 background-color: transparent;
             }
-            QPushButton#bg_color_btn, QPushButton#text_color_btn, 
+            QPushButton#bg_color_btn, QPushButton#text_color_btn,
             QPushButton#border_color_btn, QPushButton#connector_color_btn {
                 border: 1px solid #C8C8C8;
             }
@@ -132,10 +130,10 @@ class StylePanel(QWidget):
         style = {
             # Shape
             "shape": "rounded_rect",  # rect, rounded_rect, circle
-            
+
             # Background
             "bg_color": "#2196F3",
-            
+
             # Text
             "text_color": "#FFFFFF",
             "font_family": "Arial",
@@ -143,20 +141,20 @@ class StylePanel(QWidget):
             "font_weight": "Bold",
             "font_italic": False,
             "font_underline": False,
-            
+
             # Border
             "border_style": "solid",  # solid, dashed, dotted, dash_dot
             "border_width": 2,
             "border_color": "#1976D2",
-            
+
             # Padding
             "padding_w": 20,
             "padding_h": 16,
-            
+
             # Corner radius
             "radius": 10,
         }
-        
+
         # Adjust based on layer type
         if layer_type == "root":
             style.update({
@@ -203,7 +201,7 @@ class StylePanel(QWidget):
                 "font_weight": "Light",
                 "border_width": 1,
             })
-        
+
         return style
 
     def _get_default_connector_style(self):
@@ -240,7 +238,7 @@ class StylePanel(QWidget):
         layer_grid.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
         layer_grid.setColumnStretch(0, 0)
         layer_grid.setColumnStretch(1, 1)
-        
+
         layer_label = QLabel("Layer:")
         layer_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         layer_label.setMinimumWidth(label_width)
@@ -255,6 +253,7 @@ class StylePanel(QWidget):
                 border-radius: 6px;
                 padding: 4px 24px 4px 12px;
                 font-size: 13px;
+                text-align: left;
             }
             QPushButton:hover {
                 background-color: #F0F0F0;
@@ -294,12 +293,12 @@ class StylePanel(QWidget):
         canvas_grid.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
         canvas_grid.setColumnStretch(0, 0)
         canvas_grid.setColumnStretch(1, 1)
-        
+
         canvas_bg_label = QLabel("Background:")
         canvas_bg_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         canvas_bg_label.setMinimumWidth(label_width)
         canvas_grid.addWidget(canvas_bg_label, 0, 0)
-        
+
         self.canvas_bg_btn = QPushButton()
         self.canvas_bg_btn.setFixedHeight(widget_height)
         self.canvas_bg_btn.setStyleSheet(
@@ -307,7 +306,7 @@ class StylePanel(QWidget):
         )
         self.canvas_bg_btn.clicked.connect(lambda: self._pick_color("canvas_bg"))
         canvas_grid.addWidget(self.canvas_bg_btn, 0, 1)
-        
+
         self.canvas_group.setLayout(canvas_grid)
         layout.addWidget(self.canvas_group)
 
@@ -324,7 +323,7 @@ class StylePanel(QWidget):
         shape_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         shape_label.setMinimumWidth(label_width)
         node_grid.addWidget(shape_label, 0, 0)
-        
+
         self.shape_combo = QPushButton("Rounded Rect")
         self.shape_combo.setFixedHeight(widget_height)
         self.shape_combo.setStyleSheet("""
@@ -334,6 +333,7 @@ class StylePanel(QWidget):
                 border-radius: 6px;
                 padding: 4px 24px 4px 12px;
                 font-size: 13px;
+                text-align: left;
             }
             QPushButton:hover {
                 background-color: #F0F0F0;
@@ -411,7 +411,7 @@ class StylePanel(QWidget):
         self.font_size_spin.setFixedHeight(widget_height)
         self.font_size_spin.setRange(8, 72)
         self.font_size_spin.setValue(22)
-        self.font_size_spin.setAlignment(Qt.AlignCenter)
+        self.font_size_spin.setAlignment(Qt.AlignLeft)
         self.font_size_spin.valueChanged.connect(self._update_preview)
         node_grid.addWidget(self.font_size_spin, 4, 1)
 
@@ -429,6 +429,7 @@ class StylePanel(QWidget):
                 border-radius: 6px;
                 padding: 4px 24px 4px 12px;
                 font-size: 13px;
+                text-align: left;
             }
             QPushButton:hover {
                 background-color: #F0F0F0;
@@ -451,29 +452,29 @@ class StylePanel(QWidget):
         font_style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         font_style_label.setMinimumWidth(label_width)
         node_grid.addWidget(font_style_label, 6, 0)
-        
+
         # Create a horizontal layout for the three checkboxes
         style_layout = QHBoxLayout()
         style_layout.setSpacing(8)
         style_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         self.font_italic_check = QCheckBox("Italic")
         self.font_italic_check.setStyleSheet("QCheckBox { background: transparent; }")
         self.font_italic_check.toggled.connect(self._update_preview)
         style_layout.addWidget(self.font_italic_check)
-        
+
         self.font_underline_check = QCheckBox("Underline")
         self.font_underline_check.setStyleSheet("QCheckBox { background: transparent; }")
         self.font_underline_check.toggled.connect(self._update_preview)
         style_layout.addWidget(self.font_underline_check)
-        
+
         self.font_strikeout_check = QCheckBox("Strikeout")
         self.font_strikeout_check.setStyleSheet("QCheckBox { background: transparent; }")
         self.font_strikeout_check.toggled.connect(self._update_preview)
         style_layout.addWidget(self.font_strikeout_check)
-        
+
         style_layout.addStretch()
-        
+
         # Create a container widget for the checkboxes
         style_container = QWidget()
         style_container.setLayout(style_layout)
@@ -488,7 +489,7 @@ class StylePanel(QWidget):
         self.padding_w_spin.setFixedHeight(widget_height)
         self.padding_w_spin.setRange(0, 50)
         self.padding_w_spin.setValue(20)
-        self.padding_w_spin.setAlignment(Qt.AlignCenter)
+        self.padding_w_spin.setAlignment(Qt.AlignLeft)
         self.padding_w_spin.valueChanged.connect(self._update_preview)
         node_grid.addWidget(self.padding_w_spin, 7, 1)
 
@@ -500,7 +501,7 @@ class StylePanel(QWidget):
         self.padding_h_spin.setFixedHeight(widget_height)
         self.padding_h_spin.setRange(0, 50)
         self.padding_h_spin.setValue(16)
-        self.padding_h_spin.setAlignment(Qt.AlignCenter)
+        self.padding_h_spin.setAlignment(Qt.AlignLeft)
         self.padding_h_spin.valueChanged.connect(self._update_preview)
         node_grid.addWidget(self.padding_h_spin, 8, 1)
 
@@ -513,7 +514,7 @@ class StylePanel(QWidget):
         self.radius_spin.setFixedHeight(widget_height)
         self.radius_spin.setRange(0, 30)
         self.radius_spin.setValue(10)
-        self.radius_spin.setAlignment(Qt.AlignCenter)
+        self.radius_spin.setAlignment(Qt.AlignLeft)
         self.radius_spin.valueChanged.connect(self._update_preview)
         node_grid.addWidget(self.radius_spin, 9, 1)
 
@@ -542,6 +543,7 @@ class StylePanel(QWidget):
                 border-radius: 6px;
                 padding: 4px 24px 4px 12px;
                 font-size: 13px;
+                text-align: left;
             }
             QPushButton:hover {
                 background-color: #F0F0F0;
@@ -568,7 +570,7 @@ class StylePanel(QWidget):
         self.border_width_spin.setFixedHeight(widget_height)
         self.border_width_spin.setRange(0, 10)
         self.border_width_spin.setValue(2)
-        self.border_width_spin.setAlignment(Qt.AlignCenter)
+        self.border_width_spin.setAlignment(Qt.AlignLeft)
         self.border_width_spin.valueChanged.connect(self._update_preview)
         border_grid.addWidget(self.border_width_spin, 1, 1)
 
@@ -610,6 +612,7 @@ class StylePanel(QWidget):
                 border-radius: 6px;
                 padding: 4px 24px 4px 12px;
                 font-size: 13px;
+                text-align: left;
             }
             QPushButton:hover {
                 background-color: #F0F0F0;
@@ -641,6 +644,7 @@ class StylePanel(QWidget):
                 border-radius: 6px;
                 padding: 4px 24px 4px 12px;
                 font-size: 13px;
+                text-align: left;
             }
             QPushButton:hover {
                 background-color: #F0F0F0;
@@ -667,7 +671,7 @@ class StylePanel(QWidget):
         self.connector_width_spin.setFixedHeight(widget_height)
         self.connector_width_spin.setRange(1, 10)
         self.connector_width_spin.setValue(2)
-        self.connector_width_spin.setAlignment(Qt.AlignCenter)
+        self.connector_width_spin.setAlignment(Qt.AlignLeft)
         self.connector_width_spin.valueChanged.connect(self._set_connector_width)
         connector_grid.addWidget(self.connector_width_spin, 2, 1)
 
@@ -707,10 +711,10 @@ class StylePanel(QWidget):
         """Set the current layer and update UI visibility."""
         # Save current layer style before switching
         self._save_current_layer_style()
-        
+
         # Update layer name
         self.layer_combo.setText(value)
-        
+
         # Map display name to internal name
         layer_map = {
             "Canvas": "canvas",
@@ -722,20 +726,20 @@ class StylePanel(QWidget):
             "Minor": "minor",
         }
         self.current_layer = layer_map.get(value, "canvas")
-        
+
         # Show/hide sections based on layer type
         is_canvas = (self.current_layer == "canvas")
         is_priority = (self.current_layer in ["critical", "minor"])
-        
+
         self.canvas_group.setVisible(is_canvas)
         self.node_style_group.setVisible(not is_canvas)
         self.border_group.setVisible(not is_canvas)
         # Connector style: hide for canvas and priority layers
         self.connector_group.setVisible(not is_canvas and not is_priority)
-        
+
         # Load style for selected layer
         self._load_current_layer_style()
-        
+
         print(f"Switched to layer: {self.current_layer}")
 
     def _set_shape(self, value: str):
@@ -751,7 +755,7 @@ class StylePanel(QWidget):
 
     def _get_localized_font_name(self, font_family: str) -> str:
         """Get localized font name for display.
-        
+
         Uses platform-specific APIs to get the localized font name:
         - macOS: Core Text via PyObjC
         - Windows: ctypes with GDI
@@ -760,15 +764,18 @@ class StylePanel(QWidget):
         """
         import platform
         system = platform.system()
-        
+
         try:
             if system == "Darwin":  # macOS
                 # Try to use Core Text via PyObjC
                 try:
-                    from CoreText import CTFontCreateWithName, CTFontCopyDisplayName  # type: ignore
-                    
+                    from CoreText import (  # type: ignore
+                        CTFontCopyDisplayName,
+                        CTFontCreateWithName,
+                    )
+
                     print(f"DEBUG: Trying to get localized name for: {font_family}")
-                    
+
                     # Create a CTFontRef
                     ct_font = CTFontCreateWithName(font_family, 12.0, None)
                     if ct_font:
@@ -779,26 +786,26 @@ class StylePanel(QWidget):
                             print(f"DEBUG: Display name: {result}")
                             return result
                         else:
-                            print(f"DEBUG: No display name found")
+                            print("DEBUG: No display name found")
                     else:
-                        print(f"DEBUG: Failed to create CTFont")
+                        print("DEBUG: Failed to create CTFont")
                 except ImportError as e:
                     print(f"DEBUG: PyObjC not available: {e}")
                 except Exception as e:
                     print(f"DEBUG: Error getting localized name: {e}")
-            
+
             elif system == "Windows":
                 # Try to use ctypes with GDI
                 try:
                     import ctypes
                     from ctypes import wintypes
-                    
+
                     # Load gdi32
                     gdi32 = ctypes.windll.gdi32
-                    
+
                     # Create DC
                     hdc = gdi32.CreateDCW("DISPLAY", None, None, None)
-                    
+
                     # Create LOGFONT structure
                     class LOGFONTW(ctypes.Structure):
                         _fields_ = [
@@ -817,26 +824,26 @@ class StylePanel(QWidget):
                             ("lfPitchAndFamily", wintypes.BYTE),
                             ("lfFaceName", wintypes.WCHAR * 32),
                         ]
-                    
+
                     logfont = LOGFONTW()
                     logfont.lfHeight = 0
                     logfont.lfFaceName = font_family
-                    
+
                     # Create font
                     hfont = gdi32.CreateFontIndirectW(ctypes.byref(logfont))
-                    
+
                     # Select font into DC
                     old_font = gdi32.SelectObject(hdc, hfont)
-                    
+
                     # Get font name (this is simplified, full implementation would be more complex)
                     # For now, just return the family name as-is
                     gdi32.SelectObject(hdc, old_font)
                     gdi32.DeleteObject(hfont)
                     gdi32.DeleteDC(hdc)
-                    
+
                 except Exception:
                     pass  # Fall through to default
-            
+
             elif system == "Linux":
                 # Try to use fontconfig
                 try:
@@ -851,37 +858,41 @@ class StylePanel(QWidget):
                         return result.stdout.strip()
                 except Exception:
                     pass  # Fall through to default
-        
+
         except Exception as e:
             print(f"DEBUG: Unexpected error: {e}")
-        
+
         # Fallback: return the original font family name
         return font_family
-    
+
     def _show_font_menu(self):
         """Show font family selection dialog with localized names."""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QListWidget, QLineEdit, QLabel
         from PySide6.QtGui import QFont, QFontDatabase
-        
+        from PySide6.QtWidgets import (
+            QDialog,
+            QListWidget,
+            QVBoxLayout,
+        )
+
         # Create dialog
         dialog = QDialog(self)
         dialog.setWindowTitle("Select Font")
         dialog.setFixedSize(350, 450)
-        
+
         # Layout
         layout = QVBoxLayout(dialog)
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Font list
         font_list = QListWidget()
         font_list.setFont(QFont("Arial", 15))
         layout.addWidget(font_list)
-        
+
         # Get all available fonts
         font_db = QFontDatabase()
         families = font_db.families()
-        
+
         # Filter out bitmap/system fonts that cause warnings
         filtered_families = []
         for family in families:
@@ -892,56 +903,56 @@ class StylePanel(QWidget):
             if not font_db.styles(family):
                 continue
             filtered_families.append(family)
-        
+
         families = filtered_families
-        
+
         current_family = self.layer_styles[self.current_layer].get("font_family", "Arial")
-        
+
         # Build font list with localized names
         font_name_map = {}  # Maps display name -> actual font family
-        
+
         for family in families:
             # Get localized name
             localized_name = self._get_localized_font_name(family)
             font_name_map[localized_name] = family
-            
+
             from PySide6.QtWidgets import QListWidgetItem
             item = QListWidgetItem(localized_name)
             item.setFont(QFont(family))  # Use actual font for rendering
             font_list.addItem(item)
-            
+
             if family == current_family:
                 font_list.setCurrentItem(item)
-        
+
         # Double-click to select
         def on_item_double_clicked(item):
             display_name = item.text()
             actual_family = font_name_map.get(display_name, display_name)
             self._set_font_family(actual_family)
             dialog.accept()
-        
+
         font_list.itemDoubleClicked.connect(on_item_double_clicked)
-        
+
         # Position dialog near the font button
         # Dialog's right edge aligns with button's left edge
         button_pos = self.font_family_combo.mapToGlobal(self.font_family_combo.rect().topLeft())
         dialog_x = button_pos.x() - dialog.width() - 10  # 10px gap
         dialog_y = button_pos.y() - 48  # Move up ~1.5 button heights
         dialog.move(dialog_x, dialog_y)
-        
+
         # Click outside to close
         dialog.setMouseTracking(True)
         def on_mouse_press(event):
             if event.button() == Qt.LeftButton:
                 dialog.reject()
         dialog.mousePressEvent = on_mouse_press
-        
+
         # ESC to close
         dialog.keyPressEvent = lambda event: dialog.reject() if event.key() == Qt.Key_Escape else QDialog.keyPressEvent(dialog, event)
-        
+
         # Show dialog
         dialog.exec()
-    
+
     def _set_font_family(self, family):
         """Set font family and update preview."""
         self.layer_styles[self.current_layer]["font_family"] = family
@@ -976,12 +987,12 @@ class StylePanel(QWidget):
         new_type = type_map.get(value, "bezier")
         old_type = self.connector_style.get("connector_type", "bezier")
         self.connector_style["connector_type"] = new_type
-        
+
         # Recalculate widths when switching between straight and tapered
         if new_type != old_type:
             current_ui_width = self.connector_width_spin.value()
             self._set_connector_width(current_ui_width)
-        
+
         self._update_preview()
 
     def _set_connector_style(self, value: str):
@@ -997,12 +1008,12 @@ class StylePanel(QWidget):
 
     def _set_connector_width(self, value: int):
         """Set connector width with mapping logic.
-        
+
         For tapered lines (bezier/orthogonal): end_width = start_width + 4
         For straight lines: start_width = end_width = value
         """
         is_straight = (self.connector_style.get("connector_type") == "straight")
-        
+
         if is_straight:
             # Equal width for straight lines
             self.connector_style["start_width"] = float(value)
@@ -1011,7 +1022,7 @@ class StylePanel(QWidget):
             # Tapered width for bezier/orthogonal
             self.connector_style["start_width"] = float(value)
             self.connector_style["end_width"] = float(value + 4)
-        
+
         self._update_preview()
 
     def _pick_color(self, param_name):
@@ -1022,14 +1033,14 @@ class StylePanel(QWidget):
             current_color = self.connector_style.get("connector_color", "#666666")
         else:
             current_color = self.layer_styles[self.current_layer].get(param_name, "#000000")
-        
+
         # Enable alpha channel support
         color = QColorDialog.getColor(current_color, self, options=QColorDialog.ShowAlphaChannel)
 
         if color.isValid():
             # Use ARGB format to preserve alpha channel
             hex_color = color.name(QColor.HexArgb)
-            
+
             if param_name == "canvas_bg":
                 self.layer_styles["canvas"]["bg_color"] = hex_color
                 self.canvas_bg_btn.setStyleSheet(
@@ -1061,7 +1072,7 @@ class StylePanel(QWidget):
         """Save current UI state to layer style."""
         if self.current_layer == "canvas":
             return
-        
+
         self.layer_styles[self.current_layer].update({
             "font_size": self.font_size_spin.value(),
             "padding_w": self.padding_w_spin.value(),
@@ -1083,10 +1094,10 @@ class StylePanel(QWidget):
                 f"background-color: {bg_color}; border: 1px solid #ccc; border-radius: 6px;"
             )
             return
-        
+
         # Load node layer style
         style = self.layer_styles[self.current_layer]
-        
+
         # Shape
         shape_map = {
             "rect": "Rectangle",
@@ -1094,12 +1105,12 @@ class StylePanel(QWidget):
             "circle": "Circle",
         }
         self.shape_combo.setText(shape_map.get(style.get("shape", "rounded_rect"), "Rounded Rect"))
-        
+
         # Colors
         bg_color = style.get("bg_color", "#2196F3")
         text_color = style.get("text_color", "#FFFFFF")
         border_color = style.get("border_color", "#1976D2")
-        
+
         self.bg_color_btn.setStyleSheet(
             f"background-color: {bg_color}; border: 1px solid #ccc; border-radius: 6px;"
         )
@@ -1109,22 +1120,22 @@ class StylePanel(QWidget):
         self.border_color_btn.setStyleSheet(
             f"background-color: {border_color}; border: 1px solid #ccc; border-radius: 6px;"
         )
-        
+
         # Font
         self.font_family_combo.setText(self._get_localized_font_name(style.get("font_family", "Arial")))
         self.font_size_spin.setValue(style.get("font_size", 22))
         self.font_weight_combo.setText(style.get("font_weight", "Bold"))
-        
+
         # Font style checkboxes
         self.font_italic_check.setChecked(style.get("font_italic", False))
         self.font_underline_check.setChecked(style.get("font_underline", False))
         self.font_strikeout_check.setChecked(style.get("font_strikeout", False))
-        
+
         # Padding and radius
         self.padding_w_spin.setValue(style.get("padding_w", 20))
         self.padding_h_spin.setValue(style.get("padding_h", 16))
         self.radius_spin.setValue(style.get("radius", 10))
-        
+
         # Border
         border_style_map = {
             "solid": "Solid",
@@ -1136,7 +1147,7 @@ class StylePanel(QWidget):
             border_style_map.get(style.get("border_style", "solid"), "Solid")
         )
         self.border_width_spin.setValue(style.get("border_width", 2))
-        
+
         # Connector style
         self.connector_color_btn.setStyleSheet(
             f"background-color: {self.connector_style.get('connector_color', '#666666')}; border: 1px solid #ccc; border-radius: 6px;"
@@ -1157,18 +1168,18 @@ class StylePanel(QWidget):
         self.connector_style_combo.setText(
             connector_style_map.get(self.connector_style.get("connector_style", "solid"), "Solid")
         )
-        
+
         # Connector width: reverse mapping from start_width
         start_width = self.connector_style.get("start_width", 6.0)
         is_straight = (self.connector_style.get("connector_type") == "straight")
-        
+
         if is_straight:
             # For straight lines, UI value = start_width
             ui_width = int(start_width)
         else:
             # For tapered lines, UI value = start_width (end_width = start_width + 4)
             ui_width = int(start_width)
-        
+
         # Clamp to valid range
         ui_width = max(1, min(10, ui_width))
         self.connector_width_spin.setValue(ui_width)
@@ -1176,82 +1187,85 @@ class StylePanel(QWidget):
     def _update_preview(self):
         """Update preview by applying styles to the mind map."""
         self._save_current_layer_style()
-        
+
         # Use global app context to get mindmap view
         from cogist.application.services import get_app_context
         app_context = get_app_context()
         mindmap_view = app_context.get_mindmap_view()
-        
+
         if not mindmap_view:
             return
-        
+
         # Apply canvas background color
         if "canvas" in self.layer_styles:
             canvas_bg = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
             from PySide6.QtGui import QBrush, QColor
             mindmap_view.scene.setBackgroundBrush(QBrush(QColor(canvas_bg)))
-        
+
         # Apply node styles - convert layer_styles to MindMapStyle format
         self._apply_node_styles_to_mindmap(mindmap_view)
-    
+
     def _apply_node_styles_to_mindmap(self, mindmap_view):
         """Apply node layer styles to the mind map view.
-        
+
         This updates the style_config and triggers re-layout.
         """
-        from cogist.domain.styles import MindMapStyle, NodeStyleConfig, PriorityScheme, PriorityLevel
-        
+        from cogist.domain.styles import (
+            MindMapStyle,
+            PriorityLevel,
+        )
+
         # Create a new style config based on current layer styles
         style = MindMapStyle()
-        
+
         # Map panel layers to depth-based styles
         # root -> depth 0
         root_style = self._convert_layer_to_node_style(self.layer_styles.get("root", {}))
         style.depth_styles[0] = root_style
-        
+
         # level_1 -> depth 1
         level1_style = self._convert_layer_to_node_style(self.layer_styles.get("level_1", {}))
         style.depth_styles[1] = level1_style
-        
+
         # level_2 -> depth 2
         level2_style = self._convert_layer_to_node_style(self.layer_styles.get("level_2", {}))
         style.depth_styles[2] = level2_style
-        
+
         # level_3_plus -> depth 3 (and all deeper levels)
         level3_style = self._convert_layer_to_node_style(self.layer_styles.get("level_3_plus", {}))
         style.depth_styles[3] = level3_style
-        
+
         # Map priority overrides (critical/minor are special priorities)
         # Critical -> LEVEL_2 (Important)
         critical_style = self._convert_layer_to_node_style(self.layer_styles.get("critical", {}))
         style.priority_scheme.levels[PriorityLevel.LEVEL_2].style_override = critical_style
-        
+
         # Minor -> LEVEL_0 (Unimportant)
         minor_style = self._convert_layer_to_node_style(self.layer_styles.get("minor", {}))
         style.priority_scheme.levels[PriorityLevel.LEVEL_0].style_override = minor_style
-        
+
         # Update canvas background color
         if "canvas" in self.layer_styles:
             style.canvas_bg_color = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
-        
+
         # Update mindmap view's style config
         mindmap_view.style_config = style
-        
+
         # Update all existing node items with new style
         if hasattr(mindmap_view, 'node_items'):
-            for node_id, node_item in mindmap_view.node_items.items():
+            for _node_id, node_item in mindmap_view.node_items.items():
                 if hasattr(node_item, 'update_style'):
                     node_item.update_style(style)
-        
+
         # Trigger re-layout by calling refresh_layout
         # This will re-measure nodes with new styles and reposition them
         if hasattr(mindmap_view, '_refresh_layout'):
             mindmap_view._refresh_layout()
-    
+
     def _convert_layer_to_node_style(self, layer_data: dict):
         """Convert layer style dictionary to NodeStyleConfig object."""
         from cogist.domain.styles import NodeStyleConfig
-        
+
         return NodeStyleConfig(
             shape=layer_data.get("shape", "rounded_rect"),
             bg_color=layer_data.get("bg_color"),

@@ -4,12 +4,12 @@ Provides color theme definitions for consistent color schemes.
 """
 
 from .color_theme import (
-    ColorTheme,
-    COLOR_THEMES,
     BLUE_THEME,
+    COLOR_THEMES,
+    COOL_THEME,
     DARK_THEME,
     WARM_THEME,
-    COOL_THEME,
+    ColorTheme,
 )
 
 __all__ = [

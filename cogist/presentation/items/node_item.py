@@ -133,7 +133,7 @@ class NodeItem(QGraphicsRectItem):
 
         # Text item with word wrap and auto-sizing
         self.text_item = QGraphicsTextItem(text, self)
-        
+
         # Set text alignment to left-top with forced wrapping
         from PySide6.QtGui import QTextOption
         doc = self.text_item.document()
@@ -174,12 +174,12 @@ class NodeItem(QGraphicsRectItem):
             "ExtraBold": QFont.ExtraBold,  # 80
         }
         font_weight = weight_map.get(font_weight_str, QFont.Normal)
-        
+
         # Create font with family and size
         font = QFont(font_family, font_size)
         font.setWeight(font_weight)  # Use setWeight for better compatibility
         self.text_item.setFont(font)
-        
+
         # Apply text color
         if isinstance(text_color, str):
             self.text_item.setDefaultTextColor(QColor(text_color))
@@ -255,19 +255,19 @@ class NodeItem(QGraphicsRectItem):
             style_config: New MindMapStyle instance
         """
         self.style_config = style_config
-        
+
         # Recalculate node_style based on new config
         if self.style_config:
             from cogist.domain.styles import PriorityLevel
             self.node_style = self.style_config.resolve_node_style(
                 self.depth, PriorityLevel.LEVEL_1
             )
-            
+
             # Update font
             font_size = self.node_style.font_size
             font_weight_str = self.node_style.font_weight
             font_family = self.node_style.font_family
-            
+
             # Convert font weight string to QFont weight value (0-99)
             weight_map = {
                 "Light": QFont.Light,
@@ -276,10 +276,10 @@ class NodeItem(QGraphicsRectItem):
                 "ExtraBold": QFont.ExtraBold,
             }
             font_weight = weight_map.get(font_weight_str, QFont.Normal)
-            
+
             font = QFont(font_family, font_size)
             font.setWeight(font_weight)
-            
+
             # Apply font decorations
             if self.node_style.font_italic:
                 font.setItalic(True)
@@ -287,16 +287,16 @@ class NodeItem(QGraphicsRectItem):
                 font.setUnderline(True)
             if self.node_style.font_strikeout:
                 font.setStrikeOut(True)
-            
+
             self.text_item.setFont(font)
-            
+
             # Update text color
             text_color = self.node_style.text_color if self.node_style.text_color else "#000000"
             if isinstance(text_color, str):
                 self.text_item.setDefaultTextColor(QColor(text_color))
             else:
                 self.text_item.setDefaultTextColor(text_color)
-        
+
         # Trigger repaint
         self.update()
 
@@ -343,7 +343,7 @@ class NodeItem(QGraphicsRectItem):
             border_style = "solid"
 
         rect = self.rect()
-        
+
         # Create path based on shape
         path = QPainterPath()
         if shape == "circle":
@@ -391,7 +391,7 @@ class NodeItem(QGraphicsRectItem):
 
         # Check if this node should have no background (depth >= 3 or explicit flag)
         has_background = not getattr(self.node_style, 'no_background', False) if self.node_style else True
-        
+
         if not has_background:
             # No background fill, no border - just text
             painter.setPen(Qt.NoPen)
@@ -402,7 +402,7 @@ class NodeItem(QGraphicsRectItem):
                 bg_qcolor = QColor(bg_color)
             else:
                 bg_qcolor = bg_color
-            
+
             # Create gradient or solid color
             if self.is_root and not self.node_style:
                 # Legacy gradient for root nodes
@@ -418,16 +418,16 @@ class NodeItem(QGraphicsRectItem):
             else:
                 # Solid color from style_config
                 painter.setBrush(QBrush(bg_qcolor))
-            
+
             # Apply border if specified
             if border_width > 0 and border_color:
                 if isinstance(border_color, str):
                     border_qcolor = QColor(border_color)
                 else:
                     border_qcolor = border_color
-                
+
                 pen = QPen(border_qcolor, border_width)
-                
+
                 # Set border style
                 if border_style == "dashed":
                     pen.setStyle(Qt.DashLine)
@@ -437,7 +437,7 @@ class NodeItem(QGraphicsRectItem):
                     pen.setStyle(Qt.DashDotLine)
                 else:
                     pen.setStyle(Qt.SolidLine)
-                
+
                 painter.setPen(pen)
             else:
                 painter.setPen(Qt.NoPen)

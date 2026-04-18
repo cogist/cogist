@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from cogist.domain.layout.base import BaseLayout, LayoutConfigType
 
 if TYPE_CHECKING:
-    from cogist.domain.layout.default_layout import DefaultLayout
+    pass
 
 
 class LayoutRegistry:
@@ -30,11 +30,11 @@ class LayoutRegistry:
         # Get available layouts
         names = registry.get_available_layouts()  # ["default"]
     """
-    
+
     def __init__(self):
         """Initialize the layout registry"""
         self._layouts: dict[str, type[BaseLayout]] = {}
-    
+
     def register(self, name: str, layout_class: type[BaseLayout]) -> None:
         """Register a layout algorithm
         
@@ -47,9 +47,9 @@ class LayoutRegistry:
         """
         if name in self._layouts:
             raise ValueError(f"Layout '{name}' is already registered")
-        
+
         self._layouts[name] = layout_class
-    
+
     def unregister(self, name: str) -> None:
         """Unregister a layout algorithm
         
@@ -61,9 +61,9 @@ class LayoutRegistry:
         """
         if name not in self._layouts:
             raise KeyError(f"Layout '{name}' is not registered")
-        
+
         del self._layouts[name]
-    
+
     def get_layout(self, name: str, config: LayoutConfigType | None = None) -> BaseLayout:
         """Create a layout algorithm instance
         
@@ -83,10 +83,10 @@ class LayoutRegistry:
                 f"Unknown layout algorithm: '{name}'. "
                 f"Available layouts: {available}"
             )
-        
+
         LayoutClass = self._layouts[name]
         return LayoutClass(config)
-    
+
     def get_available_layouts(self) -> list[str]:
         """Get all registered layout algorithm names
         
@@ -94,7 +94,7 @@ class LayoutRegistry:
             List of layout identifiers
         """
         return list(self._layouts.keys())
-    
+
     def has_layout(self, name: str) -> bool:
         """Check if a layout algorithm is registered
         
@@ -105,7 +105,7 @@ class LayoutRegistry:
             True if layout is registered
         """
         return name in self._layouts
-    
+
     def clear(self) -> None:
         """Remove all registered layouts"""
         self._layouts.clear()

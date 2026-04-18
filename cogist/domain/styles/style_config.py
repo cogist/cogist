@@ -14,7 +14,7 @@ class NodeStyleConfig:
 
     # Shape
     shape: str = "rounded_rect"  # rect, rounded_rect, circle
-    
+
     # Font
     font_size: int = 16
     font_weight: str = "Normal"  # Normal, Bold, ExtraBold, Light
@@ -22,17 +22,17 @@ class NodeStyleConfig:
     font_italic: bool = False
     font_underline: bool = False
     font_strikeout: bool = False  # Strikethrough text
-    
+
     # Padding and sizing
     padding_width: int = 10
     padding_height: int = 8
     border_radius: int = 8
     max_text_width: float = 250.0
-    
+
     # Border
     border_style: str = "solid"  # solid, dashed, dotted, dash_dot
     border_width: int = 2
-    
+
     # Colors
     bg_color: str | None = None  # None means use template default
     text_color: str | None = "#000000"
@@ -126,7 +126,7 @@ class MindMapStyle:
     """Complete mind map style configuration"""
 
     name: str = "Default"
-    
+
     # Canvas
     canvas_bg_color: str = "#FFFFFF"
 
@@ -144,7 +144,7 @@ class MindMapStyle:
         """Initialize default depth styles and priority scheme if not provided"""
         if not self.depth_styles:
             self._init_default_depth_styles()
-        
+
         # Initialize priority scheme with critical and minor overrides
         if self.priority_scheme.name == "Default":
             self._init_default_priority_scheme()
@@ -225,7 +225,7 @@ class MindMapStyle:
             border_width=4,
             border_color="#B71C1C",
         )
-        
+
         # Unimportant (LEVEL_0) - Gray, light
         self.priority_scheme.levels[PriorityLevel.LEVEL_0].style_override = NodeStyleConfig(
             bg_color="#BDBDBD",

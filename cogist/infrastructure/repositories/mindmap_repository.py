@@ -142,7 +142,7 @@ class MindMapRepository(MindMapRepositoryInterface):
         path = Path(file_path)
         if not path.exists():
             raise FileNotFoundError(f"File not found: {path}")
-        
+
         try:
             path.unlink()
             # Clear current file if it's the deleted one
@@ -161,7 +161,7 @@ class MindMapRepository(MindMapRepositoryInterface):
             Path to current file, or None if no file is loaded
         """
         return self._current_file
-    
+
     @property
     def last_saved(self) -> datetime | None:
         """
