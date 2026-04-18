@@ -15,8 +15,8 @@ def create_default_template() -> MindMapStyle:
     )
 
     style.priority_scheme.levels[PriorityLevel.LEVEL_0].style_override = NodeStyleConfig(
-        text_color="#9E9E9E",  # Gray for unimportant
-        no_background=True,
+        bg_color="#9E9E9E",  # Gray for unimportant
+        text_color="#FFFFFF",
     )
 
     return style
