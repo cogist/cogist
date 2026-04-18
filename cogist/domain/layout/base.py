@@ -36,6 +36,32 @@ class DefaultLayoutConfig(BaseLayoutConfig):
         1: 45.0,   # Level 2 siblings
         2: 35.0,   # Level 3+ siblings
     })
+    
+    def get_level_spacing(self, depth: int) -> float:
+        """Get level spacing for a specific depth
+        
+        Args:
+            depth: Parent node's depth in tree
+        
+        Returns:
+            Horizontal spacing for this parent-child relationship
+        """
+        if depth in self.level_spacing_by_depth:
+            return self.level_spacing_by_depth[depth]
+        return self.level_spacing
+    
+    def get_sibling_spacing(self, depth: int) -> float:
+        """Get sibling spacing for a specific depth
+        
+        Args:
+            depth: Node depth in tree
+        
+        Returns:
+            Sibling spacing for this depth
+        """
+        if depth in self.sibling_spacing_by_depth:
+            return self.sibling_spacing_by_depth[depth]
+        return self.sibling_spacing
 
 
 # === Type Union for all layout configs ===
