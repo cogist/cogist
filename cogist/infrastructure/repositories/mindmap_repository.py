@@ -9,13 +9,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from cogist.domain.repositories import MindMapRepositoryInterface
 
-class MindMapRepository:
+
+class MindMapRepository(MindMapRepositoryInterface):
     """
     Repository for mind map persistence.
 
     Handles saving and loading mind maps in .mwe format,
     which is a JSON file.
+    
+    Implements MindMapRepositoryInterface for dependency injection.
     """
 
     FILE_EXTENSION = ".mwe"
@@ -23,10 +27,10 @@ class MindMapRepository:
 
     def __init__(self):
         """Initialize the repository."""
-        self.current_file: Path | None = None
-        self.last_saved: datetime | None = None
+        self._current_file: Path | None = None
+        self._last_saved: datetime | None = None
 
-    def save(self, root_node: Any, file_path: str) -> Path:
+    def save(self, root_node: Any, file_path: str | Path) -> Path:
         """
         Save a mind map to a file.
 
@@ -61,15 +65,15 @@ class MindMapRepository:
             path.write_text(json_string, encoding=self.DEFAULT_ENCODING)
 
             # Update metadata
-            self.current_file = path
-            self.last_saved = datetime.now()
+            self._current_file = path
+            self._last_saved = datetime.now()
 
             return path
 
         except Exception as e:
             raise OSError(f"Failed to save mind map to {path}: {e}") from e
 
-    def load(self, file_path: str) -> Any:
+    def load(self, file_path: str | Path) -> Any:
         """
         Load a mind map from a file.
 
@@ -102,8 +106,8 @@ class MindMapRepository:
             root_node = JSONSerializer.dict_to_node(mind_map_data["root"])
 
             # Update metadata
-            self.current_file = path
-            self.last_saved = None  # Will be set when saved
+            self._current_file = path
+            self._last_saved = None  # Will be set when saved
 
             return root_node
 
@@ -112,7 +116,7 @@ class MindMapRepository:
         except Exception as e:
             raise OSError(f"Failed to load mind map from {path}: {e}") from e
 
-    def exists(self, file_path: str) -> bool:
+    def exists(self, file_path: str | Path) -> bool:
         """
         Check if a mind map file exists.
 
@@ -124,16 +128,51 @@ class MindMapRepository:
         """
         return Path(file_path).exists()
 
-    def get_current_file(self) -> Path | None:
+    def delete(self, file_path: str | Path) -> None:
+        """
+        Delete a mind map file.
+        
+        Args:
+            file_path: Path to delete
+            
+        Raises:
+            FileNotFoundError: If file doesn't exist
+            OSError: If deletion fails
+        """
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {path}")
+        
+        try:
+            path.unlink()
+            # Clear current file if it's the deleted one
+            if self._current_file and self._current_file.resolve() == path.resolve():
+                self._current_file = None
+                self._last_saved = None
+        except Exception as e:
+            raise OSError(f"Failed to delete {path}: {e}") from e
+
+    @property
+    def current_file(self) -> Path | None:
         """
         Get the currently loaded/saved file path.
 
         Returns:
             Path to current file, or None if no file is loaded
         """
-        return self.current_file
+        return self._current_file
+    
+    @property
+    def last_saved(self) -> datetime | None:
+        """
+        Get the timestamp of last successful save.
+        
+        Returns:
+            datetime of last save, or None if never saved
+        """
+        return self._last_saved
 
     def clear_current(self) -> None:
         """Clear the current file reference."""
-        self.current_file = None
-        self.last_saved = None
+        self._current_file = None
+        self._last_saved = None
