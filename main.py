@@ -613,7 +613,8 @@ class MindMapView(QGraphicsView):
         self._measure_actual_sizes(root)
 
         # Step 2: Apply layout with actual sizes
-        layout = DefaultLayout(style=self.style_config)
+        from cogist.domain.layout import DEFAULT_LAYOUT_CONFIG
+        layout = DefaultLayout(DEFAULT_LAYOUT_CONFIG)
         layout.layout(root, canvas_width=1200, canvas_height=800)
 
         # Step 3: Create final UI items with correct sizes and positions
@@ -1167,12 +1168,14 @@ class MindMapView(QGraphicsView):
             self._measure_actual_sizes(self.root_node)
 
         # Step 2: Re-apply layout, passing selected node to preserve its side
-        layout = DefaultLayout(style=self.style_config)
+        from cogist.domain.layout import DEFAULT_LAYOUT_CONFIG
+        layout = DefaultLayout(DEFAULT_LAYOUT_CONFIG)
+        context = {'focused_node_id': saved_selection_id} if saved_selection_id else None
         layout.layout(
             self.root_node,
             canvas_width=1200,
             canvas_height=800,
-            focused_node_id=saved_selection_id,
+            context=context,
         )
 
         # Step 3: Recreate UI items
