@@ -1051,6 +1051,12 @@ class StylePanel(QWidget):
         # Update mindmap view's style config
         mindmap_view.style_config = style
         
+        # Update all existing node items with new style
+        if hasattr(mindmap_view, 'node_items'):
+            for node_id, node_item in mindmap_view.node_items.items():
+                if hasattr(node_item, 'update_style'):
+                    node_item.update_style(style)
+        
         # Trigger re-layout by calling refresh_layout
         # This will re-measure nodes with new styles and reposition them
         if hasattr(mindmap_view, '_refresh_layout'):

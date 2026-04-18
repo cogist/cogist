@@ -147,13 +147,13 @@ class NodeItem(QGraphicsRectItem):
             # Use new MindMapStyle system (default priority: Normal)
             from cogist.domain.styles import PriorityLevel
 
-            node_style = self.style_config.resolve_node_style(
+            self.node_style = self.style_config.resolve_node_style(
                 depth, PriorityLevel.LEVEL_1
             )
-            font_size = node_style.font_size
-            font_weight_str = node_style.font_weight
+            font_size = self.node_style.font_size
+            font_weight_str = self.node_style.font_weight
             style_for_calc = (
-                node_style  # Pass full NodeStyleConfig for size calculation
+                self.node_style  # Pass full NodeStyleConfig for size calculation
             )
         else:
             # Fallback to old NodeStyle for backward compatibility
@@ -161,6 +161,7 @@ class NodeItem(QGraphicsRectItem):
             font_size = style["font_size"]
             font_weight_str = style["font_weight"]
             style_for_calc = style  # Pass dict for size calculation
+            self.node_style = None  # No node_style when using legacy style
 
         # Convert font weight string to QFont constant
         font_weight = QFont.Bold if font_weight_str == "Bold" else QFont.Normal
@@ -229,6 +230,40 @@ class NodeItem(QGraphicsRectItem):
         if child_item not in self.child_items:
             self.child_items.append(child_item)
 
+    def update_style(self, style_config):
+        """Update node style from new style_config and trigger repaint.
+        
+        Args:
+            style_config: New MindMapStyle instance
+        """
+        self.style_config = style_config
+        
+        # Recalculate node_style based on new config
+        if self.style_config:
+            from cogist.domain.styles import PriorityLevel
+            self.node_style = self.style_config.resolve_node_style(
+                self.depth, PriorityLevel.LEVEL_1
+            )
+            
+            # Update font
+            font_size = self.node_style.font_size
+            font_weight_str = self.node_style.font_weight
+            font_weight = QFont.Bold if font_weight_str == "Bold" else QFont.Normal
+            font = QFont(self.node_style.font_family, font_size, font_weight)
+            
+            # Apply font decorations
+            if self.node_style.font_italic:
+                font.setItalic(True)
+            if self.node_style.font_underline:
+                font.setUnderline(True)
+            if self.node_style.font_strikeout:
+                font.setStrikeOut(True)
+            
+            self.text_item.setFont(font)
+        
+        # Trigger repaint
+        self.update()
+
     def itemChange(self, change, value):  # noqa: N802
         """Handle position changes - update edges and children."""
         if change == QGraphicsRectItem.ItemPositionHasChanged:
@@ -249,15 +284,27 @@ class NodeItem(QGraphicsRectItem):
         return super().itemChange(change, value)
 
     def paint(self, painter, option, widget=None):  # noqa: ARG002
-        """Custom paint for rounded rectangle with gradient."""
+        """Custom paint for rounded rectangle with gradient using style_config."""
         from PySide6.QtGui import QPainter
 
-        # Get border radius from style
-        style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
-        radius = style["border_radius"]
+        # Use node_style from style_config if available, otherwise fallback to legacy
+        if self.node_style:
+            # Use new MindMapStyle system
+            radius = self.node_style.border_radius
+            bg_color = self.node_style.bg_color if self.node_style.bg_color else self.color
+            border_color = self.node_style.border_color
+            border_width = self.node_style.border_width
+            border_style = self.node_style.border_style
+        else:
+            # Fallback to old NodeStyle
+            style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
+            radius = style["border_radius"]
+            bg_color = self.color
+            border_color = None
+            border_width = 0
+            border_style = "solid"
 
         # CRITICAL: Use actual rect() from setRect() instead of hardcoded centered position
-        # This ensures paint matches the directional expansion logic in on_width_changed
         rect = self.rect()
         path = QPainterPath()
         path.addRoundedRect(
@@ -269,24 +316,8 @@ class NodeItem(QGraphicsRectItem):
             radius,
         )
 
-        # Gradient fill
-        gradient = QLinearGradient(
-            rect.x(),
-            rect.y(),
-            rect.x(),
-            rect.y() + rect.height(),
-        )
-
-        if self.is_root:
-            gradient.setColorAt(0, self.color.lighter(120))
-            gradient.setColorAt(1, self.color)
-        else:
-            gradient.setColorAt(0, self.color.lighter(110))
-            gradient.setColorAt(1, self.color)
-
         # Draw selection highlight if selected
         if self.isSelected():
-            # Draw selection highlight (brighter border)
             highlight_path = QPainterPath()
             highlight_path.addRoundedRect(
                 rect.x() - 3,
@@ -302,29 +333,58 @@ class NodeItem(QGraphicsRectItem):
 
         painter.setRenderHint(QPainter.Antialiasing, True)
 
-        # Check if this node should have no background (depth >= 3)
-        if style.get("no_background", False):
+        # Check if this node should have no background (depth >= 3 or explicit flag)
+        has_background = not getattr(self.node_style, 'no_background', False) if self.node_style else True
+        
+        if not has_background:
             # No background fill, no border - just text
             painter.setPen(Qt.NoPen)
             painter.setBrush(Qt.NoBrush)
         else:
-            # Gradient fill for nodes with background
-            gradient = QLinearGradient(
-                rect.x(),
-                rect.y(),
-                rect.x(),
-                rect.y() + rect.height(),
-            )
-
-            if self.is_root:
-                gradient.setColorAt(0, self.color.lighter(120))
-                gradient.setColorAt(1, self.color)
+            # Apply background color
+            if isinstance(bg_color, str):
+                bg_qcolor = QColor(bg_color)
             else:
-                gradient.setColorAt(0, self.color.lighter(110))
-                gradient.setColorAt(1, self.color)
-
-            painter.setBrush(QBrush(gradient))
-            painter.setPen(Qt.NoPen)  # Remove border
+                bg_qcolor = bg_color
+            
+            # Create gradient or solid color
+            if self.is_root and not self.node_style:
+                # Legacy gradient for root nodes
+                gradient = QLinearGradient(
+                    rect.x(),
+                    rect.y(),
+                    rect.x(),
+                    rect.y() + rect.height(),
+                )
+                gradient.setColorAt(0, bg_qcolor.lighter(120))
+                gradient.setColorAt(1, bg_qcolor)
+                painter.setBrush(QBrush(gradient))
+            else:
+                # Solid color from style_config
+                painter.setBrush(QBrush(bg_qcolor))
+            
+            # Apply border if specified
+            if border_width > 0 and border_color:
+                if isinstance(border_color, str):
+                    border_qcolor = QColor(border_color)
+                else:
+                    border_qcolor = border_color
+                
+                pen = QPen(border_qcolor, border_width)
+                
+                # Set border style
+                if border_style == "dashed":
+                    pen.setStyle(Qt.DashLine)
+                elif border_style == "dotted":
+                    pen.setStyle(Qt.DotLine)
+                elif border_style == "dash_dot":
+                    pen.setStyle(Qt.DashDotLine)
+                else:
+                    pen.setStyle(Qt.SolidLine)
+                
+                painter.setPen(pen)
+            else:
+                painter.setPen(Qt.NoPen)
 
         painter.drawPath(path)
 
