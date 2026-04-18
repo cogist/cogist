@@ -401,10 +401,39 @@ class StylePanel(QWidget):
         self.font_family_menu.aboutToShow.connect(
             lambda: self._adjust_menu_width(self.font_family_menu, self.font_family_combo)
         )
-        font_families = ["Arial", "Helvetica", "Times New Roman", "Courier New", "Georgia", "Verdana"]
-        for family in font_families:
-            action = self.font_family_menu.addAction(family)
-            action.triggered.connect(lambda _, f=family: self._set_font_family(f))
+        
+        # Get system fonts using QFontDatabase
+        from PySide6.QtGui import QFontDatabase
+        font_database = QFontDatabase()
+        font_families = font_database.families()  # Get all available font families
+        
+        # Add common fonts first, then others
+        common_fonts = ["Arial", "Helvetica", "Times New Roman", "Courier New", "Georgia", "Verdana"]
+        added_fonts = set()
+        
+        # Add common fonts first
+        for family in common_fonts:
+            if family in font_families:
+                action = self.font_family_menu.addAction(family)
+                action.triggered.connect(lambda _, f=family: self._set_font_family(f))
+                added_fonts.add(family)
+        
+        # Add separator
+        self.font_family_menu.addSeparator()
+        
+        # Add remaining fonts (limit to reasonable number for performance)
+        other_count = 0
+        for family in sorted(font_families):
+            if family not in added_fonts and other_count < 50:  # Limit to 50 additional fonts
+                action = self.font_family_menu.addAction(family)
+                action.triggered.connect(lambda _, f=family: self._set_font_family(f))
+                other_count += 1
+        
+        # Add "More Fonts..." option to open system font dialog
+        self.font_family_menu.addSeparator()
+        more_fonts_action = self.font_family_menu.addAction("More Fonts...")
+        more_fonts_action.triggered.connect(self._open_font_dialog)
+        
         self.font_family_combo.setMenu(self.font_family_menu)
         node_grid.addWidget(self.font_family_combo, 3, 1)
 
@@ -760,6 +789,61 @@ class StylePanel(QWidget):
         self.font_family_combo.setText(value)
         self.layer_styles[self.current_layer]["font_family"] = value
         self._update_preview()
+    
+    def _open_font_dialog(self):
+        """Open system font dialog for more font options."""
+        from PySide6.QtWidgets import QFontDialog
+        from PySide6.QtGui import QFont
+        
+        # Get current font settings
+        current_family = self.layer_styles[self.current_layer].get("font_family", "Arial")
+        current_size = self.layer_styles[self.current_layer].get("font_size", 16)
+        current_weight_str = self.layer_styles[self.current_layer].get("font_weight", "Normal")
+        
+        # Convert weight string to QFont weight
+        weight_map = {
+            "Light": QFont.Light,
+            "Normal": QFont.Normal,
+            "Bold": QFont.Bold,
+            "ExtraBold": QFont.ExtraBold,
+        }
+        current_weight = weight_map.get(current_weight_str, QFont.Normal)
+        
+        # Create initial font
+        initial_font = QFont(current_family, current_size, current_weight)
+        
+        # Open font dialog
+        font, ok = QFontDialog.getFont(initial_font, self, "Select Font")
+        
+        if ok:
+            # Update all font properties
+            self.layer_styles[self.current_layer]["font_family"] = font.family()
+            self.layer_styles[self.current_layer]["font_size"] = font.pointSize()
+            
+            # Convert QFont weight back to string
+            reverse_weight_map = {
+                QFont.Light: "Light",
+                QFont.Normal: "Normal",
+                QFont.Bold: "Bold",
+                QFont.ExtraBold: "ExtraBold",
+            }
+            # Find closest match
+            font_weight_int = font.weight()
+            closest_weight = min(reverse_weight_map.keys(), key=lambda w: abs(w - font_weight_int))
+            self.layer_styles[self.current_layer]["font_weight"] = reverse_weight_map[closest_weight]
+            
+            # Update UI controls
+            self.font_family_combo.setText(font.family())
+            self.font_size_spin.setValue(font.pointSize())
+            
+            # Update font weight combo
+            weight_text = reverse_weight_map[closest_weight]
+            for i in range(self.font_weight_combo.count()):
+                if self.font_weight_combo.itemText(i) == weight_text:
+                    self.font_weight_combo.setCurrentIndex(i)
+                    break
+            
+            self._update_preview()
 
     def _set_font_weight(self, value: str):
         """Set font weight."""

@@ -133,8 +133,7 @@ class NodeItem(QGraphicsRectItem):
 
         # Text item with word wrap and auto-sizing
         self.text_item = QGraphicsTextItem(text, self)
-        self.text_item.setDefaultTextColor(Qt.black)  # Black text for better visibility
-
+        
         # Set text alignment to left-top with forced wrapping
         from PySide6.QtGui import QTextOption
         doc = self.text_item.document()
@@ -152,6 +151,8 @@ class NodeItem(QGraphicsRectItem):
             )
             font_size = self.node_style.font_size
             font_weight_str = self.node_style.font_weight
+            font_family = self.node_style.font_family
+            text_color = self.node_style.text_color if self.node_style.text_color else "#000000"
             style_for_calc = (
                 self.node_style  # Pass full NodeStyleConfig for size calculation
             )
@@ -160,13 +161,30 @@ class NodeItem(QGraphicsRectItem):
             style = NodeStyle.get_style_for_depth(depth, is_root)
             font_size = style["font_size"]
             font_weight_str = style["font_weight"]
+            font_family = "Arial"
+            text_color = "#000000"
             style_for_calc = style  # Pass dict for size calculation
             self.node_style = None  # No node_style when using legacy style
 
-        # Convert font weight string to QFont constant
-        font_weight = QFont.Bold if font_weight_str == "Bold" else QFont.Normal
-        font = QFont("Arial", font_size, font_weight)
+        # Convert font weight string to QFont weight value (0-99)
+        weight_map = {
+            "Light": QFont.Light,      # 25
+            "Normal": QFont.Normal,    # 50
+            "Bold": QFont.Bold,        # 70
+            "ExtraBold": QFont.ExtraBold,  # 80
+        }
+        font_weight = weight_map.get(font_weight_str, QFont.Normal)
+        
+        # Create font with family and size
+        font = QFont(font_family, font_size)
+        font.setWeight(font_weight)  # Use setWeight for better compatibility
         self.text_item.setFont(font)
+        
+        # Apply text color
+        if isinstance(text_color, str):
+            self.text_item.setDefaultTextColor(QColor(text_color))
+        else:
+            self.text_item.setDefaultTextColor(text_color)
 
         if use_domain_size:
             # Use domain layer's pre-measured size (layout already calculated it)
@@ -248,8 +266,19 @@ class NodeItem(QGraphicsRectItem):
             # Update font
             font_size = self.node_style.font_size
             font_weight_str = self.node_style.font_weight
-            font_weight = QFont.Bold if font_weight_str == "Bold" else QFont.Normal
-            font = QFont(self.node_style.font_family, font_size, font_weight)
+            font_family = self.node_style.font_family
+            
+            # Convert font weight string to QFont weight value (0-99)
+            weight_map = {
+                "Light": QFont.Light,
+                "Normal": QFont.Normal,
+                "Bold": QFont.Bold,
+                "ExtraBold": QFont.ExtraBold,
+            }
+            font_weight = weight_map.get(font_weight_str, QFont.Normal)
+            
+            font = QFont(font_family, font_size)
+            font.setWeight(font_weight)
             
             # Apply font decorations
             if self.node_style.font_italic:
@@ -260,6 +289,13 @@ class NodeItem(QGraphicsRectItem):
                 font.setStrikeOut(True)
             
             self.text_item.setFont(font)
+            
+            # Update text color
+            text_color = self.node_style.text_color if self.node_style.text_color else "#000000"
+            if isinstance(text_color, str):
+                self.text_item.setDefaultTextColor(QColor(text_color))
+            else:
+                self.text_item.setDefaultTextColor(text_color)
         
         # Trigger repaint
         self.update()
@@ -284,12 +320,13 @@ class NodeItem(QGraphicsRectItem):
         return super().itemChange(change, value)
 
     def paint(self, painter, option, widget=None):  # noqa: ARG002
-        """Custom paint for rounded rectangle with gradient using style_config."""
+        """Custom paint for node with shape support using style_config."""
         from PySide6.QtGui import QPainter
 
         # Use node_style from style_config if available, otherwise fallback to legacy
         if self.node_style:
             # Use new MindMapStyle system
+            shape = self.node_style.shape
             radius = self.node_style.border_radius
             bg_color = self.node_style.bg_color if self.node_style.bg_color else self.color
             border_color = self.node_style.border_color
@@ -298,35 +335,54 @@ class NodeItem(QGraphicsRectItem):
         else:
             # Fallback to old NodeStyle
             style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
+            shape = "rounded_rect"
             radius = style["border_radius"]
             bg_color = self.color
             border_color = None
             border_width = 0
             border_style = "solid"
 
-        # CRITICAL: Use actual rect() from setRect() instead of hardcoded centered position
         rect = self.rect()
+        
+        # Create path based on shape
         path = QPainterPath()
-        path.addRoundedRect(
-            rect.x(),
-            rect.y(),
-            rect.width(),
-            rect.height(),
-            radius,
-            radius,
-        )
+        if shape == "circle":
+            # Draw circle/ellipse
+            path.addEllipse(rect)
+        elif shape == "rect":
+            # Draw rectangle (no radius)
+            path.addRect(rect)
+        else:  # rounded_rect (default)
+            # Draw rounded rectangle
+            path.addRoundedRect(
+                rect.x(),
+                rect.y(),
+                rect.width(),
+                rect.height(),
+                radius,
+                radius,
+            )
 
         # Draw selection highlight if selected
         if self.isSelected():
             highlight_path = QPainterPath()
-            highlight_path.addRoundedRect(
-                rect.x() - 3,
-                rect.y() - 3,
-                rect.width() + 6,
-                rect.height() + 6,
-                radius + 2,
-                radius + 2,
-            )
+            if shape == "circle":
+                # Ellipse highlight with offset
+                highlight_rect = rect.adjusted(-3, -3, 3, 3)
+                highlight_path.addEllipse(highlight_rect)
+            elif shape == "rect":
+                # Rectangle highlight with offset
+                highlight_rect = rect.adjusted(-3, -3, 3, 3)
+                highlight_path.addRect(highlight_rect)
+            else:  # rounded_rect
+                highlight_path.addRoundedRect(
+                    rect.x() - 3,
+                    rect.y() - 3,
+                    rect.width() + 6,
+                    rect.height() + 6,
+                    radius + 2,
+                    radius + 2,
+                )
             painter.setPen(QPen(QColor("#FFD700"), 3))  # Gold border
             painter.setBrush(Qt.NoBrush)
             painter.drawPath(highlight_path)
