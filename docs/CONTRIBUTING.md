@@ -42,159 +42,41 @@ This document provides guidelines and instructions for contributing.
 
 > **"Clear responsibilities, no overlap, each document does one thing well"**
 
-This is the **golden rule** for Cogist documentation. All documentation work must follow this principle.
+This is the **golden rule** for Cogist documentation.
 
 ---
 
-### Documentation Categories
+### Documentation Structure
 
-Cogist has three tiers of documentation, each with a clear purpose:
+Cogist maintains two types of documentation:
 
-#### 1️⃣ **Root Level** - For Everyone
+#### 1️⃣ **Public Documentation** (English)
 
-| Document | Purpose | Update Frequency |
-|----------|---------|------------------|
-| `README.md` | Project introduction | Low (stable after launch) |
-| `CHANGELOG.md` | Version changelog | Medium (each release) |
-| `LICENSE` | Legal license | Very low |
-| `QUICKSTART.md` | 5-minute quick start | Low |
+| Document | Purpose |
+|----------|---------|
+| `README.md` | Project introduction and quick start |
+| `CHANGELOG.md` | Version history and updates |
+| `docs/INDEX.md` | Documentation index |
+| `docs/CONTRIBUTING.md` | Contribution guidelines |
 
-**Key:** These are the first documents users see. Must be concise and clear.
-
----
-
-#### 2️⃣ **docs/ Core** - For Developers
-
-| Document | Purpose | Update Frequency |
-|----------|---------|------------------|
-| `INDEX.md` | Documentation index | When adding new docs |
-| `PROJECT_STATUS.md` | **Current status & tasks** | High (each commit) |
-| `FEATURES_SUMMARY.md` | Feature roadmap | Medium (phase completion) |
-| `TECHNICAL_IMPLEMENTATION.md` | Technical details | Low (after design stable) |
-| `ARCHITECTURE.md` | Architecture design | Low (after architecture stable) |
-
-**Key:** PROJECT_STATUS.md is the most active document. Must stay current.
+These documents are included in public releases and should be kept up-to-date.
 
 ---
 
-#### 3️⃣ **docs/ Reference** - Specialized Topics
+#### 2️⃣ **Internal Documentation** (Chinese)
 
-| Document | Purpose | When to update |
-|----------|---------|----------------|
-| `PRODUCT_STRATEGY.md` | Product strategy | When strategy changes |
-| `LAYOUT_COMPARISON.md` | Layout algorithms | When adding new algorithms |
-| `XMIND_LAYOUT_GUIDE.md` | Default layout guide | When optimizing algorithms |
-| `LICENSE_GUIDE.md` | License details | When dependencies change |
-
-**Key:** These are reference documents. Don't need frequent updates.
+Detailed design documents, architecture decisions, and development plans are maintained in Chinese in the `docs/zh-CN/` directory. These are for internal development use only and are not included in public releases.
 
 ---
 
-### 🚫 Common Mistakes
+### Keeping Documentation Current
 
-#### ❌ Mistake 1: Writing detailed history in PROJECT_STATUS.md
+When making changes:
 
-```markdown
-# ❌ DON'T do this
-
-## Completed
-
-### 2026-04-01 - Node entity completed
-Today I completed the Node entity class, implemented UUID, parent-child...
-
-### 2026-04-02 - Architecture setup
-Set up four-layer architecture, created all directories...
-```
-
-**Problem:** This is Changelog's job, not current status.
-
----
-
-#### ✅ Correct: Only write current state in PROJECT_STATUS.md
-
-```markdown
-# ✅ DO this
-
-## Completed
-
-### 1. Directory Structure Created ✅
-(List directory structure)
-
-### 2. Node Entity Implemented ✅
-(List features)
-
-**See recent updates**: [CHANGELOG.md](../CHANGELOG.md)
-```
-
----
-
-#### ❌ Mistake 2: Writing technical details in CHANGELOG.md
-
-```markdown
-# ❌ DON'T do this
-
-## [Unreleased]
-
-### Changed
-- Refactored traverse method in Node class to use generator pattern...
-- Improved layout algorithm complexity from O(n²) to O(n log n)...
-```
-
-**Problem:** Users don't care about implementation details. That's for Git commits or technical docs.
-
----
-
-#### ✅ Correct: Write user-visible changes in CHANGELOG.md
-
-```markdown
-# ✅ DO this
-
-## [Unreleased]
-
-### Added
-- Node entity class with parent-child relationship management
-- Four-layer DDD architecture for better extensibility
-
-### Changed
-- Performance improvement: 50% faster layout for large node counts
-```
-
----
-
-### 📋 Documentation Maintenance Checklist
-
-#### Before Each Commit
-
-- [ ] Is the document purpose clear?
-- [ ] Is there any content overlap?
-- [ ] Are links correct (relative paths)?
-- [ ] Is language concise?
-- [ ] Format consistent with other docs?
-
-#### When Adding New Documents
-
-- [ ] Is this document really necessary?
-- [ ] Does it overlap with existing docs?
-- [ ] Who is the target reader?
-- [ ] Should it be in root or docs/?
-- [ ] Is INDEX.md updated?
-
----
-
-### 🔗 Link Maintenance
-
-When referencing related content, **use links, not copy-paste**:
-
-```markdown
-# ✅ Good practice
-
-For details, see [Architecture Design](ARCHITECTURE.md).
-
-# ❌ Bad practice
-
-Architecture design is as follows:
-(Paste 500 lines from ARCHITECTURE.md here)
-```
+- ✅ Update CHANGELOG.md with user-visible changes
+- ✅ Update INDEX.md if adding/removing public documents
+- ✅ Keep README.md accurate for new users
+- ❌ Don't modify internal Chinese docs unless you're part of the core team
 
 ---
 

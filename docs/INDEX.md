@@ -1,156 +1,64 @@
-# Cogist Documentation Index
+# Cogist Documentation
 
-📚 **Complete Documentation Navigation for Cogist Project**
-
----
-
-## 🎯 Quick Start
-
-| Document | Description | For |
-|----------|-------------|-----|
-| [README.md](../README.md) | Project introduction and quick start | Everyone |
-| [QUICKSTART.md](../QUICKSTART.md) | 5-minute hands-on experience | New users |
-| [CHANGELOG.md](../CHANGELOG.md) | Version history and updates | All users |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines | Contributors |
+📚 **Documentation for Cogist - A Beautiful Mind Mapping Tool**
 
 ---
 
-## 📖 Core Documentation
+## 🎯 Current Version: v0.2.0
 
-### For Contributors
+**Latest Release**: Foundation Architecture with Layout, Template, and Theme systems
 
-| Document | Description | When to read |
-|----------|-------------|--------------|
-| [CONTRIBUTING.md](CONTRIBUTING.md) | **Contribution guidelines** | Before contributing |
-| [DOCUMENT_CHECKLIST.md](DOCUMENT_CHECKLIST.md) | **Documentation checklist** | Before submitting PR |
-| [DOCUMENT_GOVERNANCE.md](DOCUMENT_GOVERNANCE.md) | **Documentation standards** | Understanding project norms |
-| [PROJECT_STATUS.md](PROJECT_STATUS.md) | **Current status and tasks** | See what's being worked on |
+- ✅ Type-safe layout configuration with polymorphic switching
+- ✅ Node template system with priority rules
+- ✅ Color theme system with depth-based cycling
+- ✅ 39 comprehensive unit tests (100% pass)
 
-**Recommended reading order:**
-1. CONTRIBUTING.md → Learn how to contribute
-2. DOCUMENT_CHECKLIST.md → Understand quality standards
-3. PROJECT_STATUS.md → Find tasks to work on
+See [CHANGELOG.md](../CHANGELOG.md) for full release notes.
 
 ---
 
-### Architecture & Design
+## 📖 Available Documentation
 
 | Document | Description |
 |----------|-------------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | **Detailed architecture design** |
-| [TECHNICAL_IMPLEMENTATION.md](TECHNICAL_IMPLEMENTATION.md) | **Technical implementation details** |
-
-**Architecture overview:**
-- Four-layer architecture (DDD pattern)
-- Domain-driven design
-- Plugin-friendly structure
+| [README.md](../README.md) | Project introduction and quick start |
+| [CHANGELOG.md](../CHANGELOG.md) | Version history and updates |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
 
 ---
 
-### Features & Requirements
+## 🌍 Language Support
 
-| Document | Description |
-|----------|-------------|
-| [FEATURES_SUMMARY.md](FEATURES_SUMMARY.md) | **Feature roadmap summary** |
-| [FEATURES.md](FEATURES.md) | **Detailed feature specifications** |
-| [LAYOUT_COMPARISON.md](LAYOUT_COMPARISON.md) | **Layout algorithms comparison** |
-| [XMIND_LAYOUT_GUIDE.md](XMIND_LAYOUT_GUIDE.md) | **Default-style layout guide** |
+This project maintains documentation in:
 
----
+| Language | Location |
+|----------|----------|
+| 🇬🇧 English | This directory (external docs) |
+| 🇨🇳 简体中文 | Internal development docs (not published) |
 
-### Product & Strategy
-
-| Document | Description | Audience |
-|----------|-------------|----------|
-| [PRODUCT_STRATEGY.md](PRODUCT_STRATEGY.md) | **Product strategy and positioning** | Internal reference |
+**Note**: Chinese documentation contains detailed design documents and internal planning materials that are not included in public releases.
 
 ---
 
-### Legal & Compliance
+## 🔧 Quick Start
 
-| Document | Description |
-|----------|-------------|
-| [LICENSE_GUIDE.md](LICENSE_GUIDE.md) | **License compliance guide** |
-
-**Main licenses:**
-- **Cogist code**: MIT License
-- **PySide6 dependency**: LGPL-3.0
-
----
-
-## 🔧 Development & Build
-
-| File | Description |
-|------|-------------|
-| [pyproject.toml](../pyproject.toml) | Project configuration and dependencies |
-| [pyrightconfig.json](../pyrightconfig.json) | Type checking configuration |
-| [.python-version](../.python-version) | Python version requirement (3.13+) |
-
-**Setup environment:**
 ```bash
-# Install uv (if you don't have it)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Clone and install dependencies
-git clone <repo-url>
-cd cogist
+# Install dependencies
 uv install
 
-# Run demo
-uv run python main.py
+# Run application
+uv run cogist
 ```
-
----
-
-## 📁 Documentation Structure
-
-```
-docs/
-├── INDEX.md                    # 📚 This file - Documentation index
-│
-├── CONTRIBUTING.md             # 👥 Contribution guidelines
-├── DOCUMENT_CHECKLIST.md       # ✅ Quality checklist
-├── DOCUMENT_GOVERNANCE.md      # 📋 Governance standards
-│
-├── ARCHITECTURE.md             # 🏗️ Architecture design
-├── TECHNICAL_IMPLEMENTATION.md # 🔧 Technical details
-│
-├── FEATURES_SUMMARY.md         # 📋 Feature summary
-├── FEATURES.md                 # 📝 Detailed features
-├── LAYOUT_COMPARISON.md        # 📊 Layout comparison
-├── XMIND_LAYOUT_GUIDE.md       # 🎨 Default layout guide
-│
-├── PROJECT_STATUS.md           # 📊 Current project status
-├── PRODUCT_STRATEGY.md         # 🎯 Product strategy (internal)
-│
-└── LICENSE_GUIDE.md            # ⚖️ License guide
-```
-
-**Chinese documentation:**
-- [zh-CN/](zh-CN/) - Chinese translated versions
-
----
-
-## 🌍 Internationalization
-
-This project supports multiple languages:
-
-| Language | Documentation |
-|----------|---------------|
-| 🇬🇧 English | Main documentation (this directory) |
-| 🇨🇳 简体中文 | [zh-CN/INDEX.md](zh-CN/INDEX.md) |
-
-**Want to help translate?** Check out [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
 ## 📞 Need Help?
 
-- 📖 Browse this documentation index
+- 📖 Check [README.md](../README.md) for usage guide
 - 💬 Open an issue on GitHub
 - ✉️ Contact the maintainers
 
 ---
 
-*Last updated: 2026-04-03*  
+*Last updated: 2026-04-17*  
 *Maintained by: Cogist Team*
