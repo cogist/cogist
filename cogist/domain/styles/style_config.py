@@ -12,14 +12,32 @@ MAX_TEXT_WIDTH = 250.0
 class NodeStyleConfig:
     """Complete node style configuration"""
 
+    # Shape
+    shape: str = "rounded_rect"  # rect, rounded_rect, circle
+    
+    # Font
     font_size: int = 16
-    font_weight: str = "Normal"  # Normal, Bold
+    font_weight: str = "Normal"  # Normal, Bold, ExtraBold, Light
+    font_family: str = "Arial"
+    font_italic: bool = False
+    font_underline: bool = False
+    
+    # Padding and sizing
     padding_width: int = 10
     padding_height: int = 8
     border_radius: int = 8
     max_text_width: float = 250.0
+    
+    # Border
+    border_style: str = "solid"  # solid, dashed, dotted, dash_dot
+    border_width: int = 2
+    
+    # Colors
     bg_color: str | None = None  # None means use template default
     text_color: str | None = "#000000"
+    border_color: str | None = None
+    
+    # Special flags
     no_background: bool = False
 
     def merge(self, other: "NodeStyleConfig") -> "NodeStyleConfig":
@@ -59,9 +77,10 @@ class LayoutConfig:
 class EdgeConfig:
     """Edge style configuration"""
 
+    connector_type: str = "bezier"  # straight, orthogonal, bezier
+    connector_style: str = "solid"  # solid, dashed, dotted
     width: float = 2.0
-    color: str = "#CCCCCC"
-    style: str = "solid"  # solid, dashed
+    color: str = "#666666"
 
 
 @dataclass
@@ -108,6 +127,9 @@ class MindMapStyle:
     """Complete mind map style configuration"""
 
     name: str = "Default"
+    
+    # Canvas
+    canvas_bg_color: str = "#FFFFFF"
 
     # Node styles by depth
     depth_styles: dict[int, NodeStyleConfig] = field(default_factory=dict)
@@ -120,47 +142,100 @@ class MindMapStyle:
     edge: EdgeConfig = field(default_factory=EdgeConfig)
 
     def __post_init__(self):
-        """Initialize default depth styles if not provided"""
+        """Initialize default depth styles and priority scheme if not provided"""
         if not self.depth_styles:
             self._init_default_depth_styles()
+        
+        # Initialize priority scheme with critical and minor overrides
+        if self.priority_scheme.name == "Default":
+            self._init_default_priority_scheme()
 
     def _init_default_depth_styles(self):
         """Initialize default depth-based styles (from current implementation)"""
         self.depth_styles = {
             0: NodeStyleConfig(
+                shape="rounded_rect",
                 font_size=22,
                 font_weight="Bold",
+                font_family="Arial",
                 padding_width=20,
                 padding_height=16,
                 border_radius=10,
+                border_style="solid",
+                border_width=2,
+                bg_color="#2196F3",
+                text_color="#FFFFFF",
+                border_color="#1976D2",
                 max_text_width=MAX_TEXT_WIDTH,
             ),
             1: NodeStyleConfig(
+                shape="rounded_rect",
                 font_size=18,
-                font_weight="Bold",
+                font_weight="Normal",
+                font_family="Arial",
                 padding_width=20,
                 padding_height=16,
                 border_radius=8,
+                border_style="solid",
+                border_width=2,
+                bg_color="#4CAF50",
+                text_color="#FFFFFF",
+                border_color="#388E3C",
                 max_text_width=MAX_TEXT_WIDTH,
             ),
             2: NodeStyleConfig(
+                shape="rounded_rect",
                 font_size=16,
                 font_weight="Normal",
+                font_family="Arial",
                 padding_width=8,
                 padding_height=6,
                 border_radius=6,
+                border_style="solid",
+                border_width=2,
+                bg_color="#FF9800",
+                text_color="#FFFFFF",
+                border_color="#F57C00",
                 max_text_width=MAX_TEXT_WIDTH,
             ),
             3: NodeStyleConfig(
+                shape="rounded_rect",
                 font_size=14,
                 font_weight="Normal",
+                font_family="Arial",
                 padding_width=6,
                 padding_height=4,
                 border_radius=4,
+                border_style="solid",
+                border_width=2,
+                bg_color="#9E9E9E",
+                text_color="#FFFFFF",
+                border_color="#757575",
                 max_text_width=MAX_TEXT_WIDTH,
                 no_background=True,
             ),
         }
+
+    def _init_default_priority_scheme(self):
+        """Initialize priority scheme with critical and minor overrides"""
+        # Critical (LEVEL_2) - Red, bold, thick border
+        self.priority_scheme.levels[PriorityLevel.LEVEL_2].style_override = NodeStyleConfig(
+            bg_color="#D32F2F",
+            text_color="#FFFFFF",
+            font_size=24,
+            font_weight="ExtraBold",
+            border_width=4,
+            border_color="#B71C1C",
+        )
+        
+        # Unimportant (LEVEL_0) - Gray, light
+        self.priority_scheme.levels[PriorityLevel.LEVEL_0].style_override = NodeStyleConfig(
+            bg_color="#BDBDBD",
+            text_color="#FFFFFF",
+            font_size=18,
+            font_weight="Light",
+            border_width=1,
+        )
 
     def get_depth_style(self, depth: int) -> NodeStyleConfig:
         """Get base style for a given depth"""
