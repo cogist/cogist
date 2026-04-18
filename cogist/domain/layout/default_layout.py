@@ -6,7 +6,12 @@ Based on the original default_layout_demo.py logic.
 
 from __future__ import annotations
 
-from cogist.domain.layout.base import BaseLayout, LayoutMetadata, LayoutConfig, DEFAULT_LAYOUT_CONFIG
+from cogist.domain.layout.base import (
+    DEFAULT_LAYOUT_CONFIG,
+    BaseLayout,
+    DefaultLayoutConfig,
+    LayoutMetadata,
+)
 
 
 class DefaultLayout(BaseLayout):
@@ -30,7 +35,7 @@ class DefaultLayout(BaseLayout):
         supports_mixed=False,
     )
 
-    def __init__(self, config: LayoutConfig | None = None):
+    def __init__(self, config: DefaultLayoutConfig | None = None):
         """
         Initialize layout algorithm.
 
@@ -38,6 +43,10 @@ class DefaultLayout(BaseLayout):
             config: Layout configuration (uses default if not provided)
         """
         super().__init__(config or DEFAULT_LAYOUT_CONFIG)
+
+    def _get_default_config(self) -> DefaultLayoutConfig:
+        """Return default configuration for DefaultLayout"""
+        return DEFAULT_LAYOUT_CONFIG
 
     def _get_level_spacing_for_depth(self, depth: int) -> float:
         """
@@ -82,8 +91,8 @@ class DefaultLayout(BaseLayout):
         """
         # Extract focused_node_id from context if provided
         focused_node_id = None
-        if context and 'focused_node_id' in context:
-            focused_node_id = context['focused_node_id']
+        if context and "focused_node_id" in context:
+            focused_node_id = context["focused_node_id"]
 
         # Node sizes are already set from UI layer measurement
         # No need to estimate - we use actual rendered sizes
@@ -234,12 +243,18 @@ class DefaultLayout(BaseLayout):
         # (locking leaf nodes is unnecessary since they have no subtree to preserve)
         locked_node_for_rebalance = None  # Default: no locked node
 
-        if locked_side_child and locked_side_child in nodes and locked_side_child.children:
+        if (
+            locked_side_child
+            and locked_side_child in nodes
+            and locked_side_child.children
+        ):
             if locked_side_child in left_original:
                 pass  # Locked node is on the left side
             elif locked_side_child in right_original:
                 pass  # Locked node is on the right side
-            locked_node_for_rebalance = locked_side_child  # Only set if we're actually locking
+            locked_node_for_rebalance = (
+                locked_side_child  # Only set if we're actually locking
+            )
 
         # Step 3: Calculate heights for each side
         left_heights = [self._calculate_subtree_height(node) for node in left_original]

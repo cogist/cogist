@@ -8,98 +8,50 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Union
 
 from cogist.domain.entities.node import Node
 
 
+# === Base Configuration Classes ===
+
 @dataclass
-class LayoutConfig:
-    """Layout configuration (pure geometric parameters, independent of visual style)
-
-    This configuration only affects node position calculation, not appearance.
-
-    Attributes:
-        level_spacing: Default horizontal spacing between parent and child nodes
-        sibling_spacing: Default vertical spacing between sibling nodes
-        level_spacing_by_depth: Depth-specific level spacing overrides
-        sibling_spacing_by_depth: Depth-specific sibling spacing overrides
-        custom_params: Layout-algorithm-specific custom parameters
-    """
-
-    # === General spacing parameters ===
-    level_spacing: float = 60.0          # Parent to child spacing
-    sibling_spacing: float = 45.0        # Sibling node spacing
-
-    # === Depth-specific spacing (optional) ===
-    level_spacing_by_depth: dict[int, float] = field(default_factory=dict)
-    sibling_spacing_by_depth: dict[int, float] = field(default_factory=dict)
-
-    # === Layout-specific custom parameters ===
-    custom_params: dict[str, Any] = field(default_factory=dict)
-
-    def get_level_spacing(self, depth: int) -> float:
-        """Get level spacing for a specific depth
-
-        Args:
-            depth: Parent node's depth in tree
-
-        Returns:
-            Horizontal spacing for this parent-child relationship
-        """
-        if depth in self.level_spacing_by_depth:
-            return self.level_spacing_by_depth[depth]
-        return self.level_spacing
-
-    def get_sibling_spacing(self, depth: int) -> float:
-        """Get sibling spacing for a specific depth
-
-        Args:
-            depth: Node depth in tree
-
-        Returns:
-            Vertical spacing between siblings at this depth
-        """
-        if depth in self.sibling_spacing_by_depth:
-            return self.sibling_spacing_by_depth[depth]
-        return self.sibling_spacing
+class BaseLayoutConfig:
+    """Base layout configuration (marker base class)"""
+    pass
 
 
-# === Preset layout configurations ===
-
-DEFAULT_LAYOUT_CONFIG = LayoutConfig(
-    level_spacing=80.0,
-    sibling_spacing=60.0,
-    level_spacing_by_depth={
+@dataclass
+class DefaultLayoutConfig(BaseLayoutConfig):
+    """Default layout configuration (left-right balanced)"""
+    level_spacing: float = 80.0
+    sibling_spacing: float = 60.0
+    level_spacing_by_depth: dict[int, float] = field(default_factory=lambda: {
         0: 80.0,   # Root → Level 1
         1: 60.0,   # Level 1 → Level 2
         2: 40.0,   # Level 2+
-    },
-    sibling_spacing_by_depth={
+    })
+    sibling_spacing_by_depth: dict[int, float] = field(default_factory=lambda: {
         0: 60.0,   # Level 1 siblings
         1: 45.0,   # Level 2 siblings
         2: 35.0,   # Level 3+ siblings
-    }
-)
+    })
+
+
+# === Type Union for all layout configs ===
+
+LayoutConfigType = Union[DefaultLayoutConfig]
+"""Union type of all layout configuration types.
+
+Add new config types here when implementing new layouts:
+    LayoutConfigType = Union[DefaultLayoutConfig, TreeLayoutConfig, ...]
+"""
+
+
+# === Preset configurations ===
+
+DEFAULT_LAYOUT_CONFIG = DefaultLayoutConfig()
 """Default layout configuration for DefaultLayout algorithm"""
-
-
-TREE_LAYOUT_CONFIG = LayoutConfig(
-    level_spacing=100.0,     # Larger vertical spacing for tree layout
-    sibling_spacing=80.0,    # Wider horizontal spacing
-)
-"""Preset configuration for TreeLayout (top-down tree structure)"""
-
-
-RADIAL_LAYOUT_CONFIG = LayoutConfig(
-    level_spacing=120.0,     # Radius increment for radial layout
-    sibling_spacing=30.0,    # Angular spacing (converted to radians)
-    custom_params={
-        "start_angle": 0.0,
-        "angle_step": 30.0,
-    }
-)
-"""Preset configuration for RadialLayout (radial/circular structure)"""
 
 
 class LayoutMetadata:
@@ -147,13 +99,24 @@ class BaseLayout(ABC):
     # Subclasses must define metadata
     METADATA: LayoutMetadata
 
-    def __init__(self, config: LayoutConfig | None = None):
+    def __init__(self, config: LayoutConfigType | None = None):
         """Initialize layout algorithm
 
         Args:
             config: Layout configuration (uses default if not provided)
         """
-        self.config = config or LayoutConfig()
+        self.config = config or self._get_default_config()
+    
+    @abstractmethod
+    def _get_default_config(self) -> LayoutConfigType:
+        """Return default configuration for this layout
+        
+        Subclasses must implement this to provide their default config.
+        
+        Returns:
+            Default configuration instance
+        """
+        pass
 
     @abstractmethod
     def layout(

@@ -10,7 +10,11 @@ from pathlib import Path
 from cogist.application.commands.command_history import CommandHistory
 from cogist.application.services.node_service import NodeService
 from cogist.domain.entities.node import Node
-from cogist.domain.layout import DefaultLayout, LayoutConfig, DEFAULT_LAYOUT_CONFIG
+from cogist.domain.layout import (
+    DEFAULT_LAYOUT_CONFIG,
+    DefaultLayout,
+    DefaultLayoutConfig,
+)
 from cogist.domain.repositories import MindMapRepositoryInterface
 from cogist.infrastructure.repositories.mindmap_repository import MindMapRepository
 
@@ -26,10 +30,10 @@ class MindMapService:
     def __init__(
         self,
         repository: MindMapRepositoryInterface | None = None,
-        layout_config: LayoutConfig | None = None,
+        layout_config: DefaultLayoutConfig | None = None,
     ):
         """Initialize the mind map service.
-        
+
         Args:
             repository: Repository implementation (uses MindMapRepository if not provided)
             layout_config: Optional layout configuration (uses default if not provided)
@@ -192,7 +196,10 @@ class MindMapService:
         return self.node_service.can_redo()
 
     def relayout(
-        self, canvas_width: float = 1200.0, canvas_height: float = 800.0, context: dict | None = None
+        self,
+        canvas_width: float = 1200.0,
+        canvas_height: float = 800.0,
+        context: dict | None = None,
     ) -> None:
         """
         Recalculate the layout of the mind map.
@@ -206,10 +213,10 @@ class MindMapService:
             return
 
         self.layout_engine.layout(self.root_node, canvas_width, canvas_height, context)
-    
-    def set_layout_config(self, config: LayoutConfig) -> None:
+
+    def set_layout_config(self, config: DefaultLayoutConfig) -> None:
         """Update the layout configuration and relayout.
-        
+
         Args:
             config: New layout configuration
         """
