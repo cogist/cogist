@@ -397,44 +397,8 @@ class StylePanel(QWidget):
                 border-color: #A0A0A0;
             }
         """)
-        self.font_family_menu = QMenu()
-        self.font_family_menu.aboutToShow.connect(
-            lambda: self._adjust_menu_width(self.font_family_menu, self.font_family_combo)
-        )
-        
-        # Get system fonts using QFontDatabase
-        from PySide6.QtGui import QFontDatabase
-        font_database = QFontDatabase()
-        font_families = font_database.families()  # Get all available font families
-        
-        # Add common fonts first, then others
-        common_fonts = ["Arial", "Helvetica", "Times New Roman", "Courier New", "Georgia", "Verdana"]
-        added_fonts = set()
-        
-        # Add common fonts first
-        for family in common_fonts:
-            if family in font_families:
-                action = self.font_family_menu.addAction(family)
-                action.triggered.connect(lambda _, f=family: self._set_font_family(f))
-                added_fonts.add(family)
-        
-        # Add separator
-        self.font_family_menu.addSeparator()
-        
-        # Add remaining fonts (limit to reasonable number for performance)
-        other_count = 0
-        for family in sorted(font_families):
-            if family not in added_fonts and other_count < 50:  # Limit to 50 additional fonts
-                action = self.font_family_menu.addAction(family)
-                action.triggered.connect(lambda _, f=family: self._set_font_family(f))
-                other_count += 1
-        
-        # Add "More Fonts..." option to open system font dialog
-        self.font_family_menu.addSeparator()
-        more_fonts_action = self.font_family_menu.addAction("More Fonts...")
-        more_fonts_action.triggered.connect(self._open_font_dialog)
-        
-        self.font_family_combo.setMenu(self.font_family_menu)
+        # Directly open font dialog on click
+        self.font_family_combo.clicked.connect(self._open_font_dialog)
         node_grid.addWidget(self.font_family_combo, 3, 1)
 
         # Font size
@@ -784,14 +748,8 @@ class StylePanel(QWidget):
         self.layer_styles[self.current_layer]["shape"] = shape_map.get(value, "rounded_rect")
         self._update_preview()
 
-    def _set_font_family(self, value: str):
-        """Set font family."""
-        self.font_family_combo.setText(value)
-        self.layer_styles[self.current_layer]["font_family"] = value
-        self._update_preview()
-    
     def _open_font_dialog(self):
-        """Open system font dialog for more font options."""
+        """Open system font dialog for font selection."""
         from PySide6.QtWidgets import QFontDialog
         from PySide6.QtGui import QFont
         
@@ -809,13 +767,23 @@ class StylePanel(QWidget):
         }
         current_weight = weight_map.get(current_weight_str, QFont.Normal)
         
-        # Create initial font
-        initial_font = QFont(current_family, current_size, current_weight)
+        # Create initial font with larger size for better visibility in dialog
+        initial_font = QFont(current_family, max(current_size, 18), current_weight)
         
-        # Open font dialog
-        font, ok = QFontDialog.getFont(initial_font, self, "Select Font")
+        # Use Qt's font dialog (not native) for better control
+        # Don'tUseNativeDialog allows Qt to use its own implementation
+        dialog = QFontDialog(initial_font, self)
+        dialog.setOption(QFontDialog.DontUseNativeDialog)
+        dialog.setWindowTitle("Select Font")
         
-        if ok:
+        # Set dialog font to larger size for better readability
+        dialog_font = dialog.font()
+        dialog_font.setPointSize(13)
+        dialog.setFont(dialog_font)
+        
+        if dialog.exec() == QFontDialog.Accepted:
+            font = dialog.selectedFont()
+            
             # Update all font properties
             self.layer_styles[self.current_layer]["font_family"] = font.family()
             self.layer_styles[self.current_layer]["font_size"] = font.pointSize()
