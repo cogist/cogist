@@ -6,10 +6,10 @@ Based on the original default_layout_demo.py logic.
 
 from __future__ import annotations
 
-from cogist.domain.styles import MindMapStyle
+from cogist.domain.layout.base import BaseLayout, LayoutMetadata, LayoutConfig, DEFAULT_LAYOUT_CONFIG
 
 
-class DefaultLayout:
+class DefaultLayout(BaseLayout):
     """
     Default style layout algorithm.
 
@@ -23,14 +23,21 @@ class DefaultLayout:
     It calculates positions but doesn't render anything.
     """
 
-    def __init__(self, style: MindMapStyle | None = None):
+    METADATA = LayoutMetadata(
+        name="Default",
+        description="左右平衡式布局（Default 风格）",
+        category="general",
+        supports_mixed=False,
+    )
+
+    def __init__(self, config: LayoutConfig | None = None):
         """
         Initialize layout algorithm.
 
         Args:
-            style: Mind map style configuration (uses default if not provided)
+            config: Layout configuration (uses default if not provided)
         """
-        self.style = style or MindMapStyle()
+        super().__init__(config or DEFAULT_LAYOUT_CONFIG)
 
     def _get_level_spacing_for_depth(self, depth: int) -> float:
         """
@@ -42,7 +49,7 @@ class DefaultLayout:
         Returns:
             Horizontal spacing for this parent-child relationship
         """
-        return self.style.get_level_spacing(depth)
+        return self.config.get_level_spacing(depth)
 
     def _get_sibling_spacing_for_depth(self, depth: int) -> float:
         """
@@ -54,14 +61,14 @@ class DefaultLayout:
         Returns:
             Sibling spacing for this depth
         """
-        return self.style.get_sibling_spacing(depth)
+        return self.config.get_sibling_spacing(depth)
 
     def layout(
         self,
         root_node,
         canvas_width: float = 1200.0,
         canvas_height: float = 800.0,
-        focused_node_id: str | None = None,
+        context: dict | None = None,
     ) -> None:
         """
         Apply Default layout to a node tree.
@@ -70,8 +77,13 @@ class DefaultLayout:
             root_node: The root node of the mind map
             canvas_width: Canvas width for centering
             canvas_height: Canvas height for centering
-            focused_node_id: ID of the currently focused/selected node (to preserve its side)
+            context: Optional context information
+                     - focused_node_id: ID of the currently focused/selected node
         """
+        # Extract focused_node_id from context if provided
+        focused_node_id = None
+        if context and 'focused_node_id' in context:
+            focused_node_id = context['focused_node_id']
 
         # Node sizes are already set from UI layer measurement
         # No need to estimate - we use actual rendered sizes

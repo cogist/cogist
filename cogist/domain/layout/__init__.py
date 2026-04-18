@@ -11,6 +11,7 @@ from .base import (
     TREE_LAYOUT_CONFIG,
     RADIAL_LAYOUT_CONFIG,
 )
+from .default_layout import DefaultLayout
 
 __all__ = [
     'BaseLayout',
@@ -19,4 +20,5 @@ __all__ = [
     'DEFAULT_LAYOUT_CONFIG',
     'TREE_LAYOUT_CONFIG',
     'RADIAL_LAYOUT_CONFIG',
+    'DefaultLayout',
 ]

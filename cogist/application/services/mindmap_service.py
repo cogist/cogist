@@ -10,7 +10,7 @@ from pathlib import Path
 from cogist.application.commands.command_history import CommandHistory
 from cogist.application.services.node_service import NodeService
 from cogist.domain.entities.node import Node
-from cogist.domain.layout.default_layout import DefaultLayout
+from cogist.domain.layout import DefaultLayout, LayoutConfig, DEFAULT_LAYOUT_CONFIG
 from cogist.infrastructure.repositories.mindmap_repository import MindMapRepository
 
 
@@ -22,12 +22,16 @@ class MindMapService:
     and loading mind maps.
     """
 
-    def __init__(self):
-        """Initialize the mind map service."""
+    def __init__(self, layout_config: LayoutConfig | None = None):
+        """Initialize the mind map service.
+        
+        Args:
+            layout_config: Optional layout configuration (uses default if not provided)
+        """
         self.command_history = CommandHistory()
         self.node_service = NodeService(self.command_history)
         self.repository = MindMapRepository()
-        self.layout_engine = DefaultLayout()
+        self.layout_engine = DefaultLayout(layout_config or DEFAULT_LAYOUT_CONFIG)
 
         self.root_node: Node | None = None
         self.current_file: Path | None = None
@@ -181,7 +185,7 @@ class MindMapService:
         return self.node_service.can_redo()
 
     def relayout(
-        self, canvas_width: float = 1200.0, canvas_height: float = 800.0
+        self, canvas_width: float = 1200.0, canvas_height: float = 800.0, context: dict | None = None
     ) -> None:
         """
         Recalculate the layout of the mind map.
@@ -189,11 +193,20 @@ class MindMapService:
         Args:
             canvas_width: Width of the canvas
             canvas_height: Height of the canvas
+            context: Optional context information (e.g., focused_node_id)
         """
         if self.root_node is None:
             return
 
-        self.layout_engine.layout(self.root_node, canvas_width, canvas_height)
+        self.layout_engine.layout(self.root_node, canvas_width, canvas_height, context)
+    
+    def set_layout_config(self, config: LayoutConfig) -> None:
+        """Update the layout configuration and relayout.
+        
+        Args:
+            config: New layout configuration
+        """
+        self.layout_engine = DefaultLayout(config)
 
     def get_root_node(self) -> Node | None:
         """Get the root node of the current mind map."""
