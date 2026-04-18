@@ -1006,15 +1006,8 @@ class StylePanel(QWidget):
             # Apply canvas background color
             if "canvas" in self.layer_styles:
                 canvas_bg = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
-                print(f"[DEBUG] Applying canvas bg: {canvas_bg}")
                 from PySide6.QtGui import QBrush, QColor
-                color = QColor(canvas_bg)
-                print(f"[DEBUG] QColor valid: {color.isValid()}, alpha: {color.alpha()}")
-                mindmap_view.scene.setBackgroundBrush(QBrush(color))
-                print(f"[DEBUG] Background brush applied")
+                mindmap_view.scene.setBackgroundBrush(QBrush(QColor(canvas_bg)))
             
             # TODO: Apply node styles and trigger layout refresh
             # This requires integrating with MindMapService
-            print(f"Style updated for {self.current_layer}")
-        else:
-            print(f"[DEBUG] Could not find main window")
