@@ -728,7 +728,7 @@ class MindMapView(QGraphicsView):
                 # Apply edge style from style_config
                 if hasattr(self, 'style_config') and self.style_config:
                     edge_style_config = {
-                        "connector_color": edge_color,
+                        "connector_color": self.style_config.edge.color,
                         "start_width": self.style_config.edge.start_width,
                         "end_width": self.style_config.edge.end_width,
                         "connector_style": self.style_config.edge.connector_style,
