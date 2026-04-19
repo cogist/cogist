@@ -351,37 +351,75 @@ class StylePanel(QWidget):
         self.shape_combo.setMenu(self.shape_menu)
         node_grid.addWidget(self.shape_combo, 0, 1)
 
+        # Corner radius (right after shape)
+        radius_label = QLabel("Radius:")
+        radius_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        radius_label.setMinimumWidth(label_width)
+        node_grid.addWidget(radius_label, 1, 0)
+        self.radius_spin = QSpinBox()
+        self.radius_spin.setFixedHeight(widget_height)
+        self.radius_spin.setRange(0, 30)
+        self.radius_spin.setValue(10)
+        self.radius_spin.setAlignment(Qt.AlignLeft)
+        self.radius_spin.valueChanged.connect(self._update_preview)
+        node_grid.addWidget(self.radius_spin, 1, 1)
+
         # Background color
         bg_label = QLabel("Background:")
         bg_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         bg_label.setMinimumWidth(label_width)
-        node_grid.addWidget(bg_label, 1, 0)
+        node_grid.addWidget(bg_label, 2, 0)
         self.bg_color_btn = QPushButton()
         self.bg_color_btn.setFixedHeight(widget_height)
         self.bg_color_btn.setStyleSheet(
             "background-color: #2196F3; border: 1px solid #ccc; border-radius: 6px;"
         )
         self.bg_color_btn.clicked.connect(lambda: self._pick_color("bg_color"))
-        node_grid.addWidget(self.bg_color_btn, 1, 1)
+        node_grid.addWidget(self.bg_color_btn, 2, 1)
 
         # Text color
         text_label = QLabel("Text Color:")
         text_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         text_label.setMinimumWidth(label_width)
-        node_grid.addWidget(text_label, 2, 0)
+        node_grid.addWidget(text_label, 3, 0)
         self.text_color_btn = QPushButton()
         self.text_color_btn.setFixedHeight(widget_height)
         self.text_color_btn.setStyleSheet(
             "background-color: #FFFFFF; border: 1px solid #ccc; border-radius: 6px;"
         )
         self.text_color_btn.clicked.connect(lambda: self._pick_color("text_color"))
-        node_grid.addWidget(self.text_color_btn, 2, 1)
+        node_grid.addWidget(self.text_color_btn, 3, 1)
+
+        # Padding (right after text color)
+        padding_w_label = QLabel("Padding W:")
+        padding_w_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        padding_w_label.setMinimumWidth(label_width)
+        node_grid.addWidget(padding_w_label, 4, 0)
+        self.padding_w_spin = QSpinBox()
+        self.padding_w_spin.setFixedHeight(widget_height)
+        self.padding_w_spin.setRange(0, 50)
+        self.padding_w_spin.setValue(20)
+        self.padding_w_spin.setAlignment(Qt.AlignLeft)
+        self.padding_w_spin.valueChanged.connect(self._update_preview)
+        node_grid.addWidget(self.padding_w_spin, 4, 1)
+
+        padding_h_label = QLabel("Padding H:")
+        padding_h_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        padding_h_label.setMinimumWidth(label_width)
+        node_grid.addWidget(padding_h_label, 5, 0)
+        self.padding_h_spin = QSpinBox()
+        self.padding_h_spin.setFixedHeight(widget_height)
+        self.padding_h_spin.setRange(0, 50)
+        self.padding_h_spin.setValue(16)
+        self.padding_h_spin.setAlignment(Qt.AlignLeft)
+        self.padding_h_spin.valueChanged.connect(self._update_preview)
+        node_grid.addWidget(self.padding_h_spin, 5, 1)
 
         # Font family
         font_family_label = QLabel("Font:")
         font_family_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         font_family_label.setMinimumWidth(label_width)
-        node_grid.addWidget(font_family_label, 3, 0)
+        node_grid.addWidget(font_family_label, 6, 0)
         self.font_family_combo = QPushButton(self._get_localized_font_name("Arial"))
         self.font_family_combo.setFixedHeight(widget_height)
         self.font_family_combo.setStyleSheet("""
@@ -400,26 +438,26 @@ class StylePanel(QWidget):
         """)
         # Directly open font dialog on click
         self.font_family_combo.clicked.connect(self._show_font_menu)
-        node_grid.addWidget(self.font_family_combo, 3, 1)
+        node_grid.addWidget(self.font_family_combo, 6, 1)
 
         # Font size
         font_size_label = QLabel("Font Size:")
         font_size_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         font_size_label.setMinimumWidth(label_width)
-        node_grid.addWidget(font_size_label, 4, 0)
+        node_grid.addWidget(font_size_label, 7, 0)
         self.font_size_spin = QSpinBox()
         self.font_size_spin.setFixedHeight(widget_height)
         self.font_size_spin.setRange(8, 72)
         self.font_size_spin.setValue(22)
         self.font_size_spin.setAlignment(Qt.AlignLeft)
         self.font_size_spin.valueChanged.connect(self._update_preview)
-        node_grid.addWidget(self.font_size_spin, 4, 1)
+        node_grid.addWidget(self.font_size_spin, 7, 1)
 
         # Font weight
         font_weight_label = QLabel("Weight:")
         font_weight_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         font_weight_label.setMinimumWidth(label_width)
-        node_grid.addWidget(font_weight_label, 5, 0)
+        node_grid.addWidget(font_weight_label, 8, 0)
         self.font_weight_combo = QPushButton("Bold")
         self.font_weight_combo.setFixedHeight(widget_height)
         self.font_weight_combo.setStyleSheet("""
@@ -445,13 +483,13 @@ class StylePanel(QWidget):
             action = self.font_weight_menu.addAction(option)
             action.triggered.connect(lambda _, opt=option: self._set_font_weight(opt))
         self.font_weight_combo.setMenu(self.font_weight_menu)
-        node_grid.addWidget(self.font_weight_combo, 5, 1)
+        node_grid.addWidget(self.font_weight_combo, 8, 1)
 
         # Font style checkboxes (Italic, Underline, Strikeout)
         font_style_label = QLabel("Font Style:")
         font_style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         font_style_label.setMinimumWidth(label_width)
-        node_grid.addWidget(font_style_label, 6, 0)
+        node_grid.addWidget(font_style_label, 9, 0)
 
         # Create a vertical layout for the three checkboxes
         style_layout = QVBoxLayout()
@@ -478,45 +516,7 @@ class StylePanel(QWidget):
         # Create a container widget for the checkboxes
         style_container = QWidget()
         style_container.setLayout(style_layout)
-        node_grid.addWidget(style_container, 6, 1)
-
-        # Padding
-        padding_w_label = QLabel("Padding W:")
-        padding_w_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        padding_w_label.setMinimumWidth(label_width)
-        node_grid.addWidget(padding_w_label, 7, 0)
-        self.padding_w_spin = QSpinBox()
-        self.padding_w_spin.setFixedHeight(widget_height)
-        self.padding_w_spin.setRange(0, 50)
-        self.padding_w_spin.setValue(20)
-        self.padding_w_spin.setAlignment(Qt.AlignLeft)
-        self.padding_w_spin.valueChanged.connect(self._update_preview)
-        node_grid.addWidget(self.padding_w_spin, 7, 1)
-
-        padding_h_label = QLabel("Padding H:")
-        padding_h_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        padding_h_label.setMinimumWidth(label_width)
-        node_grid.addWidget(padding_h_label, 8, 0)
-        self.padding_h_spin = QSpinBox()
-        self.padding_h_spin.setFixedHeight(widget_height)
-        self.padding_h_spin.setRange(0, 50)
-        self.padding_h_spin.setValue(16)
-        self.padding_h_spin.setAlignment(Qt.AlignLeft)
-        self.padding_h_spin.valueChanged.connect(self._update_preview)
-        node_grid.addWidget(self.padding_h_spin, 8, 1)
-
-        # Corner radius
-        radius_label = QLabel("Radius:")
-        radius_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        radius_label.setMinimumWidth(label_width)
-        node_grid.addWidget(radius_label, 9, 0)
-        self.radius_spin = QSpinBox()
-        self.radius_spin.setFixedHeight(widget_height)
-        self.radius_spin.setRange(0, 30)
-        self.radius_spin.setValue(10)
-        self.radius_spin.setAlignment(Qt.AlignLeft)
-        self.radius_spin.valueChanged.connect(self._update_preview)
-        node_grid.addWidget(self.radius_spin, 9, 1)
+        node_grid.addWidget(style_container, 9, 1)
 
         self.node_style_group.setLayout(node_grid)
         layout.addWidget(self.node_style_group)
@@ -751,6 +751,19 @@ class StylePanel(QWidget):
             "Circle": "circle",
         }
         self.layer_styles[self.current_layer]["shape"] = shape_map.get(value, "rounded_rect")
+        
+        # Show/hide radius control based on shape
+        is_rounded = (value == "Rounded Rect")
+        self.radius_spin.setVisible(is_rounded)
+        # Also hide/show the radius label (find it in the grid)
+        layout = self.node_style_group.layout()
+        if layout:
+            for i in range(layout.rowCount()):
+                item = layout.itemAtPosition(i, 0)
+                if item and isinstance(item.widget(), QLabel) and item.widget().text() == "Radius:":
+                    item.widget().setVisible(is_rounded)
+                    break
+        
         self._update_preview()
 
     def _get_localized_font_name(self, font_family: str) -> str:
@@ -1104,7 +1117,20 @@ class StylePanel(QWidget):
             "rounded_rect": "Rounded Rect",
             "circle": "Circle",
         }
-        self.shape_combo.setText(shape_map.get(style.get("shape", "rounded_rect"), "Rounded Rect"))
+        current_shape = shape_map.get(style.get("shape", "rounded_rect"), "Rounded Rect")
+        self.shape_combo.setText(current_shape)
+        
+        # Show/hide radius control based on shape
+        is_rounded = (current_shape == "Rounded Rect")
+        self.radius_spin.setVisible(is_rounded)
+        # Also hide/show the radius label
+        layout = self.node_style_group.layout()
+        if layout:
+            for i in range(layout.rowCount()):
+                item = layout.itemAtPosition(i, 0)
+                if item and isinstance(item.widget(), QLabel) and item.widget().text() == "Radius:":
+                    item.widget().setVisible(is_rounded)
+                    break
 
         # Colors
         bg_color = style.get("bg_color", "#2196F3")
