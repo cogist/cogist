@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
     QColorDialog,
     QGridLayout,
     QGroupBox,
-    QHBoxLayout,
     QLabel,
     QMenu,
     QPushButton,
@@ -751,7 +750,7 @@ class StylePanel(QWidget):
             "Circle": "circle",
         }
         self.layer_styles[self.current_layer]["shape"] = shape_map.get(value, "rounded_rect")
-        
+
         # Show/hide radius control based on shape
         is_rounded = (value == "Rounded Rect")
         self.radius_spin.setVisible(is_rounded)
@@ -763,7 +762,7 @@ class StylePanel(QWidget):
                 if item and isinstance(item.widget(), QLabel) and item.widget().text() == "Radius:":
                     item.widget().setVisible(is_rounded)
                     break
-        
+
         self._update_preview()
 
     def _get_localized_font_name(self, font_family: str) -> str:
@@ -1119,7 +1118,7 @@ class StylePanel(QWidget):
         }
         current_shape = shape_map.get(style.get("shape", "rounded_rect"), "Rounded Rect")
         self.shape_combo.setText(current_shape)
-        
+
         # Show/hide radius control based on shape
         is_rounded = (current_shape == "Rounded Rect")
         self.radius_spin.setVisible(is_rounded)
@@ -1197,14 +1196,7 @@ class StylePanel(QWidget):
 
         # Connector width: reverse mapping from start_width
         start_width = self.connector_style.get("start_width", 6.0)
-        is_straight = (self.connector_style.get("connector_type") == "straight")
-
-        if is_straight:
-            # For straight lines, UI value = start_width
-            ui_width = int(start_width)
-        else:
-            # For tapered lines, UI value = start_width (end_width = start_width + 4)
-            ui_width = int(start_width)
+        ui_width = int(start_width)
 
         # Clamp to valid range
         ui_width = max(1, min(10, ui_width))
