@@ -448,14 +448,14 @@ class StylePanel(QWidget):
         node_grid.addWidget(self.font_weight_combo, 5, 1)
 
         # Font style checkboxes (Italic, Underline, Strikeout)
-        font_style_label = QLabel("Style:")
+        font_style_label = QLabel("Font Style:")
         font_style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         font_style_label.setMinimumWidth(label_width)
         node_grid.addWidget(font_style_label, 6, 0)
 
-        # Create a horizontal layout for the three checkboxes
-        style_layout = QHBoxLayout()
-        style_layout.setSpacing(8)
+        # Create a vertical layout for the three checkboxes
+        style_layout = QVBoxLayout()
+        style_layout.setSpacing(4)
         style_layout.setContentsMargins(0, 0, 0, 0)
 
         self.font_italic_check = QCheckBox("Italic")
