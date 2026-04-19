@@ -969,7 +969,73 @@ class StylePanel(QWidget):
         """Set font family and update preview."""
         self.layer_styles[self.current_layer]["font_family"] = family
         self.font_family_combo.setText(self._get_localized_font_name(family))
+
+        # Update font weight options based on selected font
+        self._update_font_weight_options(family)
+
         self._update_preview()
+
+    def _update_font_weight_options(self, font_family: str):
+        """Update font weight menu based on available weights for the font.
+
+        Args:
+            font_family: The font family name to query
+        """
+        from PySide6.QtGui import QFontDatabase
+
+        font_db = QFontDatabase()
+        styles = font_db.styles(font_family)
+
+        if not styles:
+            return
+
+        # Map Qt style names to our weight names
+        weight_map = {
+            "Thin": "Light",
+            "Extra Light": "Light",
+            "Ultra Light": "Light",
+            "Light": "Light",
+            "Regular": "Normal",
+            "Normal": "Normal",
+            "Medium": "Normal",
+            "Semi Bold": "Bold",
+            "Demi Bold": "Bold",
+            "Bold": "Bold",
+            "Extra Bold": "ExtraBold",
+            "Ultra Bold": "ExtraBold",
+            "Black": "ExtraBold",
+            "Heavy": "ExtraBold",
+        }
+
+        # Get unique weights available for this font
+        available_weights = set()
+        for style in styles:
+            weight_name = weight_map.get(style)
+            if weight_name:
+                available_weights.add(weight_name)
+
+        # If no mapped weights found, use defaults
+        if not available_weights:
+            available_weights = {"Light", "Normal", "Bold", "ExtraBold"}
+
+        # Sort weights in logical order
+        weight_order = ["Light", "Normal", "Bold", "ExtraBold"]
+        sorted_weights = [w for w in weight_order if w in available_weights]
+
+        # Rebuild the menu
+        self.font_weight_menu.clear()
+        for weight in sorted_weights:
+            action = self.font_weight_menu.addAction(weight)
+            action.triggered.connect(lambda _, opt=weight: self._set_font_weight(opt))
+
+        # Update current selection if it's still valid
+        current_weight = self.layer_styles[self.current_layer].get("font_weight", "Normal")
+        if current_weight not in sorted_weights:
+            # Select first available weight
+            current_weight = sorted_weights[0] if sorted_weights else "Normal"
+            self.layer_styles[self.current_layer]["font_weight"] = current_weight
+
+        self.font_weight_combo.setText(current_weight)
     def _set_font_weight(self, value: str):
         """Set font weight."""
         self.font_weight_combo.setText(value)
@@ -1147,8 +1213,12 @@ class StylePanel(QWidget):
         )
 
         # Font
-        self.font_family_combo.setText(self._get_localized_font_name(style.get("font_family", "Arial")))
+        font_family = style.get("font_family", "Arial")
+        self.font_family_combo.setText(self._get_localized_font_name(font_family))
         self.font_size_spin.setValue(style.get("font_size", 22))
+
+        # Update font weight options based on current font
+        self._update_font_weight_options(font_family)
         self.font_weight_combo.setText(style.get("font_weight", "Bold"))
 
         # Font style checkboxes
