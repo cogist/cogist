@@ -25,6 +25,11 @@ class EdgeItem(QGraphicsPathItem):
         self.target_item = target_item
         self.color = QColor(color)
 
+        # Edge style configuration
+        self.start_width = 6.0
+        self.end_width = 2.0
+        self.line_style = Qt.SolidLine
+
         # Z-value: edges below nodes (set to -1 to ensure they're below)
         self.setZValue(-1)
 
@@ -45,7 +50,7 @@ class EdgeItem(QGraphicsPathItem):
 
         if self._gradient_path:
             for (start, end), width in self._gradient_path:
-                pen = QPen(self.color, width, Qt.SolidLine, Qt.RoundCap)
+                pen = QPen(self.color, width, self.line_style, Qt.RoundCap)
                 painter.setPen(pen)
                 painter.drawLine(start, end)
 
@@ -68,7 +73,7 @@ class EdgeItem(QGraphicsPathItem):
         for i in range(len(points) - 1):
             # Use segment index for linear gradient
             t = i / (len(points) - 1)
-            line_width = 6 - t * 4  # From 6 to 2 (smoother than 10 to 2)
+            line_width = self.start_width - t * (self.start_width - self.end_width)
             self._gradient_path.append(((points[i], points[i + 1]), line_width))
 
     def update_curve(self):
@@ -158,3 +163,36 @@ class EdgeItem(QGraphicsPathItem):
             return QPointF(center.x() - half_w, center.y())
         else:
             return QPointF(center.x(), center.y() + half_h)
+
+    def update_style(self, style_config: dict):
+        """Update edge style from configuration.
+
+        Args:
+            style_config: Dictionary containing edge style parameters
+                - connector_color: str (hex color)
+                - start_width: float
+                - end_width: float
+                - connector_style: str (solid/dashed/dotted)
+        """
+        # Update color
+        if "connector_color" in style_config:
+            self.color = QColor(style_config["connector_color"])
+
+        # Update widths
+        if "start_width" in style_config:
+            self.start_width = float(style_config["start_width"])
+        if "end_width" in style_config:
+            self.end_width = float(style_config["end_width"])
+
+        # Update line style
+        style_map = {
+            "solid": Qt.SolidLine,
+            "dashed": Qt.DashLine,
+            "dotted": Qt.DotLine,
+        }
+        if "connector_style" in style_config:
+            self.line_style = style_map.get(style_config["connector_style"], Qt.SolidLine)
+
+        # Invalidate cache and trigger repaint
+        self._gradient_path = None
+        self.update()

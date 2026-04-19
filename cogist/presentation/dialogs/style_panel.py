@@ -1314,6 +1314,9 @@ class StylePanel(QWidget):
         # Apply node styles - convert layer_styles to MindMapStyle format
         self._apply_node_styles_to_mindmap(mindmap_view)
 
+        # Apply connector (edge) styles
+        self._apply_connector_styles_to_mindmap(mindmap_view)
+
     def _apply_node_styles_to_mindmap(self, mindmap_view):
         """Apply node layer styles to the mind map view.
 
@@ -1370,6 +1373,17 @@ class StylePanel(QWidget):
         # This will re-measure nodes with new styles and reposition them
         if hasattr(mindmap_view, '_refresh_layout'):
             mindmap_view._refresh_layout()
+
+    def _apply_connector_styles_to_mindmap(self, mindmap_view):
+        """Apply connector (edge) styles to all edges in the mind map."""
+        # Get edge items from mindmap view
+        if not hasattr(mindmap_view, 'edge_items'):
+            return
+
+        # Update all edge items with current connector style
+        for edge_item in mindmap_view.edge_items:
+            if hasattr(edge_item, 'update_style'):
+                edge_item.update_style(self.connector_style)
 
     def _convert_layer_to_node_style(self, layer_data: dict):
         """Convert layer style dictionary to NodeStyleConfig object."""
