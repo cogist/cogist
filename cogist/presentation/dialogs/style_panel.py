@@ -993,16 +993,22 @@ class StylePanel(QWidget):
         weight_map = {
             "Thin": "Light",
             "Extra Light": "Light",
+            "ExtraLight": "Light",  # No space variant
             "Ultra Light": "Light",
+            "UltraLight": "Light",  # No space variant
             "Light": "Light",
             "Regular": "Normal",
             "Normal": "Normal",
             "Medium": "Normal",
             "Semi Bold": "Bold",
+            "SemiBold": "Bold",  # No space variant
             "Demi Bold": "Bold",
+            "DemiBold": "Bold",  # No space variant
             "Bold": "Bold",
             "Extra Bold": "ExtraBold",
+            "ExtraBold": "ExtraBold",  # No space variant
             "Ultra Bold": "ExtraBold",
+            "UltraBold": "ExtraBold",  # No space variant
             "Black": "ExtraBold",
             "Heavy": "ExtraBold",
         }
