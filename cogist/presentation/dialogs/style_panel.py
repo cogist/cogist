@@ -918,6 +918,25 @@ class StylePanel(QWidget):
 
         families = filtered_families
 
+        # Deduplicate fonts by base name (remove duplicates like "Times New Roman", "Times New Roman Bold", etc.)
+        seen_names = set()
+        unique_families = []
+        for family in families:
+            # Normalize: remove common suffixes to get base font name
+            base_name = family.split('(')[0].strip()  # Remove parenthetical info
+            # Check if we've seen a similar name
+            is_duplicate = False
+            for seen in seen_names:
+                # If one contains the other, they're likely variants of the same font
+                if base_name.lower() in seen.lower() or seen.lower() in base_name.lower():
+                    is_duplicate = True
+                    break
+            if not is_duplicate:
+                seen_names.add(base_name)
+                unique_families.append(family)
+
+        families = unique_families
+
         current_family = self.layer_styles[self.current_layer].get("font_family", "Arial")
 
         # Build font list with localized names
@@ -990,6 +1009,9 @@ class StylePanel(QWidget):
             # Fallback to default weights if no styles found
             styles = ["Light", "Normal", "Bold", "ExtraBold"]
 
+        # Filter out italic/oblique styles - these are not weights
+        weight_styles = [s for s in styles if "italic" not in s.lower() and "oblique" not in s.lower()]
+
         # Define logical order for common weight names
         weight_priority = {
             "Thin": 0,
@@ -1017,7 +1039,7 @@ class StylePanel(QWidget):
 
         # Sort styles by weight priority
         sorted_styles = sorted(
-            styles,
+            weight_styles,
             key=lambda s: weight_priority.get(s, 100)
         )
 
