@@ -178,6 +178,16 @@ class NodeItem(QGraphicsRectItem):
         # Create font with family and size
         font = QFont(font_family, font_size)
         font.setWeight(font_weight)  # Use setWeight for better compatibility
+
+        # Apply font decorations from style_config if available
+        if self.node_style:
+            if self.node_style.font_italic:
+                font.setItalic(True)
+            if self.node_style.font_underline:
+                font.setUnderline(True)
+            if self.node_style.font_strikeout:
+                font.setStrikeOut(True)
+
         self.text_item.setFont(font)
 
         # Apply text color
