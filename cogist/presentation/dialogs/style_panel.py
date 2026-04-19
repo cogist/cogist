@@ -987,58 +987,51 @@ class StylePanel(QWidget):
         styles = font_db.styles(font_family)
 
         if not styles:
-            return
+            # Fallback to default weights if no styles found
+            styles = ["Light", "Normal", "Bold", "ExtraBold"]
 
-        # Map Qt style names to our weight names
-        weight_map = {
-            "Thin": "Light",
-            "Extra Light": "Light",
-            "ExtraLight": "Light",  # No space variant
-            "Ultra Light": "Light",
-            "UltraLight": "Light",  # No space variant
-            "Light": "Light",
-            "Regular": "Normal",
-            "Normal": "Normal",
-            "Medium": "Normal",
-            "Semi Bold": "Bold",
-            "SemiBold": "Bold",  # No space variant
-            "Demi Bold": "Bold",
-            "DemiBold": "Bold",  # No space variant
-            "Bold": "Bold",
-            "Extra Bold": "ExtraBold",
-            "ExtraBold": "ExtraBold",  # No space variant
-            "Ultra Bold": "ExtraBold",
-            "UltraBold": "ExtraBold",  # No space variant
-            "Black": "ExtraBold",
-            "Heavy": "ExtraBold",
+        # Define logical order for common weight names
+        weight_priority = {
+            "Thin": 0,
+            "Hairline": 1,
+            "Extra Light": 2,
+            "ExtraLight": 2,
+            "Ultra Light": 2,
+            "UltraLight": 2,
+            "Light": 3,
+            "Regular": 4,
+            "Normal": 4,
+            "Medium": 5,
+            "Semi Bold": 6,
+            "SemiBold": 6,
+            "Demi Bold": 6,
+            "DemiBold": 6,
+            "Bold": 7,
+            "Extra Bold": 8,
+            "ExtraBold": 8,
+            "Ultra Bold": 8,
+            "UltraBold": 8,
+            "Black": 9,
+            "Heavy": 9,
         }
 
-        # Get unique weights available for this font
-        available_weights = set()
-        for style in styles:
-            weight_name = weight_map.get(style)
-            if weight_name:
-                available_weights.add(weight_name)
+        # Sort styles by weight priority
+        sorted_styles = sorted(
+            styles,
+            key=lambda s: weight_priority.get(s, 100)
+        )
 
-        # If no mapped weights found, use defaults
-        if not available_weights:
-            available_weights = {"Light", "Normal", "Bold", "ExtraBold"}
-
-        # Sort weights in logical order
-        weight_order = ["Light", "Normal", "Bold", "ExtraBold"]
-        sorted_weights = [w for w in weight_order if w in available_weights]
-
-        # Rebuild the menu
+        # Rebuild the menu with all available styles
         self.font_weight_menu.clear()
-        for weight in sorted_weights:
-            action = self.font_weight_menu.addAction(weight)
-            action.triggered.connect(lambda _, opt=weight: self._set_font_weight(opt))
+        for style in sorted_styles:
+            action = self.font_weight_menu.addAction(style)
+            action.triggered.connect(lambda _, opt=style: self._set_font_weight(opt))
 
         # Update current selection if it's still valid
         current_weight = self.layer_styles[self.current_layer].get("font_weight", "Normal")
-        if current_weight not in sorted_weights:
-            # Select first available weight
-            current_weight = sorted_weights[0] if sorted_weights else "Normal"
+        if current_weight not in sorted_styles:
+            # Select first available weight or closest match
+            current_weight = sorted_styles[0] if sorted_styles else "Normal"
             self.layer_styles[self.current_layer]["font_weight"] = current_weight
 
         self.font_weight_combo.setText(current_weight)

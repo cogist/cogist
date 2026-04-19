@@ -168,10 +168,27 @@ class NodeItem(QGraphicsRectItem):
 
         # Convert font weight string to QFont weight value (0-99)
         weight_map = {
-            "Light": QFont.Light,      # 25
-            "Normal": QFont.Normal,    # 50
-            "Bold": QFont.Bold,        # 70
+            "Thin": QFont.Light,           # 25
+            "Hairline": QFont.Light,       # 25
+            "Extra Light": QFont.Light,    # 25
+            "ExtraLight": QFont.Light,     # 25
+            "Ultra Light": QFont.Light,    # 25
+            "UltraLight": QFont.Light,     # 25
+            "Light": QFont.Light,          # 25
+            "Regular": QFont.Normal,       # 50
+            "Normal": QFont.Normal,        # 50
+            "Medium": QFont.Medium,        # 57
+            "Semi Bold": QFont.DemiBold,   # 63
+            "SemiBold": QFont.DemiBold,    # 63
+            "Demi Bold": QFont.DemiBold,   # 63
+            "DemiBold": QFont.DemiBold,    # 63
+            "Bold": QFont.Bold,            # 70
+            "Extra Bold": QFont.ExtraBold, # 80
             "ExtraBold": QFont.ExtraBold,  # 80
+            "Ultra Bold": QFont.Black,     # 87
+            "UltraBold": QFont.Black,      # 87
+            "Black": QFont.Black,          # 87
+            "Heavy": QFont.Black,          # 87
         }
         font_weight = weight_map.get(font_weight_str, QFont.Normal)
 
@@ -280,10 +297,27 @@ class NodeItem(QGraphicsRectItem):
 
             # Convert font weight string to QFont weight value (0-99)
             weight_map = {
+                "Thin": QFont.Light,
+                "Hairline": QFont.Light,
+                "Extra Light": QFont.Light,
+                "ExtraLight": QFont.Light,
+                "Ultra Light": QFont.Light,
+                "UltraLight": QFont.Light,
                 "Light": QFont.Light,
+                "Regular": QFont.Normal,
                 "Normal": QFont.Normal,
+                "Medium": QFont.Medium,
+                "Semi Bold": QFont.DemiBold,
+                "SemiBold": QFont.DemiBold,
+                "Demi Bold": QFont.DemiBold,
+                "DemiBold": QFont.DemiBold,
                 "Bold": QFont.Bold,
+                "Extra Bold": QFont.ExtraBold,
                 "ExtraBold": QFont.ExtraBold,
+                "Ultra Bold": QFont.Black,
+                "UltraBold": QFont.Black,
+                "Black": QFont.Black,
+                "Heavy": QFont.Black,
             }
             font_weight = weight_map.get(font_weight_str, QFont.Normal)
 
