@@ -69,6 +69,7 @@ class StylePanel(QWidget):
         self.border_group.setVisible(False)
         self.connector_group.setVisible(False)
 
+        # Load UI with current layer styles (without triggering preview)
         self._load_current_layer_style()
 
     def _apply_styles(self):
@@ -1186,112 +1187,132 @@ class StylePanel(QWidget):
 
     def _load_current_layer_style(self):
         """Load style from current layer to UI."""
-        if self.current_layer == "canvas":
-            # Load canvas style
-            bg_color = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
-            self.canvas_bg_btn.setStyleSheet(
-                f"background-color: {bg_color}; border: 1px solid #ccc; border-radius: 6px;"
-            )
-            return
+        # Block signals on all widgets that trigger preview updates
+        widgets_to_block = [
+            self.radius_spin,
+            self.font_size_spin,
+            self.padding_w_spin,
+            self.padding_h_spin,
+            self.border_width_spin,
+            self.connector_width_spin,
+            self.font_italic_check,
+            self.font_underline_check,
+            self.font_strikeout_check,
+        ]
+        
+        # Save old signal states
+        old_states = [w.blockSignals(True) for w in widgets_to_block]
 
-        # Load node layer style
-        style = self.layer_styles[self.current_layer]
+        try:
+            if self.current_layer == "canvas":
+                # Load canvas style
+                bg_color = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
+                self.canvas_bg_btn.setStyleSheet(
+                    f"background-color: {bg_color}; border: 1px solid #ccc; border-radius: 6px;"
+                )
+            else:
+                # Load node layer style
+                style = self.layer_styles[self.current_layer]
 
-        # Shape
-        shape_map = {
-            "rect": "Rectangle",
-            "rounded_rect": "Rounded Rect",
-            "circle": "Circle",
-        }
-        current_shape = shape_map.get(style.get("shape", "rounded_rect"), "Rounded Rect")
-        self.shape_combo.setText(current_shape)
+                # Shape
+                shape_map = {
+                    "rect": "Rectangle",
+                    "rounded_rect": "Rounded Rect",
+                    "circle": "Circle",
+                }
+                current_shape = shape_map.get(style.get("shape", "rounded_rect"), "Rounded Rect")
+                self.shape_combo.setText(current_shape)
 
-        # Show/hide radius control based on shape
-        is_rounded = (current_shape == "Rounded Rect")
-        self.radius_spin.setVisible(is_rounded)
-        # Also hide/show the radius label
-        layout = self.node_style_group.layout()
-        if layout:
-            for i in range(layout.rowCount()):
-                item = layout.itemAtPosition(i, 0)
-                if item and isinstance(item.widget(), QLabel) and item.widget().text() == "Radius:":
-                    item.widget().setVisible(is_rounded)
-                    break
+                # Show/hide radius control based on shape
+                is_rounded = (current_shape == "Rounded Rect")
+                self.radius_spin.setVisible(is_rounded)
+                # Also hide/show the radius label
+                layout = self.node_style_group.layout()
+                if layout:
+                    for i in range(layout.rowCount()):
+                        item = layout.itemAtPosition(i, 0)
+                        if item and isinstance(item.widget(), QLabel) and item.widget().text() == "Radius:":
+                            item.widget().setVisible(is_rounded)
+                            break
 
-        # Colors
-        bg_color = style.get("bg_color", "#2196F3")
-        text_color = style.get("text_color", "#FFFFFF")
-        border_color = style.get("border_color", "#1976D2")
+                # Colors
+                bg_color = style.get("bg_color", "#2196F3")
+                text_color = style.get("text_color", "#FFFFFF")
+                border_color = style.get("border_color", "#1976D2")
 
-        self.bg_color_btn.setStyleSheet(
-            f"background-color: {bg_color}; border: 1px solid #ccc; border-radius: 6px;"
-        )
-        self.text_color_btn.setStyleSheet(
-            f"background-color: {text_color}; border: 1px solid #ccc; border-radius: 6px;"
-        )
-        self.border_color_btn.setStyleSheet(
-            f"background-color: {border_color}; border: 1px solid #ccc; border-radius: 6px;"
-        )
+                self.bg_color_btn.setStyleSheet(
+                    f"background-color: {bg_color}; border: 1px solid #ccc; border-radius: 6px;"
+                )
+                self.text_color_btn.setStyleSheet(
+                    f"background-color: {text_color}; border: 1px solid #ccc; border-radius: 6px;"
+                )
+                self.border_color_btn.setStyleSheet(
+                    f"background-color: {border_color}; border: 1px solid #ccc; border-radius: 6px;"
+                )
 
-        # Font
-        font_family = style.get("font_family", "Arial")
-        self.font_family_combo.setText(self._get_localized_font_name(font_family))
-        self.font_size_spin.setValue(style.get("font_size", 22))
+                # Font
+                font_family = style.get("font_family", "Arial")
+                self.font_family_combo.setText(self._get_localized_font_name(font_family))
+                self.font_size_spin.setValue(style.get("font_size", 22))
 
-        # Update font weight options based on current font
-        self._update_font_weight_options(font_family)
-        self.font_weight_combo.setText(style.get("font_weight", "Bold"))
+                # Update font weight options based on current font
+                self._update_font_weight_options(font_family)
+                self.font_weight_combo.setText(style.get("font_weight", "Bold"))
 
-        # Font style checkboxes
-        self.font_italic_check.setChecked(style.get("font_italic", False))
-        self.font_underline_check.setChecked(style.get("font_underline", False))
-        self.font_strikeout_check.setChecked(style.get("font_strikeout", False))
+                # Font style checkboxes
+                self.font_italic_check.setChecked(style.get("font_italic", False))
+                self.font_underline_check.setChecked(style.get("font_underline", False))
+                self.font_strikeout_check.setChecked(style.get("font_strikeout", False))
 
-        # Padding and radius
-        self.padding_w_spin.setValue(style.get("padding_w", 20))
-        self.padding_h_spin.setValue(style.get("padding_h", 16))
-        self.radius_spin.setValue(style.get("radius", 10))
+                # Padding and radius
+                self.padding_w_spin.setValue(style.get("padding_w", 20))
+                self.padding_h_spin.setValue(style.get("padding_h", 16))
+                self.radius_spin.setValue(style.get("radius", 10))
 
-        # Border
-        border_style_map = {
-            "solid": "Solid",
-            "dashed": "Dashed",
-            "dotted": "Dotted",
-            "dash_dot": "Dash-Dot",
-        }
-        self.border_style_combo.setText(
-            border_style_map.get(style.get("border_style", "solid"), "Solid")
-        )
-        self.border_width_spin.setValue(style.get("border_width", 2))
+                # Border
+                border_style_map = {
+                    "solid": "Solid",
+                    "dashed": "Dashed",
+                    "dotted": "Dotted",
+                    "dash_dot": "Dash-Dot",
+                }
+                self.border_style_combo.setText(
+                    border_style_map.get(style.get("border_style", "solid"), "Solid")
+                )
+                self.border_width_spin.setValue(style.get("border_width", 2))
 
-        # Connector style
-        self.connector_color_btn.setStyleSheet(
-            f"background-color: {self.connector_style.get('connector_color', '#666666')}; border: 1px solid #ccc; border-radius: 6px;"
-        )
-        connector_type_map = {
-            "straight": "Straight",
-            "orthogonal": "Orthogonal",
-            "bezier": "Bezier",
-        }
-        self.connector_type_combo.setText(
-            connector_type_map.get(self.connector_style.get("connector_type", "bezier"), "Bezier")
-        )
-        connector_style_map = {
-            "solid": "Solid",
-            "dashed": "Dashed",
-            "dotted": "Dotted",
-        }
-        self.connector_style_combo.setText(
-            connector_style_map.get(self.connector_style.get("connector_style", "solid"), "Solid")
-        )
+                # Connector style
+                self.connector_color_btn.setStyleSheet(
+                    f"background-color: {self.connector_style.get('connector_color', '#666666')}; border: 1px solid #ccc; border-radius: 6px;"
+                )
+                connector_type_map = {
+                    "straight": "Straight",
+                    "orthogonal": "Orthogonal",
+                    "bezier": "Bezier",
+                }
+                self.connector_type_combo.setText(
+                    connector_type_map.get(self.connector_style.get("connector_type", "bezier"), "Bezier")
+                )
+                connector_style_map = {
+                    "solid": "Solid",
+                    "dashed": "Dashed",
+                    "dotted": "Dotted",
+                }
+                self.connector_style_combo.setText(
+                    connector_style_map.get(self.connector_style.get("connector_style", "solid"), "Solid")
+                )
 
-        # Connector width: reverse mapping from start_width
-        start_width = self.connector_style.get("start_width", 6.0)
-        ui_width = int(start_width)
+                # Connector width: reverse mapping from start_width
+                start_width = self.connector_style.get("start_width", 6.0)
+                ui_width = int(start_width)
 
-        # Clamp to valid range
-        ui_width = max(1, min(10, ui_width))
-        self.connector_width_spin.setValue(ui_width)
+                # Clamp to valid range
+                ui_width = max(1, min(10, ui_width))
+                self.connector_width_spin.setValue(ui_width)
+        finally:
+            # Restore signal states
+            for widget, old_state in zip(widgets_to_block, old_states):
+                widget.blockSignals(old_state)
 
     def _update_preview(self):
         """Update preview by applying styles to the mind map."""
