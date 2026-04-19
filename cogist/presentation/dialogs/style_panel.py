@@ -1108,7 +1108,7 @@ class StylePanel(QWidget):
     def _set_connector_width(self, value: int):
         """Set connector width with mapping logic.
 
-        For tapered lines (bezier/orthogonal): end_width = start_width + 4
+        For tapered lines (bezier/orthogonal): start_width = value, end_width = value - 4
         For straight lines: start_width = end_width = value
         """
         is_straight = (self.connector_style.get("connector_type") == "straight")
@@ -1118,9 +1118,9 @@ class StylePanel(QWidget):
             self.connector_style["start_width"] = float(value)
             self.connector_style["end_width"] = float(value)
         else:
-            # Tapered width for bezier/orthogonal
+            # Tapered width for bezier/orthogonal: thick at source (parent), thin at target (child)
             self.connector_style["start_width"] = float(value)
-            self.connector_style["end_width"] = float(value + 4)
+            self.connector_style["end_width"] = max(1.0, float(value - 4))
 
         self._update_preview()
 
@@ -1359,6 +1359,13 @@ class StylePanel(QWidget):
         # Update canvas background color
         if "canvas" in self.layer_styles:
             style.canvas_bg_color = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
+
+        # Update connector (edge) styles from panel's connector_style
+        style.edge.connector_type = self.connector_style.get("connector_type", "bezier")
+        style.edge.connector_style = self.connector_style.get("connector_style", "solid")
+        style.edge.start_width = self.connector_style.get("start_width", 6.0)
+        style.edge.end_width = self.connector_style.get("end_width", 2.0)
+        style.edge.color = self.connector_style.get("connector_color", "#666666")
 
         # Update mindmap view's style config
         mindmap_view.style_config = style
