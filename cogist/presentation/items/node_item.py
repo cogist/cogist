@@ -260,7 +260,7 @@ class NodeItem(QGraphicsRectItem):
 
     def update_style(self, style_config):
         """Update node style from new style_config and trigger repaint.
-        
+
         Args:
             style_config: New MindMapStyle instance
         """
@@ -408,10 +408,7 @@ class NodeItem(QGraphicsRectItem):
             painter.setBrush(Qt.NoBrush)
         else:
             # Apply background color
-            if isinstance(bg_color, str):
-                bg_qcolor = QColor(bg_color)
-            else:
-                bg_qcolor = bg_color
+            bg_qcolor = QColor(bg_color) if isinstance(bg_color, str) else bg_color
 
             # Create gradient or solid color
             if self.is_root and not self.node_style:

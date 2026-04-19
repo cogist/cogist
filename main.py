@@ -511,7 +511,7 @@ class MainWindow(QMainWindow):
             splitter.setStretchFactor(0, 1)  # Mind map takes most space
             splitter.setStretchFactor(1, 0)  # Panel has fixed width
             splitter.setCollapsible(1, False)  # Panel cannot be collapsed
-            
+
             # Set initial widths (mind map: 1100px, panel: 260px)
             splitter.setSizes([1100, StylePanel.PANEL_WIDTH])
 
