@@ -166,31 +166,31 @@ class NodeItem(QGraphicsRectItem):
             style_for_calc = style  # Pass dict for size calculation
             self.node_style = None  # No node_style when using legacy style
 
-        # Convert font weight string to QFont weight value (0-99)
+        # Convert font weight string to QFont.Weight enum
         weight_map = {
-            "Thin": QFont.Light,           # 25
-            "Hairline": QFont.Light,       # 25
-            "Extra Light": QFont.Light,    # 25
-            "ExtraLight": QFont.Light,     # 25
-            "Ultra Light": QFont.Light,    # 25
-            "UltraLight": QFont.Light,     # 25
-            "Light": QFont.Light,          # 25
-            "Regular": QFont.Normal,       # 50
-            "Normal": QFont.Normal,        # 50
-            "Medium": QFont.Medium,        # 57
-            "Semi Bold": QFont.DemiBold,   # 63
-            "SemiBold": QFont.DemiBold,    # 63
-            "Demi Bold": QFont.DemiBold,   # 63
-            "DemiBold": QFont.DemiBold,    # 63
-            "Bold": QFont.Bold,            # 70
-            "Extra Bold": QFont.ExtraBold, # 80
-            "ExtraBold": QFont.ExtraBold,  # 80
-            "Ultra Bold": QFont.Black,     # 87
-            "UltraBold": QFont.Black,      # 87
-            "Black": QFont.Black,          # 87
-            "Heavy": QFont.Black,          # 87
+            "Thin": QFont.Weight.Thin,              # 0
+            "Hairline": QFont.Weight.Thin,          # 0
+            "Extra Light": QFont.Weight.ExtraLight, # 12
+            "ExtraLight": QFont.Weight.ExtraLight,  # 12
+            "Ultra Light": QFont.Weight.ExtraLight, # 12
+            "UltraLight": QFont.Weight.ExtraLight,  # 12
+            "Light": QFont.Weight.Light,            # 25
+            "Regular": QFont.Weight.Normal,         # 50
+            "Normal": QFont.Weight.Normal,          # 50
+            "Medium": QFont.Weight.Medium,          # 57
+            "Semi Bold": QFont.Weight.DemiBold,     # 63
+            "SemiBold": QFont.Weight.DemiBold,      # 63
+            "Demi Bold": QFont.Weight.DemiBold,     # 63
+            "DemiBold": QFont.Weight.DemiBold,      # 63
+            "Bold": QFont.Weight.Bold,              # 70
+            "Extra Bold": QFont.Weight.ExtraBold,   # 80
+            "ExtraBold": QFont.Weight.ExtraBold,    # 80
+            "Ultra Bold": QFont.Weight.Black,       # 87
+            "UltraBold": QFont.Weight.Black,        # 87
+            "Black": QFont.Weight.Black,            # 87
+            "Heavy": QFont.Weight.Black,            # 87
         }
-        font_weight = weight_map.get(font_weight_str, QFont.Normal)
+        font_weight = weight_map.get(font_weight_str, QFont.Weight.Normal)
 
         # Create font with family and size
         font = QFont(font_family, font_size)
@@ -295,37 +295,41 @@ class NodeItem(QGraphicsRectItem):
             font_weight_str = self.node_style.font_weight
             font_family = self.node_style.font_family
 
-            # Convert font weight string to QFont weight value (0-99)
+            # Convert font weight string to QFont.Weight enum
             weight_map = {
-                "Thin": QFont.Light,
-                "Hairline": QFont.Light,
-                "Extra Light": QFont.Light,
-                "ExtraLight": QFont.Light,
-                "Ultra Light": QFont.Light,
-                "UltraLight": QFont.Light,
-                "Light": QFont.Light,
-                "Regular": QFont.Normal,
-                "Normal": QFont.Normal,
-                "Medium": QFont.Medium,
-                "Semi Bold": QFont.DemiBold,
-                "SemiBold": QFont.DemiBold,
-                "Demi Bold": QFont.DemiBold,
-                "DemiBold": QFont.DemiBold,
-                "Bold": QFont.Bold,
-                "Extra Bold": QFont.ExtraBold,
-                "ExtraBold": QFont.ExtraBold,
-                "Ultra Bold": QFont.Black,
-                "UltraBold": QFont.Black,
-                "Black": QFont.Black,
-                "Heavy": QFont.Black,
+                "Thin": QFont.Weight.Thin,
+                "Hairline": QFont.Weight.Thin,
+                "Extra Light": QFont.Weight.ExtraLight,
+                "ExtraLight": QFont.Weight.ExtraLight,
+                "Ultra Light": QFont.Weight.ExtraLight,
+                "UltraLight": QFont.Weight.ExtraLight,
+                "Light": QFont.Weight.Light,
+                "Regular": QFont.Weight.Normal,
+                "Normal": QFont.Weight.Normal,
+                "Medium": QFont.Weight.Medium,
+                "Semi Bold": QFont.Weight.DemiBold,
+                "SemiBold": QFont.Weight.DemiBold,
+                "Demi Bold": QFont.Weight.DemiBold,
+                "DemiBold": QFont.Weight.DemiBold,
+                "Bold": QFont.Weight.Bold,
+                "Extra Bold": QFont.Weight.ExtraBold,
+                "ExtraBold": QFont.Weight.ExtraBold,
+                "Ultra Bold": QFont.Weight.Black,
+                "UltraBold": QFont.Weight.Black,
+                "Black": QFont.Weight.Black,
+                "Heavy": QFont.Weight.Black,
             }
-            font_weight = weight_map.get(font_weight_str, QFont.Normal)
+            font_weight = weight_map.get(font_weight_str, QFont.Weight.Normal)
 
             font = QFont(font_family, font_size)
             font.setWeight(font_weight)
 
             # Apply font decorations
-            if self.node_style.font_italic:
+            # Note: If the style name contains "Italic", don't apply additional italic flag
+            # as it's already an italic font variant
+            is_italic_style = "italic" in font_weight_str.lower() if font_weight_str else False
+
+            if self.node_style.font_italic and not is_italic_style:
                 font.setItalic(True)
             if self.node_style.font_underline:
                 font.setUnderline(True)
