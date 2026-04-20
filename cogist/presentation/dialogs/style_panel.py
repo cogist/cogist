@@ -10,14 +10,10 @@ Note: Activity Bar has been moved to the main window level (VSCode-style).
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
     QLabel,
     QVBoxLayout,
     QWidget,
 )
-
-from cogist.domain.styles import create_default_template
 
 from .style_panel_advanced import AdvancedStyleTab
 
@@ -78,7 +74,7 @@ class StylePanel(QWidget):
 
 class SimpleStyleTab(QWidget):
     """Simple mode tab - placeholder for future template selection feature.
-    
+
     Note: This tab is currently disabled. Use Advanced mode for style editing.
     Template and color scheme selection will be implemented when template files are available.
     """
