@@ -28,7 +28,7 @@ __all__ = [
     "PriorityLevel",
     "NodeRole",
     "SpacingLevel",
-    
+
     # Extended styles (new architecture - authoritative)
     "SpacingConfig",
     "NodeShape",
@@ -39,7 +39,7 @@ __all__ = [
     "RoleBasedStyle",
     "ColorScheme",
     "Template",
-    
+
     # Style resolver
     "resolve_style",
     "serialize_style",
@@ -48,7 +48,7 @@ __all__ = [
     "deserialize_template",
     "serialize_color_scheme",
     "deserialize_color_scheme",
-    
+
     # Main style configuration
     "MindMapStyle",
 ]

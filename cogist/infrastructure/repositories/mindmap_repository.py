@@ -18,7 +18,7 @@ class MindMapRepository(MindMapRepositoryInterface):
 
     Handles saving and loading mind maps in .cgs format,
     which is a JSON file.
-    
+
     Implements MindMapRepositoryInterface for dependency injection.
     """
 
@@ -105,7 +105,7 @@ class MindMapRepository(MindMapRepositoryInterface):
 
             # Convert dictionary to node tree
             root_node = JSONSerializer.dict_to_node(mind_map_data["root"])
-            
+
             # Extract style config if present
             style_config = mind_map_data.get("style")
 
@@ -135,10 +135,10 @@ class MindMapRepository(MindMapRepositoryInterface):
     def delete(self, file_path: str | Path) -> None:
         """
         Delete a mind map file.
-        
+
         Args:
             file_path: Path to delete
-            
+
         Raises:
             FileNotFoundError: If file doesn't exist
             OSError: If deletion fails
@@ -170,7 +170,7 @@ class MindMapRepository(MindMapRepositoryInterface):
     def last_saved(self) -> datetime | None:
         """
         Get the timestamp of last successful save.
-        
+
         Returns:
             datetime of last save, or None if never saved
         """

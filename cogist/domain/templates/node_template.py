@@ -21,7 +21,7 @@ class NodeShape(Enum):
 @dataclass
 class PriorityRule:
     """Priority rule for node styling overrides
-    
+
     Defines how nodes with different priority levels should be styled.
     These are relative adjustments to the base template style.
     """
@@ -44,10 +44,10 @@ class PriorityRule:
 @dataclass
 class NodeTemplate:
     """Node template definition (geometric properties only)
-    
+
     Templates define the visual appearance of nodes without specifying colors.
     Colors are provided by ColorTheme separately.
-    
+
     Attributes:
         name: Template identifier (e.g., "modern", "minimal")
         shape: Node shape type
@@ -77,10 +77,10 @@ class NodeTemplate:
 
     def get_priority_rule(self, priority: str) -> PriorityRule | None:
         """Get priority rule for a specific priority level
-        
+
         Args:
             priority: Priority level (e.g., "critical", "normal", "low")
-        
+
         Returns:
             PriorityRule if defined, None otherwise
         """

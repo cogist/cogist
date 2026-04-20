@@ -145,10 +145,10 @@ class NodeItem(QGraphicsRectItem):
         if self.style_config and self.style_config.resolved_template:
             # Use new role-based style system
             from cogist.domain.styles import NodeRole
-            
+
             # Map depth to role
             role = self._depth_to_role(depth)
-            
+
             # Get template style for this role
             template_style = self.style_config.resolved_template.role_styles.get(role)
             if not template_style:
@@ -156,13 +156,13 @@ class NodeItem(QGraphicsRectItem):
                 template_style = self.style_config.resolved_template.role_styles.get(
                     NodeRole.TERTIARY
                 )
-            
+
             if template_style:
                 # Extract font properties from template (without colors)
                 font_size = template_style.font_size
                 font_weight_str = template_style.font_weight
                 font_family = template_style.font_family
-                
+
                 # Get colors from color scheme
                 color_scheme = self.style_config.resolved_color_scheme
                 if color_scheme:
@@ -173,13 +173,13 @@ class NodeItem(QGraphicsRectItem):
                     bg_color = "#FFFFFF"
                     text_color = "#000000"
                     border_color = None
-                
+
                 # Store for rendering
                 self.template_style = template_style
                 self.bg_color = bg_color
                 self.text_color = text_color
                 self.border_color = border_color
-                
+
                 style_for_calc = template_style
             else:
                 # Fallback to defaults
@@ -303,30 +303,24 @@ class NodeItem(QGraphicsRectItem):
 
     def _depth_to_role(self, depth: int):
         """Map node depth to NodeRole.
-        
+
         Args:
             depth: Node depth (0 = root, 1 = first level, etc.)
-            
+
         Returns:
             NodeRole for the given depth
         """
         from cogist.domain.styles import NodeRole
-        
-        if depth == 0:
-            return NodeRole.ROOT
-        elif depth == 1:
-            return NodeRole.PRIMARY
-        elif depth == 2:
-            return NodeRole.SECONDARY
-        else:
-            return NodeRole.TERTIARY
-    
+
+        role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
+        return role_map.get(depth, NodeRole.TERTIARY)
+
     def _auto_contrast(self, bg_color: str) -> str:
         """Automatically choose text color based on background brightness.
-        
+
         Args:
             bg_color: Background color in hex format (#RRGGBB)
-            
+
         Returns:
             '#FFFFFF' for dark backgrounds, '#000000' for light backgrounds
         """
@@ -334,17 +328,17 @@ class NodeItem(QGraphicsRectItem):
         bg_color = bg_color.lstrip('#')
         if len(bg_color) != 6:
             return '#000000'
-        
+
         try:
             r = int(bg_color[0:2], 16)
             g = int(bg_color[2:4], 16)
             b = int(bg_color[4:6], 16)
         except ValueError:
             return '#000000'
-        
+
         # Calculate luminance
         luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
-        
+
         # Return white for dark backgrounds, black for light
         return '#FFFFFF' if luminance < 0.5 else '#000000'
 
@@ -359,17 +353,17 @@ class NodeItem(QGraphicsRectItem):
         # Recalculate style based on new config using role-based system
         if self.style_config and self.style_config.resolved_template:
             from cogist.domain.styles import NodeRole
-            
+
             # Map depth to role
             role = self._depth_to_role(self.depth)
-            
+
             # Get template style
             template_style = self.style_config.resolved_template.role_styles.get(role)
             if not template_style:
                 template_style = self.style_config.resolved_template.role_styles.get(
                     NodeRole.TERTIARY
                 )
-            
+
             if template_style:
                 # Get colors from color scheme
                 color_scheme = self.style_config.resolved_color_scheme
@@ -381,18 +375,18 @@ class NodeItem(QGraphicsRectItem):
                     bg_color = "#FFFFFF"
                     text_color = "#000000"
                     border_color = None
-                
+
                 # Store for rendering
                 self.template_style = template_style
                 self.bg_color = bg_color
                 self.text_color = text_color
                 self.border_color = border_color
-                
+
                 # Update font
                 font_size = template_style.font_size
                 font_weight_str = template_style.font_weight
                 font_family = template_style.font_family
-                
+
                 # Convert font weight string to QFont.Weight enum
                 weight_map = {
                     "Thin": QFont.Weight.Thin,
@@ -427,7 +421,7 @@ class NodeItem(QGraphicsRectItem):
 
                 if template_style.font_style == "Italic" and not is_italic_style:
                     font.setItalic(True)
-                
+
                 self.text_item.setFont(font)
 
                 # Update text color

@@ -43,12 +43,12 @@ class JSONSerializer:
             "format_version": cls.FORMAT_VERSION,
             "mind_map": root_node,
         }
-        
+
         # Add style configuration if provided
         if style_config is not None:
             from cogist.domain.styles import serialize_style
             data["style"] = serialize_style(style_config)
-        
+
         return json.dumps(data, indent=2, ensure_ascii=False)
 
     @classmethod
@@ -84,12 +84,12 @@ class JSONSerializer:
         result = {
             "root": data["mind_map"].get("root"),
         }
-        
+
         # Extract style configuration if present
         if "style" in data:
             from cogist.domain.styles import deserialize_style
             result["style"] = deserialize_style(data["style"])
-        
+
         return result
 
     @staticmethod

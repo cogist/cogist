@@ -226,7 +226,7 @@ class MindMapService:
 
     def _create_layout_engine(self):
         """Create layout engine instance using registry
-        
+
         Returns:
             Layout algorithm instance
         """
@@ -237,10 +237,10 @@ class MindMapService:
 
     def set_layout_algorithm(self, algorithm_name: str) -> None:
         """Switch to a different layout algorithm
-        
+
         Args:
             algorithm_name: Name of the layout algorithm (e.g., "default", "tree")
-        
+
         Raises:
             ValueError: If layout algorithm is not registered
         """

@@ -23,7 +23,7 @@ class PriorityLevel(IntEnum):
 
 class NodeRole(StrEnum):
     """Node roles for style assignment"""
-    
+
     ROOT = "root"              # Root node / central topic
     PRIMARY = "primary"        # First level branches
     SECONDARY = "secondary"    # Second level branches
@@ -34,7 +34,7 @@ class NodeRole(StrEnum):
 
 class SpacingLevel(StrEnum):
     """Abstract spacing levels for layout compatibility"""
-    
+
     COMPACT = "compact"      # Compact spacing
     NORMAL = "normal"        # Normal spacing (default)
     RELAXED = "relaxed"      # Relaxed spacing

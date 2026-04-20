@@ -1199,7 +1199,7 @@ class StylePanel(QWidget):
             self.font_underline_check,
             self.font_strikeout_check,
         ]
-        
+
         # Save old signal states
         old_states = [w.blockSignals(True) for w in widgets_to_block]
 
@@ -1311,7 +1311,7 @@ class StylePanel(QWidget):
                 self.connector_width_spin.setValue(ui_width)
         finally:
             # Restore signal states
-            for widget, old_state in zip(widgets_to_block, old_states):
+            for widget, old_state in zip(widgets_to_block, old_states, strict=False):
                 widget.blockSignals(old_state)
 
     def _update_preview(self):
@@ -1344,28 +1344,26 @@ class StylePanel(QWidget):
         This updates the style_config and triggers re-layout.
         """
         from cogist.domain.styles import (
+            ColorScheme,
             MindMapStyle,
             NodeRole,
-            RoleBasedStyle,
-            Template,
-            ColorScheme,
             SpacingConfig,
             SpacingLevel,
-            resolve_style,
+            Template,
         )
 
         # Create a new style config based on current layer styles
         style = MindMapStyle()
-        
+
         # For now, we'll create a simple template from the layer styles
         # In the future, this should select from predefined templates
-        
+
         # Convert layer styles to role-based styles
         root_data = self.layer_styles.get("root", {})
         level1_data = self.layer_styles.get("level_1", {})
         level2_data = self.layer_styles.get("level_2", {})
         level3_data = self.layer_styles.get("level_3_plus", {})
-        
+
         # Create role-based styles (without colors - colors come from color scheme)
         role_styles = {
             NodeRole.ROOT: self._convert_layer_to_role_style(root_data),
@@ -1373,7 +1371,7 @@ class StylePanel(QWidget):
             NodeRole.SECONDARY: self._convert_layer_to_role_style(level2_data),
             NodeRole.TERTIARY: self._convert_layer_to_role_style(level3_data),
         }
-        
+
         # Create a temporary template
         template = Template(
             name="Custom",
@@ -1384,7 +1382,7 @@ class StylePanel(QWidget):
                 sibling_spacing=SpacingLevel.NORMAL,
             ),
         )
-        
+
         # Create a color scheme from layer styles
         node_colors = {
             NodeRole.ROOT: root_data.get("bg_color", "#2196F3"),
@@ -1392,7 +1390,7 @@ class StylePanel(QWidget):
             NodeRole.SECONDARY: level2_data.get("bg_color", "#FF9800"),
             NodeRole.TERTIARY: level3_data.get("bg_color", "#9E9E9E"),
         }
-        
+
         text_colors = {}
         if root_data.get("text_color"):
             text_colors[NodeRole.ROOT] = root_data["text_color"]
@@ -1402,22 +1400,22 @@ class StylePanel(QWidget):
             text_colors[NodeRole.SECONDARY] = level2_data["text_color"]
         if level3_data.get("text_color"):
             text_colors[NodeRole.TERTIARY] = level3_data["text_color"]
-        
+
         color_scheme = ColorScheme(
             name="Custom",
             description="Custom color scheme from style panel",
             node_colors=node_colors,
             text_colors=text_colors if text_colors else None,
         )
-        
+
         # Set template and color scheme names
         style.template_name = "custom"
         style.color_scheme_name = "custom"
-        
+
         # Store resolved references directly (since we don't have a registry yet)
         style.resolved_template = template
         style.resolved_color_scheme = color_scheme
-        
+
         # Update canvas background color
         if "canvas" in self.layer_styles:
             style.canvas_bg_color = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
@@ -1427,7 +1425,7 @@ class StylePanel(QWidget):
         # Note: EdgeConfig structure is different now, need to update accordingly
         # For now, keep simple edge color
         style.edge.default_style.line_width = self.connector_style.get("start_width", 2.0)
-        
+
         # TODO: Update edge color in color scheme
         # style.edge_color = self.connector_style.get("connector_color", "#666666")
 
@@ -1459,17 +1457,17 @@ class StylePanel(QWidget):
     def _convert_layer_to_role_style(self, layer_data: dict):
         """Convert layer style dictionary to RoleBasedStyle object (without colors)."""
         from cogist.domain.styles import (
-            NodeRole,
-            RoleBasedStyle,
-            NodeShape,
             BackgroundStyle,
             BorderStyle,
+            NodeRole,
+            NodeShape,
+            RoleBasedStyle,
         )
-        
+
         # Determine role from context (we'll set it later)
         # For now, use a placeholder
         role = NodeRole.TERTIARY
-        
+
         return RoleBasedStyle(
             role=role,
             shape=NodeShape(
@@ -1496,7 +1494,7 @@ class StylePanel(QWidget):
 
     def _convert_layer_to_node_style(self, layer_data: dict):
         """Convert layer style dictionary to NodeStyleConfig object.
-        
+
         DEPRECATED: This method is kept for backward compatibility only.
         Use _convert_layer_to_role_style instead.
         """

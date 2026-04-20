@@ -12,10 +12,10 @@ from dataclasses import dataclass, field
 @dataclass
 class ColorTheme:
     """Color theme definition (pure color scheme)
-    
+
     Themes define the color palette for the mind map without specifying
     geometric properties or layout algorithms.
-    
+
     Attributes:
         name: Theme identifier (e.g., "blue", "dark", "warm")
         canvas_bg: Canvas background color (hex)
@@ -53,10 +53,10 @@ class ColorTheme:
 
     def get_node_color(self, depth: int) -> str:
         """Get node color for a specific depth level
-        
+
         Args:
             depth: Node depth in tree (0 = root)
-        
+
         Returns:
             Hex color code
         """
@@ -75,11 +75,11 @@ class ColorTheme:
 
     def get_priority_color(self, priority: str, base_color: str | None = None) -> str:
         """Get color for a priority level
-        
+
         Args:
             priority: Priority level (e.g., "critical", "normal", "low")
             base_color: Base node color (for relative adjustments)
-        
+
         Returns:
             Hex color code for priority node
         """

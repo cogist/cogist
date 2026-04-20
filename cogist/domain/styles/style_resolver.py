@@ -1,8 +1,5 @@
 """Style resolver - merges templates and color schemes into final styles."""
 
-import json
-from copy import deepcopy
-from pathlib import Path
 
 from .enums import NodeRole
 from .extended_styles import (
@@ -24,10 +21,10 @@ def resolve_style(
     color_scheme_registry: dict[str, ColorScheme],
 ) -> None:
     """Resolve template and color scheme into final renderable styles.
-    
+
     This function merges the template's geometry/appearance with the color
     scheme's colors to produce the final resolved styles.
-    
+
     Args:
         style_config: The MindMapStyle to update
         template_registry: Registry of available templates
@@ -36,34 +33,34 @@ def resolve_style(
     # Get template and color scheme
     template = template_registry.get(style_config.template_name)
     color_scheme = color_scheme_registry.get(style_config.color_scheme_name)
-    
+
     if not template or not color_scheme:
         # Fallback to defaults if not found
         if not template:
             template = list(template_registry.values())[0] if template_registry else None
         if not color_scheme:
             color_scheme = list(color_scheme_registry.values())[0] if color_scheme_registry else None
-    
+
     if not template or not color_scheme:
         return  # Cannot resolve without both
-    
+
     # Store resolved references
     style_config.resolved_template = template
     style_config.resolved_color_scheme = color_scheme
-    
+
     # Update canvas background from color scheme
     style_config.canvas_bg_color = color_scheme.canvas_bg_color
-    
+
     # Resolve role-based styles by merging template + colors
     for role, template_style in template.role_styles.items():
         # Create a deep copy of the template style
-        resolved_style = _deep_copy_role_style(template_style)
-        
+        _deep_copy_role_style(template_style)
+
         # Apply colors from color scheme
         if role in color_scheme.node_colors:
             # Note: We store colors separately, NodeItem will combine them
             pass  # Colors are applied at render time
-        
+
         # Store in a temporary resolved dict (for future use)
         # For now, we keep the legacy depth_styles for backward compatibility
         # TODO: Migrate to role-based rendering
@@ -120,10 +117,10 @@ def _deep_copy_role_style(style: RoleBasedStyle) -> RoleBasedStyle:
 
 def serialize_style(style_config: MindMapStyle) -> dict:
     """Serialize MindMapStyle to JSON-compatible dict.
-    
+
     Args:
         style_config: The style configuration to serialize
-        
+
     Returns:
         Dictionary representation suitable for JSON serialization
     """
@@ -145,41 +142,40 @@ def serialize_style(style_config: MindMapStyle) -> dict:
 
 def deserialize_style(data: dict) -> MindMapStyle:
     """Deserialize MindMapStyle from JSON-compatible dict.
-    
+
     Args:
         data: Dictionary representation from JSON
-        
+
     Returns:
         MindMapStyle instance
     """
-    from .style_config import LayoutConfig, NodeStyleConfig, PriorityScheme
-    
+
     style = MindMapStyle(
         name=data.get("name", "Default"),
         template_name=data.get("template_name", "default"),
         color_scheme_name=data.get("color_scheme_name", "default"),
         canvas_bg_color=data.get("canvas_bg_color", "#FFFFFF"),
     )
-    
+
     # Deserialize edge config
     if "edge" in data:
         style.edge = deserialize_edge_config(data["edge"])
-    
+
     # Deserialize legacy depth styles
     if "depth_styles" in data:
         style.depth_styles = {
             int(depth): deserialize_node_style(style_data)
             for depth, style_data in data["depth_styles"].items()
         }
-    
+
     # Deserialize priority scheme
     if "priority_scheme" in data:
         style.priority_scheme = deserialize_priority_scheme(data["priority_scheme"])
-    
+
     # Deserialize layout config
     if "layout" in data:
         style.layout = deserialize_layout_config(data["layout"])
-    
+
     return style
 
 
@@ -204,18 +200,18 @@ def serialize_template(template: Template) -> dict:
 def deserialize_template(data: dict) -> Template:
     """Deserialize Template from JSON-compatible dict."""
     from .enums import SpacingLevel
-    
+
     role_styles = {
         NodeRole(role): deserialize_role_based_style(role, style_data)
         for role, style_data in data["role_styles"].items()
     }
-    
+
     spacing_data = data.get("spacing", {})
     spacing = SpacingConfig(
         parent_child_spacing=SpacingLevel(spacing_data.get("parent_child_spacing", "normal")),
         sibling_spacing=SpacingLevel(spacing_data.get("sibling_spacing", "normal")),
     )
-    
+
     return Template(
         name=data["name"],
         description=data.get("description", ""),
@@ -247,21 +243,21 @@ def deserialize_color_scheme(data: dict) -> ColorScheme:
         NodeRole(role): color
         for role, color in data.get("node_colors", {}).items()
     }
-    
+
     border_colors = None
     if data.get("border_colors"):
         border_colors = {
             NodeRole(role): color
             for role, color in data["border_colors"].items()
         }
-    
+
     text_colors = None
     if data.get("text_colors"):
         text_colors = {
             NodeRole(role): color
             for role, color in data["text_colors"].items()
         }
-    
+
     return ColorScheme(
         name=data["name"],
         description=data.get("description", ""),
@@ -330,7 +326,7 @@ def deserialize_role_based_style(role: NodeRole, data: dict) -> RoleBasedStyle:
     shape_data = data.get("shape", {})
     background_data = data.get("background", {})
     border_data = data.get("border", {})
-    
+
     return RoleBasedStyle(
         role=role,
         shape=NodeShape(
@@ -396,7 +392,7 @@ def deserialize_edge_config(data: dict) -> EdgeConfig:
         NodeRole(role): deserialize_edge_style(style_data)
         for role, style_data in data.get("role_styles", {}).items()
     }
-    
+
     return EdgeConfig(
         default_style=default_style,
         role_styles=role_styles,
@@ -425,7 +421,7 @@ def serialize_edge_style(style) -> dict:
 def deserialize_edge_style(data: dict):
     """Deserialize EdgeStyle from dict."""
     from .extended_styles import EdgeStyle
-    
+
     return EdgeStyle(
         connector_type=data.get("connector_type", "bezier"),
         line_width=data.get("line_width", 2.0),
@@ -470,7 +466,7 @@ def serialize_node_style(style) -> dict:
 def deserialize_node_style(data: dict):
     """Deserialize legacy NodeStyleConfig from dict."""
     from .style_config import NodeStyleConfig
-    
+
     return NodeStyleConfig(
         shape=data.get("shape", "rounded_rect"),
         font_size=data.get("font_size", 16),
@@ -510,7 +506,7 @@ def deserialize_priority_scheme(data: dict):
     """Deserialize legacy PriorityScheme from dict."""
     from .enums import PriorityLevel
     from .style_config import PriorityDefinition, PriorityScheme
-    
+
     levels = {}
     for level_str, level_data in data.get("levels", {}).items():
         level = PriorityLevel(int(level_str))
@@ -519,7 +515,7 @@ def deserialize_priority_scheme(data: dict):
             name=level_data["name"],
             style_override=deserialize_node_style(level_data["style_override"]),
         )
-    
+
     return PriorityScheme(
         name=data.get("name", "Default"),
         levels=levels,
@@ -541,7 +537,7 @@ def serialize_layout_config(layout) -> dict:
 def deserialize_layout_config(data: dict):
     """Deserialize legacy LayoutConfig from dict."""
     from .style_config import LayoutConfig
-    
+
     return LayoutConfig(
         level_spacing_depth_0=data.get("level_spacing_depth_0", 80.0),
         level_spacing_depth_1=data.get("level_spacing_depth_1", 60.0),

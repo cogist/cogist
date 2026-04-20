@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 class AppContext:
     """Global application context singleton.
-    
+
     Provides access to the current active window and its components.
     In SDI mode: returns the single MainWindow instance.
     In MDI mode (future): returns the currently active tab/window.

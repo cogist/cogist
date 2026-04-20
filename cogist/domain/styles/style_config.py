@@ -3,7 +3,8 @@
 from dataclasses import dataclass, field
 
 from .enums import PriorityLevel
-from .extended_styles import ColorScheme, EdgeConfig as NewEdgeConfig, Template
+from .extended_styles import ColorScheme, Template
+from .extended_styles import EdgeConfig as NewEdgeConfig
 
 # Global constant for maximum text width across all node levels
 MAX_TEXT_WIDTH = 250.0
@@ -125,23 +126,23 @@ class PriorityScheme:
 @dataclass
 class MindMapStyle:
     """Complete mind map style configuration (new architecture).
-    
+
     Uses template and color scheme references instead of embedded styles.
     This is the ONLY authoritative style system - no legacy fields.
     """
 
     name: str = "Default"
-    
+
     # === Template and ColorScheme references (authoritative) ===
     template_name: str = "default"
     color_scheme_name: str = "default"
-    
+
     # === Runtime resolved styles (computed by resolve_style()) ===
     resolved_template: Template | None = None
     resolved_color_scheme: ColorScheme | None = None
 
     # === Edge configuration (new architecture) ===
     edge: NewEdgeConfig = field(default_factory=NewEdgeConfig)
-    
+
     # === Canvas background (synced from color_scheme) ===
     canvas_bg_color: str = "#FFFFFF"

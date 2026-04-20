@@ -16,17 +16,17 @@ if TYPE_CHECKING:
 
 class LayoutRegistry:
     """Registry for layout algorithms
-    
+
     Manages available layout algorithms and provides factory methods
     to create layout instances by name.
-    
+
     Usage:
         registry = LayoutRegistry()
         registry.register("default", DefaultLayout)
-        
+
         # Create layout instance
         layout = registry.get_layout("default", config)
-        
+
         # Get available layouts
         names = registry.get_available_layouts()  # ["default"]
     """
@@ -37,11 +37,11 @@ class LayoutRegistry:
 
     def register(self, name: str, layout_class: type[BaseLayout]) -> None:
         """Register a layout algorithm
-        
+
         Args:
             name: Unique identifier for the layout (e.g., "default", "tree")
             layout_class: Layout class (must inherit from BaseLayout)
-        
+
         Raises:
             ValueError: If name is already registered
         """
@@ -52,10 +52,10 @@ class LayoutRegistry:
 
     def unregister(self, name: str) -> None:
         """Unregister a layout algorithm
-        
+
         Args:
             name: Layout identifier to remove
-        
+
         Raises:
             KeyError: If layout is not registered
         """
@@ -66,14 +66,14 @@ class LayoutRegistry:
 
     def get_layout(self, name: str, config: LayoutConfigType | None = None) -> BaseLayout:
         """Create a layout algorithm instance
-        
+
         Args:
             name: Layout identifier
             config: Optional configuration (uses layout's default if not provided)
-        
+
         Returns:
             Layout algorithm instance
-        
+
         Raises:
             ValueError: If layout is not registered
         """
@@ -89,7 +89,7 @@ class LayoutRegistry:
 
     def get_available_layouts(self) -> list[str]:
         """Get all registered layout algorithm names
-        
+
         Returns:
             List of layout identifiers
         """
@@ -97,10 +97,10 @@ class LayoutRegistry:
 
     def has_layout(self, name: str) -> bool:
         """Check if a layout algorithm is registered
-        
+
         Args:
             name: Layout identifier
-        
+
         Returns:
             True if layout is registered
         """

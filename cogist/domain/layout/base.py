@@ -38,10 +38,10 @@ class DefaultLayoutConfig(BaseLayoutConfig):
 
     def get_level_spacing(self, depth: int) -> float:
         """Get level spacing for a specific depth
-        
+
         Args:
             depth: Parent node's depth in tree
-        
+
         Returns:
             Horizontal spacing for this parent-child relationship
         """
@@ -51,10 +51,10 @@ class DefaultLayoutConfig(BaseLayoutConfig):
 
     def get_sibling_spacing(self, depth: int) -> float:
         """Get sibling spacing for a specific depth
-        
+
         Args:
             depth: Node depth in tree
-        
+
         Returns:
             Sibling spacing for this depth
         """
@@ -135,9 +135,9 @@ class BaseLayout(ABC):
     @abstractmethod
     def _get_default_config(self) -> LayoutConfigType:
         """Return default configuration for this layout
-        
+
         Subclasses must implement this to provide their default config.
-        
+
         Returns:
             Default configuration instance
         """
