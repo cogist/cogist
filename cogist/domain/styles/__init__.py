@@ -12,7 +12,7 @@ from .extended_styles import (
     SpacingConfig,
     Template,
 )
-from .style_config import MindMapStyle
+from .style_config import LegacyEdgeConfig, MindMapStyle
 from .style_resolver import (
     deserialize_color_scheme,
     deserialize_style,
@@ -51,4 +51,5 @@ __all__ = [
 
     # Main style configuration
     "MindMapStyle",
+    "LegacyEdgeConfig",  # For backward compatibility
 ]

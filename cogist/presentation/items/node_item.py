@@ -167,8 +167,12 @@ class NodeItem(QGraphicsRectItem):
                 color_scheme = self.style_config.resolved_color_scheme
                 if color_scheme:
                     bg_color = color_scheme.node_colors.get(role, "#FFFFFF")
-                    text_color = color_scheme.text_colors.get(role) or self._auto_contrast(bg_color)
-                    border_color = color_scheme.border_colors.get(role) if color_scheme.border_colors else None
+                    text_color = (color_scheme.text_colors.get(role) 
+                                  if color_scheme.text_colors 
+                                  else None) or self._auto_contrast(bg_color)
+                    border_color = (color_scheme.border_colors.get(role) 
+                                    if color_scheme.border_colors 
+                                    else None)
                 else:
                     bg_color = "#FFFFFF"
                     text_color = "#000000"
@@ -230,14 +234,8 @@ class NodeItem(QGraphicsRectItem):
         font = QFont(font_family, font_size)
         font.setWeight(font_weight)  # Use setWeight for better compatibility
 
-        # Apply font decorations from style_config if available
-        if self.node_style:
-            if self.node_style.font_italic:
-                font.setItalic(True)
-            if self.node_style.font_underline:
-                font.setUnderline(True)
-            if self.node_style.font_strikeout:
-                font.setStrikeOut(True)
+        # Note: Font decorations (italic/underline/strikeout) are not yet in RoleBasedStyle
+        # They can be added to the template structure in the future
 
         self.text_item.setFont(font)
 
@@ -261,13 +259,13 @@ class NodeItem(QGraphicsRectItem):
             )
             # Position text at top-left with padding
             if style_for_calc and hasattr(style_for_calc, 'padding_w'):
-                padding_width = style_for_calc.padding_w
-                padding_height = style_for_calc.padding_h
+                padding_left = style_for_calc.padding_w
+                padding_top = style_for_calc.padding_h
             else:
-                padding_width = 12
-                padding_height = 8
+                padding_left = 12
+                padding_top = 8
             self.text_item.setPos(
-                -width / 2 + padding_width / 2, -height / 2 + padding_height / 2
+                -width / 2 + padding_left, -height / 2 + padding_top
             )
         else:
             # Measure and auto-size using unified method
@@ -282,13 +280,13 @@ class NodeItem(QGraphicsRectItem):
             )
             # Position text at top-left with padding
             if style_for_calc and hasattr(style_for_calc, 'padding_w'):
-                padding_width = style_for_calc.padding_w
-                padding_height = style_for_calc.padding_h
+                padding_left = style_for_calc.padding_w
+                padding_top = style_for_calc.padding_h
             else:
-                padding_width = 12
-                padding_height = 8
+                padding_left = 12
+                padding_top = 8
             self.text_item.setPos(
-                -actual_width / 2 + padding_width / 2, -actual_height / 2 + padding_height / 2
+                -actual_width / 2 + padding_left, -actual_height / 2 + padding_top
             )
 
     def add_edge(self, edge):
@@ -466,19 +464,19 @@ class NodeItem(QGraphicsRectItem):
         """Custom paint for node with shape support using style_config."""
         from PySide6.QtGui import QPainter
 
-        # Use node_style from style_config if available, otherwise fallback to legacy
-        if self.node_style:
-            # Use new MindMapStyle system
-            shape = self.node_style.shape
-            radius = self.node_style.border_radius
-            bg_color = self.node_style.bg_color if self.node_style.bg_color else self.color
-            border_color = self.node_style.border_color
-            border_width = self.node_style.border_width
-            border_style = self.node_style.border_style
+        # Use template_style if available (new architecture), otherwise fallback to legacy
+        if hasattr(self, 'template_style') and self.template_style:
+            # Use new role-based style system
+            shape_type = self.template_style.shape.basic_shape if self.template_style.shape else "rounded_rect"
+            radius = self.template_style.shape.border_radius if self.template_style.shape else 8
+            bg_color = self.bg_color  # Color comes from color scheme
+            border_color = self.border_color  # Border color from color scheme or None
+            border_width = self.template_style.border.border_width if self.template_style.border else 2
+            border_style = self.template_style.border.border_style if self.template_style.border else "solid"
         else:
             # Fallback to old NodeStyle
             style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
-            shape = "rounded_rect"
+            shape_type = "rounded_rect"
             radius = style["border_radius"]
             bg_color = self.color
             border_color = None
@@ -489,10 +487,10 @@ class NodeItem(QGraphicsRectItem):
 
         # Create path based on shape
         path = QPainterPath()
-        if shape == "circle":
+        if shape_type == "circle":
             # Draw circle/ellipse
             path.addEllipse(rect)
-        elif shape == "rect":
+        elif shape_type == "rect":
             # Draw rectangle (no radius)
             path.addRect(rect)
         else:  # rounded_rect (default)
@@ -509,11 +507,11 @@ class NodeItem(QGraphicsRectItem):
         # Draw selection highlight if selected
         if self.isSelected():
             highlight_path = QPainterPath()
-            if shape == "circle":
+            if shape_type == "circle":
                 # Ellipse highlight with offset
                 highlight_rect = rect.adjusted(-3, -3, 3, 3)
                 highlight_path.addEllipse(highlight_rect)
-            elif shape == "rect":
+            elif shape_type == "rect":
                 # Rectangle highlight with offset
                 highlight_rect = rect.adjusted(-3, -3, 3, 3)
                 highlight_path.addRect(highlight_rect)
@@ -533,7 +531,8 @@ class NodeItem(QGraphicsRectItem):
         painter.setRenderHint(QPainter.Antialiasing, True)
 
         # Check if this node should have no background (depth >= 3 or explicit flag)
-        has_background = not getattr(self.node_style, 'no_background', False) if self.node_style else True
+        # For now, always draw background in new architecture
+        has_background = True
 
         if not has_background:
             # No background fill, no border - just text
@@ -544,20 +543,8 @@ class NodeItem(QGraphicsRectItem):
             bg_qcolor = QColor(bg_color) if isinstance(bg_color, str) else bg_color
 
             # Create gradient or solid color
-            if self.is_root and not self.node_style:
-                # Legacy gradient for root nodes
-                gradient = QLinearGradient(
-                    rect.x(),
-                    rect.y(),
-                    rect.x(),
-                    rect.y() + rect.height(),
-                )
-                gradient.setColorAt(0, bg_qcolor.lighter(120))
-                gradient.setColorAt(1, bg_qcolor)
-                painter.setBrush(QBrush(gradient))
-            else:
-                # Solid color from style_config
-                painter.setBrush(QBrush(bg_qcolor))
+            # For now, just use solid color (gradient can be added later)
+            painter.setBrush(QBrush(bg_qcolor))
 
             # Apply border if specified
             if border_width > 0 and border_color:
@@ -604,8 +591,13 @@ class NodeItem(QGraphicsRectItem):
         Returns:
             Tuple of (actual_width, actual_height, text_rect)
         """
-        # Support both dict and NodeStyleConfig
-        if hasattr(style, "max_text_width"):
+        # Support RoleBasedStyle, NodeStyleConfig, and dict
+        if hasattr(style, 'padding_w'):
+            # It's a RoleBasedStyle object (new architecture)
+            max_text_width = getattr(style, 'max_text_width', 250.0)  # Default to 250
+            padding_width = style.padding_w * 2  # padding_w is single-side, need both sides
+            padding_height = style.padding_h * 2  # padding_h is single-side, need top+bottom
+        elif hasattr(style, "max_text_width"):
             # It's a NodeStyleConfig object
             max_text_width = style.max_text_width
             padding_width = style.padding_width
@@ -655,20 +647,29 @@ class NodeItem(QGraphicsRectItem):
         Args:
             text: New text content
         """
-        # Get style for current depth
-        style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
+        # Use template_style if available (new architecture), otherwise fallback to legacy
+        if hasattr(self, 'template_style') and self.template_style:
+            # Use new role-based style system
+            style_for_calc = self.template_style
+            padding_left = style_for_calc.padding_w
+            padding_top = style_for_calc.padding_h
+        else:
+            # Fallback to old NodeStyle for backward compatibility
+            style_for_calc = NodeStyle.get_style_for_depth(self.depth, self.is_root)
+            padding_left = style_for_calc["padding_width"]
+            padding_top = style_for_calc["padding_height"]
 
         # Calculate new size
-        actual_width, actual_height, text_rect = self._calculate_node_size(text, style)
+        actual_width, actual_height, text_rect = self._calculate_node_size(text, style_for_calc)
 
         # Update node dimensions
         self.node_width = actual_width
         self.node_height = actual_height
         self.setRect(-actual_width / 2, -actual_height / 2, actual_width, actual_height)
 
-        # Center text vertically
+        # Position text at top-left with padding
         self.text_item.setPos(
-            -text_rect.width() / 2, -actual_height / 2 + style["padding_height"] / 2
+            -actual_width / 2 + padding_left, -actual_height / 2 + padding_top
         )
 
     def set_text(self, text: str):
@@ -706,12 +707,16 @@ class NodeItem(QGraphicsRectItem):
 
         # Position to match text item exactly (top-left with padding)
         # Get style to calculate padding
-        style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
-        padding_width = style["padding_width"]
-        padding_height = style["padding_height"]
+        if hasattr(self, 'template_style') and self.template_style:
+            padding_left = self.template_style.padding_w
+            padding_top = self.template_style.padding_h
+        else:
+            style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
+            padding_left = style["padding_width"]
+            padding_top = style["padding_height"]
         self.edit_widget.setPos(
-            -self.node_width / 2 + padding_width / 2,
-            -self.node_height / 2 + padding_height / 2
+            -self.node_width / 2 + padding_left,
+            -self.node_height / 2 + padding_top
         )
 
         # Hide text item during editing
@@ -733,9 +738,13 @@ class NodeItem(QGraphicsRectItem):
                 return
 
             # Get style to calculate padding
-            style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
-            padding_width = style["padding_width"]
-            padding_height = style["padding_height"]
+            if hasattr(self, 'template_style') and self.template_style:
+                padding_width = self.template_style.padding_w * 2  # Both sides
+                padding_height = self.template_style.padding_h * 2
+            else:
+                style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
+                padding_width = style["padding_width"]
+                padding_height = style["padding_height"]
 
             # Calculate new node dimensions
             new_node_width = new_width + padding_width
