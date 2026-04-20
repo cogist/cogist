@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from cogist.domain.styles import COLOR_SCHEMES, NODE_TEMPLATES
+from cogist.domain.styles import create_default_template
 
 from .style_panel_advanced import AdvancedStyleTab
 
@@ -27,8 +27,9 @@ class StylePanel(QWidget):
 
     PANEL_WIDTH = 260
 
-    def __init__(self, parent=None):
+    def __init__(self, style_config=None, parent=None):
         super().__init__(parent)
+        self.style_config = style_config
 
         # Set fixed width
         self.setMinimumWidth(self.PANEL_WIDTH)
@@ -44,7 +45,7 @@ class StylePanel(QWidget):
 
         # Create simple tab (default)
         self.simple_tab = SimpleStyleTab()
-        self.advanced_tab = AdvancedStyleTab()
+        self.advanced_tab = AdvancedStyleTab(self.style_config)
 
         # Initially show advanced tab
         main_layout.addWidget(self.simple_tab)
@@ -76,9 +77,10 @@ class StylePanel(QWidget):
 
 
 class SimpleStyleTab(QWidget):
-    """Simple mode tab for quick style selection.
-
-    Provides template and color scheme selection for quick styling.
+    """Simple mode tab - placeholder for future template selection feature.
+    
+    Note: This tab is currently disabled. Use Advanced mode for style editing.
+    Template and color scheme selection will be implemented when template files are available.
     """
 
     style_changed = Signal(dict)
@@ -88,7 +90,7 @@ class SimpleStyleTab(QWidget):
         self._init_ui()
 
     def _init_ui(self):
-        """Initialize simple mode UI."""
+        """Initialize simple mode UI with placeholder message."""
         layout = QVBoxLayout(self)
         layout.setSpacing(8)
         layout.setContentsMargins(16, 16, 16, 16)
@@ -105,147 +107,19 @@ class SimpleStyleTab(QWidget):
         """)
         layout.addWidget(title)
 
-        # Template selector
-        template_label = QLabel("Template:")
-        template_label.setStyleSheet("QLabel { font-size: 12px; color: #666666; }")
-        layout.addWidget(template_label)
-
-        self.template_combo = QComboBox()
-        self.template_combo.setFixedHeight(32)
-        for key, template in NODE_TEMPLATES.items():
-            self.template_combo.addItem(template.name, key)
-        self.template_combo.currentIndexChanged.connect(self._on_template_changed)
-        layout.addWidget(self.template_combo)
-
-        # Template description
-        self.template_desc_label = QLabel()
-        self.template_desc_label.setWordWrap(True)
-        self.template_desc_label.setStyleSheet("""
+        # Placeholder message
+        message = QLabel(
+            "Template selection will be available in a future version.\n\n"
+            "Please use Advanced mode to edit styles."
+        )
+        message.setWordWrap(True)
+        message.setStyleSheet("""
             QLabel {
-                font-size: 11px;
-                color: #888888;
-                padding-bottom: 12px;
-            }
-        """)
-        layout.addWidget(self.template_desc_label)
-
-        layout.addSpacing(8)
-
-        # Color scheme selector
-        colorscheme_label = QLabel("Color Scheme:")
-        colorscheme_label.setStyleSheet("QLabel { font-size: 12px; color: #666666; }")
-        layout.addWidget(colorscheme_label)
-
-        self.colorscheme_combo = QComboBox()
-        self.colorscheme_combo.setFixedHeight(32)
-        for key, scheme in COLOR_SCHEMES.items():
-            self.colorscheme_combo.addItem(scheme.name, key)
-        self.colorscheme_combo.currentIndexChanged.connect(self._on_colorscheme_changed)
-        layout.addWidget(self.colorscheme_combo)
-
-        # Color scheme description
-        self.colorscheme_desc_label = QLabel()
-        self.colorscheme_desc_label.setWordWrap(True)
-        self.colorscheme_desc_label.setStyleSheet("""
-            QLabel {
-                font-size: 11px;
-                color: #888888;
-                padding-bottom: 12px;
-            }
-        """)
-        layout.addWidget(self.colorscheme_desc_label)
-
-        layout.addSpacing(8)
-
-        # Rainbow branches toggle
-        self.rainbow_checkbox = QCheckBox("Rainbow Branches")
-        self.rainbow_checkbox.setStyleSheet("""
-            QCheckBox {
                 font-size: 12px;
-                color: #333333;
-                padding: 8px 0;
+                color: #888888;
+                padding: 16px;
             }
         """)
-        self.rainbow_checkbox.stateChanged.connect(self._on_rainbow_changed)
-        layout.addWidget(self.rainbow_checkbox)
-
-        # Color scheme preview
-        preview_label = QLabel("Preview:")
-        preview_label.setStyleSheet("QLabel { font-size: 12px; color: #666666; padding-top: 8px; }")
-        layout.addWidget(preview_label)
-
-        self.preview_widget = QWidget()
-        self.preview_widget.setFixedHeight(80)
-        self.preview_widget.setStyleSheet("""
-            QWidget {
-                background-color: #FFFFFF;
-                border: 1px solid #DDDDDD;
-                border-radius: 8px;
-            }
-        """)
-        layout.addWidget(self.preview_widget)
+        layout.addWidget(message)
 
         layout.addStretch()
-
-        # Initialize with first template and color scheme
-        self._update_template_description()
-        self._update_colorscheme_description()
-        self._update_preview()
-
-    def _on_template_changed(self, _index):
-        """Handle template selection change."""
-        self._update_template_description()
-        self._update_preview()
-        self._emit_style_changed()
-
-    def _on_colorscheme_changed(self, _index):
-        """Handle color scheme selection change."""
-        self._update_colorscheme_description()
-        self._update_preview()
-        self._emit_style_changed()
-
-    def _on_rainbow_changed(self, _state):
-        """Handle rainbow branches toggle."""
-        self._update_preview()
-        self._emit_style_changed()
-
-    def _update_template_description(self):
-        """Update template description label."""
-        key = self.template_combo.currentData()
-        if key and key in NODE_TEMPLATES:
-            template = NODE_TEMPLATES[key]
-            self.template_desc_label.setText(template.description)
-
-    def _update_colorscheme_description(self):
-        """Update color scheme description label."""
-        key = self.colorscheme_combo.currentData()
-        if key and key in COLOR_SCHEMES:
-            scheme = COLOR_SCHEMES[key]
-            self.colorscheme_desc_label.setText(scheme.description)
-
-    def _update_preview(self):
-        """Update color scheme preview."""
-        scheme_key = self.colorscheme_combo.currentData()
-        if scheme_key and scheme_key in COLOR_SCHEMES:
-            scheme = COLOR_SCHEMES[scheme_key]
-            bg_color = scheme.canvas_bg_color
-            edge_color = scheme.edge_color
-            self.preview_widget.setStyleSheet(f"""
-                QWidget {{
-                    background-color: {bg_color};
-                    border: 2px solid {edge_color};
-                    border-radius: 8px;
-                }}
-            """)
-
-    def _emit_style_changed(self):
-        """Emit style changed signal with current settings."""
-        template_key = self.template_combo.currentData()
-        scheme_key = self.colorscheme_combo.currentData()
-        use_rainbow = self.rainbow_checkbox.isChecked()
-
-        self.style_changed.emit({
-            "template_name": template_key,
-            "color_scheme_name": scheme_key,
-            "use_rainbow_branches": use_rainbow,
-        })

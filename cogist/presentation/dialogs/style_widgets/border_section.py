@@ -60,7 +60,14 @@ class BorderSection(CollapsiblePanel):
         style_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(style_label, 0, 0)
 
-        self.border_style_combo = QPushButton("Solid")
+        # Get initial border style from current_style
+        border_style_map = {
+            "solid": "Solid",
+            "dashed": "Dashed",
+            "dotted": "Dotted",
+        }
+        initial_border_style = border_style_map.get(self.current_style.get("border_style", "solid"), "Solid")
+        self.border_style_combo = QPushButton(initial_border_style)
         self.border_style_combo.setFixedHeight(self.WIDGET_HEIGHT)
         self.border_style_combo.setStyleSheet(self._button_style())
 

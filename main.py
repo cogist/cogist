@@ -102,7 +102,7 @@ class MainWindow(QMainWindow):
 
         self.activity_bar = ActivityBar()
         self.activity_bar.setVisible(False)  # Hidden by default
-        self.style_panel = StylePanel()
+        self.style_panel = StylePanel(style_config=self.current_style)
         self.style_panel.setVisible(False)  # Hidden by default
 
         # Create horizontal layout: ActivityBar | StylePanel | MindMapView

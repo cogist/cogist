@@ -47,7 +47,8 @@ class NodeStyleSection(CollapsiblePanel):
         self.toggled.connect(self._on_toggled)
 
     def _get_default_style(self) -> dict:
-        """Get default node style."""
+        """Get default node style - used only during initialization before real data is loaded."""
+        # This should be overwritten by set_style() before any UI interaction
         return {
             "shape": "rounded_rect",
             "radius": 10,
@@ -86,7 +87,14 @@ class NodeStyleSection(CollapsiblePanel):
         shape_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(shape_label, row, 0)
 
-        self.shape_combo = QPushButton("Rounded Rect")
+        # Get initial shape from current_style
+        shape_map = {
+            "rect": "Rectangle",
+            "rounded_rect": "Rounded Rect",
+            "circle": "Circle",
+        }
+        initial_shape = shape_map.get(self.current_style.get("shape", "rounded_rect"), "Rounded Rect")
+        self.shape_combo = QPushButton(initial_shape)
         self.shape_combo.setFixedHeight(self.WIDGET_HEIGHT)
         self.shape_combo.setStyleSheet(self._button_style())
 

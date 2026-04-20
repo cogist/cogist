@@ -61,7 +61,14 @@ class ConnectorSection(CollapsiblePanel):
         type_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(type_label, 0, 0)
 
-        self.connector_type_combo = QPushButton("Bezier")
+        # Get initial connector type from current_style
+        connector_type_map = {
+            "straight": "Straight",
+            "orthogonal": "Orthogonal",
+            "bezier": "Bezier",
+        }
+        initial_connector_type = connector_type_map.get(self.current_style.get("connector_type", "bezier"), "Bezier")
+        self.connector_type_combo = QPushButton(initial_connector_type)
         self.connector_type_combo.setFixedHeight(self.WIDGET_HEIGHT)
         self.connector_type_combo.setStyleSheet(self._button_style())
 
@@ -84,7 +91,14 @@ class ConnectorSection(CollapsiblePanel):
         style_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(style_label, 1, 0)
 
-        self.connector_style_combo = QPushButton("Solid")
+        # Get initial connector style from current_style
+        connector_style_map = {
+            "solid": "Solid",
+            "dashed": "Dashed",
+            "dotted": "Dotted",
+        }
+        initial_connector_style = connector_style_map.get(self.current_style.get("connector_style", "solid"), "Solid")
+        self.connector_style_combo = QPushButton(initial_connector_style)
         self.connector_style_combo.setFixedHeight(self.WIDGET_HEIGHT)
         self.connector_style_combo.setStyleSheet(self._button_style())
 

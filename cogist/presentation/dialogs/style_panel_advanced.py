@@ -38,7 +38,7 @@ class AdvancedStyleTab(QWidget):
     # Panel dimensions
     PANEL_WIDTH = 260  # Original carefully designed width
 
-    def __init__(self, parent=None):
+    def __init__(self, style_config=None, parent=None):
         super().__init__(parent)
 
         # Set initial width (fixed, non-resizable)
@@ -60,11 +60,17 @@ class AdvancedStyleTab(QWidget):
         # Connector style (shared across all node layers)
         self.connector_style = self._get_default_connector_style()
 
-        # Spacing configuration
-        self.spacing_config = {
-            "parent_child": 20,
-            "sibling": 15,
-        }
+        # Spacing configuration - derived from style_config if available
+        if style_config:
+            self.spacing_config = {
+                "parent_child": getattr(style_config, 'parent_child_spacing', 20),
+                "sibling": getattr(style_config, 'sibling_spacing', 15),
+            }
+        else:
+            self.spacing_config = {
+                "parent_child": 20,
+                "sibling": 15,
+            }
 
         # Initialize UI with modular components
         self._init_ui()
@@ -278,9 +284,22 @@ class AdvancedStyleTab(QWidget):
                 # Sync shadow section visibility with shadow_enabled state
                 shadow_enabled = layer_style.get("shadow_enabled", False)
                 self.shadow_section.setVisible(shadow_enabled)
+                
+                # Load shadow configuration if available
+                shadow_config = {
+                    "enabled": shadow_enabled,
+                    "offset_x": layer_style.get("shadow_offset_x", 2),
+                    "offset_y": layer_style.get("shadow_offset_y", 2),
+                    "blur": layer_style.get("shadow_blur", 4),
+                    "color": layer_style.get("shadow_color", "#000000"),
+                }
+                self.shadow_section.set_shadow(shadow_config)
 
             # Load border style
             self.border_section.set_style(layer_style)
+            
+            # Load spacing configuration (shared across all non-canvas layers)
+            self.spacing_section.set_spacing(self.spacing_config)
 
         # Load connector style (always loaded)
         self.connector_section.set_style(self.connector_style)
@@ -298,6 +317,17 @@ class AdvancedStyleTab(QWidget):
             # Save border style
             border_style = self.border_section.get_style()
             self.layer_styles[self.current_layer].update(border_style)
+            
+            # Save shadow configuration
+            shadow_config = self.shadow_section.get_shadow()
+            if shadow_config:
+                self.layer_styles[self.current_layer].update({
+                    "shadow_enabled": shadow_config.get("enabled", False),
+                    "shadow_offset_x": shadow_config.get("offset_x", 2),
+                    "shadow_offset_y": shadow_config.get("offset_y", 2),
+                    "shadow_blur": shadow_config.get("blur", 4),
+                    "shadow_color": shadow_config.get("color", "#000000"),
+                })
 
     def _apply_styles_to_mindmap(self):
         """Unified method to apply all styles to mindmap_view.
@@ -423,7 +453,11 @@ class AdvancedStyleTab(QWidget):
                 edge_item.update_style(self.connector_style)
 
     def _convert_layer_to_role_style(self, layer_data: dict):
-        """Convert layer style dictionary to RoleBasedStyle object."""
+        """Convert layer style dictionary to RoleBasedStyle object.
+        
+        Raises:
+            AssertionError: If required fields are missing from layer_data
+        """
         from cogist.domain.styles import (
             BackgroundStyle,
             BorderStyle,
@@ -433,21 +467,31 @@ class AdvancedStyleTab(QWidget):
         )
 
         role = NodeRole.TERTIARY  # Default
+        
+        # Assert that critical fields exist - fail fast if data is incomplete
+        assert "shape" in layer_data and layer_data["shape"] is not None, \
+            f"layer_data missing 'shape' field: {layer_data}"
+        assert "radius" in layer_data, \
+            f"layer_data missing 'radius' field: {layer_data}"
+        assert "border_style" in layer_data, \
+            f"layer_data missing 'border_style' field: {layer_data}"
+        assert "border_width" in layer_data, \
+            f"layer_data missing 'border_width' field: {layer_data}"
 
         style = RoleBasedStyle(
             role=role,
             shape=NodeShape(
-                basic_shape=layer_data.get("shape", "rounded_rect"),
-                border_radius=layer_data.get("radius", 8),
+                basic_shape=layer_data["shape"],
+                border_radius=layer_data["radius"],
             ),
             background=BackgroundStyle(
                 bg_type="solid",
             ),
             border=BorderStyle(
                 border_type="simple",
-                border_style=layer_data.get("border_style", "solid").lower(),
-                border_width=layer_data.get("border_width", 2),
-                border_radius=layer_data.get("radius", 8),
+                border_style=layer_data["border_style"].lower(),
+                border_width=layer_data["border_width"],
+                border_radius=layer_data["radius"],
             ),
             padding_w=layer_data.get("padding_w", 12),
             padding_h=layer_data.get("padding_h", 8),

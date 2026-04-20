@@ -23,8 +23,6 @@ from .style_resolver import (
     serialize_template,
 )
 from .templates import (
-    COLOR_SCHEMES,
-    NODE_TEMPLATES,
     create_default_template,
 )
 
@@ -58,8 +56,6 @@ __all__ = [
     "MindMapStyle",
     "LegacyEdgeConfig",  # For backward compatibility
 
-    # Preset templates and color schemes
+    # Default template creator
     "create_default_template",
-    "COLOR_SCHEMES",
-    "NODE_TEMPLATES",
 ]

@@ -80,7 +80,8 @@ class LayerSelector(QFrame):
         layer_label.setMinimumWidth(self.LABEL_WIDTH)
         content_layout.addWidget(layer_label, 0, 0)
 
-        # Layer combo button
+        # Layer combo button - get initial layer from parent panel
+        # This is set by the parent panel after initialization
         self.layer_combo = QPushButton("Canvas")
         self.layer_combo.setFixedHeight(self.WIDGET_HEIGHT)
         self.layer_combo.setStyleSheet("""
