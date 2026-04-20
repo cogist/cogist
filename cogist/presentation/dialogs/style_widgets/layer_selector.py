@@ -1,15 +1,15 @@
 """Layer selector widget for advanced style panel.
 
 Provides a dropdown menu to select different layers (Canvas, Root, Level 1-3+, etc.)
-with collapsible behavior and lazy initialization.
+Always visible, no collapsible behavior.
 """
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QGridLayout, QGroupBox, QLabel, QMenu, QPushButton, QWidget
+from PySide6.QtWidgets import QFrame, QGridLayout, QLabel, QMenu, QPushButton, QVBoxLayout
 
 
-class LayerSelector(QGroupBox):
-    """Layer selection widget with collapsible behavior.
+class LayerSelector(QFrame):
+    """Layer selection widget - always visible.
     
     Signals:
         layer_changed(str): Emitted when user selects a different layer
@@ -17,37 +17,61 @@ class LayerSelector(QGroupBox):
     
     layer_changed = Signal(str)
     
-    # UI constants
+    # UI Constants
     LABEL_WIDTH = 75
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
     
     def __init__(self, parent=None):
-        super().__init__("Layer Selection", parent)
-        
-        # Make it collapsible
-        self.setCheckable(True)
-        self.setChecked(True)  # Default expanded
+        super().__init__(parent)
         
         # Current layer
         self.current_layer = "canvas"
+        
+        # Setup frame styling
+        self.setFrameShape(QFrame.StyledPanel)
+        self.setStyleSheet("""
+            LayerSelector {
+                background-color: #FFFFFF;
+                border: 1px solid #C8C8C8;
+                border-radius: 8px;
+            }
+        """)
         
         # Initialize UI
         self._init_ui()
         
     def _init_ui(self):
         """Initialize the user interface."""
-        layout = QGridLayout()
-        layout.setSpacing(6)
-        layout.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
-        layout.setColumnStretch(0, 0)
-        layout.setColumnStretch(1, 1)
+        # Main layout
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        
+        # Title label
+        title_label = QLabel("Layer Selection")
+        title_label.setStyleSheet("""
+            QLabel {
+                color: #333333;
+                font-weight: bold;
+                font-size: 13px;
+                padding: 12px 12px 6px 12px;
+            }
+        """)
+        main_layout.addWidget(title_label)
+        
+        # Content layout
+        content_layout = QGridLayout()
+        content_layout.setSpacing(6)
+        content_layout.setContentsMargins(self.GROUP_MARGIN, 6, self.GROUP_MARGIN, 16)
+        content_layout.setColumnStretch(0, 0)
+        content_layout.setColumnStretch(1, 1)
         
         # Layer label
         layer_label = QLabel("Layer:")
         layer_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         layer_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(layer_label, 0, 0)
+        content_layout.addWidget(layer_label, 0, 0)
         
         # Layer combo button
         self.layer_combo = QPushButton("Canvas")
@@ -92,9 +116,9 @@ class LayerSelector(QGroupBox):
                 action.triggered.connect(lambda _, opt=option: self._on_layer_selected(opt))
         
         self.layer_combo.setMenu(self.layer_menu)
-        layout.addWidget(self.layer_combo, 0, 1)
+        content_layout.addWidget(self.layer_combo, 0, 1)
         
-        self.setLayout(layout)
+        main_layout.addLayout(content_layout)
     
     def _adjust_menu_width(self):
         """Adjust the menu width to match the button width."""

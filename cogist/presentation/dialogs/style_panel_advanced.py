@@ -64,6 +64,9 @@ class AdvancedStyleTab(QWidget):
         # Connect signals
         self._connect_signals()
 
+        # Set initial visibility based on default layer (canvas)
+        self._set_initial_visibility()
+
         # Load initial layer style
         self._load_current_layer_style()
 
@@ -80,7 +83,7 @@ class AdvancedStyleTab(QWidget):
         content_widget = QWidget()
         layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout.setSpacing(1)
 
         # Add modular components
         self.layer_selector = LayerSelector()
@@ -119,7 +122,6 @@ class AdvancedStyleTab(QWidget):
                 margin-top: 24px;
                 padding-top: 12px;
                 padding-bottom: 12px;
-                margin-bottom: 8px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
@@ -192,6 +194,13 @@ class AdvancedStyleTab(QWidget):
         """Handle connector style changes."""
         self.connector_style.update(style)
         self._update_preview()
+
+    def _set_initial_visibility(self):
+        """Set initial visibility of sections based on default layer (canvas)."""
+        self.canvas_section.setVisible(True)
+        self.node_style_section.setVisible(False)
+        self.border_section.setVisible(False)
+        self.connector_section.setVisible(False)
 
     def _load_current_layer_style(self):
         """Load style for current layer into UI components."""

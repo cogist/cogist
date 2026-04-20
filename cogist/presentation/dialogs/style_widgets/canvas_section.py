@@ -6,10 +6,12 @@ Implements lazy initialization - only creates widgets when expanded.
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QGridLayout, QGroupBox, QLabel, QPushButton
+from PySide6.QtWidgets import QGridLayout, QLabel, QPushButton
+
+from .collapsible_panel import CollapsiblePanel
 
 
-class CanvasSection(QGroupBox):
+class CanvasSection(CollapsiblePanel):
     """Canvas background settings with lazy initialization.
     
     Signals:
@@ -24,11 +26,7 @@ class CanvasSection(QGroupBox):
     GROUP_MARGIN = 10
     
     def __init__(self, parent=None):
-        super().__init__("Canvas Background", parent)
-        
-        # Make it collapsible
-        self.setCheckable(True)
-        self.setChecked(False)  # Default collapsed
+        super().__init__("Canvas Background", collapsed=True, parent=parent)
         
         # State
         self._initialized = False

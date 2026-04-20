@@ -6,10 +6,12 @@ Implements lazy initialization for better performance.
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QGridLayout, QGroupBox, QLabel, QMenu, QPushButton, QSpinBox
+from PySide6.QtWidgets import QGridLayout, QLabel, QMenu, QPushButton, QSpinBox
+
+from .collapsible_panel import CollapsiblePanel
 
 
-class ConnectorSection(QGroupBox):
+class ConnectorSection(CollapsiblePanel):
     """Connector style settings with lazy initialization.
     
     Signals:
@@ -25,10 +27,6 @@ class ConnectorSection(QGroupBox):
     
     def __init__(self, parent=None):
         super().__init__("Connector Style", parent)
-        
-        # Make it collapsible
-        self.setCheckable(True)
-        self.setChecked(False)  # Default collapsed
         
         # State
         self._initialized = False

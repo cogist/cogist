@@ -9,7 +9,6 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QCheckBox,
     QGridLayout,
-    QGroupBox,
     QLabel,
     QMenu,
     QPushButton,
@@ -18,8 +17,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .collapsible_panel import CollapsiblePanel
 
-class NodeStyleSection(QGroupBox):
+
+class NodeStyleSection(CollapsiblePanel):
     """Node style settings with lazy initialization.
     
     Signals:
@@ -34,11 +35,7 @@ class NodeStyleSection(QGroupBox):
     GROUP_MARGIN = 10
     
     def __init__(self, parent=None):
-        super().__init__("Node Style", parent)
-        
-        # Make it collapsible
-        self.setCheckable(True)
-        self.setChecked(False)  # Default collapsed
+        super().__init__("Node Style", collapsed=True, parent=parent)
         
         # State
         self._initialized = False
