@@ -130,13 +130,6 @@ def serialize_style(style_config: MindMapStyle) -> dict:
         "color_scheme_name": style_config.color_scheme_name,
         "canvas_bg_color": style_config.canvas_bg_color,
         "edge": serialize_edge_config(style_config.edge),
-        # Legacy fields for backward compatibility
-        "depth_styles": {
-            str(depth): serialize_node_style(style)
-            for depth, style in style_config.depth_styles.items()
-        },
-        "priority_scheme": serialize_priority_scheme(style_config.priority_scheme),
-        "layout": serialize_layout_config(style_config.layout),
     }
 
 
@@ -160,21 +153,6 @@ def deserialize_style(data: dict) -> MindMapStyle:
     # Deserialize edge config
     if "edge" in data:
         style.edge = deserialize_edge_config(data["edge"])
-
-    # Deserialize legacy depth styles
-    if "depth_styles" in data:
-        style.depth_styles = {
-            int(depth): deserialize_node_style(style_data)
-            for depth, style_data in data["depth_styles"].items()
-        }
-
-    # Deserialize priority scheme
-    if "priority_scheme" in data:
-        style.priority_scheme = deserialize_priority_scheme(data["priority_scheme"])
-
-    # Deserialize layout config
-    if "layout" in data:
-        style.layout = deserialize_layout_config(data["layout"])
 
     return style
 
