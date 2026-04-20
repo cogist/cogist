@@ -26,12 +26,13 @@ class MindMapRepositoryInterface(ABC):
     """
 
     @abstractmethod
-    def save(self, root_node: Any, file_path: str | Path) -> Path:
+    def save(self, root_node: Any, file_path: str | Path, style_config: Any = None) -> Path:
         """Save a mind map to storage
         
         Args:
             root_node: Root node of the mind map tree
             file_path: Path to save the file to
+            style_config: Optional MindMapStyle configuration
             
         Returns:
             Path to the saved file
@@ -43,14 +44,14 @@ class MindMapRepositoryInterface(ABC):
         pass
 
     @abstractmethod
-    def load(self, file_path: str | Path) -> Any:
+    def load(self, file_path: str | Path) -> tuple[Any, Any | None]:
         """Load a mind map from storage
         
         Args:
             file_path: Path to load the file from
             
         Returns:
-            Root node of the loaded mind map tree
+            Tuple of (root_node, style_config). style_config may be None.
             
         Raises:
             FileNotFoundError: If file doesn't exist

@@ -2,7 +2,7 @@
 MindMap Repository - Infrastructure Layer
 
 Handles persistence of mind maps to/from files.
-Supports .mwe format (JSON-based).
+Supports .cgs format (JSON-based).
 """
 
 from datetime import datetime
@@ -16,13 +16,13 @@ class MindMapRepository(MindMapRepositoryInterface):
     """
     Repository for mind map persistence.
 
-    Handles saving and loading mind maps in .mwe format,
+    Handles saving and loading mind maps in .cgs format,
     which is a JSON file.
     
     Implements MindMapRepositoryInterface for dependency injection.
     """
 
-    FILE_EXTENSION = ".mwe"
+    FILE_EXTENSION = ".cgs"
     DEFAULT_ENCODING = "utf-8"
 
     def __init__(self):
@@ -30,13 +30,14 @@ class MindMapRepository(MindMapRepositoryInterface):
         self._current_file: Path | None = None
         self._last_saved: datetime | None = None
 
-    def save(self, root_node: Any, file_path: str | Path) -> Path:
+    def save(self, root_node: Any, file_path: str | Path, style_config: Any = None) -> Path:
         """
         Save a mind map to a file.
 
         Args:
             root_node: Root node of the mind map tree
             file_path: Path to save the file to
+            style_config: Optional MindMapStyle configuration
 
         Returns:
             Path to the saved file
@@ -56,8 +57,8 @@ class MindMapRepository(MindMapRepositoryInterface):
 
             mind_map_data = {"root": JSONSerializer.node_to_dict(root_node)}
 
-            # Serialize to JSON
-            json_string = JSONSerializer.serialize(mind_map_data)
+            # Serialize to JSON (include style config)
+            json_string = JSONSerializer.serialize(mind_map_data, style_config)
 
             # Write to file (optionally could use ZIP compression)
             # For now, save as plain JSON for simplicity and debuggability
@@ -73,7 +74,7 @@ class MindMapRepository(MindMapRepositoryInterface):
         except Exception as e:
             raise OSError(f"Failed to save mind map to {path}: {e}") from e
 
-    def load(self, file_path: str | Path) -> Any:
+    def load(self, file_path: str | Path) -> tuple[Any, Any | None]:
         """
         Load a mind map from a file.
 
@@ -81,7 +82,7 @@ class MindMapRepository(MindMapRepositoryInterface):
             file_path: Path to load the file from
 
         Returns:
-            Root node of the loaded mind map
+            Tuple of (root_node, style_config). style_config may be None if not saved.
 
         Raises:
             FileNotFoundError: If file doesn't exist
@@ -104,12 +105,15 @@ class MindMapRepository(MindMapRepositoryInterface):
 
             # Convert dictionary to node tree
             root_node = JSONSerializer.dict_to_node(mind_map_data["root"])
+            
+            # Extract style config if present
+            style_config = mind_map_data.get("style")
 
             # Update metadata
             self._current_file = path
             self._last_saved = None  # Will be set when saved
 
-            return root_node
+            return root_node, style_config
 
         except (FileNotFoundError, ValueError):
             raise

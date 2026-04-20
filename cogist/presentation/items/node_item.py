@@ -141,21 +141,55 @@ class NodeItem(QGraphicsRectItem):
         text_option.setWrapMode(QTextOption.WrapAnywhere)  # Force wrap at any character
         doc.setDefaultTextOption(text_option)
 
-        # Apply font based on depth using unified style system
-        if self.style_config:
-            # Use new MindMapStyle system (default priority: Normal)
-            from cogist.domain.styles import PriorityLevel
-
-            self.node_style = self.style_config.resolve_node_style(
-                depth, PriorityLevel.LEVEL_1
-            )
-            font_size = self.node_style.font_size
-            font_weight_str = self.node_style.font_weight
-            font_family = self.node_style.font_family
-            text_color = self.node_style.text_color if self.node_style.text_color else "#000000"
-            style_for_calc = (
-                self.node_style  # Pass full NodeStyleConfig for size calculation
-            )
+        # Apply font based on role using new style system
+        if self.style_config and self.style_config.resolved_template:
+            # Use new role-based style system
+            from cogist.domain.styles import NodeRole
+            
+            # Map depth to role
+            role = self._depth_to_role(depth)
+            
+            # Get template style for this role
+            template_style = self.style_config.resolved_template.role_styles.get(role)
+            if not template_style:
+                # Fallback to TERTIARY if role not found
+                template_style = self.style_config.resolved_template.role_styles.get(
+                    NodeRole.TERTIARY
+                )
+            
+            if template_style:
+                # Extract font properties from template (without colors)
+                font_size = template_style.font_size
+                font_weight_str = template_style.font_weight
+                font_family = template_style.font_family
+                
+                # Get colors from color scheme
+                color_scheme = self.style_config.resolved_color_scheme
+                if color_scheme:
+                    bg_color = color_scheme.node_colors.get(role, "#FFFFFF")
+                    text_color = color_scheme.text_colors.get(role) or self._auto_contrast(bg_color)
+                    border_color = color_scheme.border_colors.get(role) if color_scheme.border_colors else None
+                else:
+                    bg_color = "#FFFFFF"
+                    text_color = "#000000"
+                    border_color = None
+                
+                # Store for rendering
+                self.template_style = template_style
+                self.bg_color = bg_color
+                self.text_color = text_color
+                self.border_color = border_color
+                
+                style_for_calc = template_style
+            else:
+                # Fallback to defaults
+                font_size = 14
+                font_weight_str = "Normal"
+                font_family = "Arial"
+                bg_color = "#FFFFFF"
+                text_color = "#000000"
+                border_color = None
+                style_for_calc = None
         else:
             # Fallback to old NodeStyle for backward compatibility
             style = NodeStyle.get_style_for_depth(depth, is_root)
@@ -226,16 +260,12 @@ class NodeItem(QGraphicsRectItem):
                 text, style_for_calc
             )
             # Position text at top-left with padding
-            padding_width = (
-                style_for_calc.padding_width
-                if hasattr(style_for_calc, "padding_width")
-                else style_for_calc["padding_width"]
-            )
-            padding_height = (
-                style_for_calc.padding_height
-                if hasattr(style_for_calc, "padding_height")
-                else style_for_calc["padding_height"]
-            )
+            if style_for_calc and hasattr(style_for_calc, 'padding_w'):
+                padding_width = style_for_calc.padding_w
+                padding_height = style_for_calc.padding_h
+            else:
+                padding_width = 12
+                padding_height = 8
             self.text_item.setPos(
                 -width / 2 + padding_width / 2, -height / 2 + padding_height / 2
             )
@@ -251,16 +281,12 @@ class NodeItem(QGraphicsRectItem):
                 -actual_width / 2, -actual_height / 2, actual_width, actual_height
             )
             # Position text at top-left with padding
-            padding_width = (
-                style_for_calc.padding_width
-                if hasattr(style_for_calc, "padding_width")
-                else style_for_calc["padding_width"]
-            )
-            padding_height = (
-                style_for_calc.padding_height
-                if hasattr(style_for_calc, "padding_height")
-                else style_for_calc["padding_height"]
-            )
+            if style_for_calc and hasattr(style_for_calc, 'padding_w'):
+                padding_width = style_for_calc.padding_w
+                padding_height = style_for_calc.padding_h
+            else:
+                padding_width = 12
+                padding_height = 8
             self.text_item.setPos(
                 -actual_width / 2 + padding_width / 2, -actual_height / 2 + padding_height / 2
             )
@@ -275,6 +301,53 @@ class NodeItem(QGraphicsRectItem):
         if child_item not in self.child_items:
             self.child_items.append(child_item)
 
+    def _depth_to_role(self, depth: int):
+        """Map node depth to NodeRole.
+        
+        Args:
+            depth: Node depth (0 = root, 1 = first level, etc.)
+            
+        Returns:
+            NodeRole for the given depth
+        """
+        from cogist.domain.styles import NodeRole
+        
+        if depth == 0:
+            return NodeRole.ROOT
+        elif depth == 1:
+            return NodeRole.PRIMARY
+        elif depth == 2:
+            return NodeRole.SECONDARY
+        else:
+            return NodeRole.TERTIARY
+    
+    def _auto_contrast(self, bg_color: str) -> str:
+        """Automatically choose text color based on background brightness.
+        
+        Args:
+            bg_color: Background color in hex format (#RRGGBB)
+            
+        Returns:
+            '#FFFFFF' for dark backgrounds, '#000000' for light backgrounds
+        """
+        # Parse hex color
+        bg_color = bg_color.lstrip('#')
+        if len(bg_color) != 6:
+            return '#000000'
+        
+        try:
+            r = int(bg_color[0:2], 16)
+            g = int(bg_color[2:4], 16)
+            b = int(bg_color[4:6], 16)
+        except ValueError:
+            return '#000000'
+        
+        # Calculate luminance
+        luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
+        
+        # Return white for dark backgrounds, black for light
+        return '#FFFFFF' if luminance < 0.5 else '#000000'
+
     def update_style(self, style_config):
         """Update node style from new style_config and trigger repaint.
 
@@ -283,67 +356,95 @@ class NodeItem(QGraphicsRectItem):
         """
         self.style_config = style_config
 
-        # Recalculate node_style based on new config
-        if self.style_config:
-            from cogist.domain.styles import PriorityLevel
-            self.node_style = self.style_config.resolve_node_style(
-                self.depth, PriorityLevel.LEVEL_1
-            )
+        # Recalculate style based on new config using role-based system
+        if self.style_config and self.style_config.resolved_template:
+            from cogist.domain.styles import NodeRole
+            
+            # Map depth to role
+            role = self._depth_to_role(self.depth)
+            
+            # Get template style
+            template_style = self.style_config.resolved_template.role_styles.get(role)
+            if not template_style:
+                template_style = self.style_config.resolved_template.role_styles.get(
+                    NodeRole.TERTIARY
+                )
+            
+            if template_style:
+                # Get colors from color scheme
+                color_scheme = self.style_config.resolved_color_scheme
+                if color_scheme:
+                    bg_color = color_scheme.node_colors.get(role, "#FFFFFF")
+                    text_color = color_scheme.text_colors.get(role) or self._auto_contrast(bg_color)
+                    border_color = color_scheme.border_colors.get(role) if color_scheme.border_colors else None
+                else:
+                    bg_color = "#FFFFFF"
+                    text_color = "#000000"
+                    border_color = None
+                
+                # Store for rendering
+                self.template_style = template_style
+                self.bg_color = bg_color
+                self.text_color = text_color
+                self.border_color = border_color
+                
+                # Update font
+                font_size = template_style.font_size
+                font_weight_str = template_style.font_weight
+                font_family = template_style.font_family
+                
+                # Convert font weight string to QFont.Weight enum
+                weight_map = {
+                    "Thin": QFont.Weight.Thin,
+                    "Hairline": QFont.Weight.Thin,
+                    "Extra Light": QFont.Weight.ExtraLight,
+                    "ExtraLight": QFont.Weight.ExtraLight,
+                    "Ultra Light": QFont.Weight.ExtraLight,
+                    "UltraLight": QFont.Weight.ExtraLight,
+                    "Light": QFont.Weight.Light,
+                    "Regular": QFont.Weight.Normal,
+                    "Normal": QFont.Weight.Normal,
+                    "Medium": QFont.Weight.Medium,
+                    "Semi Bold": QFont.Weight.DemiBold,
+                    "SemiBold": QFont.Weight.DemiBold,
+                    "Demi Bold": QFont.Weight.DemiBold,
+                    "DemiBold": QFont.Weight.DemiBold,
+                    "Bold": QFont.Weight.Bold,
+                    "Extra Bold": QFont.Weight.ExtraBold,
+                    "ExtraBold": QFont.Weight.ExtraBold,
+                    "Ultra Bold": QFont.Weight.Black,
+                    "UltraBold": QFont.Weight.Black,
+                    "Black": QFont.Weight.Black,
+                    "Heavy": QFont.Weight.Black,
+                }
+                font_weight = weight_map.get(font_weight_str, QFont.Weight.Normal)
 
-            # Update font
-            font_size = self.node_style.font_size
-            font_weight_str = self.node_style.font_weight
-            font_family = self.node_style.font_family
+                font = QFont(font_family, font_size)
+                font.setWeight(font_weight)
 
-            # Convert font weight string to QFont.Weight enum
-            weight_map = {
-                "Thin": QFont.Weight.Thin,
-                "Hairline": QFont.Weight.Thin,
-                "Extra Light": QFont.Weight.ExtraLight,
-                "ExtraLight": QFont.Weight.ExtraLight,
-                "Ultra Light": QFont.Weight.ExtraLight,
-                "UltraLight": QFont.Weight.ExtraLight,
-                "Light": QFont.Weight.Light,
-                "Regular": QFont.Weight.Normal,
-                "Normal": QFont.Weight.Normal,
-                "Medium": QFont.Weight.Medium,
-                "Semi Bold": QFont.Weight.DemiBold,
-                "SemiBold": QFont.Weight.DemiBold,
-                "Demi Bold": QFont.Weight.DemiBold,
-                "DemiBold": QFont.Weight.DemiBold,
-                "Bold": QFont.Weight.Bold,
-                "Extra Bold": QFont.Weight.ExtraBold,
-                "ExtraBold": QFont.Weight.ExtraBold,
-                "Ultra Bold": QFont.Weight.Black,
-                "UltraBold": QFont.Weight.Black,
-                "Black": QFont.Weight.Black,
-                "Heavy": QFont.Weight.Black,
-            }
-            font_weight = weight_map.get(font_weight_str, QFont.Weight.Normal)
+                # Apply font decorations
+                is_italic_style = "italic" in font_weight_str.lower() if font_weight_str else False
 
-            font = QFont(font_family, font_size)
-            font.setWeight(font_weight)
+                if template_style.font_style == "Italic" and not is_italic_style:
+                    font.setItalic(True)
+                
+                self.text_item.setFont(font)
 
-            # Apply font decorations
-            # Note: If the style name contains "Italic", don't apply additional italic flag
-            # as it's already an italic font variant
-            is_italic_style = "italic" in font_weight_str.lower() if font_weight_str else False
-
-            if self.node_style.font_italic and not is_italic_style:
-                font.setItalic(True)
-            if self.node_style.font_underline:
-                font.setUnderline(True)
-            if self.node_style.font_strikeout:
-                font.setStrikeOut(True)
-
-            self.text_item.setFont(font)
-
-            # Update text color
-            text_color = self.node_style.text_color if self.node_style.text_color else "#000000"
-            if isinstance(text_color, str):
-                self.text_item.setDefaultTextColor(QColor(text_color))
+                # Update text color
+                if isinstance(text_color, str):
+                    self.text_item.setDefaultTextColor(QColor(text_color))
+                else:
+                    self.text_item.setDefaultTextColor(text_color)
             else:
-                self.text_item.setDefaultTextColor(text_color)
+                # Fallback to default font
+                font = QFont("Arial", 14)
+                self.text_item.setFont(font)
+                self.text_item.setDefaultTextColor(QColor("#000000"))
+        else:
+            # Fallback when no resolved template
+            font = QFont("Arial", 14)
+            self.text_item.setFont(font)
+            self.text_item.setDefaultTextColor(QColor("#000000"))
 
         # Trigger repaint
         self.update()

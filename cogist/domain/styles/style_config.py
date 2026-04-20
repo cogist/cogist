@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 
 from .enums import PriorityLevel
+from .extended_styles import ColorScheme, EdgeConfig as NewEdgeConfig, Template
 
 # Global constant for maximum text width across all node levels
 MAX_TEXT_WIDTH = 250.0
@@ -72,8 +73,8 @@ class LayoutConfig:
 
 
 @dataclass
-class EdgeConfig:
-    """Edge style configuration"""
+class LegacyEdgeConfig:
+    """Legacy edge style configuration (deprecated, use extended_styles.EdgeConfig)."""
 
     connector_type: str = "bezier"  # straight, orthogonal, bezier
     connector_style: str = "solid"  # solid, dashed, dotted
@@ -123,145 +124,24 @@ class PriorityScheme:
 
 @dataclass
 class MindMapStyle:
-    """Complete mind map style configuration"""
+    """Complete mind map style configuration (new architecture).
+    
+    Uses template and color scheme references instead of embedded styles.
+    This is the ONLY authoritative style system - no legacy fields.
+    """
 
     name: str = "Default"
+    
+    # === Template and ColorScheme references (authoritative) ===
+    template_name: str = "default"
+    color_scheme_name: str = "default"
+    
+    # === Runtime resolved styles (computed by resolve_style()) ===
+    resolved_template: Template | None = None
+    resolved_color_scheme: ColorScheme | None = None
 
-    # Canvas
+    # === Edge configuration (new architecture) ===
+    edge: NewEdgeConfig = field(default_factory=NewEdgeConfig)
+    
+    # === Canvas background (synced from color_scheme) ===
     canvas_bg_color: str = "#FFFFFF"
-
-    # Node styles by depth
-    depth_styles: dict[int, NodeStyleConfig] = field(default_factory=dict)
-
-    # Priority scheme
-    priority_scheme: PriorityScheme = field(default_factory=PriorityScheme)
-
-    # Layout and edge configuration
-    layout: LayoutConfig = field(default_factory=LayoutConfig)
-    edge: EdgeConfig = field(default_factory=EdgeConfig)
-
-    def __post_init__(self):
-        """Initialize default depth styles and priority scheme if not provided"""
-        if not self.depth_styles:
-            self._init_default_depth_styles()
-
-        # Initialize priority scheme with critical and minor overrides
-        if self.priority_scheme.name == "Default":
-            self._init_default_priority_scheme()
-
-    def _init_default_depth_styles(self):
-        """Initialize default depth-based styles (from current implementation)"""
-        self.depth_styles = {
-            0: NodeStyleConfig(
-                shape="rounded_rect",
-                font_size=22,
-                font_weight="Bold",
-                font_family="Arial",
-                padding_width=20,
-                padding_height=16,
-                border_radius=10,
-                border_style="solid",
-                border_width=2,
-                bg_color="#2196F3",
-                text_color="#FFFFFF",
-                border_color="#1976D2",
-                max_text_width=MAX_TEXT_WIDTH,
-            ),
-            1: NodeStyleConfig(
-                shape="rounded_rect",
-                font_size=18,
-                font_weight="Normal",
-                font_family="Arial",
-                padding_width=20,
-                padding_height=16,
-                border_radius=8,
-                border_style="solid",
-                border_width=2,
-                bg_color="#4CAF50",
-                text_color="#FFFFFF",
-                border_color="#388E3C",
-                max_text_width=MAX_TEXT_WIDTH,
-            ),
-            2: NodeStyleConfig(
-                shape="rounded_rect",
-                font_size=16,
-                font_weight="Normal",
-                font_family="Arial",
-                padding_width=8,
-                padding_height=6,
-                border_radius=6,
-                border_style="solid",
-                border_width=2,
-                bg_color="#FF9800",
-                text_color="#FFFFFF",
-                border_color="#F57C00",
-                max_text_width=MAX_TEXT_WIDTH,
-            ),
-            3: NodeStyleConfig(
-                shape="rounded_rect",
-                font_size=14,
-                font_weight="Normal",
-                font_family="Arial",
-                padding_width=6,
-                padding_height=4,
-                border_radius=4,
-                border_style="solid",
-                border_width=2,
-                bg_color="#9E9E9E",
-                text_color="#FFFFFF",
-                border_color="#757575",
-                max_text_width=MAX_TEXT_WIDTH,
-            ),
-        }
-
-    def _init_default_priority_scheme(self):
-        """Initialize priority scheme with critical and minor overrides"""
-        # Critical (LEVEL_2) - Red, bold, thick border
-        self.priority_scheme.levels[PriorityLevel.LEVEL_2].style_override = NodeStyleConfig(
-            bg_color="#D32F2F",
-            text_color="#FFFFFF",
-            font_size=24,
-            font_weight="ExtraBold",
-            border_width=4,
-            border_color="#B71C1C",
-        )
-
-        # Unimportant (LEVEL_0) - Gray, light
-        self.priority_scheme.levels[PriorityLevel.LEVEL_0].style_override = NodeStyleConfig(
-            bg_color="#BDBDBD",
-            text_color="#FFFFFF",
-            font_size=18,
-            font_weight="Light",
-            border_width=1,
-        )
-
-    def get_depth_style(self, depth: int) -> NodeStyleConfig:
-        """Get base style for a given depth"""
-        if depth in self.depth_styles:
-            return self.depth_styles[depth]
-        # For depth > 3, use depth 3 style
-        return self.depth_styles.get(3, NodeStyleConfig())
-
-    def resolve_node_style(self, depth: int, priority: PriorityLevel) -> NodeStyleConfig:
-        """Resolve final style by merging depth and priority styles"""
-        base_style = self.get_depth_style(depth)
-        priority_override = self.priority_scheme.get_style_override(priority)
-        return base_style.merge(priority_override)
-
-    def get_level_spacing(self, parent_depth: int) -> float:
-        """Get horizontal spacing based on parent depth"""
-        if parent_depth == 0:
-            return self.layout.level_spacing_depth_0
-        elif parent_depth == 1:
-            return self.layout.level_spacing_depth_1
-        else:
-            return self.layout.level_spacing_depth_2_plus
-
-    def get_sibling_spacing(self, depth: int) -> float:
-        """Get vertical spacing based on node depth"""
-        if depth <= 1:
-            return self.layout.sibling_spacing_depth_0_1
-        elif depth == 2:
-            return self.layout.sibling_spacing_depth_2
-        else:
-            return self.layout.sibling_spacing_depth_3_plus

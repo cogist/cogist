@@ -1319,7 +1319,7 @@ class MindMapView(QGraphicsView):
                     self,
                     "Save Mind Map",
                     "",
-                    "Cogist Files (*.mwe);;All Files (*)",
+                    "Cogist Files (*.cgs);;All Files (*)",
                 )
 
                 if not file_path:
@@ -1354,7 +1354,7 @@ class MindMapView(QGraphicsView):
                 self,
                 "Open Mind Map",
                 "",
-                "Cogist Files (*.mwe);;All Files (*)",
+                "Cogist Files (*.cgs);;All Files (*)",
             )
 
             if not file_path:

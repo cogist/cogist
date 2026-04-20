@@ -20,12 +20,13 @@ class JSONSerializer:
     FORMAT_VERSION = 1
 
     @classmethod
-    def serialize(cls, root_node: dict[str, Any]) -> str:
+    def serialize(cls, root_node: dict[str, Any], style_config: Any = None) -> str:
         """
         Serialize a mind map to JSON string.
 
         Args:
             root_node: Root node dictionary with full tree structure
+            style_config: Optional MindMapStyle configuration
 
         Returns:
             JSON string representation of the mind map
@@ -35,13 +36,19 @@ class JSONSerializer:
                 "root": {...},
                 "metadata": {...}
             }
-            json_string = JSONSerializer.serialize(mind_map_data)
+            json_string = JSONSerializer.serialize(mind_map_data, style_config)
         """
         data = {
             "version": cls.VERSION,
             "format_version": cls.FORMAT_VERSION,
             "mind_map": root_node,
         }
+        
+        # Add style configuration if provided
+        if style_config is not None:
+            from cogist.domain.styles import serialize_style
+            data["style"] = serialize_style(style_config)
+        
         return json.dumps(data, indent=2, ensure_ascii=False)
 
     @classmethod
@@ -53,7 +60,7 @@ class JSONSerializer:
             json_string: JSON string to parse
 
         Returns:
-            Dictionary containing mind map data
+            Dictionary containing mind map data with optional style config
 
         Raises:
             ValueError: If JSON is invalid or version is unsupported
@@ -74,7 +81,16 @@ class JSONSerializer:
         if "mind_map" not in data:
             raise ValueError("Invalid mind map format: missing 'mind_map' field")
 
-        return data["mind_map"]
+        result = {
+            "root": data["mind_map"].get("root"),
+        }
+        
+        # Extract style configuration if present
+        if "style" in data:
+            from cogist.domain.styles import deserialize_style
+            result["style"] = deserialize_style(data["style"])
+        
+        return result
 
     @staticmethod
     def node_to_dict(node: Any) -> dict[str, Any]:

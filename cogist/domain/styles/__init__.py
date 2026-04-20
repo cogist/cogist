@@ -1,21 +1,54 @@
 """Style system for mind map visualization."""
 
-from .enums import PriorityLevel
-from .style_config import (
+from .enums import NodeRole, PriorityLevel, SpacingLevel
+from .extended_styles import (
+    BackgroundStyle,
+    BorderStyle,
+    ColorScheme,
     EdgeConfig,
-    LayoutConfig,
-    MindMapStyle,
-    NodeStyleConfig,
-    PriorityDefinition,
-    PriorityScheme,
+    EdgeStyle,
+    NodeShape,
+    RoleBasedStyle,
+    SpacingConfig,
+    Template,
+)
+from .style_config import MindMapStyle
+from .style_resolver import (
+    deserialize_color_scheme,
+    deserialize_style,
+    deserialize_template,
+    resolve_style,
+    serialize_color_scheme,
+    serialize_style,
+    serialize_template,
 )
 
 __all__ = [
+    # Enums
     "PriorityLevel",
-    "NodeStyleConfig",
-    "LayoutConfig",
+    "NodeRole",
+    "SpacingLevel",
+    
+    # Extended styles (new architecture - authoritative)
+    "SpacingConfig",
+    "NodeShape",
+    "BackgroundStyle",
+    "BorderStyle",
+    "EdgeStyle",
     "EdgeConfig",
-    "PriorityDefinition",
-    "PriorityScheme",
+    "RoleBasedStyle",
+    "ColorScheme",
+    "Template",
+    
+    # Style resolver
+    "resolve_style",
+    "serialize_style",
+    "deserialize_style",
+    "serialize_template",
+    "deserialize_template",
+    "serialize_color_scheme",
+    "deserialize_color_scheme",
+    
+    # Main style configuration
     "MindMapStyle",
 ]

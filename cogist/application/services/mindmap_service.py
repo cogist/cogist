@@ -79,7 +79,7 @@ class MindMapService:
         Load a mind map from file.
 
         Args:
-            file_path: Path to the .mwe file
+            file_path: Path to the .cgs file
 
         Returns:
             The root node of the loaded mind map
@@ -113,7 +113,12 @@ class MindMapService:
                 raise ValueError("No file path specified and no current file")
             file_path = str(self.current_file)
 
-        saved_path = self.repository.save(self.root_node, file_path)
+        # Get style config from mindmap view if available
+        style_config = None
+        if hasattr(self, '_mindmap_view') and self._mindmap_view:
+            style_config = getattr(self._mindmap_view, 'style_config', None)
+
+        saved_path = self.repository.save(self.root_node, file_path, style_config)
         self.current_file = saved_path
         self._is_modified = False  # Saved file is not modified
         self._command_count_at_save = (
