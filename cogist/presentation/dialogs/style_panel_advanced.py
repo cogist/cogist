@@ -60,6 +60,12 @@ class AdvancedStyleTab(QWidget):
         # Connector style (shared across all node layers)
         self.connector_style = self._get_default_connector_style()
 
+        # Spacing configuration
+        self.spacing_config = {
+            "parent_child": 20,
+            "sibling": 15,
+        }
+
         # Initialize UI with modular components
         self._init_ui()
 
@@ -194,18 +200,21 @@ class AdvancedStyleTab(QWidget):
     def _on_canvas_color_changed(self, color: str):
         """Handle canvas background color change."""
         self.layer_styles["canvas"]["bg_color"] = color
-        self._update_preview()
+        self._apply_styles_to_mindmap()
 
-    def _on_spacing_changed(self, _spacing: dict):
+    def _on_spacing_changed(self, spacing: dict):
         """Handle spacing configuration change."""
-        # Spacing is not yet implemented in preview
-        self._update_preview()
+        # Update internal spacing config
+        self.spacing_config.update(spacing)
+
+        # Apply all styles to mindmap (including spacing)
+        self._apply_styles_to_mindmap()
 
     def _on_node_style_changed(self, style: dict):
         """Handle node style changes."""
         if self.current_layer != "canvas":
             self.layer_styles[self.current_layer].update(style)
-            self._update_preview()
+            self._apply_styles_to_mindmap()
 
     def _on_shadow_enabled_changed(self, enabled: bool):
         """Handle font shadow enabled state change."""
@@ -217,18 +226,18 @@ class AdvancedStyleTab(QWidget):
         """Handle shadow style changes."""
         if self.current_layer != "canvas":
             self.layer_styles[self.current_layer].update(shadow)
-            self._update_preview()
+            self._apply_styles_to_mindmap()
 
     def _on_border_style_changed(self, style: dict):
         """Handle border style changes."""
         if self.current_layer != "canvas":
             self.layer_styles[self.current_layer].update(style)
-            self._update_preview()
+            self._apply_styles_to_mindmap()
 
     def _on_connector_style_changed(self, style: dict):
         """Handle connector style changes."""
         self.connector_style.update(style)
-        self._update_preview()
+        self._apply_styles_to_mindmap()
 
     def _set_initial_visibility(self):
         """Set initial visibility of sections based on default layer (canvas)."""
@@ -285,8 +294,14 @@ class AdvancedStyleTab(QWidget):
             border_style = self.border_section.get_style()
             self.layer_styles[self.current_layer].update(border_style)
 
-    def _update_preview(self):
-        """Update mind map preview with current styles."""
+    def _apply_styles_to_mindmap(self):
+        """Unified method to apply all styles to mindmap_view.
+
+        This method:
+        1. Gets mindmap_view from app_context
+        2. Applies all styles (node, connector, spacing) to style_config
+        3. Refreshes the layout
+        """
         try:
             from cogist.application.services.app_context import get_app_context
 
@@ -298,14 +313,23 @@ class AdvancedStyleTab(QWidget):
             if not mindmap_view:
                 return
 
-            # Apply node styles
+            # Apply node styles (includes canvas background)
             self._apply_node_styles_to_mindmap(mindmap_view)
 
             # Apply connector styles
             self._apply_connector_styles_to_mindmap(mindmap_view)
 
+            # Apply spacing configuration
+            if hasattr(mindmap_view, 'style_config'):
+                mindmap_view.style_config.parent_child_spacing = self.spacing_config.get('parent_child', 80.0)
+                mindmap_view.style_config.sibling_spacing = self.spacing_config.get('sibling', 60.0)
+
+            # Refresh layout to apply all changes
+            if hasattr(mindmap_view, '_refresh_layout'):
+                mindmap_view._refresh_layout(skip_measurement=False)
+
         except Exception as e:
-            print(f"Error updating preview: {e}")
+            print(f"Error applying styles: {e}")
 
     def _apply_node_styles_to_mindmap(self, mindmap_view):
         """Apply node layer styles using RoleBasedStyle architecture."""
@@ -382,9 +406,7 @@ class AdvancedStyleTab(QWidget):
                 if hasattr(node_item, 'update_style'):
                     node_item.update_style(style)
 
-        # Trigger re-layout
-        if hasattr(mindmap_view, '_refresh_layout'):
-            mindmap_view._refresh_layout()
+        # Note: Layout refresh is handled by _apply_styles_to_mindmap()
 
     def _apply_connector_styles_to_mindmap(self, mindmap_view):
         """Apply connector (edge) styles to all edges in the mind map."""

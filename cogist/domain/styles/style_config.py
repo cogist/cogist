@@ -33,6 +33,10 @@ class MindMapStyle:
     template_name: str = "default"
     color_scheme_name: str = "default"
 
+    # === Spacing configuration (pixel values) ===
+    parent_child_spacing: float = 80.0  # Horizontal spacing between parent and child
+    sibling_spacing: float = 60.0       # Vertical spacing between siblings
+
     # === Runtime resolved styles (computed by resolve_style()) ===
     resolved_template: Template | None = None
     resolved_color_scheme: ColorScheme | None = None

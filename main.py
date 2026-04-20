@@ -644,8 +644,28 @@ class MindMapView(QGraphicsView):
         self._measure_actual_sizes(root)
 
         # Step 2: Apply layout with actual sizes
-        from cogist.domain.layout import DEFAULT_LAYOUT_CONFIG
-        layout = DefaultLayout(DEFAULT_LAYOUT_CONFIG)
+        from cogist.domain.layout import DefaultLayoutConfig
+
+        # Create layout config from style_config spacing values
+        pc_spacing = self.style_config.parent_child_spacing
+        sib_spacing = self.style_config.sibling_spacing
+
+        layout_config = DefaultLayoutConfig(
+            level_spacing=pc_spacing,
+            sibling_spacing=sib_spacing,
+            level_spacing_by_depth={
+                0: pc_spacing,
+                1: pc_spacing * 0.75,
+                2: pc_spacing * 0.5,
+            },
+            sibling_spacing_by_depth={
+                0: sib_spacing,
+                1: sib_spacing * 0.75,
+                2: sib_spacing * 0.5,
+            },
+        )
+
+        layout = DefaultLayout(layout_config)
         layout.layout(root, canvas_width=1200, canvas_height=800)
 
         # Step 3: Create final UI items with correct sizes and positions
@@ -1212,8 +1232,28 @@ class MindMapView(QGraphicsView):
             self._measure_actual_sizes(self.root_node)
 
         # Step 2: Re-apply layout, passing selected node to preserve its side
-        from cogist.domain.layout import DEFAULT_LAYOUT_CONFIG
-        layout = DefaultLayout(DEFAULT_LAYOUT_CONFIG)
+        from cogist.domain.layout import DefaultLayoutConfig
+
+        # Create layout config from style_config spacing values
+        pc_spacing = self.style_config.parent_child_spacing
+        sib_spacing = self.style_config.sibling_spacing
+
+        layout_config = DefaultLayoutConfig(
+            level_spacing=pc_spacing,
+            sibling_spacing=sib_spacing,
+            level_spacing_by_depth={
+                0: pc_spacing,   # Root → Level 1
+                1: pc_spacing * 0.75,   # Level 1 → Level 2 (75% of root spacing)
+                2: pc_spacing * 0.5,    # Level 2+ (50% of root spacing)
+            },
+            sibling_spacing_by_depth={
+                0: sib_spacing,   # Level 1 siblings
+                1: sib_spacing * 0.75,   # Level 2 siblings
+                2: sib_spacing * 0.5,    # Level 3+ siblings
+            },
+        )
+
+        layout = DefaultLayout(layout_config)
         context = {'focused_node_id': saved_selection_id} if saved_selection_id else None
         layout.layout(
             self.root_node,
