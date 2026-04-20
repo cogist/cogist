@@ -113,6 +113,13 @@ class NodeStyleSection(CollapsiblePanel):
         self.radius_spin.setValue(self.current_style["radius"])
         self.radius_spin.setAlignment(Qt.AlignLeft)
         self.radius_spin.valueChanged.connect(self._on_radius_changed)
+
+        # Set initial enabled state based on current shape
+        current_shape_display = "Rounded Rect" if self.current_style.get("shape") == "rounded_rect" else \
+                               "Rectangle" if self.current_style.get("shape") == "rect" else \
+                               "Circle"
+        self.radius_spin.setEnabled(current_shape_display == "Rounded Rect")
+
         layout.addWidget(self.radius_spin, row, 1)
         row += 1
 
@@ -187,7 +194,7 @@ class NodeStyleSection(CollapsiblePanel):
         self.font_family_combo = QPushButton(self.current_style["font_family"])
         self.font_family_combo.setFixedHeight(self.WIDGET_HEIGHT)
         self.font_family_combo.setStyleSheet(self._button_style())
-        self.font_family_combo.clicked.connect(self._show_font_dialog)
+        self.font_family_combo.clicked.connect(self._show_font_menu)
         layout.addWidget(self.font_family_combo, row, 1)
         row += 1
 
@@ -218,9 +225,10 @@ class NodeStyleSection(CollapsiblePanel):
 
         self.font_weight_menu = QMenu()
         self.font_weight_menu.aboutToShow.connect(
-            lambda: self.font_weight_menu.setFixedWidth(self.font_weight_combo.width())
+            lambda: self._update_font_weight_options()
         )
 
+        # Initial weight options (will be updated dynamically)
         weight_options = ["Light", "Normal", "Bold", "ExtraBold"]
         for option in weight_options:
             action = self.font_weight_menu.addAction(option)
@@ -296,6 +304,11 @@ class NodeStyleSection(CollapsiblePanel):
             "Circle": "circle",
         }
         self.current_style["shape"] = shape_map.get(value, "rounded_rect")
+
+        # Enable/disable radius based on shape
+        if hasattr(self, 'radius_spin'):
+            self.radius_spin.setEnabled(value == "Rounded Rect")
+
         self._emit_style_changed()
 
     def _on_radius_changed(self, value: int):
@@ -333,25 +346,334 @@ class NodeStyleSection(CollapsiblePanel):
         self.current_style["padding_h"] = self.padding_h_spin.value()
         self._emit_style_changed()
 
-    def _show_font_dialog(self):
-        """Show font selection dialog."""
-        from PySide6.QtGui import QFont
-        from PySide6.QtWidgets import QFontDialog
+    def _get_localized_font_name(self, font_family: str) -> str:
+        """Get localized font name for display.
 
-        current_font = QFont(self.current_style["font_family"], self.current_style["font_size"])
-        font, ok = QFontDialog.getFont(current_font, self, "Select Font")
+        Uses platform-specific APIs to get the localized font name:
+        - macOS: Core Text via PyObjC
+        - Windows: ctypes with GDI
+        - Linux: fontconfig
+        Falls back to English name if localized name not available.
+        """
+        import platform
+        system = platform.system()
 
-        if ok:
-            self.current_style["font_family"] = font.family()
-            self.current_style["font_size"] = font.pointSize()
-            self.font_family_combo.setText(font.family())
-            self.font_size_spin.setValue(font.pointSize())
-            self._emit_style_changed()
+        try:
+            if system == "Darwin":  # macOS
+                # Try to use Core Text via PyObjC
+                try:
+                    from CoreText import CTFontCopyDisplayName, CTFontCreateWithName
+
+                    # Create a CTFontRef
+                    ct_font = CTFontCreateWithName(font_family, 12.0, None)
+                    if ct_font:
+                        # Get display name (localized)
+                        display_name = CTFontCopyDisplayName(ct_font)
+                        if display_name:
+                            return str(display_name)
+                except Exception:
+                    pass  # Fall through to default
+
+            elif system == "Windows":
+                # Try to use ctypes with GDI (simplified)
+                try:
+                    import ctypes
+                    from ctypes import wintypes
+
+                    gdi32 = ctypes.windll.gdi32
+                    hdc = gdi32.CreateDCW("DISPLAY", None, None, None)
+
+                    class LOGFONTW(ctypes.Structure):
+                        _fields_ = [
+                            ("lfHeight", wintypes.LONG),
+                            ("lfWidth", wintypes.LONG),
+                            ("lfEscapement", wintypes.LONG),
+                            ("lfOrientation", wintypes.LONG),
+                            ("lfWeight", wintypes.LONG),
+                            ("lfItalic", wintypes.BYTE),
+                            ("lfUnderline", wintypes.BYTE),
+                            ("lfStrikeOut", wintypes.BYTE),
+                            ("lfCharSet", wintypes.BYTE),
+                            ("lfOutPrecision", wintypes.BYTE),
+                            ("lfClipPrecision", wintypes.BYTE),
+                            ("lfQuality", wintypes.BYTE),
+                            ("lfPitchAndFamily", wintypes.BYTE),
+                            ("lfFaceName", wintypes.WCHAR * 32),
+                        ]
+
+                    logfont = LOGFONTW()
+                    logfont.lfHeight = 0
+                    logfont.lfFaceName = font_family
+
+                    hfont = gdi32.CreateFontIndirectW(ctypes.byref(logfont))
+                    old_font = gdi32.SelectObject(hdc, hfont)
+                    gdi32.SelectObject(hdc, old_font)
+                    gdi32.DeleteObject(hfont)
+                    gdi32.DeleteDC(hdc)
+                except Exception:
+                    pass
+
+            elif system == "Linux":
+                # Try to use fontconfig
+                try:
+                    import subprocess
+                    result = subprocess.run(
+                        ["fc-match", "-f", "%{family}", font_family],
+                        capture_output=True,
+                        text=True,
+                        timeout=2
+                    )
+                    if result.returncode == 0 and result.stdout.strip():
+                        return result.stdout.strip()
+                except Exception:
+                    pass
+
+        except Exception:
+            pass
+
+        # Fallback: return the original font family name
+        return font_family
+
+    def _show_font_menu(self):
+        """Show font family selection dialog with localized names."""
+        from PySide6.QtGui import QFont, QFontDatabase
+        from PySide6.QtWidgets import QDialog, QListWidget, QVBoxLayout
+
+        # Create dialog
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Select Font")
+        dialog.setFixedSize(350, 450)
+
+        # Layout
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Font list
+        font_list = QListWidget()
+        font_list.setFont(QFont("Arial", 15))
+        layout.addWidget(font_list)
+
+        # Get all available fonts
+        font_db = QFontDatabase()
+        families = font_db.families()
+
+        # Filter out bitmap/system fonts that cause warnings
+        filtered_families = []
+        for family in families:
+            # Skip system internal fonts (start with '.')
+            if family.startswith('.'):
+                continue
+            # Skip bitmap fonts and system fonts
+            if any(keyword in family.lower() for keyword in ['bitmap', 'dingbats', 'symbol', 'icon']):
+                continue
+            # Skip if font has no styles
+            if not font_db.styles(family):
+                continue
+            filtered_families.append(family)
+
+        families = filtered_families
+
+        current_family = self.current_style.get("font_family", "Arial")
+
+        # Build font list with localized names and deduplication
+        font_name_map = {}  # Maps display name -> actual font family
+        seen_base_names = set()  # Track base font names for deduplication
+
+        for family in families:
+            # Get localized name first
+            localized_name = self._get_localized_font_name(family)
+
+            # Normalize for deduplication: remove common suffixes to get base font name
+            base_name = family.split('(')[0].strip().lower()
+
+            # Check if we've seen this base font name before
+            is_duplicate = False
+            for seen_base in seen_base_names:
+                # If one contains the other, they're likely variants of the same font
+                if base_name in seen_base or seen_base in base_name:
+                    is_duplicate = True
+                    break
+
+            if not is_duplicate:
+                seen_base_names.add(base_name)
+                font_name_map[localized_name] = family
+
+                from PySide6.QtWidgets import QListWidgetItem
+                item = QListWidgetItem(localized_name)
+                item.setFont(QFont(family))  # Use actual font for rendering
+                font_list.addItem(item)
+
+                if family == current_family:
+                    font_list.setCurrentItem(item)
+
+        # Double-click to select
+        def on_item_double_clicked(item):
+            display_name = item.text()
+            actual_family = font_name_map.get(display_name, display_name)
+            self._set_font_family(actual_family)
+            dialog.accept()
+
+        font_list.itemDoubleClicked.connect(on_item_double_clicked)
+
+        # Position dialog to the right of the font button
+        button_pos = self.font_family_combo.mapToGlobal(self.font_family_combo.rect().topLeft())
+        button_width = self.font_family_combo.width()
+        dialog_x = button_pos.x() + button_width + 4  # 4px gap to the right
+        dialog_y = button_pos.y()  # Align top edges
+
+        # Show dialog first, then move it (to avoid Qt's automatic positioning)
+        dialog.show()
+        dialog.move(dialog_x, dialog_y)
+        dialog.raise_()
+        dialog.activateWindow()
+
+        # Click outside to close
+        dialog.setMouseTracking(True)
+        def on_mouse_press(event):
+            if event.button() == Qt.LeftButton:
+                dialog.reject()
+        dialog.mousePressEvent = on_mouse_press
+
+        # ESC to close
+        dialog.keyPressEvent = lambda event: dialog.reject() if event.key() == Qt.Key_Escape else QDialog.keyPressEvent(dialog, event)
+
+        # Show dialog
+        dialog.exec()
+
+    def _set_font_family(self, family: str):
+        """Set font family."""
+        # Get localized name for display
+        localized_name = self._get_localized_font_name(family)
+        self.font_family_combo.setText(localized_name)
+        self.current_style["font_family"] = family
+
+        # Update font weight options based on new font
+        self._update_font_weight_options()
+
+        self._emit_style_changed()
 
     def _on_font_size_changed(self, value: int):
         """Handle font size change."""
         self.current_style["font_size"] = value
         self._emit_style_changed()
+
+    def _update_font_weight_options(self):
+        """Update font weight menu based on available weights for the current font.
+
+        Filters out italic/oblique styles and sorts by weight priority.
+        Detects and removes duplicate weights (e.g., Normal/Regular may be the same).
+        """
+        from PySide6.QtGui import QFontDatabase
+
+        font_family = self.current_style.get("font_family", "Arial")
+        font_db = QFontDatabase()
+        styles = font_db.styles(font_family)
+
+        if not styles:
+            # Fallback to default weights if no styles found
+            styles = ["Thin", "ExtraLight", "Light", "Regular", "Normal", "Medium", "Bold", "ExtraBold", "Black"]
+
+        # Filter out italic/oblique styles - these are not weights
+        weight_styles = [s for s in styles if "italic" not in s.lower() and "oblique" not in s.lower()]
+
+        # Define weight priority for sorting
+        weight_priority = {
+            "Thin": 1,
+            "Hairline": 1,
+            "ExtraLight": 2,
+            "UltraLight": 2,
+            "Light": 3,
+            "Regular": 4,
+            "Normal": 4,
+            "Medium": 5,
+            "Semi Bold": 6,
+            "SemiBold": 6,
+            "Demi Bold": 6,
+            "DemiBold": 6,
+            "Bold": 7,
+            "Extra Bold": 8,
+            "ExtraBold": 8,
+            "Ultra Bold": 8,
+            "UltraBold": 8,
+            "Black": 9,
+            "Heavy": 9,
+        }
+
+        # Sort styles by weight priority
+        sorted_styles = sorted(
+            weight_styles,
+            key=lambda s: weight_priority.get(s, 100)
+        )
+
+        # Detect and remove duplicate weights
+        # When two styles have the same weight value, prefer the more common name
+        # Priority: Regular > Normal, Light > ExtraLight, etc.
+        weight_name_priority = {
+            "Regular": 1,
+            "Normal": 2,
+            "Light": 1,
+            "ExtraLight": 2,
+            "UltraLight": 3,
+            "Medium": 1,
+            "SemiBold": 1,
+            "Semi Bold": 2,
+            "DemiBold": 3,
+            "Demi Bold": 4,
+            "Bold": 1,
+            "ExtraBold": 1,
+            "Extra Bold": 2,
+            "UltraBold": 3,
+            "Ultra Bold": 4,
+            "Black": 1,
+            "Heavy": 2,
+            "Thin": 1,
+            "Hairline": 2,
+        }
+
+        unique_styles = []
+        seen_weights = {}  # Maps weight_value -> (style_name, priority)
+
+        for style in sorted_styles:
+            # Get the weight value for this style using QFontDatabase
+            weight_value = font_db.weight(font_family, style)
+
+            # Get priority for this style name (lower is better)
+            priority = weight_name_priority.get(style, 100)
+
+            # If we haven't seen this weight value, or this style has higher priority
+            if weight_value not in seen_weights:
+                seen_weights[weight_value] = (style, priority)
+            else:
+                existing_style, existing_priority = seen_weights[weight_value]
+                if priority < existing_priority:
+                    # Replace with higher priority style
+                    seen_weights[weight_value] = (style, priority)
+
+        # Build final list maintaining sort order
+        seen_in_final = set()
+        for style in sorted_styles:
+            weight_value = font_db.weight(font_family, style)
+            if weight_value in seen_weights:
+                best_style, _ = seen_weights[weight_value]
+                if best_style == style and style not in seen_in_final:
+                    unique_styles.append(style)
+                    seen_in_final.add(style)
+
+        # Rebuild the menu with unique styles
+        self.font_weight_menu.clear()
+        for style in unique_styles:
+            action = self.font_weight_menu.addAction(style)
+            action.triggered.connect(lambda _, opt=style: self._set_font_weight(opt))
+
+        # Update current selection if it's still valid
+        current_weight = self.current_style.get("font_weight", "Normal")
+        if current_weight not in unique_styles:
+            # Select first available weight or closest match
+            current_weight = unique_styles[0] if unique_styles else "Normal"
+            self.current_style["font_weight"] = current_weight
+
+        self.font_weight_combo.setText(current_weight)
 
     def _set_font_weight(self, value: str):
         """Set font weight."""
@@ -417,7 +739,8 @@ class NodeStyleSection(CollapsiblePanel):
                 self.padding_h_spin.setValue(style["padding_h"])
 
             if "font_family" in style:
-                self.font_family_combo.setText(style["font_family"])
+                localized_name = self._get_localized_font_name(style["font_family"])
+                self.font_family_combo.setText(localized_name)
             if "font_size" in style:
                 self.font_size_spin.setValue(style["font_size"])
             if "font_weight" in style:
