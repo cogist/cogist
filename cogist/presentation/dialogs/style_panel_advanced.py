@@ -367,9 +367,10 @@ class AdvancedStyleTab(QWidget):
 
         # Update canvas background color
         if "canvas" in self.layer_styles:
-            style.canvas_bg_color = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
+            canvas_color = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
+            style.canvas_bg_color = canvas_color
             if style.resolved_color_scheme:
-                style.resolved_color_scheme.canvas_bg_color = style.canvas_bg_color
+                style.resolved_color_scheme.canvas_bg_color = canvas_color
 
         # Update connector (edge) styles
         if style.resolved_color_scheme:
