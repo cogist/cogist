@@ -210,10 +210,11 @@ class AdvancedStyleTab(QWidget):
         # Apply all styles to mindmap (including spacing)
         self._apply_styles_to_mindmap()
 
-    def _on_node_style_changed(self, style: dict):
+    def _on_node_style_changed(self, _style: dict):
         """Handle node style changes."""
         if self.current_layer != "canvas":
-            self.layer_styles[self.current_layer].update(style)
+            # Save all current UI state before applying
+            self._save_current_layer_style()
             self._apply_styles_to_mindmap()
 
     def _on_shadow_enabled_changed(self, enabled: bool):
@@ -222,21 +223,25 @@ class AdvancedStyleTab(QWidget):
         if enabled:
             self.shadow_section.setCollapsed(False)
 
-    def _on_shadow_changed(self, shadow: dict):
+    def _on_shadow_changed(self, _shadow: dict):
         """Handle shadow style changes."""
         if self.current_layer != "canvas":
-            self.layer_styles[self.current_layer].update(shadow)
+            # Save all current UI state before applying
+            self._save_current_layer_style()
             self._apply_styles_to_mindmap()
 
-    def _on_border_style_changed(self, style: dict):
+    def _on_border_style_changed(self, _style: dict):
         """Handle border style changes."""
         if self.current_layer != "canvas":
-            self.layer_styles[self.current_layer].update(style)
+            # Save all current UI state before applying
+            self._save_current_layer_style()
             self._apply_styles_to_mindmap()
 
     def _on_connector_style_changed(self, style: dict):
         """Handle connector style changes."""
+        # Save connector style
         self.connector_style.update(style)
+        # Apply all styles to mindmap
         self._apply_styles_to_mindmap()
 
     def _set_initial_visibility(self):
