@@ -362,7 +362,7 @@ class NodeStyleSection(CollapsiblePanel):
             if system == "Darwin":  # macOS
                 # Try to use Core Text via PyObjC
                 try:
-                    from CoreText import CTFontCopyDisplayName, CTFontCreateWithName
+                    from CoreText import CTFontCopyDisplayName, CTFontCreateWithName  # type: ignore
 
                     # Create a CTFontRef
                     ct_font = CTFontCreateWithName(font_family, 12.0, None)
