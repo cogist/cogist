@@ -228,39 +228,41 @@ class NodeStyleSection(CollapsiblePanel):
         layout.addWidget(self.font_weight_combo, row, 1)
         row += 1
 
-        # Font style checkboxes
+        # Font style checkboxes - directly in grid layout without container
         font_style_label = QLabel("Font Style:")
         font_style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         font_style_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(font_style_label, row, 0)
 
-        style_layout = QVBoxLayout()
-        style_layout.setSpacing(4)
-        style_layout.setContentsMargins(0, 0, 0, 0)
-
         self.font_italic_check = QCheckBox("Italic")
         self.font_italic_check.setChecked(self.current_style["font_italic"])
-        self.font_italic_check.setStyleSheet("QCheckBox { background: transparent; }")
+        self.font_italic_check.setStyleSheet("QCheckBox { background: transparent; margin: 2px 0px; }")
         self.font_italic_check.toggled.connect(self._on_font_style_changed)
-        style_layout.addWidget(self.font_italic_check)
+        layout.addWidget(self.font_italic_check, row, 1)
+        row += 1
+
+        # Empty label for alignment
+        empty_label_1 = QLabel("")
+        empty_label_1.setMinimumWidth(self.LABEL_WIDTH)
+        layout.addWidget(empty_label_1, row, 0)
 
         self.font_underline_check = QCheckBox("Underline")
         self.font_underline_check.setChecked(self.current_style["font_underline"])
-        self.font_underline_check.setStyleSheet("QCheckBox { background: transparent; }")
+        self.font_underline_check.setStyleSheet("QCheckBox { background: transparent; margin: 2px 0px; }")
         self.font_underline_check.toggled.connect(self._on_font_style_changed)
-        style_layout.addWidget(self.font_underline_check)
+        layout.addWidget(self.font_underline_check, row, 1)
+        row += 1
+
+        # Empty label for alignment
+        empty_label_2 = QLabel("")
+        empty_label_2.setMinimumWidth(self.LABEL_WIDTH)
+        layout.addWidget(empty_label_2, row, 0)
 
         self.font_strikeout_check = QCheckBox("Strikeout")
         self.font_strikeout_check.setChecked(self.current_style["font_strikeout"])
-        self.font_strikeout_check.setStyleSheet("QCheckBox { background: transparent; }")
+        self.font_strikeout_check.setStyleSheet("QCheckBox { background: transparent; margin: 2px 0px; }")
         self.font_strikeout_check.toggled.connect(self._on_font_style_changed)
-        style_layout.addWidget(self.font_strikeout_check)
-
-        style_layout.addStretch()
-
-        style_container = QWidget()
-        style_container.setLayout(style_layout)
-        layout.addWidget(style_container, row, 1)
+        layout.addWidget(self.font_strikeout_check, row, 1)
 
         self.setLayout(layout)
 
