@@ -180,15 +180,28 @@ class ConnectorSection(CollapsiblePanel):
         from PySide6.QtWidgets import QColorDialog
 
         current = QColor(self.current_style["connector_color"])
-        color = QColorDialog.getColor(current, self, "Select Connector Color")
+        color_dialog = QColorDialog(current, self)
+        color_dialog.setWindowTitle("Select Connector Color")
 
-        if color.isValid():
-            self.current_style["connector_color"] = color.name()
-            self.connector_color_btn.setStyleSheet(
-                f"background-color: {self.current_style['connector_color']}; "
-                "border: 1px solid #ccc; border-radius: 6px;"
-            )
-            self._emit_style_changed()
+        # Position dialog to the right of the color button
+        button_pos = self.connector_color_btn.mapToGlobal(self.connector_color_btn.rect().topLeft())
+        button_width = self.connector_color_btn.width()
+        dialog_x = button_pos.x() + button_width + 4  # 4px gap to the right
+        dialog_y = button_pos.y()  # Align top edges
+
+        # Show dialog first, then move it (to avoid Qt's automatic positioning)
+        color_dialog.show()
+        color_dialog.move(dialog_x, dialog_y)
+
+        if color_dialog.exec():
+            color = color_dialog.currentColor()
+            if color.isValid():
+                self.current_style["connector_color"] = color.name()
+                self.connector_color_btn.setStyleSheet(
+                    f"background-color: {self.current_style['connector_color']}; "
+                    "border: 1px solid #ccc; border-radius: 6px;"
+                )
+                self._emit_style_changed()
 
     def _emit_style_changed(self):
         """Emit style changed signal."""

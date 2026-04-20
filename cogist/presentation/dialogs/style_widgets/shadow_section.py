@@ -5,6 +5,7 @@ Implements lazy initialization for better performance.
 """
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
@@ -143,15 +144,28 @@ class ShadowSection(CollapsiblePanel):
         from PySide6.QtWidgets import QColorDialog
 
         current_color = self.current_shadow.get("color", "#000000")
-        current = QColorDialog.getColor(current_color, self, "Select Shadow Color")
+        color_dialog = QColorDialog(QColor(current_color), self)
+        color_dialog.setWindowTitle("Select Shadow Color")
 
-        if current.isValid():
-            color_name = current.name()
-            self.current_shadow["color"] = color_name
-            self.shadow_color_btn.setStyleSheet(
-                f"background-color: {color_name}; border: 1px solid #ccc; border-radius: 4px;"
-            )
-            self._emit_shadow_changed()
+        # Position dialog to the right of the color button
+        button_pos = self.shadow_color_btn.mapToGlobal(self.shadow_color_btn.rect().topLeft())
+        button_width = self.shadow_color_btn.width()
+        dialog_x = button_pos.x() + button_width + 4  # 4px gap to the right
+        dialog_y = button_pos.y()  # Align top edges
+
+        # Show dialog first, then move it (to avoid Qt's automatic positioning)
+        color_dialog.show()
+        color_dialog.move(dialog_x, dialog_y)
+
+        if color_dialog.exec():
+            color = color_dialog.currentColor()
+            if color.isValid():
+                color_name = color.name()
+                self.current_shadow["color"] = color_name
+                self.shadow_color_btn.setStyleSheet(
+                    f"background-color: {color_name}; border: 1px solid #ccc; border-radius: 4px;"
+                )
+                self._emit_shadow_changed()
 
     def _emit_shadow_changed(self):
         """Emit shadow changed signal."""

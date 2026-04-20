@@ -72,15 +72,28 @@ class CanvasSection(CollapsiblePanel):
         from PySide6.QtWidgets import QColorDialog
 
         current = QColor(self.current_color)
-        color = QColorDialog.getColor(current, self, "Select Canvas Background Color")
+        color_dialog = QColorDialog(current, self)
+        color_dialog.setWindowTitle("Select Canvas Background Color")
 
-        if color.isValid():
-            self.current_color = color.name()
-            self.canvas_bg_btn.setStyleSheet(
-                f"background-color: {self.current_color}; "
-                "border: 1px solid #ccc; border-radius: 6px;"
-            )
-            self.color_changed.emit(self.current_color)
+        # Position dialog to the right of the color button
+        button_pos = self.canvas_bg_btn.mapToGlobal(self.canvas_bg_btn.rect().topLeft())
+        button_width = self.canvas_bg_btn.width()
+        dialog_x = button_pos.x() + button_width + 4  # 4px gap to the right
+        dialog_y = button_pos.y()  # Align top edges
+
+        # Show dialog first, then move it (to avoid Qt's automatic positioning)
+        color_dialog.show()
+        color_dialog.move(dialog_x, dialog_y)
+
+        if color_dialog.exec():
+            color = color_dialog.currentColor()
+            if color.isValid():
+                self.current_color = color.name()
+                self.canvas_bg_btn.setStyleSheet(
+                    f"background-color: {self.current_color}; "
+                    "border: 1px solid #ccc; border-radius: 6px;"
+                )
+                self.color_changed.emit(self.current_color)
 
     def get_color(self) -> str:
         """Get current canvas background color."""

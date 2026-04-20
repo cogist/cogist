@@ -322,23 +322,39 @@ class NodeStyleSection(CollapsiblePanel):
 
         current_color = self.current_style.get(f"{color_type}", "#FFFFFF")
         current = QColor(current_color)
-        color = QColorDialog.getColor(current, self, f"Select {color_type.replace('_', ' ').title()} Color")
+        color_dialog = QColorDialog(current, self)
+        color_dialog.setWindowTitle(f"Select {color_type.replace('_', ' ').title()} Color")
 
-        if color.isValid():
-            color_name = color.name()
-            self.current_style[color_type] = color_name
+        # Determine which button was clicked
+        if color_type == "bg_color":
+            button = self.bg_color_btn
+        elif color_type == "text_color":
+            button = self.text_color_btn
+        else:
+            return
 
-            # Update button appearance
-            if color_type == "bg_color":
-                self.bg_color_btn.setStyleSheet(
+        # Position dialog to the right of the color button
+        button_pos = button.mapToGlobal(button.rect().topLeft())
+        button_width = button.width()
+        dialog_x = button_pos.x() + button_width + 4  # 4px gap to the right
+        dialog_y = button_pos.y()  # Align top edges
+
+        # Show dialog first, then move it (to avoid Qt's automatic positioning)
+        color_dialog.show()
+        color_dialog.move(dialog_x, dialog_y)
+
+        if color_dialog.exec():
+            color = color_dialog.currentColor()
+            if color.isValid():
+                color_name = color.name()
+                self.current_style[color_type] = color_name
+
+                # Update button appearance
+                button.setStyleSheet(
                     f"background-color: {color_name}; border: 1px solid #ccc; border-radius: 6px;"
                 )
-            elif color_type == "text_color":
-                self.text_color_btn.setStyleSheet(
-                    f"background-color: {color_name}; border: 1px solid #ccc; border-radius: 6px;"
-                )
 
-            self._emit_style_changed()
+                self._emit_style_changed()
 
     def _on_padding_changed(self):
         """Handle padding changes."""
