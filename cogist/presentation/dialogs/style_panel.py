@@ -56,11 +56,15 @@ class StylePanel(QWidget):
             return
 
         layout = self.layout()
+        if not layout:
+            return
+
         # Remove current widget
         while layout.count():
             child = layout.takeAt(0)
-            if child.widget():
-                child.widget().setParent(None)
+            widget = child.widget() if child else None
+            if widget:
+                widget.setParent(None)
 
         # Add new panel
         if panel_name == "simple":
