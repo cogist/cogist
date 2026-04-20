@@ -142,69 +142,48 @@ class NodeItem(QGraphicsRectItem):
         doc.setDefaultTextOption(text_option)
 
         # Apply font based on role using new style system
-        template_style = None  # Initialize to avoid unbound variable errors
+        # style_config is always set (from create_default_template or update_style)
+        assert self.style_config is not None, "style_config must be set"
 
-        if self.style_config and self.style_config.resolved_template:
-            # Use new role-based style system
-            from cogist.domain.styles import NodeRole
+        from cogist.domain.styles import NodeRole
 
-            # Map depth to role
-            role = self._depth_to_role(depth)
+        # Map depth to role
+        role = self._depth_to_role(depth)
 
-            # Get template style for this role
-            template_style = self.style_config.resolved_template.role_styles.get(role)
-            if not template_style:
-                # Fallback to TERTIARY if role not found
-                template_style = self.style_config.resolved_template.role_styles.get(
-                    NodeRole.TERTIARY
-                )
+        # Get template style for this role (fallback to TERTIARY if not found)
+        template_style = self.style_config.resolved_template.role_styles.get(role)
+        if not template_style:
+            template_style = self.style_config.resolved_template.role_styles.get(
+                NodeRole.TERTIARY
+            )
 
-            if template_style:
-                # Extract font properties from template (without colors)
-                font_size = template_style.font_size
-                font_weight_str = template_style.font_weight
-                font_family = template_style.font_family
+        # Extract font properties from template (without colors)
+        font_size = template_style.font_size
+        font_weight_str = template_style.font_weight
+        font_family = template_style.font_family
 
-                # Get colors from color scheme
-                color_scheme = self.style_config.resolved_color_scheme
-                if color_scheme:
-                    bg_color = color_scheme.node_colors.get(role, "#FFFFFF")
-                    text_color = (color_scheme.text_colors.get(role)
-                                  if color_scheme.text_colors
-                                  else None) or self._auto_contrast(bg_color)
-                    border_color = (color_scheme.border_colors.get(role)
-                                    if color_scheme.border_colors
-                                    else None)
-                else:
-                    bg_color = "#FFFFFF"
-                    text_color = "#000000"
-                    border_color = None
-
-                # Store for rendering
-                self.template_style = template_style
-                self.bg_color = bg_color
-                self.text_color = text_color
-                self.border_color = border_color
-
-                style_for_calc = template_style
-            else:
-                # Fallback to defaults
-                font_size = 14
-                font_weight_str = "Normal"
-                font_family = "Arial"
-                bg_color = "#FFFFFF"
-                text_color = "#000000"
-                border_color = None
-                style_for_calc = None
+        # Get colors from color scheme
+        color_scheme = self.style_config.resolved_color_scheme
+        if color_scheme:
+            bg_color = color_scheme.node_colors.get(role, "#FFFFFF")
+            text_color = (color_scheme.text_colors.get(role)
+                          if color_scheme.text_colors
+                          else None) or self._auto_contrast(bg_color)
+            border_color = (color_scheme.border_colors.get(role)
+                            if color_scheme.border_colors
+                            else None)
         else:
-            # Fallback to old NodeStyle for backward compatibility
-            style = NodeStyle.get_style_for_depth(depth, is_root)
-            font_size = style["font_size"]
-            font_weight_str = style["font_weight"]
-            font_family = "Arial"
+            bg_color = "#FFFFFF"
             text_color = "#000000"
-            style_for_calc = style  # Pass dict for size calculation
-            self.node_style = None  # No node_style when using legacy style
+            border_color = None
+
+        # Store for rendering
+        self.template_style = template_style
+        self.bg_color = bg_color
+        self.text_color = text_color
+        self.border_color = border_color
+
+        style_for_calc = template_style
 
         # Convert font weight string to QFont.Weight enum
         weight_map = {
@@ -236,14 +215,13 @@ class NodeItem(QGraphicsRectItem):
         font = QFont(font_family, font_size)
         font.setWeight(font_weight)  # Use setWeight for better compatibility
 
-        # Apply font decorations from template_style (only if available)
-        if template_style is not None:
-            if hasattr(template_style, 'font_style') and template_style.font_style == "Italic":
-                font.setItalic(True)
-            if hasattr(template_style, 'font_underline') and template_style.font_underline:
-                font.setUnderline(True)
-            if hasattr(template_style, 'font_strikeout') and template_style.font_strikeout:
-                font.setStrikeOut(True)
+        # Apply font decorations from template_style
+        if hasattr(template_style, 'font_style') and template_style.font_style == "Italic":
+            font.setItalic(True)
+        if hasattr(template_style, 'font_underline') and template_style.font_underline:
+            font.setUnderline(True)
+        if hasattr(template_style, 'font_strikeout') and template_style.font_strikeout:
+            font.setStrikeOut(True)
 
         self.text_item.setFont(font)
 
@@ -472,24 +450,13 @@ class NodeItem(QGraphicsRectItem):
         """Custom paint for node with shape support using style_config."""
         from PySide6.QtGui import QPainter
 
-        # Use template_style if available (new architecture), otherwise fallback to legacy
-        if hasattr(self, 'template_style') and self.template_style:
-            # Use new role-based style system
-            shape_type = self.template_style.shape.basic_shape if self.template_style.shape else "rounded_rect"
-            radius = self.template_style.shape.border_radius if self.template_style.shape else 8
-            bg_color = self.bg_color  # Color comes from color scheme
-            border_color = self.border_color  # Border color from color scheme or None
-            border_width = self.template_style.border.border_width if self.template_style.border else 2
-            border_style = self.template_style.border.border_style if self.template_style.border else "solid"
-        else:
-            # Fallback to old NodeStyle
-            style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
-            shape_type = "rounded_rect"
-            radius = style["border_radius"]
-            bg_color = self.color
-            border_color = None
-            border_width = 0
-            border_style = "solid"
+        # Use template_style from new architecture
+        shape_type = self.template_style.shape.basic_shape
+        radius = self.template_style.shape.border_radius
+        bg_color = self.bg_color  # Color comes from color scheme
+        border_color = self.border_color  # Border color from color scheme or None
+        border_width = self.template_style.border.border_width
+        border_style = self.template_style.border.border_style
 
         rect = self.rect()
 
