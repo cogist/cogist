@@ -6,13 +6,10 @@ Implements lazy initialization for better performance.
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox,
     QGridLayout,
     QLabel,
     QPushButton,
     QSpinBox,
-    QVBoxLayout,
-    QWidget,
 )
 
 from .collapsible_panel import CollapsiblePanel

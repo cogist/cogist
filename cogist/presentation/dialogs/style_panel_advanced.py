@@ -196,8 +196,9 @@ class AdvancedStyleTab(QWidget):
         self.layer_styles["canvas"]["bg_color"] = color
         self._update_preview()
 
-    def _on_spacing_changed(self, spacing: dict):
+    def _on_spacing_changed(self, _spacing: dict):
         """Handle spacing configuration change."""
+        # Spacing is not yet implemented in preview
         self._update_preview()
 
     def _on_node_style_changed(self, style: dict):
