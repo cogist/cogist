@@ -12,6 +12,7 @@ from cogist.domain.layout.base import (
     DefaultLayoutConfig,
     LayoutMetadata,
 )
+from cogist.domain.layout.registry import layout_registry
 
 
 class DefaultLayout(BaseLayout):
@@ -691,6 +692,4 @@ class DefaultLayout(BaseLayout):
 
 
 # Register DefaultLayout in the global registry
-from cogist.domain.layout.registry import layout_registry
-
 layout_registry.register("default", DefaultLayout)

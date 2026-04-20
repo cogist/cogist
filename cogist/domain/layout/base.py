@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Union
+from typing import Any
 
 from cogist.domain.entities.node import Node
 
@@ -65,7 +65,7 @@ class DefaultLayoutConfig(BaseLayoutConfig):
 
 # === Type Union for all layout configs ===
 
-LayoutConfigType = Union[DefaultLayoutConfig]
+LayoutConfigType = DefaultLayoutConfig
 """Union type of all layout configuration types.
 
 Add new config types here when implementing new layouts:

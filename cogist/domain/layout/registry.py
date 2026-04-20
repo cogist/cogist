@@ -84,8 +84,8 @@ class LayoutRegistry:
                 f"Available layouts: {available}"
             )
 
-        LayoutClass = self._layouts[name]
-        return LayoutClass(config)
+        layout_class = self._layouts[name]
+        return layout_class(config)
 
     def get_available_layouts(self) -> list[str]:
         """Get all registered layout algorithm names
