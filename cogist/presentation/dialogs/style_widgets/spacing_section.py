@@ -5,7 +5,7 @@ Implements lazy initialization for better performance.
 """
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QGridLayout, QLabel, QSpinBox, QVBoxLayout
+from PySide6.QtWidgets import QGridLayout, QLabel, QSpinBox
 
 from .collapsible_panel import CollapsiblePanel
 
@@ -90,7 +90,7 @@ class SpacingSection(CollapsiblePanel):
         """Handle spacing spin box changes."""
         if not hasattr(self, 'parent_child_spin') or not hasattr(self, 'sibling_spin'):
             return
-        
+
         self.current_spacing["parent_child"] = self.parent_child_spin.value()
         self.current_spacing["sibling"] = self.sibling_spin.value()
         self._emit_spacing_changed()
