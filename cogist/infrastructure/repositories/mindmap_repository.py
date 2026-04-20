@@ -54,16 +54,15 @@ class MindMapRepository(MindMapRepositoryInterface):
         try:
             # Convert node to dictionary
             from cogist.infrastructure.io.json_serializer import JSONSerializer
+            from cogist.infrastructure.io.cgs_serializer import CGSSerializer
 
             mind_map_data = {"root": JSONSerializer.node_to_dict(root_node)}
 
-            # Serialize to JSON (include style config)
-            json_string = JSONSerializer.serialize(mind_map_data, style_config)
+            # Serialize to .cgs format (ZIP container)
+            cgs_bytes = CGSSerializer.serialize(mind_map_data, style_config)
 
-            # Write to file (optionally could use ZIP compression)
-            # For now, save as plain JSON for simplicity and debuggability
-            # Future: use ZIP compression for large files
-            path.write_text(json_string, encoding=self.DEFAULT_ENCODING)
+            # Write to file
+            path.write_bytes(cgs_bytes)
 
             # Update metadata
             self._current_file = path
@@ -95,19 +94,20 @@ class MindMapRepository(MindMapRepositoryInterface):
             raise FileNotFoundError(f"Mind map file not found: {path}")
 
         try:
-            # Read JSON string
-            json_string = path.read_text(encoding=self.DEFAULT_ENCODING)
+            # Read .cgs file
+            cgs_bytes = path.read_bytes()
 
-            # Deserialize
+            # Deserialize using CGS serializer
+            from cogist.infrastructure.io.cgs_serializer import CGSSerializer
             from cogist.infrastructure.io.json_serializer import JSONSerializer
 
-            mind_map_data = JSONSerializer.deserialize(json_string)
+            result = CGSSerializer.deserialize(cgs_bytes)
 
             # Convert dictionary to node tree
-            root_node = JSONSerializer.dict_to_node(mind_map_data["root"])
+            root_node = JSONSerializer.dict_to_node(result['nodes']['root'])
 
             # Extract style config if present
-            style_config = mind_map_data.get("style")
+            style_config = result.get('style')
 
             # Update metadata
             self._current_file = path
