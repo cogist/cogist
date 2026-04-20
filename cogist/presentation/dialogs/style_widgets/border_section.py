@@ -177,8 +177,14 @@ class BorderSection(CollapsiblePanel):
                 self._emit_style_changed()
 
     def _emit_style_changed(self):
-        """Emit style changed signal."""
-        self.style_changed.emit(self.current_style.copy())
+        """Emit style changed signal with only border-related fields."""
+        # Only emit border-related fields to avoid overwriting other style properties
+        border_only_style = {
+            "border_style": self.current_style["border_style"],
+            "border_width": self.current_style["border_width"],
+            "border_color": self.current_style["border_color"],
+        }
+        self.style_changed.emit(border_only_style)
 
     def get_style(self) -> dict:
         """Get current border style."""

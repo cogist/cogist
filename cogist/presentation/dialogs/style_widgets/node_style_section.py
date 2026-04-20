@@ -722,8 +722,24 @@ class NodeStyleSection(CollapsiblePanel):
         self._emit_style_changed()
 
     def _emit_style_changed(self):
-        """Emit style changed signal with current style dict."""
-        self.style_changed.emit(self.current_style.copy())
+        """Emit style changed signal with only node-style fields."""
+        # Only emit fields managed by NodeStyleSection to avoid overwriting other sections' data
+        node_only_style = {
+            "shape": self.current_style["shape"],
+            "radius": self.current_style["radius"],
+            "bg_color": self.current_style["bg_color"],
+            "text_color": self.current_style["text_color"],
+            "padding_w": self.current_style["padding_w"],
+            "padding_h": self.current_style["padding_h"],
+            "font_family": self.current_style["font_family"],
+            "font_size": self.current_style["font_size"],
+            "font_weight": self.current_style["font_weight"],
+            "font_italic": self.current_style["font_italic"],
+            "font_underline": self.current_style["font_underline"],
+            "font_strikeout": self.current_style["font_strikeout"],
+            "shadow_enabled": self.current_style["shadow_enabled"],
+        }
+        self.style_changed.emit(node_only_style)
 
     def get_style(self) -> dict:
         """Get current node style."""

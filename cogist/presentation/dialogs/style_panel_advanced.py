@@ -284,7 +284,7 @@ class AdvancedStyleTab(QWidget):
                 # Sync shadow section visibility with shadow_enabled state
                 shadow_enabled = layer_style.get("shadow_enabled", False)
                 self.shadow_section.setVisible(shadow_enabled)
-                
+
                 # Load shadow configuration if available
                 shadow_config = {
                     "enabled": shadow_enabled,
@@ -297,7 +297,7 @@ class AdvancedStyleTab(QWidget):
 
             # Load border style
             self.border_section.set_style(layer_style)
-            
+
             # Load spacing configuration (shared across all non-canvas layers)
             self.spacing_section.set_spacing(self.spacing_config)
 
@@ -317,7 +317,7 @@ class AdvancedStyleTab(QWidget):
             # Save border style
             border_style = self.border_section.get_style()
             self.layer_styles[self.current_layer].update(border_style)
-            
+
             # Save shadow configuration
             shadow_config = self.shadow_section.get_shadow()
             if shadow_config:
@@ -454,7 +454,7 @@ class AdvancedStyleTab(QWidget):
 
     def _convert_layer_to_role_style(self, layer_data: dict):
         """Convert layer style dictionary to RoleBasedStyle object.
-        
+
         Raises:
             AssertionError: If required fields are missing from layer_data
         """
@@ -467,7 +467,7 @@ class AdvancedStyleTab(QWidget):
         )
 
         role = NodeRole.TERTIARY  # Default
-        
+
         # Assert that critical fields exist - fail fast if data is incomplete
         assert "shape" in layer_data and layer_data["shape"] is not None, \
             f"layer_data missing 'shape' field: {layer_data}"
