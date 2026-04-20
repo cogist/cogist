@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 
-from .extended_styles import ColorScheme, EdgeConfig, Template
+from .extended_styles import ColorScheme, Template
 
 # Global constant for maximum text width across all node levels
 MAX_TEXT_WIDTH = 250.0

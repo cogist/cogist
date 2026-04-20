@@ -8,7 +8,7 @@ Handles all UI rendering and user interaction.
 import contextlib
 
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QLinearGradient, QPainterPath, QPen
+from PySide6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen
 from PySide6.QtWidgets import (
     QGraphicsRectItem,
     QGraphicsTextItem,
@@ -143,7 +143,7 @@ class NodeItem(QGraphicsRectItem):
 
         # Apply font based on role using new style system
         template_style = None  # Initialize to avoid unbound variable errors
-        
+
         if self.style_config and self.style_config.resolved_template:
             # Use new role-based style system
             from cogist.domain.styles import NodeRole
@@ -169,11 +169,11 @@ class NodeItem(QGraphicsRectItem):
                 color_scheme = self.style_config.resolved_color_scheme
                 if color_scheme:
                     bg_color = color_scheme.node_colors.get(role, "#FFFFFF")
-                    text_color = (color_scheme.text_colors.get(role) 
-                                  if color_scheme.text_colors 
+                    text_color = (color_scheme.text_colors.get(role)
+                                  if color_scheme.text_colors
                                   else None) or self._auto_contrast(bg_color)
-                    border_color = (color_scheme.border_colors.get(role) 
-                                    if color_scheme.border_colors 
+                    border_color = (color_scheme.border_colors.get(role)
+                                    if color_scheme.border_colors
                                     else None)
                 else:
                     bg_color = "#FFFFFF"

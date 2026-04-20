@@ -53,8 +53,8 @@ class MindMapRepository(MindMapRepositoryInterface):
 
         try:
             # Convert node to dictionary
-            from cogist.infrastructure.io.json_serializer import JSONSerializer
             from cogist.infrastructure.io.cgs_serializer import CGSSerializer
+            from cogist.infrastructure.io.json_serializer import JSONSerializer
 
             mind_map_data = {"root": JSONSerializer.node_to_dict(root_node)}
 

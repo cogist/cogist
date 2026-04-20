@@ -12,14 +12,16 @@ This is the main demo application showing the four-layer architecture:
 import sys
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QAction, QPainter
+from PySide6.QtGui import QAction, QKeySequence, QPainter, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QGraphicsScene,
     QGraphicsView,
+    QHBoxLayout,
     QMainWindow,
     QMessageBox,
+    QWidget,
 )
 
 from cogist.application.commands import (
@@ -91,16 +93,61 @@ class MainWindow(QMainWindow):
 
         # Create mind map view with style configuration
         self.mindmap_view = MindMapView(style_config=self.current_style)
-        self.setCentralWidget(self.mindmap_view)
+
+        # Create Activity Bar (left sidebar)
+        from cogist.presentation.dialogs.activity_bar import ActivityBar
+        from cogist.presentation.dialogs.style_panel import StylePanel
+        from PySide6.QtWidgets import QSplitter
+
+        self.activity_bar = ActivityBar()
+        self.style_panel = StylePanel()
+        self.style_panel.setVisible(False)  # Hidden by default
+
+        # Create horizontal layout: ActivityBar | StylePanel | MindMapView
+        main_widget = QWidget()
+        main_layout = QHBoxLayout(main_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Add activity bar to the left
+        main_layout.addWidget(self.activity_bar)
+
+        # Create splitter for style panel and mindmap
+        self.content_splitter = QSplitter(Qt.Horizontal)
+        self.content_splitter.addWidget(self.style_panel)
+        self.content_splitter.addWidget(self.mindmap_view)
+        self.content_splitter.setStretchFactor(0, 0)  # Panel has fixed width
+        self.content_splitter.setStretchFactor(1, 1)  # Mindmap takes most space
+        self.content_splitter.setCollapsible(0, False)  # Panel cannot be collapsed
+
+        main_layout.addWidget(self.content_splitter)
+
+        # Set as central widget
+        self.setCentralWidget(main_widget)
+
+        # Connect activity bar signals
+        self.activity_bar.panel_activated.connect(self._on_panel_activated)
+
+        # Create menu bar and shortcuts on initialization
+        self._create_menu_bar()
+        self._setup_shortcuts()
+
+    def _on_panel_activated(self, panel_name: str):
+        """Handle panel switch from activity bar."""
+        if panel_name in ["simple", "advanced"]:
+            # Show style panel
+            self.style_panel.setVisible(True)
+            # Switch to the selected mode
+            self.style_panel.switch_panel(panel_name)
+        else:
+            # Hide style panel
+            self.style_panel.setVisible(False)
 
         # Enable document mode to reduce decorations
         self.setDocumentMode(True)
 
         # Disable dock nesting and animated docks
         self.setDockNestingEnabled(False)
-
-        # Create menu bar
-        self._create_menu_bar()
 
     def _apply_global_styles(self):
         """Apply global QSS styles to the application."""
@@ -255,6 +302,9 @@ class MainWindow(QMainWindow):
         """Create the menu bar with File and Edit menus."""
         menubar = self.menuBar()
 
+        # Clear existing menus to prevent duplicates
+        menubar.clear()
+
         # File menu
         file_menu = menubar.addMenu("&File")
 
@@ -344,11 +394,12 @@ class MainWindow(QMainWindow):
 
         view_menu.addSeparator()
 
-        # Style Panel (Development Tool)
-        style_panel_action = QAction("&Style Panel", self)
-        style_panel_action.setShortcut("Ctrl+Shift+S")
-        style_panel_action.triggered.connect(self._open_style_panel)
-        view_menu.addAction(style_panel_action)
+        # Toggle Style Panel
+        toggle_style_panel_action = QAction("Toggle Style &Panel", self)
+        toggle_style_panel_action.setShortcut("Ctrl+Shift+S")
+        toggle_style_panel_action.setCheckable(True)
+        toggle_style_panel_action.triggered.connect(self._toggle_style_panel)
+        view_menu.addAction(toggle_style_panel_action)
 
         view_menu.addSeparator()
 
@@ -468,55 +519,29 @@ class MainWindow(QMainWindow):
         """Reset zoom to actual size (100%)."""
         self.mindmap_view.resetTransform()
 
-    def _open_style_panel(self):
-        """Open the style panel for development."""
-        from PySide6.QtWidgets import QSplitter
+    def _setup_shortcuts(self):
+        """Setup global keyboard shortcuts."""
+        self.toggle_style_shortcut = QShortcut(QKeySequence("Ctrl+Shift+S"), self)
+        self.toggle_style_shortcut.activated.connect(self._toggle_style_panel)
 
-        from cogist.presentation.dialogs.style_panel import StylePanel
+    def _toggle_style_panel(self):
+        """Toggle style panel visibility."""
+        is_visible = self.style_panel.isVisible()
+        self.style_panel.setVisible(not is_visible)
 
-        # Check if panel already exists and is still valid
-        if hasattr(self, "style_panel") and self.style_panel:
-            try:
-                # Toggle visibility
-                is_visible = self.style_panel.isVisible()
-                self.style_panel.setVisible(not is_visible)
-                if is_visible:
-                    # When hiding, restore single widget
-                    self.setCentralWidget(self.mindmap_view)
-                    # CRITICAL: Clear the reference to avoid dangling pointer
-                    # The panel will be recreated when needed
-                    del self.style_panel
-                else:
-                    # When showing, restore splitter
-                    splitter = QSplitter(Qt.Horizontal)
-                    splitter.addWidget(self.mindmap_view)
-                    splitter.addWidget(self.style_panel)
-                    splitter.setStretchFactor(0, 1)  # Mind map takes most space
-                    splitter.setStretchFactor(1, 0)  # Panel has fixed width
-                    splitter.setCollapsible(1, False)  # Panel cannot be collapsed
-                    self.setCentralWidget(splitter)
-            except RuntimeError:
-                # Panel was deleted, recreate it
-                del self.style_panel
-                self._open_style_panel()  # Recursively call to create new panel
-                return
+        # Update activity bar button state
+        if not is_visible:
+            # If showing, activate advanced mode by default
+            self.activity_bar.activate_panel("advanced")
         else:
-            # Create new panel
-            self.style_panel = StylePanel(self)
+            # If hiding, uncheck all buttons
+            for btn in self.activity_bar.buttons.values():
+                btn.setChecked(False)
 
-            # Create a horizontal splitter with mind map view and style panel
-            splitter = QSplitter(Qt.Horizontal)
-            splitter.addWidget(self.mindmap_view)
-            splitter.addWidget(self.style_panel)
-            splitter.setStretchFactor(0, 1)  # Mind map takes most space
-            splitter.setStretchFactor(1, 0)  # Panel has fixed width
-            splitter.setCollapsible(1, False)  # Panel cannot be collapsed
-
-            # Set initial widths (mind map: 1100px, panel: 260px)
-            splitter.setSizes([1100, StylePanel.PANEL_WIDTH])
-
-            # Set as central widget
-            self.setCentralWidget(splitter)
+    def _open_style_panel(self):
+        """Open the style panel via activity bar."""
+        # Activate the advanced mode button by default
+        self.activity_bar.activate_panel("advanced")
 
 
 class MindMapView(QGraphicsView):
@@ -1390,7 +1415,10 @@ class MindMapView(QGraphicsView):
 
 def main():
     """Main entry point for the application."""
+    # Set application name for macOS menu bar
     app = QApplication(sys.argv)
+    app.setApplicationName("Cogist")
+    app.setApplicationDisplayName("Cogist")
 
     # Use macOS native style for proper scrollbar appearance
     app.setStyle("macos")

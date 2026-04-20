@@ -21,14 +21,14 @@ from .style_widgets import (
 
 class AdvancedStyleTab(QWidget):
     """Advanced mode tab using modular components with lazy initialization.
-    
+
     This refactored version uses component-based architecture:
     - LayerSelector: Layer switching
     - CanvasSection: Canvas background
     - NodeStyleSection: Node appearance
     - BorderSection: Border styling
     - ConnectorSection: Edge styling
-    
+
     All components implement lazy initialization - they only create
     their internal widgets when expanded by the user.
     """
@@ -162,10 +162,13 @@ class AdvancedStyleTab(QWidget):
         is_canvas = (layer_name == "canvas")
         is_priority = (layer_name in ["critical", "minor"])
 
+        # Canvas background: only show for canvas layer
         self.canvas_section.setVisible(is_canvas)
+        self.canvas_section.setCollapsed(False)
+
+        # Node/Border/Connector: only show for non-canvas layers
         self.node_style_section.setVisible(not is_canvas)
         self.border_section.setVisible(not is_canvas)
-        # Connector style: hide for canvas and priority layers
         self.connector_section.setVisible(not is_canvas and not is_priority)
 
         # Load style for selected layer
@@ -197,7 +200,11 @@ class AdvancedStyleTab(QWidget):
 
     def _set_initial_visibility(self):
         """Set initial visibility of sections based on default layer (canvas)."""
+        # Canvas layer is selected by default
         self.canvas_section.setVisible(True)
+        self.canvas_section.setCollapsed(False)
+
+        # Hide node/border/connector for canvas layer
         self.node_style_section.setVisible(False)
         self.border_section.setVisible(False)
         self.connector_section.setVisible(False)
@@ -259,7 +266,7 @@ class AdvancedStyleTab(QWidget):
 
     def _apply_node_styles_to_mindmap(self, mindmap_view):
         """Apply node layer styles using RoleBasedStyle architecture."""
-        from cogist.domain.styles import ColorScheme, NodeRole, RoleBasedStyle, Template
+        from cogist.domain.styles import ColorScheme, NodeRole, Template
 
         if not mindmap_view.style_config:
             return
@@ -346,7 +353,13 @@ class AdvancedStyleTab(QWidget):
 
     def _convert_layer_to_role_style(self, layer_data: dict):
         """Convert layer style dictionary to RoleBasedStyle object."""
-        from cogist.domain.styles import BackgroundStyle, BorderStyle, NodeRole, NodeShape, RoleBasedStyle
+        from cogist.domain.styles import (
+            BackgroundStyle,
+            BorderStyle,
+            NodeRole,
+            NodeShape,
+            RoleBasedStyle,
+        )
 
         role = NodeRole.TERTIARY  # Default
 

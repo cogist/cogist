@@ -20,7 +20,7 @@ from .style_config import MindMapStyle
 
 def create_default_template() -> MindMapStyle:
     """Create a default MindMapStyle with basic template and color scheme.
-    
+
     Returns:
         MindMapStyle instance with resolved template and color scheme
     """

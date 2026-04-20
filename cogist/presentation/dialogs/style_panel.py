@@ -1,15 +1,16 @@
 """
-Style Panel - Dual Mode (Simple & Advanced)
+Style Panel - Configuration Panels (without Activity Bar)
 
-A dockable panel with tabbed interface for style configuration:
-- Simple Mode: Quick selection of layout, template, color scheme, and priority (TODO)
-- Advanced Mode: Detailed layer-based template editing
+Panels for style configuration:
+- Simple: Quick style selection (TODO)
+- Advanced: Detailed layer-based template editing
+
+Note: Activity Bar has been moved to the main window level (VSCode-style).
 """
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QLabel,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -18,9 +19,9 @@ from .style_panel_advanced import AdvancedStyleTab
 
 
 class StylePanel(QWidget):
-    """Main style panel with tabbed interface for simple and advanced modes."""
+    """Style panel content (no activity bar - managed by main window)."""
 
-    PANEL_WIDTH = 260  # Match AdvancedStyleTab width
+    PANEL_WIDTH = 260
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -32,24 +33,38 @@ class StylePanel(QWidget):
         self._init_ui()
 
     def _init_ui(self):
-        """Initialize the user interface with tabs."""
+        """Initialize the user interface with stacked panels."""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # Create tab widget
-        self.tab_widget = QTabWidget()
-        self.tab_widget.setDocumentMode(True)  # Cleaner appearance
-        self.tab_widget.setTabPosition(QTabWidget.North)
-
-        # Create tabs
+        # Create simple tab (default)
         self.simple_tab = SimpleStyleTab()
         self.advanced_tab = AdvancedStyleTab()
 
-        self.tab_widget.addTab(self.simple_tab, "简单")
-        self.tab_widget.addTab(self.advanced_tab, "高级")
+        # Initially show advanced tab
+        main_layout.addWidget(self.advanced_tab)
+        self.current_panel = "advanced"
 
-        main_layout.addWidget(self.tab_widget)
+    def switch_panel(self, panel_name: str):
+        """Switch between simple and advanced panels."""
+        if panel_name == self.current_panel:
+            return
+
+        layout = self.layout()
+        # Remove current widget
+        while layout.count():
+            child = layout.takeAt(0)
+            if child.widget():
+                child.widget().setParent(None)
+
+        # Add new panel
+        if panel_name == "simple":
+            layout.addWidget(self.simple_tab)
+        elif panel_name == "advanced":
+            layout.addWidget(self.advanced_tab)
+
+        self.current_panel = panel_name
 
 
 class SimpleStyleTab(QWidget):
