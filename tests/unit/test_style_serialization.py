@@ -3,16 +3,16 @@
 import json
 
 from cogist.domain.styles import (
-    NodeRole,
-    SpacingLevel,
     ColorScheme,
-    Template,
+    NodeRole,
     RoleBasedStyle,
     SpacingConfig,
-    serialize_template,
+    SpacingLevel,
+    Template,
+    deserialize_color_scheme,
     deserialize_template,
     serialize_color_scheme,
-    deserialize_color_scheme,
+    serialize_template,
 )
 
 
@@ -42,16 +42,16 @@ def test_template_serialization():
         default_color_scheme="blue",
         recommended_layout="balanced_tree",
     )
-    
+
     # Serialize
     data = serialize_template(template)
     json_str = json.dumps(data, indent=2)
     print("Serialized template:")
     print(json_str[:200] + "...")
-    
+
     # Deserialize
     restored = deserialize_template(data)
-    
+
     # Verify
     assert restored.name == template.name
     assert restored.description == template.description
@@ -60,14 +60,14 @@ def test_template_serialization():
     assert restored.spacing.sibling_spacing == SpacingLevel.COMPACT
     assert restored.default_color_scheme == "blue"
     assert restored.recommended_layout == "balanced_tree"
-    
+
     # Verify role styles
     root_style = restored.role_styles[NodeRole.ROOT]
     assert root_style.font_size == 22
     assert root_style.font_weight == "Bold"
     assert root_style.shadow_enabled is True
     assert root_style.shadow_blur == 8
-    
+
     print("✅ Template serialization test passed")
 
 
@@ -93,16 +93,16 @@ def test_color_scheme_serialization():
         canvas_bg_color="#F5F5F5",
         edge_color="#999999",
     )
-    
+
     # Serialize
     data = serialize_color_scheme(scheme)
     json_str = json.dumps(data, indent=2)
     print("\nSerialized color scheme:")
     print(json_str[:200] + "...")
-    
+
     # Deserialize
     restored = deserialize_color_scheme(data)
-    
+
     # Verify
     assert restored.name == scheme.name
     assert restored.description == scheme.description
@@ -116,7 +116,7 @@ def test_color_scheme_serialization():
     assert restored.use_rainbow_branches is True
     assert restored.canvas_bg_color == "#F5F5F5"
     assert restored.edge_color == "#999999"
-    
+
     print("✅ Color scheme serialization test passed")
 
 
@@ -142,25 +142,25 @@ def test_round_trip():
         ),
         default_color_scheme="traditional",
     )
-    
+
     # Round trip
     data = serialize_template(template)
     restored = deserialize_template(data)
-    
+
     # Deep comparison
     assert restored.name == template.name
     assert restored.description == template.description
     assert len(restored.role_styles) == len(template.role_styles)
-    
+
     root_original = template.role_styles[NodeRole.ROOT]
     root_restored = restored.role_styles[NodeRole.ROOT]
-    
+
     assert root_restored.font_size == root_original.font_size
     assert root_restored.font_family == root_original.font_family
     assert root_restored.shadow_enabled == root_original.shadow_enabled
     assert root_restored.shadow_blur == root_original.shadow_blur
     assert root_restored.shadow_color == root_original.shadow_color
-    
+
     print("✅ Round-trip test passed")
 
 
@@ -173,27 +173,27 @@ def test_json_compatibility():
             NodeRole.ROOT: RoleBasedStyle(role=NodeRole.ROOT),
         },
     )
-    
+
     color_scheme = ColorScheme(
         name="Test Colors",
         description="Test colors",
     )
-    
+
     # Serialize to JSON string
     template_json = json.dumps(serialize_template(template))
     color_json = json.dumps(serialize_color_scheme(color_scheme))
-    
+
     # Parse back
     template_data = json.loads(template_json)
     color_data = json.loads(color_json)
-    
+
     # Deserialize
     restored_template = deserialize_template(template_data)
     restored_color = deserialize_color_scheme(color_data)
-    
+
     assert restored_template.name == "Test"
     assert restored_color.name == "Test Colors"
-    
+
     print("✅ JSON compatibility test passed")
 
 
@@ -202,5 +202,5 @@ if __name__ == "__main__":
     test_color_scheme_serialization()
     test_round_trip()
     test_json_compatibility()
-    
+
     print("\n🎉 All serialization tests passed!")

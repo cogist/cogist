@@ -11,62 +11,71 @@ sys.path.insert(0, str(project_root))
 def test_imports():
     """Test that all components can be imported."""
     print("Testing imports...")
-    
+
     try:
         from cogist.presentation.dialogs.style_widgets import (
-            LayerSelector,
-            CanvasSection,
-            NodeStyleSection,
             BorderSection,
+            CanvasSection,
             ConnectorSection,
+            LayerSelector,
+            NodeStyleSection,
         )
+        # Use imports to verify they exist
+        _ = BorderSection
+        _ = CanvasSection
+        _ = ConnectorSection
+        _ = LayerSelector
+        _ = NodeStyleSection
         print("✅ All widget components imported successfully")
     except ImportError as e:
         print(f"❌ Import error: {e}")
         return False
-    
+
     try:
         from cogist.presentation.dialogs.style_panel_advanced import AdvancedStyleTab
+        # Use import to verify it exists
+        _ = AdvancedStyleTab
         print("✅ AdvancedStyleTab imported successfully")
     except ImportError as e:
         print(f"❌ Import error: {e}")
         return False
-    
+
     return True
 
 
 def test_component_creation():
     """Test that components can be instantiated."""
     print("\nTesting component creation...")
-    
+
     from PySide6.QtWidgets import QApplication
+
     from cogist.presentation.dialogs.style_widgets import (
-        LayerSelector,
-        CanvasSection,
-        NodeStyleSection,
         BorderSection,
+        CanvasSection,
         ConnectorSection,
+        LayerSelector,
+        NodeStyleSection,
     )
-    
+
     # Create a minimal QApplication for testing
-    app = QApplication.instance() or QApplication(sys.argv)
-    
+    _app = QApplication.instance() or QApplication(sys.argv)
+
     try:
-        layer_selector = LayerSelector()
+        _layer_selector = LayerSelector()
         print("✅ LayerSelector created")
-        
-        canvas_section = CanvasSection()
+
+        _canvas_section = CanvasSection()
         print("✅ CanvasSection created")
-        
-        node_style_section = NodeStyleSection()
+
+        _node_style_section = NodeStyleSection()
         print("✅ NodeStyleSection created")
-        
-        border_section = BorderSection()
+
+        _border_section = BorderSection()
         print("✅ BorderSection created")
-        
-        connector_section = ConnectorSection()
+
+        _connector_section = ConnectorSection()
         print("✅ ConnectorSection created")
-        
+
         return True
     except Exception as e:
         print(f"❌ Component creation error: {e}")
@@ -78,12 +87,13 @@ def test_component_creation():
 def test_advanced_tab():
     """Test AdvancedStyleTab creation."""
     print("\nTesting AdvancedStyleTab creation...")
-    
+
     from PySide6.QtWidgets import QApplication
+
     from cogist.presentation.dialogs.style_panel_advanced import AdvancedStyleTab
-    
-    app = QApplication.instance() or QApplication(sys.argv)
-    
+
+    _app = QApplication.instance() or QApplication(sys.argv)
+
     try:
         tab = AdvancedStyleTab()
         print("✅ AdvancedStyleTab created successfully")
@@ -101,33 +111,34 @@ def test_advanced_tab():
 def test_lazy_initialization():
     """Test that components use lazy initialization."""
     print("\nTesting lazy initialization...")
-    
+
     from PySide6.QtWidgets import QApplication
+
     from cogist.presentation.dialogs.style_widgets import NodeStyleSection
-    
-    app = QApplication.instance() or QApplication(sys.argv)
-    
+
+    _app = QApplication.instance() or QApplication(sys.argv)
+
     try:
         section = NodeStyleSection()
-        
+
         # Check that it's collapsed by default
         if not section.isChecked():
             print("✅ Section is collapsed by default")
         else:
             print("⚠️  Section is expanded by default (should be collapsed)")
-        
+
         # Check that _initialized is False
         if not section._initialized:
             print("✅ Lazy initialization flag is set correctly")
         else:
             print("⚠️  Section appears to be initialized already")
-        
+
         # Check that internal widgets don't exist yet
         if not hasattr(section, 'shape_combo'):
             print("✅ Internal widgets not created yet (lazy loading works)")
         else:
             print("⚠️  Internal widgets already exist")
-        
+
         return True
     except Exception as e:
         print(f"❌ Lazy initialization test error: {e}")
@@ -139,23 +150,24 @@ def test_lazy_initialization():
 def test_api_consistency():
     """Test that all components have consistent API."""
     print("\nTesting API consistency...")
-    
+
     from PySide6.QtWidgets import QApplication
+
     from cogist.presentation.dialogs.style_widgets import (
-        NodeStyleSection,
         BorderSection,
         ConnectorSection,
+        NodeStyleSection,
     )
-    
-    app = QApplication.instance() or QApplication(sys.argv)
-    
+
+    _app = QApplication.instance() or QApplication(sys.argv)
+
     try:
         components = [
             ("NodeStyleSection", NodeStyleSection()),
             ("BorderSection", BorderSection()),
             ("ConnectorSection", ConnectorSection()),
         ]
-        
+
         for name, component in components:
             # Test get_style()
             if hasattr(component, 'get_style'):
@@ -168,7 +180,7 @@ def test_api_consistency():
             else:
                 print(f"❌ {name} missing get_style() method")
                 return False
-            
+
             # Test set_style()
             if hasattr(component, 'set_style'):
                 component.set_style({})
@@ -176,7 +188,7 @@ def test_api_consistency():
             else:
                 print(f"❌ {name} missing set_style() method")
                 return False
-        
+
         return True
     except Exception as e:
         print(f"❌ API consistency test error: {e}")
@@ -190,30 +202,30 @@ def main():
     print("=" * 60)
     print("Style Panel Refactoring - Integration Tests")
     print("=" * 60)
-    
+
     results = []
-    
+
     # Run tests
     results.append(("Imports", test_imports()))
     results.append(("Component Creation", test_component_creation()))
     results.append(("Advanced Tab", test_advanced_tab()))
     results.append(("Lazy Initialization", test_lazy_initialization()))
     results.append(("API Consistency", test_api_consistency()))
-    
+
     # Summary
     print("\n" + "=" * 60)
     print("Test Summary")
     print("=" * 60)
-    
+
     passed = sum(1 for _, result in results if result)
     total = len(results)
-    
+
     for name, result in results:
         status = "✅ PASS" if result else "❌ FAIL"
         print(f"{status}: {name}")
-    
+
     print(f"\nTotal: {passed}/{total} tests passed")
-    
+
     if passed == total:
         print("\n🎉 All tests passed! Refactoring successful!")
         return 0
