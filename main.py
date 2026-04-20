@@ -95,11 +95,13 @@ class MainWindow(QMainWindow):
         self.mindmap_view = MindMapView(style_config=self.current_style)
 
         # Create Activity Bar (left sidebar)
-        from cogist.presentation.dialogs.activity_bar import ActivityBar
-        from cogist.presentation.dialogs.style_panel import StylePanel
         from PySide6.QtWidgets import QSplitter
 
+        from cogist.presentation.dialogs.activity_bar import ActivityBar
+        from cogist.presentation.dialogs.style_panel import StylePanel
+
         self.activity_bar = ActivityBar()
+        self.activity_bar.setVisible(False)  # Hidden by default
         self.style_panel = StylePanel()
         self.style_panel.setVisible(False)  # Hidden by default
 
@@ -528,6 +530,7 @@ class MainWindow(QMainWindow):
         """Toggle style panel visibility."""
         is_visible = self.style_panel.isVisible()
         self.style_panel.setVisible(not is_visible)
+        self.activity_bar.setVisible(not is_visible)
 
         # Update activity bar button state
         if not is_visible:
