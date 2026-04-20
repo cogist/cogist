@@ -22,11 +22,11 @@ from PySide6.QtWidgets import (
 )
 
 
-class StylePanel(QWidget):
-    """Advanced style panel for template creation with layer-based editing."""
+class AdvancedStyleTab(QWidget):
+    """Advanced mode tab for detailed template editing with layer-based controls."""
 
     # Panel dimensions
-    PANEL_WIDTH = 260
+    PANEL_WIDTH = 260  # Original carefully designed width
     LABEL_WIDTH = 75
     WIDGET_WIDTH = 133  # Calculated: 260 - 12*2 - 1*2 - 10*2 - 75 - 6 = 133
     WIDGET_HEIGHT = 32
@@ -219,14 +219,14 @@ class StylePanel(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         content_widget = QWidget()
-        content_widget.setMinimumWidth(self.PANEL_WIDTH)
-        content_widget.setMaximumWidth(self.PANEL_WIDTH)
-        layout = QVBoxLayout(content_widget)
-        layout.setSpacing(10)
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+        layout = content_layout
 
         label_width = self.LABEL_WIDTH
         widget_height = self.WIDGET_HEIGHT
@@ -1199,7 +1199,7 @@ class StylePanel(QWidget):
             self.font_underline_check,
             self.font_strikeout_check,
         ]
-
+        
         # Save old signal states
         old_states = [w.blockSignals(True) for w in widgets_to_block]
 
@@ -1311,7 +1311,7 @@ class StylePanel(QWidget):
                 self.connector_width_spin.setValue(ui_width)
         finally:
             # Restore signal states
-            for widget, old_state in zip(widgets_to_block, old_states, strict=False):
+            for widget, old_state in zip(widgets_to_block, old_states):
                 widget.blockSignals(old_state)
 
     def _update_preview(self):
@@ -1339,98 +1339,75 @@ class StylePanel(QWidget):
         self._apply_connector_styles_to_mindmap(mindmap_view)
 
     def _apply_node_styles_to_mindmap(self, mindmap_view):
-        """Apply node layer styles to the mind map view.
+        """Apply node layer styles to the mind map view using RoleBasedStyle architecture.
 
-        This updates the style_config and triggers re-layout.
+        This updates the resolved_template and resolved_color_scheme and triggers re-layout.
         """
-        from cogist.domain.styles import (
-            ColorScheme,
-            MindMapStyle,
-            NodeRole,
-            SpacingConfig,
-            SpacingLevel,
-            Template,
-        )
+        from cogist.domain.styles import ColorScheme, NodeRole, RoleBasedStyle, Template
 
-        # Create a new style config based on current layer styles
-        style = MindMapStyle()
+        if not mindmap_view.style_config:
+            return
 
-        # For now, we'll create a simple template from the layer styles
-        # In the future, this should select from predefined templates
+        style = mindmap_view.style_config
 
-        # Convert layer styles to role-based styles
-        root_data = self.layer_styles.get("root", {})
-        level1_data = self.layer_styles.get("level_1", {})
-        level2_data = self.layer_styles.get("level_2", {})
-        level3_data = self.layer_styles.get("level_3_plus", {})
-
-        # Create role-based styles (without colors - colors come from color scheme)
-        role_styles = {
-            NodeRole.ROOT: self._convert_layer_to_role_style(root_data),
-            NodeRole.PRIMARY: self._convert_layer_to_role_style(level1_data),
-            NodeRole.SECONDARY: self._convert_layer_to_role_style(level2_data),
-            NodeRole.TERTIARY: self._convert_layer_to_role_style(level3_data),
+        # Build role mapping: panel layer -> NodeRole
+        layer_to_role = {
+            "root": NodeRole.ROOT,
+            "level_1": NodeRole.PRIMARY,
+            "level_2": NodeRole.SECONDARY,
+            "level_3_plus": NodeRole.TERTIARY,
+            "critical": NodeRole.TERTIARY,  # Critical uses TERTIARY base, override later
+            "minor": NodeRole.TERTIARY,     # Minor uses TERTIARY base, override later
         }
 
-        # Create a temporary template
-        template = Template(
-            name="Custom",
-            description="Custom template from style panel",
-            role_styles=role_styles,
-            spacing=SpacingConfig(
-                parent_child_spacing=SpacingLevel.NORMAL,
-                sibling_spacing=SpacingLevel.NORMAL,
-            ),
-        )
+        # Initialize role_styles dict if template doesn't have it
+        if not style.resolved_template:
+            style.resolved_template = Template(name="Custom", description="", role_styles={})
 
-        # Create a color scheme from layer styles
-        node_colors = {
-            NodeRole.ROOT: root_data.get("bg_color", "#2196F3"),
-            NodeRole.PRIMARY: level1_data.get("bg_color", "#4CAF50"),
-            NodeRole.SECONDARY: level2_data.get("bg_color", "#FF9800"),
-            NodeRole.TERTIARY: level3_data.get("bg_color", "#9E9E9E"),
-        }
+        role_styles = style.resolved_template.role_styles or {}
 
-        text_colors = {}
-        if root_data.get("text_color"):
-            text_colors[NodeRole.ROOT] = root_data["text_color"]
-        if level1_data.get("text_color"):
-            text_colors[NodeRole.PRIMARY] = level1_data["text_color"]
-        if level2_data.get("text_color"):
-            text_colors[NodeRole.SECONDARY] = level2_data["text_color"]
-        if level3_data.get("text_color"):
-            text_colors[NodeRole.TERTIARY] = level3_data["text_color"]
+        # Convert each layer to RoleBasedStyle + update ColorScheme
+        for layer_name, role in layer_to_role.items():
+            layer_data = self.layer_styles.get(layer_name, {})
+            if not layer_data:
+                continue
 
-        color_scheme = ColorScheme(
-            name="Custom",
-            description="Custom color scheme from style panel",
-            node_colors=node_colors,
-            text_colors=text_colors if text_colors else None,
-        )
+            # Build RoleBasedStyle
+            role_style = self._convert_layer_to_role_style(layer_data)
+            role_styles[role] = role_style
 
-        # Set template and color scheme names
-        style.template_name = "custom"
-        style.color_scheme_name = "custom"
+            # Update template
+            style.resolved_template.role_styles = role_styles
 
-        # Store resolved references directly (since we don't have a registry yet)
-        style.resolved_template = template
-        style.resolved_color_scheme = color_scheme
+            # Update color scheme
+            if not style.resolved_color_scheme:
+                style.resolved_color_scheme = ColorScheme(name="Custom", description="", node_colors={})
+
+            # Set node color
+            if "bg_color" in layer_data:
+                style.resolved_color_scheme.node_colors[role] = layer_data["bg_color"]
+
+            # Set text color
+            if "text_color" in layer_data:
+                if not style.resolved_color_scheme.text_colors:
+                    style.resolved_color_scheme.text_colors = {}
+                style.resolved_color_scheme.text_colors[role] = layer_data["text_color"]
+
+            # Set border color
+            if "border_color" in layer_data:
+                if not style.resolved_color_scheme.border_colors:
+                    style.resolved_color_scheme.border_colors = {}
+                style.resolved_color_scheme.border_colors[role] = layer_data["border_color"]
 
         # Update canvas background color
         if "canvas" in self.layer_styles:
             style.canvas_bg_color = self.layer_styles["canvas"].get("bg_color", "#FFFFFF")
-            color_scheme.canvas_bg_color = style.canvas_bg_color
+            if style.resolved_color_scheme:
+                style.resolved_color_scheme.canvas_bg_color = style.canvas_bg_color
 
-        # Update connector (edge) styles from panel's connector_style
-        # Note: EdgeConfig structure is different now, need to update accordingly
-        # For now, keep simple edge color
-        style.edge.default_style.line_width = self.connector_style.get("start_width", 2.0)
-
-        # TODO: Update edge color in color scheme
-        # style.edge_color = self.connector_style.get("connector_color", "#666666")
-
-        # Update mindmap view's style config
-        mindmap_view.style_config = style
+        # Update connector (edge) styles
+        if style.resolved_color_scheme:
+            style.resolved_color_scheme.edge_color = self.connector_style.get("connector_color", "#666666")
 
         # Update all existing node items with new style
         if hasattr(mindmap_view, 'node_items'):
@@ -1438,8 +1415,7 @@ class StylePanel(QWidget):
                 if hasattr(node_item, 'update_style'):
                     node_item.update_style(style)
 
-        # Trigger re-layout by calling refresh_layout
-        # This will re-measure nodes with new styles and reposition them
+        # Trigger re-layout
         if hasattr(mindmap_view, '_refresh_layout'):
             mindmap_view._refresh_layout()
 
@@ -1455,23 +1431,15 @@ class StylePanel(QWidget):
                 edge_item.update_style(self.connector_style)
 
     def _convert_layer_to_role_style(self, layer_data: dict):
-        """Convert layer style dictionary to RoleBasedStyle object (without colors)."""
-        from cogist.domain.styles import (
-            BackgroundStyle,
-            BorderStyle,
-            NodeRole,
-            NodeShape,
-            RoleBasedStyle,
-        )
+        """Convert layer style dictionary to RoleBasedStyle object."""
+        from cogist.domain.styles import BackgroundStyle, BorderStyle, NodeRole, NodeShape, RoleBasedStyle
 
-        # Determine role from context (we'll set it later)
-        # For now, use a placeholder
-        role = NodeRole.TERTIARY
+        # Determine role from layer type for proper labeling
+        role = NodeRole.TERTIARY  # Default
 
-        return RoleBasedStyle(
+        style = RoleBasedStyle(
             role=role,
             shape=NodeShape(
-                shape_type="basic",
                 basic_shape=layer_data.get("shape", "rounded_rect"),
                 border_radius=layer_data.get("radius", 8),
             ),
@@ -1480,9 +1448,9 @@ class StylePanel(QWidget):
             ),
             border=BorderStyle(
                 border_type="simple",
+                border_style=layer_data.get("border_style", "solid").lower(),
                 border_width=layer_data.get("border_width", 2),
                 border_radius=layer_data.get("radius", 8),
-                border_style=layer_data.get("border_style", "solid").lower(),
             ),
             padding_w=layer_data.get("padding_w", 12),
             padding_h=layer_data.get("padding_h", 8),
@@ -1490,30 +1458,8 @@ class StylePanel(QWidget):
             font_weight=layer_data.get("font_weight", "Normal"),
             font_style="Italic" if layer_data.get("font_italic", False) else "Normal",
             font_family=layer_data.get("font_family", "Arial"),
-        )
-
-    def _convert_layer_to_node_style(self, layer_data: dict):
-        """Convert layer style dictionary to NodeStyleConfig object.
-
-        DEPRECATED: This method is kept for backward compatibility only.
-        Use _convert_layer_to_role_style instead.
-        """
-        from cogist.domain.styles import NodeStyleConfig
-
-        return NodeStyleConfig(
-            shape=layer_data.get("shape", "rounded_rect"),
-            bg_color=layer_data.get("bg_color"),
-            text_color=layer_data.get("text_color"),
-            border_color=layer_data.get("border_color"),
-            font_family=layer_data.get("font_family", "Arial"),
-            font_size=layer_data.get("font_size", 16),
-            font_weight=layer_data.get("font_weight", "Normal"),
-            font_italic=layer_data.get("font_italic", False),
             font_underline=layer_data.get("font_underline", False),
             font_strikeout=layer_data.get("font_strikeout", False),
-            padding_width=layer_data.get("padding_w", 10),
-            padding_height=layer_data.get("padding_h", 8),
-            border_radius=layer_data.get("radius", 8),
-            border_style=layer_data.get("border_style", "solid").lower(),
-            border_width=layer_data.get("border_width", 2),
         )
+
+        return style

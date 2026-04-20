@@ -142,6 +142,8 @@ class NodeItem(QGraphicsRectItem):
         doc.setDefaultTextOption(text_option)
 
         # Apply font based on role using new style system
+        template_style = None  # Initialize to avoid unbound variable errors
+        
         if self.style_config and self.style_config.resolved_template:
             # Use new role-based style system
             from cogist.domain.styles import NodeRole
@@ -234,8 +236,14 @@ class NodeItem(QGraphicsRectItem):
         font = QFont(font_family, font_size)
         font.setWeight(font_weight)  # Use setWeight for better compatibility
 
-        # Note: Font decorations (italic/underline/strikeout) are not yet in RoleBasedStyle
-        # They can be added to the template structure in the future
+        # Apply font decorations from template_style (only if available)
+        if template_style is not None:
+            if hasattr(template_style, 'font_style') and template_style.font_style == "Italic":
+                font.setItalic(True)
+            if hasattr(template_style, 'font_underline') and template_style.font_underline:
+                font.setUnderline(True)
+            if hasattr(template_style, 'font_strikeout') and template_style.font_strikeout:
+                font.setStrikeOut(True)
 
         self.text_item.setFont(font)
 

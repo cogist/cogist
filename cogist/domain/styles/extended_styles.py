@@ -153,6 +153,8 @@ class RoleBasedStyle:
     font_weight: str = "Normal"  # Normal / Bold / Light
     font_style: str = "Normal"  # Normal / Italic
     font_family: str = "Arial"
+    font_underline: bool = False
+    font_strikeout: bool = False
 
     # === Shadow effect ===
     shadow_enabled: bool = False
