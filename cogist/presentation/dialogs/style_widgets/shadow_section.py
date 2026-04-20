@@ -19,7 +19,7 @@ from .collapsible_panel import CollapsiblePanel
 
 
 class ShadowSection(CollapsiblePanel):
-    """Shadow effect configuration settings with lazy initialization.
+    """Font Shadow effect configuration settings with lazy initialization.
 
     Signals:
         shadow_changed(dict): Emitted when shadow configuration changes
@@ -33,7 +33,7 @@ class ShadowSection(CollapsiblePanel):
     GROUP_MARGIN = 10
 
     def __init__(self, parent=None):
-        super().__init__("Shadow", collapsed=True, parent=parent)
+        super().__init__("Font Shadow", collapsed=True, parent=parent)
 
         # State
         self._initialized = False
@@ -66,25 +66,14 @@ class ShadowSection(CollapsiblePanel):
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
 
-        # Shadow enabled checkbox (with label for alignment)
-        shadow_enabled_label = QLabel("Shadow:")
-        shadow_enabled_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        shadow_enabled_label.setMinimumWidth(self.LABEL_WIDTH)
-        shadow_enabled_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
-        layout.addWidget(shadow_enabled_label, 0, 0)
-
-        self.shadow_enabled_check = QCheckBox("Enable Shadow")
-        self.shadow_enabled_check.setChecked(self.current_shadow["enabled"])
-        self.shadow_enabled_check.setStyleSheet("QCheckBox { background: transparent; }")
-        self.shadow_enabled_check.toggled.connect(self._on_enabled_changed)
-        layout.addWidget(self.shadow_enabled_check, 0, 1)
+        row = 0
 
         # Offset X
         offset_x_label = QLabel("Offset X:")
         offset_x_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         offset_x_label.setMinimumWidth(self.LABEL_WIDTH)
         offset_x_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
-        layout.addWidget(offset_x_label, 1, 0)
+        layout.addWidget(offset_x_label, row, 0)
 
         self.shadow_offset_x_spin = QSpinBox()
         self.shadow_offset_x_spin.setFixedHeight(self.WIDGET_HEIGHT)
@@ -92,14 +81,15 @@ class ShadowSection(CollapsiblePanel):
         self.shadow_offset_x_spin.setValue(self.current_shadow["offset_x"])
         self.shadow_offset_x_spin.setAlignment(Qt.AlignLeft)
         self.shadow_offset_x_spin.valueChanged.connect(self._on_shadow_changed)
-        layout.addWidget(self.shadow_offset_x_spin, 1, 1)
+        layout.addWidget(self.shadow_offset_x_spin, row, 1)
+        row += 1
 
         # Offset Y
         offset_y_label = QLabel("Offset Y:")
         offset_y_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         offset_y_label.setMinimumWidth(self.LABEL_WIDTH)
         offset_y_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
-        layout.addWidget(offset_y_label, 2, 0)
+        layout.addWidget(offset_y_label, row, 0)
 
         self.shadow_offset_y_spin = QSpinBox()
         self.shadow_offset_y_spin.setFixedHeight(self.WIDGET_HEIGHT)
@@ -107,14 +97,15 @@ class ShadowSection(CollapsiblePanel):
         self.shadow_offset_y_spin.setValue(self.current_shadow["offset_y"])
         self.shadow_offset_y_spin.setAlignment(Qt.AlignLeft)
         self.shadow_offset_y_spin.valueChanged.connect(self._on_shadow_changed)
-        layout.addWidget(self.shadow_offset_y_spin, 2, 1)
+        layout.addWidget(self.shadow_offset_y_spin, row, 1)
+        row += 1
 
         # Blur
         blur_label = QLabel("Blur:")
         blur_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         blur_label.setMinimumWidth(self.LABEL_WIDTH)
         blur_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
-        layout.addWidget(blur_label, 3, 0)
+        layout.addWidget(blur_label, row, 0)
 
         self.shadow_blur_spin = QSpinBox()
         self.shadow_blur_spin.setFixedHeight(self.WIDGET_HEIGHT)
@@ -122,14 +113,15 @@ class ShadowSection(CollapsiblePanel):
         self.shadow_blur_spin.setValue(self.current_shadow["blur"])
         self.shadow_blur_spin.setAlignment(Qt.AlignLeft)
         self.shadow_blur_spin.valueChanged.connect(self._on_shadow_changed)
-        layout.addWidget(self.shadow_blur_spin, 3, 1)
+        layout.addWidget(self.shadow_blur_spin, row, 1)
+        row += 1
 
         # Color
         color_label = QLabel("Color:")
         color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         color_label.setMinimumWidth(self.LABEL_WIDTH)
         color_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
-        layout.addWidget(color_label, 4, 0)
+        layout.addWidget(color_label, row, 0)
 
         self.shadow_color_btn = QPushButton()
         self.shadow_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
@@ -138,14 +130,9 @@ class ShadowSection(CollapsiblePanel):
             "border: 1px solid #ccc; border-radius: 4px;"
         )
         self.shadow_color_btn.clicked.connect(self._pick_color)
-        layout.addWidget(self.shadow_color_btn, 4, 1)
+        layout.addWidget(self.shadow_color_btn, row, 1)
 
         self.setLayout(layout)
-
-    def _on_enabled_changed(self):
-        """Handle shadow enabled checkbox change."""
-        self.current_shadow["enabled"] = self.shadow_enabled_check.isChecked()
-        self._emit_shadow_changed()
 
     def _on_shadow_changed(self):
         """Handle shadow parameter changes."""

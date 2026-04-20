@@ -25,9 +25,11 @@ class NodeStyleSection(CollapsiblePanel):
 
     Signals:
         style_changed(dict): Emitted when any node style property changes
+        shadow_enabled_changed(bool): Emitted when shadow enabled state changes
     """
 
     style_changed = Signal(dict)
+    shadow_enabled_changed = Signal(bool)
 
     # UI constants
     LABEL_WIDTH = 75
@@ -59,6 +61,7 @@ class NodeStyleSection(CollapsiblePanel):
             "font_italic": False,
             "font_underline": False,
             "font_strikeout": False,
+            "shadow_enabled": False,
         }
 
     def _on_toggled(self, checked: bool):
@@ -228,41 +231,43 @@ class NodeStyleSection(CollapsiblePanel):
         layout.addWidget(self.font_weight_combo, row, 1)
         row += 1
 
-        # Font style checkboxes - directly in grid layout without container
+        # Font style checkboxes - 2x2 grid layout
         font_style_label = QLabel("Font Style:")
         font_style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         font_style_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(font_style_label, row, 0)
 
+        # Container for 2x2 checkbox grid
+        style_container = QWidget()
+        style_layout = QGridLayout(style_container)
+        style_layout.setSpacing(6)
+        style_layout.setContentsMargins(0, 0, 0, 4)
+
         self.font_italic_check = QCheckBox("Italic")
         self.font_italic_check.setChecked(self.current_style["font_italic"])
-        self.font_italic_check.setStyleSheet("QCheckBox { background: transparent; margin: 2px 0px; }")
+        self.font_italic_check.setStyleSheet("QCheckBox { background: transparent; }")
         self.font_italic_check.toggled.connect(self._on_font_style_changed)
-        layout.addWidget(self.font_italic_check, row, 1)
-        row += 1
-
-        # Empty label for alignment
-        empty_label_1 = QLabel("")
-        empty_label_1.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(empty_label_1, row, 0)
+        style_layout.addWidget(self.font_italic_check, 0, 0)
 
         self.font_underline_check = QCheckBox("Underline")
         self.font_underline_check.setChecked(self.current_style["font_underline"])
-        self.font_underline_check.setStyleSheet("QCheckBox { background: transparent; margin: 2px 0px; }")
+        self.font_underline_check.setStyleSheet("QCheckBox { background: transparent; }")
         self.font_underline_check.toggled.connect(self._on_font_style_changed)
-        layout.addWidget(self.font_underline_check, row, 1)
-        row += 1
-
-        # Empty label for alignment
-        empty_label_2 = QLabel("")
-        empty_label_2.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(empty_label_2, row, 0)
+        style_layout.addWidget(self.font_underline_check, 0, 1)
 
         self.font_strikeout_check = QCheckBox("Strikeout")
         self.font_strikeout_check.setChecked(self.current_style["font_strikeout"])
-        self.font_strikeout_check.setStyleSheet("QCheckBox { background: transparent; margin: 2px 0px; }")
+        self.font_strikeout_check.setStyleSheet("QCheckBox { background: transparent; }")
         self.font_strikeout_check.toggled.connect(self._on_font_style_changed)
-        layout.addWidget(self.font_strikeout_check, row, 1)
+        style_layout.addWidget(self.font_strikeout_check, 1, 0)
+
+        self.font_shadow_check = QCheckBox("Shadow")
+        self.font_shadow_check.setChecked(self.current_style.get("shadow_enabled", False))
+        self.font_shadow_check.setStyleSheet("QCheckBox { background: transparent; }")
+        self.font_shadow_check.toggled.connect(self._on_font_shadow_toggled)
+        style_layout.addWidget(self.font_shadow_check, 1, 1)
+
+        layout.addWidget(style_container, row, 1)
 
         self.setLayout(layout)
 
@@ -362,6 +367,12 @@ class NodeStyleSection(CollapsiblePanel):
         self.current_style["font_strikeout"] = self.font_strikeout_check.isChecked()
         self._emit_style_changed()
 
+    def _on_font_shadow_toggled(self, checked: bool):
+        """Handle font shadow checkbox toggle."""
+        self.current_style["shadow_enabled"] = checked
+        self.shadow_enabled_changed.emit(checked)
+        self._emit_style_changed()
+
     def _emit_style_changed(self):
         """Emit style changed signal with current style dict."""
         self.style_changed.emit(self.current_style.copy())
@@ -419,3 +430,5 @@ class NodeStyleSection(CollapsiblePanel):
                 self.font_underline_check.setChecked(style["font_underline"])
             if "font_strikeout" in style:
                 self.font_strikeout_check.setChecked(style["font_strikeout"])
+            if "shadow_enabled" in style:
+                self.font_shadow_check.setChecked(style["shadow_enabled"])

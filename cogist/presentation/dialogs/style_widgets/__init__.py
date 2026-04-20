@@ -10,6 +10,8 @@ from .collapsible_panel import CollapsiblePanel
 from .connector_section import ConnectorSection
 from .layer_selector import LayerSelector
 from .node_style_section import NodeStyleSection
+from .shadow_section import ShadowSection
+from .spacing_section import SpacingSection
 
 __all__ = [
     "CollapsiblePanel",
@@ -18,4 +20,6 @@ __all__ = [
     "NodeStyleSection",
     "BorderSection",
     "ConnectorSection",
+    "ShadowSection",
+    "SpacingSection",
 ]

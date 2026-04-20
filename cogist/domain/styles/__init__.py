@@ -22,6 +22,11 @@ from .style_resolver import (
     serialize_style,
     serialize_template,
 )
+from .templates import (
+    COLOR_SCHEMES,
+    NODE_TEMPLATES,
+    create_default_template,
+)
 
 __all__ = [
     # Enums
@@ -52,4 +57,9 @@ __all__ = [
     # Main style configuration
     "MindMapStyle",
     "LegacyEdgeConfig",  # For backward compatibility
+
+    # Preset templates and color schemes
+    "create_default_template",
+    "COLOR_SCHEMES",
+    "NODE_TEMPLATES",
 ]

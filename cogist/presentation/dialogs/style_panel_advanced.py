@@ -16,6 +16,8 @@ from .style_widgets import (
     ConnectorSection,
     LayerSelector,
     NodeStyleSection,
+    ShadowSection,
+    SpacingSection,
 )
 
 
@@ -88,13 +90,17 @@ class AdvancedStyleTab(QWidget):
         # Add modular components
         self.layer_selector = LayerSelector()
         self.canvas_section = CanvasSection()
+        self.spacing_section = SpacingSection()
         self.node_style_section = NodeStyleSection()
+        self.shadow_section = ShadowSection()
         self.border_section = BorderSection()
         self.connector_section = ConnectorSection()
 
         layout.addWidget(self.layer_selector)
         layout.addWidget(self.canvas_section)
+        layout.addWidget(self.spacing_section)
         layout.addWidget(self.node_style_section)
+        layout.addWidget(self.shadow_section)
         layout.addWidget(self.border_section)
         layout.addWidget(self.connector_section)
         layout.addStretch()
@@ -141,8 +147,15 @@ class AdvancedStyleTab(QWidget):
         # Canvas background
         self.canvas_section.color_changed.connect(self._on_canvas_color_changed)
 
+        # Spacing configuration
+        self.spacing_section.spacing_changed.connect(self._on_spacing_changed)
+
         # Node style
         self.node_style_section.style_changed.connect(self._on_node_style_changed)
+        self.node_style_section.shadow_enabled_changed.connect(self._on_shadow_enabled_changed)
+
+        # Shadow style
+        self.shadow_section.shadow_changed.connect(self._on_shadow_changed)
 
         # Border style
         self.border_section.style_changed.connect(self._on_border_style_changed)
@@ -166,25 +179,43 @@ class AdvancedStyleTab(QWidget):
         self.canvas_section.setVisible(is_canvas)
         self.canvas_section.setCollapsed(False)
 
+        # Spacing: only show for non-canvas layers (not a global setting)
+        self.spacing_section.setVisible(not is_canvas)
+
         # Node/Border/Connector: only show for non-canvas layers
         self.node_style_section.setVisible(not is_canvas)
+        # Shadow section visibility is controlled by shadow_enabled state in _load_current_layer_style
         self.border_section.setVisible(not is_canvas)
         self.connector_section.setVisible(not is_canvas and not is_priority)
 
         # Load style for selected layer
         self._load_current_layer_style()
 
-        print(f"Switched to layer: {layer_name}")
-
     def _on_canvas_color_changed(self, color: str):
         """Handle canvas background color change."""
         self.layer_styles["canvas"]["bg_color"] = color
+        self._update_preview()
+
+    def _on_spacing_changed(self, spacing: dict):
+        """Handle spacing configuration change."""
         self._update_preview()
 
     def _on_node_style_changed(self, style: dict):
         """Handle node style changes."""
         if self.current_layer != "canvas":
             self.layer_styles[self.current_layer].update(style)
+            self._update_preview()
+
+    def _on_shadow_enabled_changed(self, enabled: bool):
+        """Handle font shadow enabled state change."""
+        self.shadow_section.setVisible(enabled)
+        if enabled:
+            self.shadow_section.setCollapsed(False)
+
+    def _on_shadow_changed(self, shadow: dict):
+        """Handle shadow style changes."""
+        if self.current_layer != "canvas":
+            self.layer_styles[self.current_layer].update(shadow)
             self._update_preview()
 
     def _on_border_style_changed(self, style: dict):
@@ -204,8 +235,14 @@ class AdvancedStyleTab(QWidget):
         self.canvas_section.setVisible(True)
         self.canvas_section.setCollapsed(False)
 
-        # Hide node/border/connector for canvas layer
+        # Hide spacing for canvas layer
+        self.spacing_section.setVisible(False)
+        self.spacing_section.setCollapsed(True)
+
+        # Hide node/shadow/border/connector for canvas layer
         self.node_style_section.setVisible(False)
+        # Shadow section is controlled by shadow_enabled checkbox
+        self.shadow_section.setVisible(False)
         self.border_section.setVisible(False)
         self.connector_section.setVisible(False)
 
@@ -216,11 +253,16 @@ class AdvancedStyleTab(QWidget):
             canvas_style = self.layer_styles.get("canvas", {})
             if "bg_color" in canvas_style:
                 self.canvas_section.set_color(canvas_style["bg_color"])
+            # Hide shadow section for canvas
+            self.shadow_section.setVisible(False)
         else:
             # Load node style
             layer_style = self.layer_styles.get(self.current_layer, {})
             if layer_style:
                 self.node_style_section.set_style(layer_style)
+                # Sync shadow section visibility with shadow_enabled state
+                shadow_enabled = layer_style.get("shadow_enabled", False)
+                self.shadow_section.setVisible(shadow_enabled)
 
             # Load border style
             self.border_section.set_style(layer_style)
@@ -410,6 +452,7 @@ class AdvancedStyleTab(QWidget):
             "font_italic": False,
             "font_underline": False,
             "font_strikeout": False,
+            "shadow_enabled": False,
             "border_style": "solid",
             "border_width": 2,
             "border_color": "#1976D2",

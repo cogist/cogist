@@ -1,11 +1,11 @@
 """Spacing configuration section widget.
 
-Provides controls for customizing spacing levels (Compact/Normal/Relaxed/Spacious)
-for parent-child and sibling spacing. Implements lazy initialization for better performance.
+Provides controls for customizing spacing values for parent-child and sibling spacing.
+Implements lazy initialization for better performance.
 """
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QGridLayout, QLabel, QRadioButton, QVBoxLayout
+from PySide6.QtWidgets import QGridLayout, QLabel, QSpinBox, QVBoxLayout
 
 from .collapsible_panel import CollapsiblePanel
 
@@ -37,8 +37,8 @@ class SpacingSection(CollapsiblePanel):
     def _get_default_spacing(self) -> dict:
         """Get default spacing configuration."""
         return {
-            "parent_child": "normal",
-            "sibling": "normal",
+            "parent_child": 20,
+            "sibling": 15,
         }
 
     def _on_toggled(self, checked: bool):
@@ -55,67 +55,44 @@ class SpacingSection(CollapsiblePanel):
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
 
+        row = 0
+
         # Parent-child spacing
         pc_label = QLabel("Parent-Child:")
         pc_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         pc_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(pc_label, 0, 0)
+        layout.addWidget(pc_label, row, 0)
 
-        pc_radio_layout = QHBoxLayout()
-        pc_radio_layout.setSpacing(12)
-        self.pc_compact_radio = QRadioButton("Compact")
-        self.pc_normal_radio = QRadioButton("Normal")
-        self.pc_relaxed_radio = QRadioButton("Relaxed")
-        self.pc_normal_radio.setChecked(True)
-        self.pc_compact_radio.toggled.connect(self._on_spacing_changed)
-        self.pc_normal_radio.toggled.connect(self._on_spacing_changed)
-        self.pc_relaxed_radio.toggled.connect(self._on_spacing_changed)
-        pc_radio_layout.addWidget(self.pc_compact_radio)
-        pc_radio_layout.addWidget(self.pc_normal_radio)
-        pc_radio_layout.addWidget(self.pc_relaxed_radio)
-        pc_radio_layout.addStretch()
-        layout.addLayout(pc_radio_layout, 0, 1)
+        self.parent_child_spin = QSpinBox()
+        self.parent_child_spin.setFixedHeight(self.WIDGET_HEIGHT)
+        self.parent_child_spin.setRange(0, 100)
+        self.parent_child_spin.setValue(self.current_spacing["parent_child"])
+        self.parent_child_spin.valueChanged.connect(self._on_spacing_changed)
+        layout.addWidget(self.parent_child_spin, row, 1)
+        row += 1
 
         # Sibling spacing
         sib_label = QLabel("Sibling:")
         sib_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         sib_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(sib_label, 1, 0)
+        layout.addWidget(sib_label, row, 0)
 
-        sib_radio_layout = QHBoxLayout()
-        sib_radio_layout.setSpacing(12)
-        self.sib_compact_radio = QRadioButton("Compact")
-        self.sib_normal_radio = QRadioButton("Normal")
-        self.sib_relaxed_radio = QRadioButton("Relaxed")
-        self.sib_normal_radio.setChecked(True)
-        self.sib_compact_radio.toggled.connect(self._on_spacing_changed)
-        self.sib_normal_radio.toggled.connect(self._on_spacing_changed)
-        self.sib_relaxed_radio.toggled.connect(self._on_spacing_changed)
-        sib_radio_layout.addWidget(self.sib_compact_radio)
-        sib_radio_layout.addWidget(self.sib_normal_radio)
-        sib_radio_layout.addWidget(self.sib_relaxed_radio)
-        sib_radio_layout.addStretch()
-        layout.addLayout(sib_radio_layout, 1, 1)
+        self.sibling_spin = QSpinBox()
+        self.sibling_spin.setFixedHeight(self.WIDGET_HEIGHT)
+        self.sibling_spin.setRange(0, 100)
+        self.sibling_spin.setValue(self.current_spacing["sibling"])
+        self.sibling_spin.valueChanged.connect(self._on_spacing_changed)
+        layout.addWidget(self.sibling_spin, row, 1)
 
         self.setLayout(layout)
 
     def _on_spacing_changed(self):
-        """Handle spacing radio button changes."""
-        # Update state based on which radio buttons are checked
-        if self.pc_compact_radio.isChecked():
-            self.current_spacing["parent_child"] = "compact"
-        elif self.pc_relaxed_radio.isChecked():
-            self.current_spacing["parent_child"] = "relaxed"
-        else:
-            self.current_spacing["parent_child"] = "normal"
-
-        if self.sib_compact_radio.isChecked():
-            self.current_spacing["sibling"] = "compact"
-        elif self.sib_relaxed_radio.isChecked():
-            self.current_spacing["sibling"] = "relaxed"
-        else:
-            self.current_spacing["sibling"] = "normal"
-
+        """Handle spacing spin box changes."""
+        if not hasattr(self, 'parent_child_spin') or not hasattr(self, 'sibling_spin'):
+            return
+        
+        self.current_spacing["parent_child"] = self.parent_child_spin.value()
+        self.current_spacing["sibling"] = self.sibling_spin.value()
         self._emit_spacing_changed()
 
     def _emit_spacing_changed(self):
@@ -132,19 +109,7 @@ class SpacingSection(CollapsiblePanel):
 
         if self._initialized:
             if "parent_child" in spacing:
-                value = spacing["parent_child"]
-                if value == "compact":
-                    self.pc_compact_radio.setChecked(True)
-                elif value == "relaxed":
-                    self.pc_relaxed_radio.setChecked(True)
-                else:
-                    self.pc_normal_radio.setChecked(True)
+                self.parent_child_spin.setValue(spacing["parent_child"])
 
             if "sibling" in spacing:
-                value = spacing["sibling"]
-                if value == "compact":
-                    self.sib_compact_radio.setChecked(True)
-                elif value == "relaxed":
-                    self.sib_relaxed_radio.setChecked(True)
-                else:
-                    self.sib_normal_radio.setChecked(True)
+                self.sibling_spin.setValue(spacing["sibling"])
