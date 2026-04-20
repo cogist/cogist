@@ -6,14 +6,10 @@ Implements lazy initialization for better performance.
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import (
-    QGridLayout,
-    QLabel,
-    QPushButton,
-    QSpinBox,
-)
+from PySide6.QtWidgets import QGridLayout, QLabel, QPushButton, QSpinBox
 
 from .collapsible_panel import CollapsiblePanel
+from .dialog_utils import position_color_dialog
 
 
 class ShadowSection(CollapsiblePanel):
@@ -147,15 +143,14 @@ class ShadowSection(CollapsiblePanel):
         color_dialog = QColorDialog(QColor(current_color), self)
         color_dialog.setWindowTitle("Select Shadow Color")
 
-        # Position dialog to the right of the color button
-        button_pos = self.shadow_color_btn.mapToGlobal(self.shadow_color_btn.rect().topLeft())
-        button_width = self.shadow_color_btn.width()
-        dialog_x = button_pos.x() + button_width + 4  # 4px gap to the right
-        dialog_y = button_pos.y()  # Align top edges
+        # Use Qt's standard dialog instead of native dialog to allow positioning
+        color_dialog.setOption(QColorDialog.DontUseNativeDialog)
 
-        # Show dialog first, then move it (to avoid Qt's automatic positioning)
-        color_dialog.show()
-        color_dialog.move(dialog_x, dialog_y)
+        # Enable alpha channel (transparency) support
+        color_dialog.setOption(QColorDialog.ShowAlphaChannel)
+
+        # Position dialog with boundary check
+        position_color_dialog(color_dialog, self.shadow_color_btn)
 
         if color_dialog.exec():
             color = color_dialog.currentColor()

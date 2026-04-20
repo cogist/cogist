@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from .collapsible_panel import CollapsiblePanel
+from .dialog_utils import position_color_dialog
 
 
 class NodeStyleSection(CollapsiblePanel):
@@ -325,6 +326,12 @@ class NodeStyleSection(CollapsiblePanel):
         color_dialog = QColorDialog(current, self)
         color_dialog.setWindowTitle(f"Select {color_type.replace('_', ' ').title()} Color")
 
+        # Use Qt's standard dialog instead of native dialog to allow positioning
+        color_dialog.setOption(QColorDialog.DontUseNativeDialog)
+
+        # Enable alpha channel (transparency) support
+        color_dialog.setOption(QColorDialog.ShowAlphaChannel)
+
         # Determine which button was clicked
         if color_type == "bg_color":
             button = self.bg_color_btn
@@ -333,15 +340,8 @@ class NodeStyleSection(CollapsiblePanel):
         else:
             return
 
-        # Position dialog to the right of the color button
-        button_pos = button.mapToGlobal(button.rect().topLeft())
-        button_width = button.width()
-        dialog_x = button_pos.x() + button_width + 4  # 4px gap to the right
-        dialog_y = button_pos.y()  # Align top edges
-
-        # Show dialog first, then move it (to avoid Qt's automatic positioning)
-        color_dialog.show()
-        color_dialog.move(dialog_x, dialog_y)
+        # Position dialog with boundary check
+        position_color_dialog(color_dialog, button)
 
         if color_dialog.exec():
             color = color_dialog.currentColor()
