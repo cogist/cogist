@@ -57,20 +57,8 @@ class AdvancedStyleTab(QWidget):
             "minor": self._get_default_layer_style("minor"),
         }
 
-        # Connector style (shared across all node layers)
-        self.connector_style = self._get_default_connector_style()
-
-        # Spacing configuration - derived from style_config if available
-        if style_config:
-            self.spacing_config = {
-                "parent_child": getattr(style_config, "parent_child_spacing", 20),
-                "sibling": getattr(style_config, "sibling_spacing", 15),
-            }
-        else:
-            self.spacing_config = {
-                "parent_child": 20,
-                "sibling": 15,
-            }
+        # Spacing configuration is now per-layer, stored in layer_styles
+        # No global spacing_config needed
 
         # Initialize UI with modular components
         self._init_ui()
@@ -219,12 +207,10 @@ class AdvancedStyleTab(QWidget):
         self._apply_styles_to_mindmap()
 
     def _on_spacing_changed(self, spacing: dict):
-        """Handle spacing configuration change."""
-        # Update internal spacing config
-        self.spacing_config.update(spacing)
-
-        # Apply all styles to mindmap (including spacing)
-        self._apply_styles_to_mindmap()
+        """Handle spacing configuration change for the current layer."""
+        if self.current_layer != "canvas":
+            self.layer_styles[self.current_layer].update(spacing)
+            self._apply_styles_to_mindmap()
 
     def _on_node_style_changed(self, style: dict):
         """Handle node style changes."""
@@ -279,11 +265,10 @@ class AdvancedStyleTab(QWidget):
             self._apply_styles_to_mindmap()
 
     def _on_connector_style_changed(self, style: dict):
-        """Handle connector style changes."""
-        # Save connector style
-        self.connector_style.update(style)
-        # Apply all styles to mindmap
-        self._apply_styles_to_mindmap()
+        """Handle connector style changes for the current layer."""
+        if self.current_layer != "canvas":
+            self.layer_styles[self.current_layer].update(style)
+            self._apply_styles_to_mindmap()
 
     def _initialize_layer_styles_from_config(self, style_config):
         """Initialize layer_styles from style_config's resolved_template and resolved_color_scheme.
@@ -364,8 +349,10 @@ class AdvancedStyleTab(QWidget):
         # Update canvas background
         self.layer_styles["canvas"]["bg_color"] = color_scheme.canvas_bg_color
 
-        # Update connector style
-        self.connector_style["connector_color"] = color_scheme.edge_color
+        # Update connector style for all node layers (per-layer)
+        for layer_name in ["root", "level_1", "level_2", "level_3_plus", "critical", "minor"]:
+            if layer_name in self.layer_styles:
+                self.layer_styles[layer_name]["connector_color"] = color_scheme.edge_color
 
         print(
             f"✓ Initialized layer_styles from style_config ({len(template.role_styles)} roles)"
@@ -443,11 +430,23 @@ class AdvancedStyleTab(QWidget):
             # Load border style
             self.border_section.set_style(layer_style)
 
-            # Load spacing configuration (shared across all non-canvas layers)
-            self.spacing_section.set_spacing(self.spacing_config)
+            # Load spacing configuration (per-layer)
+            spacing_config = {
+                "parent_child": layer_style.get("parent_child_spacing", 20),
+                "sibling": layer_style.get("sibling_spacing", 15),
+            }
+            self.spacing_section.set_spacing(spacing_config)
 
-        # Load connector style (always loaded)
-        self.connector_section.set_style(self.connector_style)
+        # Load connector style (per-layer, only for non-canvas)
+        if self.current_layer != "canvas":
+            layer_style = self.layer_styles[self.current_layer]
+            connector_style = {
+                "connector_type": layer_style.get("connector_type", "bezier"),
+                "connector_style": layer_style.get("connector_style", "solid"),
+                "line_width": layer_style.get("connector_width", 2),
+                "connector_color": layer_style.get("connector_color", "#666666"),
+            }
+            self.connector_section.set_style(connector_style)
 
     def _save_current_layer_style(self):
         """Save current UI state to layer_styles dict."""
@@ -473,6 +472,18 @@ class AdvancedStyleTab(QWidget):
                 self.layer_styles[self.current_layer]["shadow_blur"] = shadow_config["blur"]
                 self.layer_styles[self.current_layer]["shadow_color"] = shadow_config["color"]
 
+            # Save spacing configuration (per-layer)
+            spacing_config = self.spacing_section.get_spacing()
+            self.layer_styles[self.current_layer]["parent_child_spacing"] = spacing_config.get("parent_child", 20)
+            self.layer_styles[self.current_layer]["sibling_spacing"] = spacing_config.get("sibling", 15)
+
+            # Save connector style (per-layer)
+            connector_style = self.connector_section.get_style()
+            self.layer_styles[self.current_layer]["connector_type"] = connector_style.get("connector_type", "bezier")
+            self.layer_styles[self.current_layer]["connector_style"] = connector_style.get("connector_style", "solid")
+            self.layer_styles[self.current_layer]["connector_width"] = connector_style.get("line_width", 2)
+            self.layer_styles[self.current_layer]["connector_color"] = connector_style.get("connector_color", "#666666")
+
     def _apply_styles_to_mindmap(self):
         """Unified method to apply all styles to mindmap_view.
 
@@ -495,17 +506,18 @@ class AdvancedStyleTab(QWidget):
             # Apply node styles (includes canvas background)
             self._apply_node_styles_to_mindmap(mindmap_view)
 
-            # Apply connector styles
+            # Apply connector styles (per-layer, using current layer's settings)
             self._apply_connector_styles_to_mindmap(mindmap_view)
 
-            # Apply spacing configuration
-            if hasattr(mindmap_view, "style_config"):
-                mindmap_view.style_config.parent_child_spacing = self.spacing_config[
-                    "parent_child"
-                ]
-                mindmap_view.style_config.sibling_spacing = self.spacing_config[
-                    "sibling"
-                ]
+            # Apply spacing configuration (per-layer, using current layer's settings)
+            if hasattr(mindmap_view, "style_config") and self.current_layer != "canvas":
+                layer_style = self.layer_styles[self.current_layer]
+                mindmap_view.style_config.parent_child_spacing = layer_style.get(
+                    "parent_child_spacing", 20
+                )
+                mindmap_view.style_config.sibling_spacing = layer_style.get(
+                    "sibling_spacing", 15
+                )
 
             # Refresh layout to apply all changes
             # CRITICAL: Skip measurement when applying style changes
@@ -585,11 +597,12 @@ class AdvancedStyleTab(QWidget):
             if style.resolved_color_scheme:
                 style.resolved_color_scheme.canvas_bg_color = canvas_color
 
-        # Update connector (edge) styles
-        if style.resolved_color_scheme:
-            style.resolved_color_scheme.edge_color = self.connector_style[
-                "connector_color"
-            ]
+        # Update connector (edge) styles (per-layer)
+        if style.resolved_color_scheme and self.current_layer != "canvas":
+            layer_style = self.layer_styles[self.current_layer]
+            style.resolved_color_scheme.edge_color = layer_style.get(
+                "connector_color", "#666666"
+            )
 
         # Update all existing node items with new style
         if hasattr(mindmap_view, "node_items"):
@@ -600,13 +613,22 @@ class AdvancedStyleTab(QWidget):
         # Note: Layout refresh is handled by _apply_styles_to_mindmap()
 
     def _apply_connector_styles_to_mindmap(self, mindmap_view):
-        """Apply connector (edge) styles to all edges in the mind map."""
-        if not hasattr(mindmap_view, "edge_items"):
+        """Apply connector (edge) styles to all edges in the mind map (per-layer)."""
+        if not hasattr(mindmap_view, "edge_items") or self.current_layer == "canvas":
             return
+
+        # Get connector style from current layer
+        layer_style = self.layer_styles[self.current_layer]
+        connector_style = {
+            "connector_type": layer_style.get("connector_type", "bezier"),
+            "connector_style": layer_style.get("connector_style", "solid"),
+            "line_width": layer_style.get("connector_width", 2),
+            "connector_color": layer_style.get("connector_color", "#666666"),
+        }
 
         for edge_item in mindmap_view.edge_items:
             if hasattr(edge_item, "update_style"):
-                edge_item.update_style(self.connector_style)
+                edge_item.update_style(connector_style)
 
     def _convert_layer_to_role_style(self, layer_data: dict):
         """Convert layer style dictionary to RoleBasedStyle object.
@@ -756,6 +778,14 @@ class AdvancedStyleTab(QWidget):
             # Padding
             "padding_w": 20,
             "padding_h": 16,
+            # Connector (per-layer)
+            "connector_type": "bezier",
+            "connector_style": "solid",
+            "connector_width": 2,
+            "connector_color": "#666666",
+            # Spacing (per-layer)
+            "parent_child_spacing": 20,
+            "sibling_spacing": 15,
         }
 
         # Adjust based on layer type
@@ -819,11 +849,4 @@ class AdvancedStyleTab(QWidget):
 
         return style
 
-    def _get_default_connector_style(self):
-        """Get default connector (edge) style."""
-        return {
-            "connector_type": "bezier",
-            "connector_style": "solid",
-            "line_width": 2,
-            "connector_color": "#666666",
-        }
+    # Removed _get_default_connector_style() - connector fields are now per-layer in layer_styles
