@@ -49,6 +49,13 @@ class MindMapStyle:
         2: 35.0,   # Level 3+ siblings
     })
 
+    # === Per-depth connector configuration (for layer-specific edge styles) ===
+    connector_config_by_depth: dict[int, dict] = field(default_factory=lambda: {
+        0: {"connector_type": "bezier", "connector_style": "solid", "line_width": 2.0},  # Root → Level 1
+        1: {"connector_type": "bezier", "connector_style": "solid", "line_width": 2.0},  # Level 1 → Level 2
+        2: {"connector_type": "bezier", "connector_style": "solid", "line_width": 2.0},  # Level 2+
+    })
+
     # === Runtime resolved styles (computed by resolve_style()) ===
     resolved_template: Template | None = None
     resolved_color_scheme: ColorScheme | None = None

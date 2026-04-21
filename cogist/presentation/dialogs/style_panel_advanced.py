@@ -142,10 +142,10 @@ class AdvancedStyleTab(QWidget):
             # Padding
             "padding_w": role_style.padding_w,
             "padding_h": role_style.padding_h,
-            # Connector
-            "connector_type": "bezier",
-            "connector_style": "solid",
-            "connector_width": 2,
+            # Connector - read from per-depth configuration
+            "connector_type": self._get_connector_type_for_layer(layer_name),
+            "connector_style": self._get_connector_style_for_layer(layer_name),
+            "connector_width": self._get_connector_width_for_layer(layer_name),
             "connector_color": color_scheme.edge_color,
             # Spacing - read from per-depth configuration
             "parent_child_spacing": self._get_level_spacing_for_layer(layer_name),
@@ -176,6 +176,36 @@ class AdvancedStyleTab(QWidget):
         if hasattr(self.style_config, 'sibling_spacing_by_depth'):
             return self.style_config.sibling_spacing_by_depth.get(depth, self.style_config.sibling_spacing)
         return self.style_config.sibling_spacing
+
+    def _get_connector_type_for_layer(self, layer_name: str) -> str:
+        """Get connector type for a layer from per-depth configuration."""
+        assert self.style_config is not None
+        depth_map = {"root": 0, "level_1": 0, "level_2": 1, "level_3_plus": 2}
+        depth = depth_map.get(layer_name, 2)
+
+        if hasattr(self.style_config, 'connector_config_by_depth'):
+            return self.style_config.connector_config_by_depth.get(depth, {}).get("connector_type", "bezier")
+        return "bezier"
+
+    def _get_connector_style_for_layer(self, layer_name: str) -> str:
+        """Get connector style for a layer from per-depth configuration."""
+        assert self.style_config is not None
+        depth_map = {"root": 0, "level_1": 0, "level_2": 1, "level_3_plus": 2}
+        depth = depth_map.get(layer_name, 2)
+
+        if hasattr(self.style_config, 'connector_config_by_depth'):
+            return self.style_config.connector_config_by_depth.get(depth, {}).get("connector_style", "solid")
+        return "solid"
+
+    def _get_connector_width_for_layer(self, layer_name: str) -> float:
+        """Get connector width for a layer from per-depth configuration."""
+        assert self.style_config is not None
+        depth_map = {"root": 0, "level_1": 0, "level_2": 1, "level_3_plus": 2}
+        depth = depth_map.get(layer_name, 2)
+
+        if hasattr(self.style_config, 'connector_config_by_depth'):
+            return self.style_config.connector_config_by_depth.get(depth, {}).get("line_width", 2.0)
+        return 2.0
 
     def _update_role_style_in_config(self, layer_name: str, updates: dict):
         """Update specific fields of a role's style in global style_config.
@@ -464,10 +494,35 @@ class AdvancedStyleTab(QWidget):
     def _on_connector_style_changed(self, style: dict):
         """Handle connector style changes for the current layer."""
         if self.current_layer != "canvas":
-            # Connector styles are stored in color_scheme.edge_color
             assert self.style_config is not None
+            
+            # Map layer to depth
+            depth_map = {"root": 0, "level_1": 0, "level_2": 1, "level_3_plus": 2}
+            depth = depth_map.get(self.current_layer, 2)
+            
+            # Initialize connector config for this depth if not exists
+            if not hasattr(self.style_config, 'connector_config_by_depth'):
+                self.style_config.connector_config_by_depth = {}
+            if depth not in self.style_config.connector_config_by_depth:
+                self.style_config.connector_config_by_depth[depth] = {
+                    "connector_type": "bezier",
+                    "connector_style": "solid",
+                    "line_width": 2.0,
+                }
+            
+            # Update connector config
+            connector_config = self.style_config.connector_config_by_depth[depth]
+            if "connector_type" in style:
+                connector_config["connector_type"] = style["connector_type"]
+            if "connector_style" in style:
+                connector_config["connector_style"] = style["connector_style"]
+            if "line_width" in style:
+                connector_config["line_width"] = style["line_width"]
+            
+            # Handle color separately (stored in color_scheme)
             if "connector_color" in style and self.style_config.resolved_color_scheme:
                 self.style_config.resolved_color_scheme.edge_color = style["connector_color"]
+            
             self._apply_styles_to_mindmap()
 
     @staticmethod
@@ -709,18 +764,33 @@ class AdvancedStyleTab(QWidget):
         if not hasattr(mindmap_view, "edge_items") or self.current_layer == "canvas":
             return
 
-        # Get connector style from current layer
-        layer_data = self._get_layer_data(self.current_layer)
-        connector_style = {
-            "connector_type": layer_data["connector_type"],
-            "connector_style": layer_data["connector_style"],
-            "line_width": layer_data["connector_width"],
-            "connector_color": layer_data["connector_color"],
-        }
+        assert self.style_config is not None
 
         for edge_item in mindmap_view.edge_items:
-            if hasattr(edge_item, "update_style"):
-                edge_item.update_style(connector_style)
+            if not hasattr(edge_item, "update_style"):
+                continue
+            
+            # Get target node depth to determine which connector style to use
+            target_node = edge_item.target_item
+            if not hasattr(target_node, 'depth'):
+                continue
+            
+            depth = target_node.depth
+            
+            # Get connector config for this depth
+            connector_config = {}
+            if hasattr(self.style_config, 'connector_config_by_depth'):
+                connector_config = self.style_config.connector_config_by_depth.get(depth, {})
+            
+            # Build connector style dict
+            connector_style = {
+                "connector_type": connector_config.get("connector_type", "bezier"),
+                "connector_style": connector_config.get("connector_style", "solid"),
+                "line_width": connector_config.get("line_width", 2.0),
+                "connector_color": self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666",
+            }
+            
+            edge_item.update_style(connector_style)
 
     def _convert_layer_to_role_style(self, layer_data: dict):
         """Convert layer style dictionary to RoleBasedStyle object.
