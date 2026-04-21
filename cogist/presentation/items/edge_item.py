@@ -59,7 +59,26 @@ class EdgeItem(QGraphicsPathItem):
             self._create_gradient_path()
 
         if self._gradient_path:
-            if self.line_style in (Qt.DashLine, Qt.DotLine, Qt.DashDotLine):
+            # Check if uniform width (no gradient needed)
+            is_uniform = abs(self.start_width - self.end_width) < 0.01
+
+            if is_uniform:
+                # For uniform width: draw the path directly for sharp corners
+                # self.path() is already in item coordinates (set by update_curve)
+                pen = QPen(self.color, self.start_width, self.line_style, Qt.FlatCap)
+                pen.setJoinStyle(Qt.MiterJoin)
+
+                # Adjust dash pattern for better visibility
+                if self.line_style == Qt.DashLine:
+                    pen.setDashPattern([6.0, 4.0])
+                elif self.line_style == Qt.DotLine:
+                    pen.setDashPattern([1.0, 3.0])
+                elif self.line_style == Qt.DashDotLine:
+                    pen.setDashPattern([6.0, 4.0, 1.0, 4.0])
+
+                painter.setPen(pen)
+                painter.drawPath(self.path())
+            elif self.line_style in (Qt.DashLine, Qt.DotLine, Qt.DashDotLine):
                 # For dashed/dotted/dash-dot lines: draw as continuous path
                 full_path = QPainterPath()
                 for (start, end), _width in self._gradient_path:
