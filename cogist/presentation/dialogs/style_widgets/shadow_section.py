@@ -147,7 +147,8 @@ class ShadowSection(CollapsiblePanel):
         color = QColorDialog.getColor(QColor(current_color), self, "Select Shadow Color", QColorDialog.ShowAlphaChannel)
 
         if color.isValid():
-            color_name = color.name()
+            # Use name(QColor.HexArgb) to preserve alpha channel
+            color_name = color.name(QColor.HexArgb)
             self.current_shadow["color"] = color_name
             self.shadow_color_btn.setStyleSheet(
                 f"background-color: {color_name}; border: 1px solid #ccc; border-radius: 4px;"

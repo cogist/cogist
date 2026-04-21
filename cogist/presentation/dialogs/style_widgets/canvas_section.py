@@ -75,7 +75,8 @@ class CanvasSection(CollapsiblePanel):
         color = QColorDialog.getColor(current, self, "Select Canvas Background Color", QColorDialog.ShowAlphaChannel)
 
         if color.isValid():
-            self.current_color = color.name()
+            # Use name(QColor.HexArgb) to preserve alpha channel
+            self.current_color = color.name(QColor.HexArgb)
             self.canvas_bg_btn.setStyleSheet(
                 f"background-color: {self.current_color}; "
                 "border: 1px solid #ccc; border-radius: 6px;"

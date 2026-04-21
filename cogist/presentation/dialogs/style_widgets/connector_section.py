@@ -197,7 +197,8 @@ class ConnectorSection(CollapsiblePanel):
         color = QColorDialog.getColor(current, self, "Select Connector Color", QColorDialog.ShowAlphaChannel)
 
         if color.isValid():
-            self.current_style["connector_color"] = color.name()
+            # Use name(QColor.HexArgb) to preserve alpha channel
+            self.current_style["connector_color"] = color.name(QColor.HexArgb)
             self.connector_color_btn.setStyleSheet(
                 f"background-color: {self.current_style['connector_color']}; "
                 "border: 1px solid #ccc; border-radius: 6px;"

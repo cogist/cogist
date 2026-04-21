@@ -342,7 +342,8 @@ class NodeStyleSection(CollapsiblePanel):
         color = QColorDialog.getColor(current, self, f"Select {color_type.replace('_', ' ').title()} Color", QColorDialog.ShowAlphaChannel)
 
         if color.isValid():
-            color_name = color.name()
+            # Use name(QColor.HexArgb) to preserve alpha channel
+            color_name = color.name(QColor.HexArgb)
             self.current_style[color_type] = color_name
 
             # Update button appearance

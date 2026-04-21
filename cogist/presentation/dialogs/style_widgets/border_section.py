@@ -169,7 +169,8 @@ class BorderSection(CollapsiblePanel):
         if color_dialog.exec():
             color = color_dialog.currentColor()
             if color.isValid():
-                self.current_style["border_color"] = color.name()
+                # Use name(QColor.HexArgb) to preserve alpha channel
+                self.current_style["border_color"] = color.name(QColor.HexArgb)
                 self.border_color_btn.setStyleSheet(
                     f"background-color: {self.current_style['border_color']}; "
                     "border: 1px solid #ccc; border-radius: 6px;"
