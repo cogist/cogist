@@ -64,6 +64,117 @@ class AdvancedStyleTab(QWidget):
         # Load initial layer style
         self._load_current_layer_style()
 
+    def _get_layer_data(self, layer_name: str) -> dict:
+        """Get style data for a layer directly from global style_config.
+
+        This method reads from style_config.resolved_template and resolved_color_scheme,
+        ensuring panel always uses the authoritative data source.
+
+        Args:
+            layer_name: Layer name (canvas, root, level_1, level_2, level_3_plus, etc.)
+
+        Returns:
+            Dictionary with all style fields for the layer
+        """
+        assert self.style_config is not None, "style_config must be set"
+
+        if layer_name == "canvas":
+            return {"bg_color": self.style_config.canvas_bg_color}
+
+        # Map layer names to NodeRole
+        layer_to_role = {
+            "root": "root",
+            "level_1": "primary",
+            "level_2": "secondary",
+            "level_3_plus": "tertiary",
+            "critical": "tertiary",
+            "minor": "tertiary",
+        }
+
+        role_str = layer_to_role.get(layer_name)
+        if not role_str:
+            raise ValueError(f"Unknown layer: {layer_name}")
+
+        from cogist.domain.styles import NodeRole
+        role = NodeRole(role_str)
+
+        template = self.style_config.resolved_template
+        color_scheme = self.style_config.resolved_color_scheme
+
+        if not template or role not in template.role_styles:
+            raise ValueError(f"No style data for role {role} in template")
+
+        role_style = template.role_styles[role]
+
+        # Build complete layer data from global style config
+        layer_data = {
+            # Shape
+            "shape": role_style.shape.basic_shape,
+            "radius": role_style.shape.border_radius,
+            # Colors
+            "bg_color": color_scheme.node_colors.get(role, "#FFFFFF"),
+            "text_color": (
+                color_scheme.text_colors.get(role)
+                if color_scheme.text_colors and role in color_scheme.text_colors
+                else self._auto_contrast(color_scheme.node_colors.get(role, "#FFFFFF"))
+            ),
+            "border_color": (
+                color_scheme.border_colors.get(role)
+                if color_scheme.border_colors and role in color_scheme.border_colors
+                else None
+            ),
+            # Font
+            "font_family": role_style.font_family,
+            "font_size": role_style.font_size,
+            "font_weight": role_style.font_weight,
+            "font_italic": role_style.font_style == "Italic",
+            "font_underline": role_style.font_underline,
+            "font_strikeout": role_style.font_strikeout,
+            # Shadow
+            "shadow_enabled": role_style.shadow_enabled,
+            "shadow_offset_x": role_style.shadow_offset_x,
+            "shadow_offset_y": role_style.shadow_offset_y,
+            "shadow_blur": role_style.shadow_blur,
+            "shadow_color": role_style.shadow_color or "#000000",
+            # Border
+            "border_style": role_style.border.border_style,
+            "border_width": role_style.border.border_width,
+            # Padding
+            "padding_w": role_style.padding_w,
+            "padding_h": role_style.padding_h,
+            # Connector
+            "connector_type": "bezier",
+            "connector_style": "solid",
+            "connector_width": 2,
+            "connector_color": color_scheme.edge_color,
+            # Spacing - read from per-depth configuration
+            "parent_child_spacing": self._get_level_spacing_for_layer(layer_name),
+            "sibling_spacing": self._get_sibling_spacing_for_layer(layer_name),
+        }
+
+        return layer_data
+
+    def _get_level_spacing_for_layer(self, layer_name: str) -> float:
+        """Get parent-child spacing for a layer from per-depth configuration."""
+        depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
+        depth = depth_map.get(layer_name, 2)
+
+        if hasattr(self.style_config, 'level_spacing_by_depth'):
+            return self.style_config.level_spacing_by_depth.get(depth, self.style_config.parent_child_spacing)
+        return self.style_config.parent_child_spacing
+
+    def _get_sibling_spacing_for_layer(self, layer_name: str) -> float:
+        """Get sibling spacing for a layer from per-depth configuration."""
+        if layer_name == "root":
+            return 0
+
+        depth_map = {"level_1": 0, "level_2": 1, "level_3_plus": 2}
+        depth = depth_map.get(layer_name, 2)
+
+        if hasattr(self.style_config, 'sibling_spacing_by_depth'):
+            return self.style_config.sibling_spacing_by_depth.get(depth, self.style_config.sibling_spacing)
+        return self.style_config.sibling_spacing
+
     def _init_ui(self):
         """Initialize UI with modular components."""
         # Create scroll area
@@ -438,39 +549,39 @@ class AdvancedStyleTab(QWidget):
 
     def _load_current_layer_style(self):
         """Load style for current layer into UI components."""
+        # Get style data directly from global style_config
+        layer_data = self._get_layer_data(self.current_layer)
+
         if self.current_layer == "canvas":
             # Load canvas style
-            canvas_style = self.layer_styles["canvas"]
-            if "bg_color" in canvas_style:
-                self.canvas_section.set_color(canvas_style["bg_color"])
+            if "bg_color" in layer_data:
+                self.canvas_section.set_color(layer_data["bg_color"])
             # Hide shadow section for canvas
             self.shadow_section.setVisible(False)
         else:
             # Load node style
-            layer_style = self.layer_styles[self.current_layer]
-            if layer_style:
-                self.node_style_section.set_style(layer_style)
-                # Sync shadow section visibility with shadow_enabled state
-                shadow_enabled = layer_style["shadow_enabled"]
-                self.shadow_section.setVisible(shadow_enabled)
+            self.node_style_section.set_style(layer_data)
+            # Sync shadow section visibility with shadow_enabled state
+            shadow_enabled = layer_data["shadow_enabled"]
+            self.shadow_section.setVisible(shadow_enabled)
 
-                # Load shadow configuration
-                shadow_config = {
-                    "enabled": shadow_enabled,
-                    "offset_x": layer_style["shadow_offset_x"],
-                    "offset_y": layer_style["shadow_offset_y"],
-                    "blur": layer_style["shadow_blur"],
-                    "color": layer_style["shadow_color"],
-                }
-                self.shadow_section.set_shadow(shadow_config)
+            # Load shadow configuration
+            shadow_config = {
+                "enabled": shadow_enabled,
+                "offset_x": layer_data["shadow_offset_x"],
+                "offset_y": layer_data["shadow_offset_y"],
+                "blur": layer_data["shadow_blur"],
+                "color": layer_data["shadow_color"],
+            }
+            self.shadow_section.set_shadow(shadow_config)
 
             # Load border style
-            self.border_section.set_style(layer_style)
+            self.border_section.set_style(layer_data)
 
             # Load spacing configuration (per-layer)
             spacing_config = {
-                "parent_child": layer_style["parent_child_spacing"],
-                "sibling": layer_style["sibling_spacing"],
+                "parent_child": layer_data["parent_child_spacing"],
+                "sibling": layer_data["sibling_spacing"],
             }
             self.spacing_section.set_spacing(spacing_config)
 
@@ -479,12 +590,11 @@ class AdvancedStyleTab(QWidget):
 
         # Load connector style (per-layer, only for non-canvas)
         if self.current_layer != "canvas":
-            layer_style = self.layer_styles[self.current_layer]
             connector_style = {
-                "connector_type": layer_style["connector_type"],
-                "connector_style": layer_style["connector_style"],
-                "line_width": layer_style["connector_width"],
-                "connector_color": layer_style["connector_color"],
+                "connector_type": layer_data["connector_type"],
+                "connector_style": layer_data["connector_style"],
+                "line_width": layer_data["connector_width"],
+                "connector_color": layer_data["connector_color"],
             }
             self.connector_section.set_style(connector_style)
 
