@@ -156,6 +156,7 @@ class AdvancedStyleTab(QWidget):
 
     def _get_level_spacing_for_layer(self, layer_name: str) -> float:
         """Get parent-child spacing for a layer from per-depth configuration."""
+        assert self.style_config is not None
         depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
         depth = depth_map.get(layer_name, 2)
 
@@ -165,6 +166,7 @@ class AdvancedStyleTab(QWidget):
 
     def _get_sibling_spacing_for_layer(self, layer_name: str) -> float:
         """Get sibling spacing for a layer from per-depth configuration."""
+        assert self.style_config is not None
         if layer_name == "root":
             return 0
 
@@ -174,6 +176,57 @@ class AdvancedStyleTab(QWidget):
         if hasattr(self.style_config, 'sibling_spacing_by_depth'):
             return self.style_config.sibling_spacing_by_depth.get(depth, self.style_config.sibling_spacing)
         return self.style_config.sibling_spacing
+
+    def _update_role_style_in_config(self, layer_name: str, updates: dict):
+        """Update specific fields of a role's style in global style_config.
+
+        Args:
+            layer_name: Layer name (root, level_1, etc.)
+            updates: Dictionary of fields to update
+        """
+        assert self.style_config is not None
+
+        if layer_name == "canvas":
+            return  # Canvas doesn't have role styles
+
+        # Map layer to role
+        layer_to_role = {
+            "root": "root",
+            "level_1": "primary",
+            "level_2": "secondary",
+            "level_3_plus": "tertiary",
+            "critical": "tertiary",
+            "minor": "tertiary",
+        }
+
+        role_str = layer_to_role.get(layer_name)
+        if not role_str:
+            return
+
+        from cogist.domain.styles import NodeRole
+        role = NodeRole(role_str)
+
+        template = self.style_config.resolved_template
+        if not template or role not in template.role_styles:
+            return
+
+        role_style = template.role_styles[role]
+
+        # Apply updates to role_style
+        for key, value in updates.items():
+            if hasattr(role_style, key):
+                setattr(role_style, key, value)
+            elif key.startswith("shadow_"):
+                # Handle shadow attributes
+                attr_name = key
+                if hasattr(role_style, attr_name):
+                    setattr(role_style, attr_name, value)
+            elif key.startswith("border_"):
+                # Handle border attributes on border object
+                if hasattr(role_style, 'border'):
+                    border_attr = key.replace("border_", "")
+                    if hasattr(role_style.border, border_attr):
+                        setattr(role_style.border, border_attr, value)
 
     def _init_ui(self):
         """Initialize UI with modular components."""
@@ -303,15 +356,16 @@ class AdvancedStyleTab(QWidget):
 
     def _on_canvas_color_changed(self, color: str):
         """Handle canvas background color change."""
-        self.layer_styles["canvas"]["bg_color"] = color
+        assert self.style_config is not None
+        # Directly update global style_config
+        self.style_config.canvas_bg_color = color
+        if self.style_config.resolved_color_scheme:
+            self.style_config.resolved_color_scheme.canvas_bg_color = color
         self._apply_styles_to_mindmap()
 
     def _on_spacing_changed(self, spacing: dict):
         """Handle spacing configuration change for the current layer."""
         if self.current_layer != "canvas":
-            # Update only the fields that changed in layer_styles
-            self.layer_styles[self.current_layer].update(spacing)
-
             # Directly update mindmap_view.style_config to ensure layout refresh picks it up
             try:
                 from cogist.application.services.app_context import get_app_context
