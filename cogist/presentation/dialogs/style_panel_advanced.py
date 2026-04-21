@@ -57,9 +57,6 @@ class AdvancedStyleTab(QWidget):
             "minor": self._get_default_layer_style("minor"),
         }
 
-        # Spacing configuration is now per-layer, stored in layer_styles
-        # No global spacing_config needed
-
         # Initialize UI with modular components
         self._init_ui()
 
@@ -90,7 +87,9 @@ class AdvancedStyleTab(QWidget):
 
         # Create content widget
         content_widget = QWidget()
-        content_widget.setMinimumWidth(self.PANEL_WIDTH)  # Ensure content fills panel width
+        content_widget.setMinimumWidth(
+            self.PANEL_WIDTH
+        )  # Ensure content fills panel width
         layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(1)
@@ -209,8 +208,45 @@ class AdvancedStyleTab(QWidget):
     def _on_spacing_changed(self, spacing: dict):
         """Handle spacing configuration change for the current layer."""
         if self.current_layer != "canvas":
+            # Update only the fields that changed in layer_styles
             self.layer_styles[self.current_layer].update(spacing)
-            self._apply_styles_to_mindmap()
+
+            # Directly update mindmap_view.style_config to ensure layout refresh picks it up
+            try:
+                from cogist.application.services.app_context import get_app_context
+                app_context = get_app_context()
+                if app_context:
+                    mindmap_view = app_context.get_mindmap_view()
+                    if mindmap_view and hasattr(mindmap_view, "style_config"):
+                        # Map layers to depths for spacing application
+                        depth_map = {
+                            "root": 0,
+                            "level_1": 1,
+                            "level_2": 2,
+                            "level_3_plus": 3,
+                        }
+                        depth = depth_map[self.current_layer]
+
+                        if "parent_child" in spacing:
+                            # Initialize dictionary if not exists
+                            if not hasattr(mindmap_view.style_config, 'level_spacing_by_depth'):
+                                mindmap_view.style_config.level_spacing_by_depth = {}
+                            # Update ONLY the specific depth's level spacing (true isolation)
+                            mindmap_view.style_config.level_spacing_by_depth[depth] = spacing["parent_child"]
+
+                        if "sibling" in spacing:
+                            # Initialize dictionary if not exists
+                            if not hasattr(mindmap_view.style_config, 'sibling_spacing_by_depth'):
+                                mindmap_view.style_config.sibling_spacing_by_depth = {}
+                            # Update ONLY the specific depth's sibling spacing (true isolation)
+                            # Root layer has no siblings, but we still store it for completeness
+                            mindmap_view.style_config.sibling_spacing_by_depth[depth] = spacing["sibling"]
+
+                        # Trigger layout refresh
+                        if hasattr(mindmap_view, "_refresh_layout"):
+                            mindmap_view._refresh_layout(skip_measurement=True)
+            except Exception as e:
+                print(f"Error applying spacing: {e}")
 
     def _on_node_style_changed(self, style: dict):
         """Handle node style changes."""
@@ -234,7 +270,9 @@ class AdvancedStyleTab(QWidget):
         """Handle shadow style changes."""
         if self.current_layer != "canvas":
             print(f"DEBUG _on_shadow_changed: received shadow = {shadow}")
-            print(f"DEBUG _on_shadow_changed: before update - layer_styles[{self.current_layer}]['shadow_enabled'] = {self.layer_styles[self.current_layer]['shadow_enabled']}")
+            print(
+                f"DEBUG _on_shadow_changed: before update - layer_styles[{self.current_layer}]['shadow_enabled'] = {self.layer_styles[self.current_layer]['shadow_enabled']}"
+            )
 
             # Update only the fields that changed, preserve existing values for others
             # This ensures we don't accidentally reset shadow_enabled to False
@@ -252,8 +290,12 @@ class AdvancedStyleTab(QWidget):
             if "enabled" in shadow:
                 layer_data["shadow_enabled"] = shadow["enabled"]
 
-            print(f"DEBUG _on_shadow_changed: after update - layer_styles[{self.current_layer}]['shadow_enabled'] = {layer_data['shadow_enabled']}")
-            print(f"DEBUG _on_shadow_changed: after update - layer_styles[{self.current_layer}]['shadow_offset_x'] = {layer_data['shadow_offset_x']}")
+            print(
+                f"DEBUG _on_shadow_changed: after update - layer_styles[{self.current_layer}]['shadow_enabled'] = {layer_data['shadow_enabled']}"
+            )
+            print(
+                f"DEBUG _on_shadow_changed: after update - layer_styles[{self.current_layer}]['shadow_offset_x'] = {layer_data['shadow_offset_x']}"
+            )
 
             self._apply_styles_to_mindmap()
 
@@ -311,7 +353,9 @@ class AdvancedStyleTab(QWidget):
                 "shape": role_style.shape.basic_shape,
                 "radius": role_style.shape.border_radius,
                 # Colors (from color_scheme) - ensure ALL colors are populated
-                "bg_color": color_scheme.node_colors[role],  # node_colors always has all roles
+                "bg_color": color_scheme.node_colors[
+                    role
+                ],  # node_colors always has all roles
                 "text_color": (
                     color_scheme.text_colors[role]
                     if color_scheme.text_colors and role in color_scheme.text_colors
@@ -341,6 +385,14 @@ class AdvancedStyleTab(QWidget):
                 # Padding
                 "padding_w": role_style.padding_w,
                 "padding_h": role_style.padding_h,
+                # Connector (per-layer)
+                "connector_type": "bezier",
+                "connector_style": "solid",
+                "connector_width": 2,
+                "connector_color": color_scheme.edge_color,
+                # Spacing (per-layer) - Initialize from style_config
+                "parent_child_spacing": getattr(style_config, "parent_child_spacing", 80),
+                "sibling_spacing": 0 if layer_name == "root" else getattr(style_config, "sibling_spacing", 80),
             }
 
             # Update layer_styles - this replaces the default completely
@@ -348,11 +400,6 @@ class AdvancedStyleTab(QWidget):
 
         # Update canvas background
         self.layer_styles["canvas"]["bg_color"] = color_scheme.canvas_bg_color
-
-        # Update connector style for all node layers (per-layer)
-        for layer_name in ["root", "level_1", "level_2", "level_3_plus", "critical", "minor"]:
-            if layer_name in self.layer_styles:
-                self.layer_styles[layer_name]["connector_color"] = color_scheme.edge_color
 
         print(
             f"✓ Initialized layer_styles from style_config ({len(template.role_styles)} roles)"
@@ -432,19 +479,22 @@ class AdvancedStyleTab(QWidget):
 
             # Load spacing configuration (per-layer)
             spacing_config = {
-                "parent_child": layer_style.get("parent_child_spacing", 20),
-                "sibling": layer_style.get("sibling_spacing", 15),
+                "parent_child": layer_style["parent_child_spacing"],
+                "sibling": layer_style["sibling_spacing"],
             }
             self.spacing_section.set_spacing(spacing_config)
+
+            # Root layer specific: hide sibling spacing control (elegant way)
+            self.spacing_section.set_hide_sibling(self.current_layer == "root")
 
         # Load connector style (per-layer, only for non-canvas)
         if self.current_layer != "canvas":
             layer_style = self.layer_styles[self.current_layer]
             connector_style = {
-                "connector_type": layer_style.get("connector_type", "bezier"),
-                "connector_style": layer_style.get("connector_style", "solid"),
-                "line_width": layer_style.get("connector_width", 2),
-                "connector_color": layer_style.get("connector_color", "#666666"),
+                "connector_type": layer_style["connector_type"],
+                "connector_style": layer_style["connector_style"],
+                "line_width": layer_style["connector_width"],
+                "connector_color": layer_style["connector_color"],
             }
             self.connector_section.set_style(connector_style)
 
@@ -466,23 +516,44 @@ class AdvancedStyleTab(QWidget):
             shadow_config = self.shadow_section.get_shadow()
             if shadow_config:
                 # Direct access - shadow_config always has complete fields
-                self.layer_styles[self.current_layer]["shadow_enabled"] = shadow_config["enabled"]
-                self.layer_styles[self.current_layer]["shadow_offset_x"] = shadow_config["offset_x"]
-                self.layer_styles[self.current_layer]["shadow_offset_y"] = shadow_config["offset_y"]
-                self.layer_styles[self.current_layer]["shadow_blur"] = shadow_config["blur"]
-                self.layer_styles[self.current_layer]["shadow_color"] = shadow_config["color"]
+                self.layer_styles[self.current_layer]["shadow_enabled"] = shadow_config[
+                    "enabled"
+                ]
+                self.layer_styles[self.current_layer]["shadow_offset_x"] = (
+                    shadow_config["offset_x"]
+                )
+                self.layer_styles[self.current_layer]["shadow_offset_y"] = (
+                    shadow_config["offset_y"]
+                )
+                self.layer_styles[self.current_layer]["shadow_blur"] = shadow_config[
+                    "blur"
+                ]
+                self.layer_styles[self.current_layer]["shadow_color"] = shadow_config[
+                    "color"
+                ]
 
             # Save spacing configuration (per-layer)
-            spacing_config = self.spacing_section.get_spacing()
-            self.layer_styles[self.current_layer]["parent_child_spacing"] = spacing_config.get("parent_child", 20)
-            self.layer_styles[self.current_layer]["sibling_spacing"] = spacing_config.get("sibling", 15)
+            self.layer_styles[self.current_layer]["parent_child_spacing"] = self.spacing_section.parent_child_spin.value()
+            if self.current_layer != "root":
+                self.layer_styles[self.current_layer]["sibling_spacing"] = self.spacing_section.sibling_spin.value()
+            else:
+                self.layer_styles[self.current_layer]["sibling_spacing"] = 0
 
             # Save connector style (per-layer)
-            connector_style = self.connector_section.get_style()
-            self.layer_styles[self.current_layer]["connector_type"] = connector_style.get("connector_type", "bezier")
-            self.layer_styles[self.current_layer]["connector_style"] = connector_style.get("connector_style", "solid")
-            self.layer_styles[self.current_layer]["connector_width"] = connector_style.get("line_width", 2)
-            self.layer_styles[self.current_layer]["connector_color"] = connector_style.get("connector_color", "#666666")
+            if hasattr(self.connector_section, 'connector_type_combo'):
+                type_map_inv = {"Straight": "straight", "Orthogonal": "orthogonal", "Bezier": "bezier"}
+                self.layer_styles[self.current_layer]["connector_type"] = type_map_inv[
+                    self.connector_section.connector_type_combo.text()
+                ]
+            if hasattr(self.connector_section, 'connector_style_combo'):
+                style_map_inv = {"Solid": "solid", "Dashed": "dashed", "Dotted": "dotted"}
+                self.layer_styles[self.current_layer]["connector_style"] = style_map_inv[
+                    self.connector_section.connector_style_combo.text()
+                ]
+            if hasattr(self.connector_section, 'connector_width_spin'):
+                self.layer_styles[self.current_layer]["connector_width"] = self.connector_section.connector_width_spin.value()
+            if hasattr(self.connector_section, 'current_style'):
+                self.layer_styles[self.current_layer]["connector_color"] = self.connector_section.current_style["connector_color"]
 
     def _apply_styles_to_mindmap(self):
         """Unified method to apply all styles to mindmap_view.
@@ -506,18 +577,31 @@ class AdvancedStyleTab(QWidget):
             # Apply node styles (includes canvas background)
             self._apply_node_styles_to_mindmap(mindmap_view)
 
-            # Apply connector styles (per-layer, using current layer's settings)
+            # Apply connector styles (per-layer)
             self._apply_connector_styles_to_mindmap(mindmap_view)
 
-            # Apply spacing configuration (per-layer, using current layer's settings)
+            # Apply spacing configuration (per-layer, skip canvas)
             if hasattr(mindmap_view, "style_config") and self.current_layer != "canvas":
                 layer_style = self.layer_styles[self.current_layer]
-                mindmap_view.style_config.parent_child_spacing = layer_style.get(
-                    "parent_child_spacing", 20
-                )
-                mindmap_view.style_config.sibling_spacing = layer_style.get(
-                    "sibling_spacing", 15
-                )
+
+                # Map layers to depths
+                depth_map = {
+                    "root": 0,
+                    "level_1": 1,
+                    "level_2": 2,
+                    "level_3_plus": 3,
+                }
+                depth = depth_map[self.current_layer]
+
+                # Initialize dictionaries if not exist
+                if not hasattr(mindmap_view.style_config, 'level_spacing_by_depth'):
+                    mindmap_view.style_config.level_spacing_by_depth = {}
+                if not hasattr(mindmap_view.style_config, 'sibling_spacing_by_depth'):
+                    mindmap_view.style_config.sibling_spacing_by_depth = {}
+
+                # Update ONLY the specific depth's spacing (true per-layer isolation)
+                mindmap_view.style_config.level_spacing_by_depth[depth] = layer_style["parent_child_spacing"]
+                mindmap_view.style_config.sibling_spacing_by_depth[depth] = layer_style["sibling_spacing"]
 
             # Refresh layout to apply all changes
             # CRITICAL: Skip measurement when applying style changes
@@ -600,9 +684,7 @@ class AdvancedStyleTab(QWidget):
         # Update connector (edge) styles (per-layer)
         if style.resolved_color_scheme and self.current_layer != "canvas":
             layer_style = self.layer_styles[self.current_layer]
-            style.resolved_color_scheme.edge_color = layer_style.get(
-                "connector_color", "#666666"
-            )
+            style.resolved_color_scheme.edge_color = layer_style["connector_color"]
 
         # Update all existing node items with new style
         if hasattr(mindmap_view, "node_items"):
@@ -620,10 +702,10 @@ class AdvancedStyleTab(QWidget):
         # Get connector style from current layer
         layer_style = self.layer_styles[self.current_layer]
         connector_style = {
-            "connector_type": layer_style.get("connector_type", "bezier"),
-            "connector_style": layer_style.get("connector_style", "solid"),
-            "line_width": layer_style.get("connector_width", 2),
-            "connector_color": layer_style.get("connector_color", "#666666"),
+            "connector_type": layer_style["connector_type"],
+            "connector_style": layer_style["connector_style"],
+            "line_width": layer_style["connector_width"],
+            "connector_color": layer_style["connector_color"],
         }
 
         for edge_item in mindmap_view.edge_items:
@@ -784,8 +866,8 @@ class AdvancedStyleTab(QWidget):
             "connector_width": 2,
             "connector_color": "#666666",
             # Spacing (per-layer)
-            "parent_child_spacing": 20,
-            "sibling_spacing": 15,
+            "parent_child_spacing": 80,
+            "sibling_spacing": 0 if layer_type == "root" else 80,
         }
 
         # Adjust based on layer type
@@ -849,4 +931,11 @@ class AdvancedStyleTab(QWidget):
 
         return style
 
-    # Removed _get_default_connector_style() - connector fields are now per-layer in layer_styles
+    def _get_default_connector_style(self):
+        """Get default connector (edge) style."""
+        return {
+            "connector_type": "bezier",
+            "connector_style": "solid",
+            "line_width": 2,
+            "connector_color": "#666666",
+        }

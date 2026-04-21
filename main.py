@@ -654,19 +654,23 @@ class MindMapView(QGraphicsView):
         pc_spacing = self.style_config.parent_child_spacing
         sib_spacing = self.style_config.sibling_spacing
 
+        # Initialize per-depth spacing dictionaries
+        level_spacing_by_depth = {
+            0: pc_spacing,   # Root → Level 1
+            1: pc_spacing * 0.75,   # Level 1 → Level 2
+            2: pc_spacing * 0.5,    # Level 2+
+        }
+        sibling_spacing_by_depth = {
+            0: sib_spacing,   # Level 1 siblings
+            1: sib_spacing * 0.75,   # Level 2 siblings
+            2: sib_spacing * 0.5,    # Level 3+ siblings
+        }
+
         layout_config = DefaultLayoutConfig(
             level_spacing=pc_spacing,
             sibling_spacing=sib_spacing,
-            level_spacing_by_depth={
-                0: pc_spacing,
-                1: pc_spacing * 0.75,
-                2: pc_spacing * 0.5,
-            },
-            sibling_spacing_by_depth={
-                0: sib_spacing,
-                1: sib_spacing * 0.75,
-                2: sib_spacing * 0.5,
-            },
+            level_spacing_by_depth=level_spacing_by_depth,
+            sibling_spacing_by_depth=sibling_spacing_by_depth,
         )
 
         layout = DefaultLayout(layout_config)
@@ -1238,23 +1242,29 @@ class MindMapView(QGraphicsView):
         # Step 2: Re-apply layout, passing selected node to preserve its side
         from cogist.domain.layout import DefaultLayoutConfig
 
-        # Create layout config from style_config spacing values
-        pc_spacing = self.style_config.parent_child_spacing
-        sib_spacing = self.style_config.sibling_spacing
+        # Create layout config using per-depth spacing values (true isolation)
+        # Use dictionaries directly if they exist, otherwise fall back to global values
+        level_spacing_by_depth = {}
+        sibling_spacing_by_depth = {}
+
+        if hasattr(self.style_config, 'level_spacing_by_depth'):
+            level_spacing_by_depth = self.style_config.level_spacing_by_depth
+        if hasattr(self.style_config, 'sibling_spacing_by_depth'):
+            sibling_spacing_by_depth = self.style_config.sibling_spacing_by_depth
+
+        # Ensure we have at least the default depths defined
+        # This prevents missing depth errors in the layout algorithm
+        for depth in [0, 1, 2]:
+            if depth not in level_spacing_by_depth:
+                level_spacing_by_depth[depth] = self.style_config.parent_child_spacing
+            if depth not in sibling_spacing_by_depth:
+                sibling_spacing_by_depth[depth] = self.style_config.sibling_spacing
 
         layout_config = DefaultLayoutConfig(
-            level_spacing=pc_spacing,
-            sibling_spacing=sib_spacing,
-            level_spacing_by_depth={
-                0: pc_spacing,   # Root → Level 1
-                1: pc_spacing * 0.75,   # Level 1 → Level 2 (75% of root spacing)
-                2: pc_spacing * 0.5,    # Level 2+ (50% of root spacing)
-            },
-            sibling_spacing_by_depth={
-                0: sib_spacing,   # Level 1 siblings
-                1: sib_spacing * 0.75,   # Level 2 siblings
-                2: sib_spacing * 0.5,    # Level 3+ siblings
-            },
+            level_spacing=self.style_config.parent_child_spacing,
+            sibling_spacing=self.style_config.sibling_spacing,
+            level_spacing_by_depth=level_spacing_by_depth,
+            sibling_spacing_by_depth=sibling_spacing_by_depth,
         )
 
         layout = DefaultLayout(layout_config)

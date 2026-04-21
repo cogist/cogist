@@ -37,6 +37,18 @@ class MindMapStyle:
     parent_child_spacing: float = 80.0  # Horizontal spacing between parent and child
     sibling_spacing: float = 60.0       # Vertical spacing between siblings
 
+    # === Per-depth spacing configuration (for true layer isolation) ===
+    level_spacing_by_depth: dict[int, float] = field(default_factory=lambda: {
+        0: 80.0,   # Root → Level 1
+        1: 60.0,   # Level 1 → Level 2
+        2: 40.0,   # Level 2+
+    })
+    sibling_spacing_by_depth: dict[int, float] = field(default_factory=lambda: {
+        0: 60.0,   # Level 1 siblings
+        1: 45.0,   # Level 2 siblings
+        2: 35.0,   # Level 3+ siblings
+    })
+
     # === Runtime resolved styles (computed by resolve_style()) ===
     resolved_template: Template | None = None
     resolved_color_scheme: ColorScheme | None = None
