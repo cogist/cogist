@@ -644,7 +644,7 @@ class AdvancedStyleTab(QWidget):
             # Sync spacing from panel's style_config to mindmap_view's style_config
             if hasattr(mindmap_view, "style_config") and self.current_layer != "canvas":
                 assert self.style_config is not None
-                
+
                 # Map layers to depths
                 depth_map = {
                     "root": 0,
@@ -663,7 +663,7 @@ class AdvancedStyleTab(QWidget):
                 # Copy spacing values from panel's style_config to mindmap_view's style_config
                 if depth in self.style_config.level_spacing_by_depth:
                     mindmap_view.style_config.level_spacing_by_depth[depth] = self.style_config.level_spacing_by_depth[depth]
-                
+
                 if depth in self.style_config.sibling_spacing_by_depth:
                     mindmap_view.style_config.sibling_spacing_by_depth[depth] = self.style_config.sibling_spacing_by_depth[depth]
 
@@ -708,7 +708,7 @@ class AdvancedStyleTab(QWidget):
             # Skip priority layers (critical/minor) - they use tertiary styles
             if layer_name in ["critical", "minor"]:
                 continue
-                
+
             # Get layer data directly from global style_config
             layer_data = self._get_layer_data(layer_name)
 
@@ -781,17 +781,15 @@ class AdvancedStyleTab(QWidget):
 
             depth = source_node.depth
 
-            # Get connector config for this depth
-            connector_config = {}
-            if hasattr(self.style_config, 'connector_config_by_depth'):
-                connector_config = self.style_config.connector_config_by_depth.get(depth, {})
+            # Get connector config for this depth (all depths should be initialized in create_default_template())
+            connector_config = self.style_config.connector_config_by_depth[depth]
 
             # Build connector style dict
             connector_style = {
-                "connector_type": connector_config.get("connector_type", "bezier"),
-                "connector_style": connector_config.get("connector_style", "solid"),
-                "line_width": connector_config.get("line_width", 2.0),
-                "connector_color": connector_config.get("color", "#666666"),
+                "connector_type": connector_config["connector_type"],
+                "connector_style": connector_config["connector_style"],
+                "line_width": connector_config["line_width"],
+                "connector_color": connector_config["color"],
             }
 
             edge_item.update_style(connector_style)
