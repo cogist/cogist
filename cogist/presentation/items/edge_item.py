@@ -48,6 +48,9 @@ class EdgeItem(QGraphicsPathItem):
         if self._gradient_path is None:
             self._create_gradient_path()
 
+        # DEBUG: Print current style
+        print(f"DEBUG EdgeItem.paint: color={self.color.name()}, line_style={self.line_style}, start_width={self.start_width}, end_width={self.end_width}")
+
         if self._gradient_path:
             for (start, end), width in self._gradient_path:
                 pen = QPen(self.color, width, self.line_style, Qt.RoundCap)
