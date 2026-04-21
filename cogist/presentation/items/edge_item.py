@@ -170,19 +170,28 @@ class EdgeItem(QGraphicsPathItem):
         Args:
             style_config: Dictionary containing edge style parameters
                 - connector_color: str (hex color)
-                - start_width: float
-                - end_width: float
+                - line_width: float (uniform width for both ends)
+                - start_width: float (width at source node, optional)
+                - end_width: float (width at target node, optional)
                 - connector_style: str (solid/dashed/dotted)
+                - connector_type: str (bezier/straight/orthogonal) - not yet implemented
         """
         # Update color
         if "connector_color" in style_config:
             self.color = QColor(style_config["connector_color"])
 
-        # Update widths
-        if "start_width" in style_config:
-            self.start_width = float(style_config["start_width"])
-        if "end_width" in style_config:
-            self.end_width = float(style_config["end_width"])
+        # Update widths - support both uniform line_width and separate start/end widths
+        if "line_width" in style_config:
+            # Uniform width for both ends
+            width = float(style_config["line_width"])
+            self.start_width = width
+            self.end_width = width
+        else:
+            # Separate widths for gradient effect
+            if "start_width" in style_config:
+                self.start_width = float(style_config["start_width"])
+            if "end_width" in style_config:
+                self.end_width = float(style_config["end_width"])
 
         # Update line style
         style_map = {
@@ -192,6 +201,10 @@ class EdgeItem(QGraphicsPathItem):
         }
         if "connector_style" in style_config:
             self.line_style = style_map.get(style_config["connector_style"], Qt.SolidLine)
+
+        # Note: connector_type (bezier/straight/orthogonal) requires path recalculation
+        # This would need to be handled by updating the curve generation logic
+        # For now, we only support styling changes, not path type changes
 
         # Invalidate cache and trigger repaint
         self._gradient_path = None
