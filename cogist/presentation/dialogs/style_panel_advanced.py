@@ -641,8 +641,31 @@ class AdvancedStyleTab(QWidget):
             self._apply_connector_styles_to_mindmap(mindmap_view)
 
             # Apply spacing configuration (per-layer, skip canvas)
-            # NOTE: Spacing is already updated in _on_spacing_changed(), no need to re-apply here
-            # The style_config has been directly modified, just refresh the layout
+            # Sync spacing from panel's style_config to mindmap_view's style_config
+            if hasattr(mindmap_view, "style_config") and self.current_layer != "canvas":
+                assert self.style_config is not None
+                
+                # Map layers to depths
+                depth_map = {
+                    "root": 0,
+                    "level_1": 1,
+                    "level_2": 2,
+                    "level_3_plus": 3,
+                }
+                depth = depth_map[self.current_layer]
+
+                # Ensure dictionaries exist in mindmap_view.style_config
+                if not hasattr(mindmap_view.style_config, 'level_spacing_by_depth'):
+                    mindmap_view.style_config.level_spacing_by_depth = {}
+                if not hasattr(mindmap_view.style_config, 'sibling_spacing_by_depth'):
+                    mindmap_view.style_config.sibling_spacing_by_depth = {}
+
+                # Copy spacing values from panel's style_config to mindmap_view's style_config
+                if depth in self.style_config.level_spacing_by_depth:
+                    mindmap_view.style_config.level_spacing_by_depth[depth] = self.style_config.level_spacing_by_depth[depth]
+                
+                if depth in self.style_config.sibling_spacing_by_depth:
+                    mindmap_view.style_config.sibling_spacing_by_depth[depth] = self.style_config.sibling_spacing_by_depth[depth]
 
             # Refresh layout to apply all changes
             # CRITICAL: Set skip_measurement=False when style changes affect node dimensions
