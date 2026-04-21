@@ -231,18 +231,25 @@ class NodeItem(QGraphicsRectItem):
         else:
             self.text_item.setDefaultTextColor(text_color)
 
-        if use_domain_size:
-            # Use domain layer's pre-measured size (layout already calculated it)
-            # DO NOT recalculate - just use the domain dimensions directly
-            self.node_width = width
-            self.node_height = height
-            self.setRect(-width / 2, -height / 2, width, height)
+        # Apply font shadow effect if enabled
+        self._apply_font_shadow()
 
-            # Still need to position text within the node
-            # Calculate text size for proper positioning only
+        if use_domain_size:
+            # Use domain layer's pre-measured size as INITIAL size
+            # But still recalculate based on current style to ensure padding is correct
             actual_width, actual_height, text_rect = self._calculate_node_size(
                 text, style_for_calc
             )
+
+            # Use the LARGER of domain size and calculated size
+            # This ensures nodes don't shrink below their content requirements
+            self.node_width = max(width, actual_width)
+            self.node_height = max(height, actual_height)
+            self.setRect(
+                -self.node_width / 2, -self.node_height / 2,
+                self.node_width, self.node_height
+            )
+
             # Position text at top-left with padding
             if style_for_calc and hasattr(style_for_calc, 'padding_w'):
                 padding_left = style_for_calc.padding_w
@@ -251,7 +258,7 @@ class NodeItem(QGraphicsRectItem):
                 padding_left = 12
                 padding_top = 8
             self.text_item.setPos(
-                -width / 2 + padding_left, -height / 2 + padding_top
+                -self.node_width / 2 + padding_left, -self.node_height / 2 + padding_top
             )
         else:
             # Measure and auto-size using unified method
@@ -325,6 +332,54 @@ class NodeItem(QGraphicsRectItem):
 
         # Return white for dark backgrounds, black for light
         return '#FFFFFF' if luminance < 0.5 else '#000000'
+
+    def _apply_font_shadow(self):
+        """Apply font shadow effect to text_item based on template_style.
+
+        This method is called in __init__ and update_style to ensure shadow
+        effect is always in sync with the current style configuration.
+        """
+        from PySide6.QtWidgets import QGraphicsDropShadowEffect
+
+        if not hasattr(self.template_style, 'shadow_enabled'):
+            print("DEBUG _apply_font_shadow: template_style has no shadow_enabled attribute")
+            return
+
+        print(f"DEBUG _apply_font_shadow: shadow_enabled = {self.template_style.shadow_enabled}")
+
+        if self.template_style.shadow_enabled:
+            # Get existing effect or create new one
+            shadow_effect = self.text_item.graphicsEffect()
+            print(f"DEBUG _apply_font_shadow: existing effect type = {type(shadow_effect)}")
+
+            if not isinstance(shadow_effect, QGraphicsDropShadowEffect):
+                print("DEBUG _apply_font_shadow: creating new QGraphicsDropShadowEffect")
+                shadow_effect = QGraphicsDropShadowEffect()
+                self.text_item.setGraphicsEffect(shadow_effect)
+
+            # Update shadow parameters
+            shadow_effect.setOffset(
+                self.template_style.shadow_offset_x,
+                self.template_style.shadow_offset_y
+            )
+            shadow_effect.setBlurRadius(self.template_style.shadow_blur)
+
+            # Update shadow color
+            shadow_color_str = self.template_style.shadow_color or '#000000'
+            if isinstance(shadow_color_str, str):
+                shadow_qcolor = QColor(shadow_color_str)
+            else:
+                shadow_qcolor = shadow_color_str
+
+            # Set semi-transparent (50% opacity)
+            shadow_qcolor.setAlpha(128)
+            shadow_effect.setColor(shadow_qcolor)
+
+            print(f"DEBUG _apply_font_shadow: applied shadow - offset=({self.template_style.shadow_offset_x}, {self.template_style.shadow_offset_y}), blur={self.template_style.shadow_blur}")
+        else:
+            # Remove shadow effect if disabled
+            print("DEBUG _apply_font_shadow: removing shadow effect")
+            self.text_item.setGraphicsEffect(None)
 
     def update_style(self, style_config):
         """Update node style from new style_config and trigger repaint.
@@ -413,6 +468,9 @@ class NodeItem(QGraphicsRectItem):
                     self.text_item.setDefaultTextColor(QColor(text_color))
                 else:
                     self.text_item.setDefaultTextColor(text_color)
+
+                # Apply font shadow effect
+                self._apply_font_shadow()
             else:
                 # Fallback to default font
                 font = QFont("Arial", 14)
@@ -423,6 +481,10 @@ class NodeItem(QGraphicsRectItem):
             font = QFont("Arial", 14)
             self.text_item.setFont(font)
             self.text_item.setDefaultTextColor(QColor("#000000"))
+
+        # CRITICAL: Recalculate node geometry when style changes (padding, font size, etc.)
+        # This ensures node size is updated to match new padding values
+        self._update_node_geometry(self.text_content)
 
         # Trigger repaint
         self.update()

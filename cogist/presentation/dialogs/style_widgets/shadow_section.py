@@ -133,7 +133,12 @@ class ShadowSection(CollapsiblePanel):
         self.current_shadow["offset_x"] = self.shadow_offset_x_spin.value()
         self.current_shadow["offset_y"] = self.shadow_offset_y_spin.value()
         self.current_shadow["blur"] = self.shadow_blur_spin.value()
-        self._emit_shadow_changed()
+        # Emit only the fields that actually changed
+        self.shadow_changed.emit({
+            "offset_x": self.current_shadow["offset_x"],
+            "offset_y": self.current_shadow["offset_y"],
+            "blur": self.current_shadow["blur"],
+        })
 
     def _pick_color(self):
         """Open color picker dialog for shadow color."""
@@ -160,7 +165,10 @@ class ShadowSection(CollapsiblePanel):
                 self.shadow_color_btn.setStyleSheet(
                     f"background-color: {color_name}; border: 1px solid #ccc; border-radius: 4px;"
                 )
-                self._emit_shadow_changed()
+                # Emit only the changed field
+                self.shadow_changed.emit({
+                    "color": color_name,
+                })
 
     def _emit_shadow_changed(self):
         """Emit shadow changed signal."""
