@@ -41,21 +41,43 @@ class EdgeItem(QGraphicsPathItem):
 
     def paint(self, painter, option, widget=None):  # noqa: ARG002
         """Custom paint with gradient line width."""
-        from PySide6.QtGui import QPainter
+        from PySide6.QtGui import QPainter, QPainterPath
 
         painter.setRenderHint(QPainter.Antialiasing)
 
         if self._gradient_path is None:
             self._create_gradient_path()
 
-        # DEBUG: Print current style
-        print(f"DEBUG EdgeItem.paint: color={self.color.name()}, line_style={self.line_style}, start_width={self.start_width}, end_width={self.end_width}")
-
         if self._gradient_path:
-            for (start, end), width in self._gradient_path:
-                pen = QPen(self.color, width, self.line_style, Qt.RoundCap)
+            # Group segments by width to minimize pen changes
+            # For dashed/dotted lines, we need to draw the complete path at once
+            if self.line_style in (Qt.DashLine, Qt.DotLine):
+                # Build a single path from all segments
+                full_path = QPainterPath()
+                for (start, end), width in self._gradient_path:
+                    if full_path.isEmpty():
+                        full_path.moveTo(start)
+                    full_path.lineTo(end)
+                
+                # Apply dash pattern to the complete path
+                pen = QPen(self.color, self.end_width, Qt.SolidLine, Qt.RoundCap)
+                if self.line_style == Qt.DashLine:
+                    dash_len = max(6.0, self.end_width * 5)
+                    gap_len = max(4.0, self.end_width * 3)
+                    pen.setDashPattern([dash_len, gap_len])
+                elif self.line_style == Qt.DotLine:
+                    dot_len = max(1.5, self.end_width * 1.5)
+                    gap_len = max(3.0, self.end_width * 3)
+                    pen.setDashPattern([dot_len, gap_len])
+                
                 painter.setPen(pen)
-                painter.drawLine(start, end)
+                painter.drawPath(full_path)
+            else:
+                # For solid lines, use gradient width effect
+                for (start, end), width in self._gradient_path:
+                    pen = QPen(self.color, width, Qt.SolidLine, Qt.RoundCap)
+                    painter.setPen(pen)
+                    painter.drawLine(start, end)
 
     def _create_gradient_path(self):
         """Create cached gradient path."""
