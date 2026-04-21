@@ -259,7 +259,8 @@ class AdvancedStyleTab(QWidget):
             elif key.startswith("border_"):
                 # Handle border attributes on border object
                 if hasattr(role_style, 'border'):
-                    border_attr = key.replace("border_", "")
+                    # border_style and border_width are the actual field names in BorderStyle
+                    border_attr = key  # Keep the full name (border_style, border_width)
                     if hasattr(role_style.border, border_attr):
                         setattr(role_style.border, border_attr, value)
 
