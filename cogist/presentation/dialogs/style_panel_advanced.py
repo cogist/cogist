@@ -245,6 +245,10 @@ class AdvancedStyleTab(QWidget):
                     if not color_scheme.border_colors:
                         color_scheme.border_colors = {}
                     color_scheme.border_colors[role] = value
+            elif key == "font_italic":
+                # Map boolean font_italic to string font_style
+                if hasattr(role_style, 'font_style'):
+                    role_style.font_style = "Italic" if value else "Normal"
             elif hasattr(role_style, key):
                 setattr(role_style, key, value)
             elif key.startswith("shadow_"):
