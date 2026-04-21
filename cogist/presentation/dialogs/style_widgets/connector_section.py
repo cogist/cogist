@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QGraphicsDropShadowEffect,
     QGridLayout,
+    QHBoxLayout,
     QLabel,
     QMenu,
     QPushButton,
@@ -115,6 +116,15 @@ class ConnectorShapePopup(QDialog):
             pixmap = info["generator"](info["size"], selected=hovered)
             info["label"].setPixmap(pixmap)
 
+            # Apply blue background on hover (same as QMenu selection)
+            if hovered:
+                info["widget"].setStyleSheet("""
+                    background-color: rgb(84, 143, 255);
+                    border-radius: 4px;
+                """)
+            else:
+                info["widget"].setStyleSheet("background: transparent;")
+
 
 class ConnectorSection(CollapsiblePanel):
     """Connector style settings with lazy initialization.
@@ -165,14 +175,27 @@ class ConnectorSection(CollapsiblePanel):
         shape_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(shape_label, 0, 0)
 
-        # Create a button that shows a dropdown menu with visual options
-        self.connector_shape_btn = QPushButton("Bezier")
+        # Create a button to show preview pattern only
+        self.connector_shape_btn = QPushButton()
         self.connector_shape_btn.setFixedHeight(self.WIDGET_HEIGHT)
+        self.connector_shape_btn.setFixedWidth(148)  # 140px pattern + 8px margins
         self.connector_shape_btn.setStyleSheet(self._button_style())
 
-        # Create custom popup widget instead of QMenu
-        self.connector_shape_popup = ConnectorShapePopup(self)
-        self.connector_shape_btn.clicked.connect(self._show_connector_shape_popup)
+        # Button layout: preview pattern centered
+        btn_layout = QHBoxLayout(self.connector_shape_btn)
+        btn_layout.setContentsMargins(4, 2, 4, 2)
+        btn_layout.setSpacing(0)
+
+        btn_layout.addStretch()
+
+        # Preview pattern label
+        self.connector_shape_preview = QLabel()
+        self.connector_shape_preview.setFixedSize(QSize(140, 30))
+        self.connector_shape_preview.setAlignment(Qt.AlignCenter)
+        self.connector_shape_preview.setStyleSheet("background: transparent;")
+        btn_layout.addWidget(self.connector_shape_preview)
+
+        btn_layout.addStretch()
 
         # Store preview options for popup
         self.connector_shape_options = [
@@ -181,8 +204,17 @@ class ConnectorSection(CollapsiblePanel):
             ("orthogonal", generate_orthogonal_preview),
         ]
 
+        # Set initial preview pattern
+        self._update_shape_preview()
+
+        # Create custom popup widget instead of QMenu
+        self.connector_shape_popup = ConnectorShapePopup(self)
+        self.connector_shape_btn.clicked.connect(self._show_connector_shape_popup)
+
         # Connect popup selection signal
-        self.connector_shape_popup.shape_selected.connect(self._on_connector_shape_changed)
+        self.connector_shape_popup.shape_selected.connect(
+            self._on_connector_shape_changed
+        )
         layout.addWidget(self.connector_shape_btn, 0, 1)
 
         # Connector style
@@ -197,14 +229,18 @@ class ConnectorSection(CollapsiblePanel):
             "dashed": "Dashed",
             "dotted": "Dotted",
         }
-        initial_connector_style = connector_style_map.get(self.current_style.get("connector_style", "solid"), "Solid")
+        initial_connector_style = connector_style_map.get(
+            self.current_style.get("connector_style", "solid"), "Solid"
+        )
         self.connector_style_combo = QPushButton(initial_connector_style)
         self.connector_style_combo.setFixedHeight(self.WIDGET_HEIGHT)
         self.connector_style_combo.setStyleSheet(self._button_style())
 
         self.connector_style_menu = QMenu()
         self.connector_style_menu.aboutToShow.connect(
-            lambda: self.connector_style_menu.setFixedWidth(self.connector_style_combo.width())
+            lambda: self.connector_style_menu.setFixedWidth(
+                self.connector_style_combo.width()
+            )
         )
 
         connector_styles = ["Solid", "Dashed", "Dotted", "Dash-Dot"]
@@ -253,7 +289,7 @@ class ConnectorSection(CollapsiblePanel):
                 background-color: #FFFFFF;
                 border: 1px solid #C8C8C8;
                 border-radius: 6px;
-                padding: 4px 24px 4px 12px;
+                padding: 0px;
                 font-size: 13px;
                 text-align: left;
             }
@@ -267,16 +303,29 @@ class ConnectorSection(CollapsiblePanel):
         """Show custom popup for connector shape selection."""
         # Position popup below the button with same width
         btn_width = self.connector_shape_btn.width()
-        btn_pos = self.connector_shape_btn.mapToGlobal(QPoint(0, self.connector_shape_btn.height()))
+        btn_pos = self.connector_shape_btn.mapToGlobal(
+            QPoint(0, self.connector_shape_btn.height())
+        )
         self.connector_shape_popup.setFixedWidth(btn_width)
         self.connector_shape_popup.move(btn_pos)
         self.connector_shape_popup.show()
 
+    def _update_shape_preview(self):
+        """Update the preview pattern on the button."""
+        shape = self.current_style.get("connector_shape", "bezier")
+        preview_size = QSize(140, 30)  # Match the label size
+
+        # Find the generator for current shape
+        for shape_value, generator in self.connector_shape_options:
+            if shape_value == shape:
+                pixmap = generator(preview_size, selected=False)
+                self.connector_shape_preview.setPixmap(pixmap)
+                break
+
     def _on_connector_shape_changed(self, value: str):
         """Handle connector shape selection change."""
         self.current_style["connector_shape"] = value
-        shape_map = {"bezier": "Bezier", "straight": "Straight", "orthogonal": "Orthogonal"}
-        self.connector_shape_btn.setText(shape_map.get(value, "Bezier"))
+        self._update_shape_preview()
         self.connector_shape_popup.close()
         self._emit_style_changed()
 
@@ -302,7 +351,9 @@ class ConnectorSection(CollapsiblePanel):
         from PySide6.QtWidgets import QColorDialog
 
         current = QColor(self.current_style["connector_color"])
-        color = QColorDialog.getColor(current, self, "Select Connector Color", QColorDialog.ShowAlphaChannel)
+        color = QColorDialog.getColor(
+            current, self, "Select Connector Color", QColorDialog.ShowAlphaChannel
+        )
 
         if color.isValid():
             # Use name(QColor.HexArgb) to preserve alpha channel
@@ -332,7 +383,9 @@ class ConnectorSection(CollapsiblePanel):
                     "orthogonal": "Orthogonal",
                     "bezier": "Bezier",
                 }
-                self.connector_shape_btn.setText(shape_map.get(style["connector_shape"], "Bezier"))
+                self.connector_shape_btn.setText(
+                    shape_map.get(style["connector_shape"], "Bezier")
+                )
 
             if "connector_style" in style:
                 style_map = {
@@ -340,7 +393,9 @@ class ConnectorSection(CollapsiblePanel):
                     "dashed": "Dashed",
                     "dotted": "Dotted",
                 }
-                self.connector_style_combo.setText(style_map.get(style["connector_style"], "Solid"))
+                self.connector_style_combo.setText(
+                    style_map.get(style["connector_style"], "Solid")
+                )
 
             if "line_width" in style:
                 self.connector_width_spin.setValue(style["line_width"])
