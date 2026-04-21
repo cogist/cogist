@@ -391,8 +391,8 @@ class AdvancedStyleTab(QWidget):
                 "connector_width": 2,
                 "connector_color": color_scheme.edge_color,
                 # Spacing (per-layer) - Initialize from style_config
-                "parent_child_spacing": getattr(style_config, "parent_child_spacing", 80),
-                "sibling_spacing": 0 if layer_name == "root" else getattr(style_config, "sibling_spacing", 80),
+                "parent_child_spacing": style_config.parent_child_spacing,
+                "sibling_spacing": 0 if layer_name == "root" else style_config.sibling_spacing,
             }
 
             # Update layer_styles - this replaces the default completely
