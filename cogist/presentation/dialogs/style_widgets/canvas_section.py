@@ -9,7 +9,6 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QGridLayout, QLabel, QPushButton
 
 from .collapsible_panel import CollapsiblePanel
-from .dialog_utils import position_color_dialog
 
 
 class CanvasSection(CollapsiblePanel):
@@ -73,27 +72,15 @@ class CanvasSection(CollapsiblePanel):
         from PySide6.QtWidgets import QColorDialog
 
         current = QColor(self.current_color)
-        color_dialog = QColorDialog(current, self)
-        color_dialog.setWindowTitle("Select Canvas Background Color")
+        color = QColorDialog.getColor(current, self, "Select Canvas Background Color", QColorDialog.ShowAlphaChannel)
 
-        # Use Qt's standard dialog instead of native dialog to allow positioning
-        color_dialog.setOption(QColorDialog.DontUseNativeDialog)
-
-        # Enable alpha channel (transparency) support
-        color_dialog.setOption(QColorDialog.ShowAlphaChannel)
-
-        # Position dialog with boundary check
-        position_color_dialog(color_dialog, self.canvas_bg_btn)
-
-        if color_dialog.exec():
-            color = color_dialog.currentColor()
-            if color.isValid():
-                self.current_color = color.name()
-                self.canvas_bg_btn.setStyleSheet(
-                    f"background-color: {self.current_color}; "
-                    "border: 1px solid #ccc; border-radius: 6px;"
-                )
-                self.color_changed.emit(self.current_color)
+        if color.isValid():
+            self.current_color = color.name()
+            self.canvas_bg_btn.setStyleSheet(
+                f"background-color: {self.current_color}; "
+                "border: 1px solid #ccc; border-radius: 6px;"
+            )
+            self.color_changed.emit(self.current_color)
 
     def get_color(self) -> str:
         """Get current canvas background color."""
