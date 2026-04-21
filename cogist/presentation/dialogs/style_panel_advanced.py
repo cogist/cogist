@@ -213,7 +213,7 @@ class AdvancedStyleTab(QWidget):
 
         template = self.style_config.resolved_template
         color_scheme = self.style_config.resolved_color_scheme
-        
+
         if not template or role not in template.role_styles:
             return
 
@@ -607,10 +607,10 @@ class AdvancedStyleTab(QWidget):
                 mindmap_view.style_config.sibling_spacing_by_depth[depth] = layer_data["sibling_spacing"]
 
             # Refresh layout to apply all changes
-            # CRITICAL: Skip measurement when applying style changes
-            # because nodes will recalculate their own sizes based on new styles
+            # CRITICAL: Set skip_measurement=False when style changes affect node dimensions
+            # (e.g., padding, font_size) so nodes recalculate sizes and layout updates
             if hasattr(mindmap_view, "_refresh_layout"):
-                mindmap_view._refresh_layout(skip_measurement=True)
+                mindmap_view._refresh_layout(skip_measurement=False)
 
         except Exception as e:
             print(f"Error applying styles: {e}")
