@@ -29,7 +29,7 @@ class SpacingSection(CollapsiblePanel):
 
         # State - will be initialized from style_config when loaded
         self._initialized = False
-        self.current_spacing = {}  # No hardcoded defaults, will be set by set_spacing()
+        self.current_spacing = {"parent_child": 0, "sibling": 0}  # Placeholder, will be set by set_spacing()
         self.hide_sibling = False  # Flag to control sibling visibility on init
 
         # Connect toggle signal for lazy initialization

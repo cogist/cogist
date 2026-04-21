@@ -22,37 +22,43 @@ class BaseLayoutConfig:
 
 @dataclass
 class DefaultLayoutConfig(BaseLayoutConfig):
-    """Default layout configuration (left-right balanced)"""
-    level_spacing: float = 0.0  # Not used, kept for API compatibility
-    sibling_spacing: float = 0.0  # Not used, kept for API compatibility
+    """Default layout configuration (left-right balanced)
+
+    All spacing values should be provided by StyleConfig via main.py.
+    These fields are just containers - they have no meaningful defaults.
+    """
+    level_spacing: float = 0.0
+    sibling_spacing: float = 0.0
     level_spacing_by_depth: dict[int, float] = field(default_factory=dict)
     sibling_spacing_by_depth: dict[int, float] = field(default_factory=dict)
 
     def get_level_spacing(self, depth: int) -> float:
-        """Get level spacing for a specific depth
+        """Get level spacing for a specific depth.
 
         Args:
             depth: Parent node's depth in tree
 
         Returns:
             Horizontal spacing for this parent-child relationship
+
+        Raises:
+            KeyError: If depth is not configured (should not happen if main.py sets up correctly)
         """
-        if depth in self.level_spacing_by_depth:
-            return self.level_spacing_by_depth[depth]
-        return self.level_spacing
+        return self.level_spacing_by_depth[depth]
 
     def get_sibling_spacing(self, depth: int) -> float:
-        """Get sibling spacing for a specific depth
+        """Get sibling spacing for a specific depth.
 
         Args:
             depth: Node depth in tree
 
         Returns:
             Sibling spacing for this depth
+
+        Raises:
+            KeyError: If depth is not configured (should not happen if main.py sets up correctly)
         """
-        if depth in self.sibling_spacing_by_depth:
-            return self.sibling_spacing_by_depth[depth]
-        return self.sibling_spacing
+        return self.sibling_spacing_by_depth[depth]
 
 
 # === Type Union for all layout configs ===
