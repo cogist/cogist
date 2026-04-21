@@ -506,11 +506,11 @@ class AdvancedStyleTab(QWidget):
         """Handle connector style changes for the current layer."""
         if self.current_layer != "canvas":
             assert self.style_config is not None
-            
+
             # Map layer to depth (layer controls edge FROM that layer)
             depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
             depth = depth_map.get(self.current_layer, 2)
-            
+
             # Initialize connector config for this depth if not exists
             if not hasattr(self.style_config, 'connector_config_by_depth'):
                 self.style_config.connector_config_by_depth = {}
@@ -520,7 +520,7 @@ class AdvancedStyleTab(QWidget):
                     "connector_style": "solid",
                     "line_width": 2.0,
                 }
-            
+
             # Update connector config
             connector_config = self.style_config.connector_config_by_depth[depth]
             if "connector_type" in style:
@@ -531,7 +531,7 @@ class AdvancedStyleTab(QWidget):
                 connector_config["line_width"] = style["line_width"]
             if "connector_color" in style:
                 connector_config["color"] = style["connector_color"]
-            
+
             self._apply_styles_to_mindmap()
 
     @staticmethod
@@ -766,36 +766,30 @@ class AdvancedStyleTab(QWidget):
     def _apply_connector_styles_to_mindmap(self, mindmap_view):
         """Apply connector (edge) styles to all edges in the mind map (per-layer)."""
         if not hasattr(mindmap_view, "edge_items"):
-            print(f"DEBUG: No edge_items in mindmap_view")
             return
-        
+
         if self.current_layer == "canvas":
-            print(f"DEBUG: Skipping connector styles for canvas layer")
             return
 
         assert self.style_config is not None
-        print(f"DEBUG: Applying connector styles for layer={self.current_layer}")
-        print(f"DEBUG: connector_config_by_depth={self.style_config.connector_config_by_depth}")
 
         for edge_item in mindmap_view.edge_items:
             if not hasattr(edge_item, "update_style"):
                 continue
-            
+
             # Get SOURCE node depth to determine which connector style to use
             # The edge style is determined by the parent node's layer
             source_node = edge_item.source_item
             if not hasattr(source_node, 'depth'):
                 continue
-            
+
             depth = source_node.depth
-            
+
             # Get connector config for this depth
             connector_config = {}
             if hasattr(self.style_config, 'connector_config_by_depth'):
                 connector_config = self.style_config.connector_config_by_depth.get(depth, {})
-            
-            print(f"DEBUG: Edge from depth {depth}, config={connector_config}")
-            
+
             # Build connector style dict
             connector_style = {
                 "connector_type": connector_config.get("connector_type", "bezier"),
@@ -803,8 +797,7 @@ class AdvancedStyleTab(QWidget):
                 "line_width": connector_config.get("line_width", 2.0),
                 "connector_color": connector_config.get("color", "#666666"),
             }
-            
-            print(f"DEBUG: Applying style={connector_style}")
+
             edge_item.update_style(connector_style)
 
     def _convert_layer_to_role_style(self, layer_data: dict):

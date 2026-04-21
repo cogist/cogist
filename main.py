@@ -791,12 +791,12 @@ class MindMapView(QGraphicsView):
                 if hasattr(self, 'style_config') and self.style_config:
                     # Get source node depth to determine which connector config to use
                     source_depth = parent_item.depth if hasattr(parent_item, 'depth') else 0
-                    
+
                     # Try to get per-depth connector config
                     connector_config = {}
                     if hasattr(self.style_config, 'connector_config_by_depth'):
                         connector_config = self.style_config.connector_config_by_depth.get(source_depth, {})
-                    
+
                     # Build edge style config with per-depth values or fallback to legacy config
                     edge_style_config = {
                         "connector_color": connector_config.get("color", self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666"),

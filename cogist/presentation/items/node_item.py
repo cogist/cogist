@@ -346,18 +346,13 @@ class NodeItem(QGraphicsRectItem):
         from PySide6.QtWidgets import QGraphicsDropShadowEffect
 
         if not hasattr(self.template_style, 'shadow_enabled'):
-            print("DEBUG _apply_font_shadow: template_style has no shadow_enabled attribute")
             return
-
-        print(f"DEBUG _apply_font_shadow: shadow_enabled = {self.template_style.shadow_enabled}")
 
         if self.template_style.shadow_enabled:
             # Get existing effect or create new one
             shadow_effect = self.text_item.graphicsEffect()
-            print(f"DEBUG _apply_font_shadow: existing effect type = {type(shadow_effect)}")
 
             if not isinstance(shadow_effect, QGraphicsDropShadowEffect):
-                print("DEBUG _apply_font_shadow: creating new QGraphicsDropShadowEffect")
                 shadow_effect = QGraphicsDropShadowEffect()
                 self.text_item.setGraphicsEffect(shadow_effect)
 
@@ -378,11 +373,8 @@ class NodeItem(QGraphicsRectItem):
             # Set semi-transparent (50% opacity)
             shadow_qcolor.setAlpha(128)
             shadow_effect.setColor(shadow_qcolor)
-
-            print(f"DEBUG _apply_font_shadow: applied shadow - offset=({self.template_style.shadow_offset_x}, {self.template_style.shadow_offset_y}), blur={self.template_style.shadow_blur}")
         else:
             # Remove shadow effect if disabled
-            print("DEBUG _apply_font_shadow: removing shadow effect")
             self.text_item.setGraphicsEffect(None)
 
     def update_style(self, style_config):

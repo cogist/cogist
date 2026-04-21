@@ -83,12 +83,12 @@ class SpacingSection(CollapsiblePanel):
         self.sibling_spin.setRange(0, 100)
         self.sibling_spin.setValue(self.current_spacing["sibling"])
         self.sibling_spin.valueChanged.connect(self._on_spacing_changed)
-        
+
         # Apply Root layer specific logic during initialization
         if self.hide_sibling:
             sib_label.setVisible(False)
             self.sibling_spin.setVisible(False)
-            
+
         layout.addWidget(self.sibling_spin, row, 1)
 
         self.setLayout(layout)
