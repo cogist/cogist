@@ -139,7 +139,6 @@ class SpacingSection(CollapsiblePanel):
                 for i in range(content_layout.count()):
                     item = content_layout.itemAt(i)
                     widget = item.widget() if item else None
-                    if widget:
+                    if widget and (widget == self.sibling_spin or (isinstance(widget, QLabel) and "Sibling" in widget.text())):
                         # Check if it's the sibling spin or its label
-                        if widget == self.sibling_spin or (isinstance(widget, QLabel) and "Sibling" in widget.text()):
-                            widget.setVisible(not hide)
+                        widget.setVisible(not hide)

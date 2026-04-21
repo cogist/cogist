@@ -380,9 +380,11 @@ def deserialize_edge_config(data: dict) -> EdgeConfig:
 def serialize_edge_style(style) -> dict:
     """Serialize EdgeStyle to dict."""
     return {
-        "connector_type": style.connector_type,
+        "connector_shape": style.connector_shape,
         "line_width": style.line_width,
         "line_style": style.line_style,
+        "enable_gradient": style.enable_gradient,
+        "gradient_ratio": style.gradient_ratio,
         "gradient_enabled": style.gradient_enabled,
         "gradient_start_color": style.gradient_start_color,
         "gradient_end_color": style.gradient_end_color,
@@ -401,9 +403,11 @@ def deserialize_edge_style(data: dict):
     from .extended_styles import EdgeStyle
 
     return EdgeStyle(
-        connector_type=data.get("connector_type", "bezier"),
+        connector_shape=data.get("connector_shape", "bezier"),
         line_width=data.get("line_width", 2.0),
         line_style=data.get("line_style", "solid"),
+        enable_gradient=data.get("enable_gradient", True),
+        gradient_ratio=data.get("gradient_ratio", 0.5),
         gradient_enabled=data.get("gradient_enabled", False),
         gradient_start_color=data.get("gradient_start_color"),
         gradient_end_color=data.get("gradient_end_color"),

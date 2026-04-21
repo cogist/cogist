@@ -157,20 +157,22 @@ def create_default_template() -> MindMapStyle:
         },
         # === Per-depth connector configuration (depth 0-5 for deep trees) ===
         connector_config_by_depth={
-            0: {"connector_type": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Root → Level 1
-            1: {"connector_type": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 1 → Level 2
-            2: {"connector_type": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 2 → Level 3
-            3: {"connector_type": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 3 → Level 4
-            4: {"connector_type": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 4 → Level 5
-            5: {"connector_type": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 5+
+            0: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Root → Level 1
+            1: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 1 → Level 2
+            2: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 2 → Level 3
+            3: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 3 → Level 4
+            4: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 4 → Level 5
+            5: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 5+
         },
         # === Legacy edge configuration (backward compatibility) ===
         edge=LegacyEdgeConfig(
-            connector_type="bezier",
+            connector_shape="bezier",
             connector_style="solid",
             start_width=6.0,
             end_width=2.0,
             color="#666666",
+            enable_gradient=True,
+            gradient_ratio=0.33,
         ),
     )
 

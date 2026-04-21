@@ -60,13 +60,13 @@ class ConnectorSection(CollapsiblePanel):
         type_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(type_label, 0, 0)
 
-        # Get initial connector type from current_style
+        # Get initial connector shape from current_style
         connector_type_map = {
             "straight": "Straight",
             "orthogonal": "Orthogonal",
             "bezier": "Bezier",
         }
-        initial_connector_type = connector_type_map.get(self.current_style.get("connector_type", "bezier"), "Bezier")
+        initial_connector_type = connector_type_map.get(self.current_style.get("connector_shape", "bezier"), "Bezier")
         self.connector_type_combo = QPushButton(initial_connector_type)
         self.connector_type_combo.setFixedHeight(self.WIDGET_HEIGHT)
         self.connector_type_combo.setStyleSheet(self._button_style())
@@ -106,7 +106,7 @@ class ConnectorSection(CollapsiblePanel):
             lambda: self.connector_style_menu.setFixedWidth(self.connector_style_combo.width())
         )
 
-        connector_styles = ["Solid", "Dashed", "Dotted"]
+        connector_styles = ["Solid", "Dashed", "Dotted", "Dash-Dot"]
         for cstyle in connector_styles:
             action = self.connector_style_menu.addAction(cstyle)
             action.triggered.connect(lambda _, s=cstyle: self._set_connector_style(s))
@@ -163,14 +163,14 @@ class ConnectorSection(CollapsiblePanel):
         """
 
     def _set_connector_type(self, value: str):
-        """Set connector type."""
+        """Set connector shape."""
         self.connector_type_combo.setText(value)
         type_map = {
             "Straight": "straight",
             "Orthogonal": "orthogonal",
             "Bezier": "bezier",
         }
-        self.current_style["connector_type"] = type_map.get(value, "bezier")
+        self.current_style["connector_shape"] = type_map.get(value, "bezier")
         self._emit_style_changed()
 
     def _set_connector_style(self, value: str):
@@ -180,6 +180,7 @@ class ConnectorSection(CollapsiblePanel):
             "Solid": "solid",
             "Dashed": "dashed",
             "Dotted": "dotted",
+            "Dash-Dot": "dash_dot",
         }
         self.current_style["connector_style"] = style_map.get(value, "solid")
         self._emit_style_changed()
@@ -218,13 +219,13 @@ class ConnectorSection(CollapsiblePanel):
         self.current_style.update(style)
 
         if self._initialized:
-            if "connector_type" in style:
+            if "connector_shape" in style:
                 type_map = {
                     "straight": "Straight",
                     "orthogonal": "Orthogonal",
                     "bezier": "Bezier",
                 }
-                self.connector_type_combo.setText(type_map.get(style["connector_type"], "Bezier"))
+                self.connector_type_combo.setText(type_map.get(style["connector_shape"], "Bezier"))
 
             if "connector_style" in style:
                 style_map = {

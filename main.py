@@ -787,9 +787,9 @@ class MindMapView(QGraphicsView):
                     # Build edge style config from per-depth values
                     edge_style_config = {
                         "connector_color": connector_config["color"],
-                        "start_width": connector_config["line_width"],
-                        "end_width": connector_config["line_width"],
+                        "line_width": connector_config["line_width"],
                         "connector_style": connector_config["connector_style"],
+                        "connector_shape": connector_config.get("connector_shape", "bezier"),
                     }
                     edge.update_style(edge_style_config)
 

@@ -12,11 +12,13 @@ MAX_TEXT_WIDTH = 250.0
 class LegacyEdgeConfig:
     """Legacy edge style configuration (used for backward compatibility with main.py)."""
 
-    connector_type: str = "bezier"  # straight, orthogonal, bezier
-    connector_style: str = "solid"  # solid, dashed, dotted
+    connector_shape: str = "bezier"  # bezier, straight, orthogonal
+    connector_style: str = "solid"  # solid, dashed, dotted, dash_dot
     start_width: float = 6.0  # Width at source node
     end_width: float = 2.0    # Width at target node
     color: str = "#666666"
+    enable_gradient: bool = True  # Enable width gradient for bezier curves
+    gradient_ratio: float = 0.33  # end_width / start_width ratio
 
 
 @dataclass

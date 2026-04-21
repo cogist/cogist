@@ -91,13 +91,17 @@ class EdgeStyle:
     """Edge style (supports simple and complex styles)."""
 
     # Basic edge
-    connector_type: str = "bezier"  # straight / orthogonal / bezier / freehand
+    connector_shape: str = "bezier"  # bezier / straight / orthogonal
     line_width: float = 2.0
 
     # Simple line style
     line_style: str = "solid"  # solid / dashed / dotted / dash_dot
 
-    # Gradient edge
+    # Gradient configuration (only for bezier)
+    enable_gradient: bool = True  # Enable width gradient for bezier curves
+    gradient_ratio: float = 0.5  # end_width / start_width ratio (0.3-1.0)
+
+    # Gradient edge (color gradient, not width)
     gradient_enabled: bool = False
     gradient_start_color: str | None = None
     gradient_end_color: str | None = None

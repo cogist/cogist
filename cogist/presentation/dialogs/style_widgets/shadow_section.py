@@ -171,8 +171,7 @@ class ShadowSection(CollapsiblePanel):
         self.current_shadow.update(shadow)
 
         if self._initialized:
-            if "enabled" in shadow:
-                self.shadow_enabled_check.setChecked(shadow["enabled"])
+            # Note: 'enabled' is handled by NodeStyleSection, not here
             if "offset_x" in shadow:
                 self.shadow_offset_x_spin.setValue(shadow["offset_x"])
             if "offset_y" in shadow:

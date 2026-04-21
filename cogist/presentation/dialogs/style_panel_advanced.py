@@ -182,7 +182,7 @@ class AdvancedStyleTab(QWidget):
         depth = depth_map.get(layer_name, 2)
 
         if hasattr(self.style_config, 'connector_config_by_depth'):
-            return self.style_config.connector_config_by_depth.get(depth, {}).get("connector_type", "bezier")
+            return self.style_config.connector_config_by_depth.get(depth, {}).get("connector_shape", "bezier")
         return "bezier"
 
     def _get_connector_style_for_layer(self, layer_name: str) -> str:
@@ -294,13 +294,12 @@ class AdvancedStyleTab(QWidget):
                 attr_name = key
                 if hasattr(role_style, attr_name):
                     setattr(role_style, attr_name, value)
-            elif key.startswith("border_"):
+            elif key.startswith("border_") and hasattr(role_style, 'border'):
                 # Handle border attributes on border object
-                if hasattr(role_style, 'border'):
-                    # border_style and border_width are the actual field names in BorderStyle
-                    border_attr = key  # Keep the full name (border_style, border_width)
-                    if hasattr(role_style.border, border_attr):
-                        setattr(role_style.border, border_attr, value)
+                # border_style and border_width are the actual field names in BorderStyle
+                border_attr = key  # Keep the full name (border_style, border_width)
+                if hasattr(role_style.border, border_attr):
+                    setattr(role_style.border, border_attr, value)
 
     def _init_ui(self):
         """Initialize UI with modular components."""
@@ -512,8 +511,8 @@ class AdvancedStyleTab(QWidget):
             connector_config = self.style_config.connector_config_by_depth[depth]
 
             # Update connector config
-            if "connector_type" in style:
-                connector_config["connector_type"] = style["connector_type"]
+            if "connector_shape" in style:
+                connector_config["connector_shape"] = style["connector_shape"]
             if "connector_style" in style:
                 connector_config["connector_style"] = style["connector_style"]
             if "line_width" in style:
@@ -608,7 +607,7 @@ class AdvancedStyleTab(QWidget):
         # Load connector style (per-layer, only for non-canvas)
         if self.current_layer != "canvas":
             connector_style = {
-                "connector_type": layer_data["connector_type"],
+                "connector_shape": layer_data["connector_type"],
                 "connector_style": layer_data["connector_style"],
                 "line_width": layer_data["connector_width"],
                 "connector_color": layer_data["connector_color"],
@@ -786,7 +785,7 @@ class AdvancedStyleTab(QWidget):
 
             # Build connector style dict
             connector_style = {
-                "connector_type": connector_config["connector_type"],
+                "connector_shape": connector_config["connector_shape"],
                 "connector_style": connector_config["connector_style"],
                 "line_width": connector_config["line_width"],
                 "connector_color": connector_config["color"],

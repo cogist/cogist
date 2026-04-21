@@ -1,21 +1,28 @@
 """
 Edge Item - Presentation Layer
 
-Bezier curve connection between nodes.
+Connector edge between nodes with strategy pattern support.
 """
 
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainterPath, QPen
 from PySide6.QtWidgets import QGraphicsPathItem
 
+from cogist.domain.connectors import (
+    BezierConnector,
+    ConnectorStrategy,
+    OrthogonalConnector,
+    StraightConnector,
+)
+
 
 class EdgeItem(QGraphicsPathItem):
     """
-    Bezier curve edge connecting two nodes.
+    Connector edge between nodes with strategy pattern.
 
     Features:
-    - Gradient line width (thick at source, thin at target)
-    - Smooth S-curve
+    - Multiple connector types (bezier, straight, orthogonal)
+    - Gradient line width for bezier curves
     - Auto-update on node move
     """
 
@@ -30,6 +37,9 @@ class EdgeItem(QGraphicsPathItem):
         self.end_width = 2.0
         self.line_style = Qt.SolidLine
 
+        # Connector strategy (default to bezier)
+        self.connector_strategy: ConnectorStrategy = BezierConnector()
+
         # Z-value: edges below nodes (set to -1 to ensure they're below)
         self.setZValue(-1)
 
@@ -41,7 +51,7 @@ class EdgeItem(QGraphicsPathItem):
 
     def paint(self, painter, option, widget=None):  # noqa: ARG002
         """Custom paint with gradient line width."""
-        from PySide6.QtGui import QPainter, QPainterPath
+        from PySide6.QtGui import QPainter
 
         painter.setRenderHint(QPainter.Antialiasing)
 
@@ -49,8 +59,8 @@ class EdgeItem(QGraphicsPathItem):
             self._create_gradient_path()
 
         if self._gradient_path:
-            if self.line_style in (Qt.DashLine, Qt.DotLine):
-                # For dashed/dotted lines: draw as continuous path
+            if self.line_style in (Qt.DashLine, Qt.DotLine, Qt.DashDotLine):
+                # For dashed/dotted/dash-dot lines: draw as continuous path
                 full_path = QPainterPath()
                 for (start, end), _width in self._gradient_path:
                     if full_path.isEmpty():
@@ -63,6 +73,8 @@ class EdgeItem(QGraphicsPathItem):
                     pen.setDashPattern([6.0, 4.0])  # Dash length, gap
                 elif self.line_style == Qt.DotLine:
                     pen.setDashPattern([1.0, 3.0])  # Dot size, gap
+                elif self.line_style == Qt.DashDotLine:
+                    pen.setDashPattern([6.0, 4.0, 1.0, 4.0])  # Dash, gap, dot, gap
 
                 painter.setPen(pen)
                 painter.drawPath(full_path)
@@ -96,7 +108,7 @@ class EdgeItem(QGraphicsPathItem):
             self._gradient_path.append(((points[i], points[i + 1]), line_width))
 
     def update_curve(self):
-        """Update bezier curve to connect nodes.
+        """Update connector path using strategy pattern.
 
         CRITICAL: Use mapToScene() to convert node rect edges to scene coordinates.
         This ensures edge endpoints match the actual visual boundaries of nodes,
@@ -133,21 +145,10 @@ class EdgeItem(QGraphicsPathItem):
             target_local_right = QPointF(target_rect.right(), target_rect.center().y())
             target_point = self.target_item.mapToScene(target_local_right)
 
-        path = QPainterPath(source_point)
-        control_offset = abs(target_point.x() - source_point.x()) * 0.5
-
-        # Control points: horizontal S-curve
-        # Direction depends on whether child is on left or right
-        if dx >= 0:
-            # Child on right: control1 goes right from source, control2 goes left from target
-            control1 = QPointF(source_point.x() + control_offset, source_point.y())
-            control2 = QPointF(target_point.x() - control_offset, target_point.y())
-        else:
-            # Child on left: control1 goes left from source, control2 goes right from target
-            control1 = QPointF(source_point.x() - control_offset, source_point.y())
-            control2 = QPointF(target_point.x() + control_offset, target_point.y())
-
-        path.cubicTo(control1, control2, target_point)
+        # Use strategy to generate path
+        path = self.connector_strategy.generate_path(
+            source_point, target_point, source_rect, target_rect
+        )
         self.setPath(path)
 
         self._gradient_path = None
@@ -192,39 +193,73 @@ class EdgeItem(QGraphicsPathItem):
                 - line_width: float (uniform width for both ends)
                 - start_width: float (width at source node, optional)
                 - end_width: float (width at target node, optional)
-                - connector_style: str (solid/dashed/dotted)
-                - connector_type: str (bezier/straight/orthogonal) - not yet implemented
+                - connector_style: str (solid/dashed/dotted/dash_dot)
+                - connector_shape: str (bezier/straight/orthogonal)
+                - enable_gradient: bool (only for bezier, default True)
+                - gradient_ratio: float (end_width/start_width ratio, 0.3-1.0)
         """
         # Update color
         if "connector_color" in style_config:
             self.color = QColor(style_config["connector_color"])
 
+        # Update connector shape (strategy pattern)
+        if "connector_shape" in style_config:
+            shape_map = {
+                "bezier": BezierConnector(),
+                "straight": StraightConnector(),
+                "orthogonal": OrthogonalConnector(),
+            }
+            new_strategy = shape_map.get(style_config["connector_shape"])
+            if new_strategy and not isinstance(self.connector_strategy, type(new_strategy)):
+                self.connector_strategy = new_strategy
+                # Path changed, need to recalculate
+                self.update_curve()
+
         # Update widths - support both uniform line_width and separate start/end widths
+        base_width = None
         if "line_width" in style_config:
-            # Uniform width for both ends
-            width = float(style_config["line_width"])
-            self.start_width = width
-            self.end_width = width
-        else:
-            # Separate widths for gradient effect
+            base_width = float(style_config["line_width"])
+
+        # Check if gradient is enabled (only for bezier)
+        enable_gradient = style_config.get("enable_gradient", True)
+        is_bezier = isinstance(self.connector_strategy, BezierConnector)
+
+        if is_bezier and enable_gradient:
+            # For bezier with gradient: use start_width and end_width
             if "start_width" in style_config:
                 self.start_width = float(style_config["start_width"])
+            elif base_width is not None:
+                self.start_width = base_width
+
             if "end_width" in style_config:
                 self.end_width = float(style_config["end_width"])
+            elif base_width is not None:
+                # Apply gradient ratio if specified
+                gradient_ratio = style_config.get("gradient_ratio", 0.5)
+                self.end_width = base_width * max(0.3, min(1.0, gradient_ratio))
+        else:
+            # For non-bezier or disabled gradient: use uniform width
+            if base_width is not None:
+                self.start_width = base_width
+                self.end_width = base_width
+            else:
+                # Fallback to individual settings
+                if "start_width" in style_config:
+                    self.start_width = float(style_config["start_width"])
+                if "end_width" in style_config:
+                    self.end_width = float(style_config["end_width"])
 
         # Update line style
         style_map = {
             "solid": Qt.SolidLine,
             "dashed": Qt.DashLine,
             "dotted": Qt.DotLine,
+            "dash_dot": Qt.DashDotLine,
         }
         if "connector_style" in style_config:
             self.line_style = style_map.get(style_config["connector_style"], Qt.SolidLine)
 
-        # Note: connector_type (bezier/straight/orthogonal) requires path recalculation
-        # This would need to be handled by updating the curve generation logic
-        # For now, we only support styling changes, not path type changes
-
-        # Invalidate cache and trigger repaint
-        self._gradient_path = None
-        self.update()
+        # Invalidate cache and trigger repaint (if path didn't change)
+        if "connector_shape" not in style_config:
+            self._gradient_path = None
+            self.update()
