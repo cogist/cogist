@@ -29,7 +29,7 @@ class SpacingSection(CollapsiblePanel):
 
         # State - will be initialized from style_config when loaded
         self._initialized = False
-        self.current_spacing = {"parent_child": 0, "sibling": 0}  # Placeholder, will be set by set_spacing()
+        self.current_spacing = {}  # Will be set by set_spacing() before UI is shown
         self.hide_sibling = False  # Flag to control sibling visibility on init
 
         # Connect toggle signal for lazy initialization
@@ -67,7 +67,8 @@ class SpacingSection(CollapsiblePanel):
         self.parent_child_spin = QSpinBox()
         self.parent_child_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.parent_child_spin.setRange(0, 100)
-        self.parent_child_spin.setValue(self.current_spacing["parent_child"])
+        # Use safe default if current_spacing is not yet set
+        self.parent_child_spin.setValue(self.current_spacing.get("parent_child", 80))
         self.parent_child_spin.valueChanged.connect(self._on_spacing_changed)
         layout.addWidget(self.parent_child_spin, row, 1)
         row += 1
@@ -81,7 +82,8 @@ class SpacingSection(CollapsiblePanel):
         self.sibling_spin = QSpinBox()
         self.sibling_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.sibling_spin.setRange(0, 100)
-        self.sibling_spin.setValue(self.current_spacing["sibling"])
+        # Use safe default if current_spacing is not yet set
+        self.sibling_spin.setValue(self.current_spacing.get("sibling", 60))
         self.sibling_spin.valueChanged.connect(self._on_spacing_changed)
 
         # Apply Root layer specific logic during initialization
