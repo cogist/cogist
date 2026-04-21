@@ -137,6 +137,7 @@ class NodeItem(QGraphicsRectItem):
         # Set text alignment to left-top with forced wrapping
         from PySide6.QtGui import QTextOption
         doc = self.text_item.document()
+        doc.setDocumentMargin(0)  # Remove default document margin
         text_option = QTextOption(Qt.AlignLeft | Qt.AlignTop)
         text_option.setWrapMode(QTextOption.WrapAnywhere)  # Force wrap at any character
         doc.setDefaultTextOption(text_option)
@@ -241,25 +242,26 @@ class NodeItem(QGraphicsRectItem):
                 text, style_for_calc
             )
 
-            # Use the LARGER of domain size and calculated size
-            # This ensures nodes don't shrink below their content requirements
-            self.node_width = max(width, actual_width)
-            self.node_height = max(height, actual_height)
+            # Use calculated size (text-based auto-sizing)
+            self.node_width = actual_width
+            self.node_height = actual_height
             self.setRect(
                 -self.node_width / 2, -self.node_height / 2,
                 self.node_width, self.node_height
             )
 
-            # Position text at top-left with padding
+            # Position text with padding and vertical centering
             if style_for_calc and hasattr(style_for_calc, 'padding_w'):
                 padding_left = style_for_calc.padding_w
                 padding_top = style_for_calc.padding_h
             else:
                 padding_left = 12
                 padding_top = 8
-            self.text_item.setPos(
-                -self.node_width / 2 + padding_left, -self.node_height / 2 + padding_top
-            )
+
+            # Calculate text position: left padding + vertical centering
+            text_x = -self.node_width / 2 + padding_left
+            text_y = -self.node_height / 2 + padding_top + (self.node_height - text_rect.height() - padding_top * 2) / 2
+            self.text_item.setPos(text_x, text_y)
         else:
             # Measure and auto-size using unified method
             actual_width, actual_height, text_rect = self._calculate_node_size(
@@ -271,16 +273,18 @@ class NodeItem(QGraphicsRectItem):
             self.setRect(
                 -actual_width / 2, -actual_height / 2, actual_width, actual_height
             )
-            # Position text at top-left with padding
+            # Position text with padding and vertical centering
             if style_for_calc and hasattr(style_for_calc, 'padding_w'):
                 padding_left = style_for_calc.padding_w
                 padding_top = style_for_calc.padding_h
             else:
                 padding_left = 12
                 padding_top = 8
-            self.text_item.setPos(
-                -actual_width / 2 + padding_left, -actual_height / 2 + padding_top
-            )
+
+            # Calculate text position: left padding + vertical centering
+            text_x = -actual_width / 2 + padding_left
+            text_y = -actual_height / 2 + padding_top + (actual_height - text_rect.height() - padding_top * 2) / 2
+            self.text_item.setPos(text_x, text_y)
 
     def add_edge(self, edge):
         """Add a connected edge."""
