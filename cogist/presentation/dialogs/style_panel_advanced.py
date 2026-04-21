@@ -158,11 +158,9 @@ class AdvancedStyleTab(QWidget):
         """Get parent-child spacing for a layer from per-depth configuration."""
         assert self.style_config is not None
         depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
-        depth = depth_map.get(layer_name, 2)
+        depth = depth_map[layer_name]
 
-        if hasattr(self.style_config, 'level_spacing_by_depth'):
-            return self.style_config.level_spacing_by_depth.get(depth, self.style_config.parent_child_spacing)
-        return self.style_config.parent_child_spacing
+        return self.style_config.level_spacing_by_depth[depth]
 
     def _get_sibling_spacing_for_layer(self, layer_name: str) -> float:
         """Get sibling spacing for a layer from per-depth configuration."""
@@ -170,12 +168,11 @@ class AdvancedStyleTab(QWidget):
         if layer_name == "root":
             return 0
 
-        depth_map = {"level_1": 0, "level_2": 1, "level_3_plus": 2}
-        depth = depth_map.get(layer_name, 2)
+        # Map layer to the depth of children (siblings are at child's depth)
+        depth_map = {"level_1": 1, "level_2": 2, "level_3_plus": 3}
+        depth = depth_map[layer_name]
 
-        if hasattr(self.style_config, 'sibling_spacing_by_depth'):
-            return self.style_config.sibling_spacing_by_depth.get(depth, self.style_config.sibling_spacing)
-        return self.style_config.sibling_spacing
+        return self.style_config.sibling_spacing_by_depth[depth]
 
     def _get_connector_type_for_layer(self, layer_name: str) -> str:
         """Get connector type for a layer from per-depth configuration."""
@@ -644,28 +641,8 @@ class AdvancedStyleTab(QWidget):
             self._apply_connector_styles_to_mindmap(mindmap_view)
 
             # Apply spacing configuration (per-layer, skip canvas)
-            if hasattr(mindmap_view, "style_config") and self.current_layer != "canvas":
-                # Get spacing directly from global config
-                layer_data = self._get_layer_data(self.current_layer)
-
-                # Map layers to depths
-                depth_map = {
-                    "root": 0,
-                    "level_1": 1,
-                    "level_2": 2,
-                    "level_3_plus": 3,
-                }
-                depth = depth_map[self.current_layer]
-
-                # Initialize dictionaries if not exist
-                if not hasattr(mindmap_view.style_config, 'level_spacing_by_depth'):
-                    mindmap_view.style_config.level_spacing_by_depth = {}
-                if not hasattr(mindmap_view.style_config, 'sibling_spacing_by_depth'):
-                    mindmap_view.style_config.sibling_spacing_by_depth = {}
-
-                # Update ONLY the specific depth's spacing (true per-layer isolation)
-                mindmap_view.style_config.level_spacing_by_depth[depth] = layer_data["parent_child_spacing"]
-                mindmap_view.style_config.sibling_spacing_by_depth[depth] = layer_data["sibling_spacing"]
+            # NOTE: Spacing is already updated in _on_spacing_changed(), no need to re-apply here
+            # The style_config has been directly modified, just refresh the layout
 
             # Refresh layout to apply all changes
             # CRITICAL: Set skip_measurement=False when style changes affect node dimensions
