@@ -133,11 +133,11 @@ class ShadowSection(CollapsiblePanel):
         self.current_shadow["offset_x"] = self.shadow_offset_x_spin.value()
         self.current_shadow["offset_y"] = self.shadow_offset_y_spin.value()
         self.current_shadow["blur"] = self.shadow_blur_spin.value()
-        # Emit only the fields that actually changed
+        # Emit with shadow_ prefix to match role_style field names
         self.shadow_changed.emit({
-            "offset_x": self.current_shadow["offset_x"],
-            "offset_y": self.current_shadow["offset_y"],
-            "blur": self.current_shadow["blur"],
+            "shadow_offset_x": self.current_shadow["offset_x"],
+            "shadow_offset_y": self.current_shadow["offset_y"],
+            "shadow_blur": self.current_shadow["blur"],
         })
 
     def _pick_color(self):
@@ -165,9 +165,9 @@ class ShadowSection(CollapsiblePanel):
                 self.shadow_color_btn.setStyleSheet(
                     f"background-color: {color_name}; border: 1px solid #ccc; border-radius: 4px;"
                 )
-                # Emit only the changed field
+                # Emit with shadow_ prefix to match role_style field names
                 self.shadow_changed.emit({
-                    "color": color_name,
+                    "shadow_color": color_name,
                 })
 
     def _emit_shadow_changed(self):
