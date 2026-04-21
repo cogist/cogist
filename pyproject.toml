@@ -8,6 +8,7 @@ dependencies = [
     "pyside6>=6.8.0",
     "qdarkstyle>=3.2",
     "qt-material>=2.14",
+    "pyobjc-framework-CoreText; sys_platform == 'darwin'",
 ]
 
 [build-system]
