@@ -705,6 +705,10 @@ class AdvancedStyleTab(QWidget):
 
         # Convert each layer to RoleBasedStyle + update ColorScheme
         for layer_name, role in layer_to_role.items():
+            # Skip priority layers (critical/minor) - they use tertiary styles
+            if layer_name in ["critical", "minor"]:
+                continue
+                
             # Get layer data directly from global style_config
             layer_data = self._get_layer_data(layer_name)
 
