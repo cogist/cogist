@@ -511,18 +511,10 @@ class AdvancedStyleTab(QWidget):
             depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
             depth = depth_map.get(self.current_layer, 2)
 
-            # Initialize connector config for this depth if not exists
-            if not hasattr(self.style_config, 'connector_config_by_depth'):
-                self.style_config.connector_config_by_depth = {}
-            if depth not in self.style_config.connector_config_by_depth:
-                self.style_config.connector_config_by_depth[depth] = {
-                    "connector_type": "bezier",
-                    "connector_style": "solid",
-                    "line_width": 2.0,
-                }
+            # Get connector config for this depth (should be initialized in create_default_template())
+            connector_config = self.style_config.connector_config_by_depth[depth]
 
             # Update connector config
-            connector_config = self.style_config.connector_config_by_depth[depth]
             if "connector_type" in style:
                 connector_config["connector_type"] = style["connector_type"]
             if "connector_style" in style:

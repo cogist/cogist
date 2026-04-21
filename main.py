@@ -651,21 +651,9 @@ class MindMapView(QGraphicsView):
         from cogist.domain.layout import DefaultLayoutConfig
 
         # Create layout config from style_config spacing values
-        # Use per-depth spacing if available, otherwise fall back to global values
-        level_spacing_by_depth = {}
-        sibling_spacing_by_depth = {}
-
-        if hasattr(self.style_config, 'level_spacing_by_depth'):
-            level_spacing_by_depth = self.style_config.level_spacing_by_depth.copy()
-        if hasattr(self.style_config, 'sibling_spacing_by_depth'):
-            sibling_spacing_by_depth = self.style_config.sibling_spacing_by_depth.copy()
-
-        # Ensure we have at least the default depths defined
-        for depth in [0, 1, 2]:
-            if depth not in level_spacing_by_depth:
-                level_spacing_by_depth[depth] = self.style_config.parent_child_spacing
-            if depth not in sibling_spacing_by_depth:
-                sibling_spacing_by_depth[depth] = self.style_config.sibling_spacing
+        # All spacing values should be initialized in create_default_template()
+        level_spacing_by_depth = self.style_config.level_spacing_by_depth.copy() if hasattr(self.style_config, 'level_spacing_by_depth') else {}
+        sibling_spacing_by_depth = self.style_config.sibling_spacing_by_depth.copy() if hasattr(self.style_config, 'sibling_spacing_by_depth') else {}
 
         layout_config = DefaultLayoutConfig(
             level_spacing=self.style_config.parent_child_spacing,
@@ -793,17 +781,15 @@ class MindMapView(QGraphicsView):
                     # Get source node depth to determine which connector config to use
                     source_depth = parent_item.depth if hasattr(parent_item, 'depth') else 0
 
-                    # Try to get per-depth connector config
-                    connector_config = {}
-                    if hasattr(self.style_config, 'connector_config_by_depth'):
-                        connector_config = self.style_config.connector_config_by_depth.get(source_depth, {})
+                    # Get per-depth connector config (all depths should be initialized in create_default_template())
+                    connector_config = self.style_config.connector_config_by_depth[source_depth]
 
-                    # Build edge style config with per-depth values or fallback to legacy config
+                    # Build edge style config from per-depth values
                     edge_style_config = {
-                        "connector_color": connector_config.get("color", self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666"),
-                        "start_width": connector_config.get("line_width", self.style_config.edge.start_width),
-                        "end_width": connector_config.get("line_width", self.style_config.edge.end_width),
-                        "connector_style": connector_config.get("connector_style", self.style_config.edge.connector_style),
+                        "connector_color": connector_config["color"],
+                        "start_width": connector_config["line_width"],
+                        "end_width": connector_config["line_width"],
+                        "connector_style": connector_config["connector_style"],
                     }
                     edge.update_style(edge_style_config)
 
