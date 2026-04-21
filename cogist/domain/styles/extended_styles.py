@@ -173,12 +173,12 @@ class ColorScheme:
     name: str
     description: str
 
-    # Node colors by role
+    # Node colors by role (using HexArgb format to support transparency)
     node_colors: dict[NodeRole, str] = field(default_factory=lambda: {
-        NodeRole.ROOT: "#2196F3",
-        NodeRole.PRIMARY: "#4CAF50",
-        NodeRole.SECONDARY: "#FF9800",
-        NodeRole.TERTIARY: "#9E9E9E",
+        NodeRole.ROOT: "#FF2196F3",
+        NodeRole.PRIMARY: "#FF4CAF50",
+        NodeRole.SECONDARY: "#FFFF9800",
+        NodeRole.TERTIARY: "#FF9E9E9E",
     })
 
     # Border colors (optional, if not provided use darker version of node color)
@@ -187,18 +187,18 @@ class ColorScheme:
     # Text colors (optional, if not provided auto-select black/white based on brightness)
     text_colors: dict[NodeRole, str] | None = None
 
-    # Branch color pool (for rainbow branches)
+    # Branch color pool (for rainbow branches) (using HexArgb format)
     branch_colors: list[str] = field(default_factory=lambda: [
-        "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8",
-        "#F7DC6F", "#BB8FCE", "#85C1E2", "#F8B739", "#52B788",
+        "#FFFF6B6B", "#FF4ECDC4", "#FF45B7D1", "#FFFFA07A", "#FF98D8C8",
+        "#FFF7DC6F", "#FFBB8FCE", "#FF85C1E2", "#FFF8B739", "#FF52B788",
     ])
 
     # Enable rainbow branches
     use_rainbow_branches: bool = False
 
-    # Base colors
-    canvas_bg_color: str = "#FFFFFF"
-    edge_color: str = "#666666"
+    # Base colors (using HexArgb format to support transparency)
+    canvas_bg_color: str = "#FFFFFFFF"
+    edge_color: str = "#FF666666"
 
 
 @dataclass

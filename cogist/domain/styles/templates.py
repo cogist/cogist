@@ -124,13 +124,13 @@ def create_default_template() -> MindMapStyle:
         name="default",
         description="Default blue color scheme",
         node_colors={
-            NodeRole.ROOT: "#2196F3",
-            NodeRole.PRIMARY: "#4CAF50",
-            NodeRole.SECONDARY: "#FF9800",
-            NodeRole.TERTIARY: "#9E9E9E",
+            NodeRole.ROOT: "#FF2196F3",
+            NodeRole.PRIMARY: "#FF4CAF50",
+            NodeRole.SECONDARY: "#FFFF9800",
+            NodeRole.TERTIARY: "#FF9E9E9E",
         },
-        canvas_bg_color="#FFFFFF",
-        edge_color="#666666",
+        canvas_bg_color="#FFFFFFFF",
+        edge_color="#FF666666",
     )
 
     # Create MindMapStyle with references
