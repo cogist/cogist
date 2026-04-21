@@ -138,6 +138,23 @@ def create_default_template() -> MindMapStyle:
         name="Default",
         template_name="default",
         color_scheme_name="default",
+        # Initialize spacing for depths 0-5 to support deep trees
+        level_spacing_by_depth={
+            0: 80.0,   # Root → Level 1
+            1: 60.0,   # Level 1 → Level 2
+            2: 40.0,   # Level 2 → Level 3
+            3: 30.0,   # Level 3 → Level 4
+            4: 25.0,   # Level 4 → Level 5
+            5: 20.0,   # Level 5+
+        },
+        sibling_spacing_by_depth={
+            0: 60.0,   # Level 1 siblings
+            1: 45.0,   # Level 2 siblings
+            2: 35.0,   # Level 3 siblings
+            3: 28.0,   # Level 4 siblings
+            4: 22.0,   # Level 5 siblings
+            5: 18.0,   # Level 6+ siblings
+        },
     )
 
     # Store resolved references (in production, these would come from registries)
