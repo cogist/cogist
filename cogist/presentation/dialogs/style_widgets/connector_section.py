@@ -289,7 +289,7 @@ class ConnectorSection(CollapsiblePanel):
                 background-color: #FFFFFF;
                 border: 1px solid #C8C8C8;
                 border-radius: 6px;
-                padding: 0px;
+                padding: 4px 24px 4px 12px;
                 font-size: 13px;
                 text-align: left;
             }
