@@ -95,11 +95,14 @@ class AdvancedStyleTab(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.NoFrame)
+        scroll.setFrameShadow(QScrollArea.Plain)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setStyleSheet("QScrollArea { border: none; padding: 0; margin: 0; }")
 
         # Create content widget
         content_widget = QWidget()
+        content_widget.setMinimumWidth(self.PANEL_WIDTH)  # Ensure content fills panel width
         layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(1)

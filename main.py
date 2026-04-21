@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QMainWindow,
     QMessageBox,
+    QSplitter,
     QWidget,
 )
 
@@ -95,7 +96,6 @@ class MainWindow(QMainWindow):
         self.mindmap_view = MindMapView(style_config=self.current_style)
 
         # Create Activity Bar (left sidebar)
-        from PySide6.QtWidgets import QSplitter
 
         from cogist.presentation.dialogs.activity_bar import ActivityBar
         from cogist.presentation.dialogs.style_panel import StylePanel
@@ -121,6 +121,10 @@ class MainWindow(QMainWindow):
         self.content_splitter.setStretchFactor(0, 0)  # Panel has fixed width
         self.content_splitter.setStretchFactor(1, 1)  # Mindmap takes most space
         self.content_splitter.setCollapsible(0, False)  # Panel cannot be collapsed
+
+        # CRITICAL: Set initial splitter handle position to match panel width
+        # Without this, QSplitter defaults to evenly splitting, causing a gap
+        self.content_splitter.setSizes([StylePanel.PANEL_WIDTH, 1000])
 
         main_layout.addWidget(self.content_splitter)
 
