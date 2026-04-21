@@ -764,26 +764,36 @@ class AdvancedStyleTab(QWidget):
 
     def _apply_connector_styles_to_mindmap(self, mindmap_view):
         """Apply connector (edge) styles to all edges in the mind map (per-layer)."""
-        if not hasattr(mindmap_view, "edge_items") or self.current_layer == "canvas":
+        if not hasattr(mindmap_view, "edge_items"):
+            print(f"DEBUG: No edge_items in mindmap_view")
+            return
+        
+        if self.current_layer == "canvas":
+            print(f"DEBUG: Skipping connector styles for canvas layer")
             return
 
         assert self.style_config is not None
+        print(f"DEBUG: Applying connector styles for layer={self.current_layer}")
+        print(f"DEBUG: connector_config_by_depth={self.style_config.connector_config_by_depth}")
 
         for edge_item in mindmap_view.edge_items:
             if not hasattr(edge_item, "update_style"):
                 continue
             
-            # Get target node depth to determine which connector style to use
-            target_node = edge_item.target_item
-            if not hasattr(target_node, 'depth'):
+            # Get SOURCE node depth to determine which connector style to use
+            # The edge style is determined by the parent node's layer
+            source_node = edge_item.source_item
+            if not hasattr(source_node, 'depth'):
                 continue
             
-            depth = target_node.depth
+            depth = source_node.depth
             
             # Get connector config for this depth
             connector_config = {}
             if hasattr(self.style_config, 'connector_config_by_depth'):
                 connector_config = self.style_config.connector_config_by_depth.get(depth, {})
+            
+            print(f"DEBUG: Edge from depth {depth}, config={connector_config}")
             
             # Build connector style dict
             connector_style = {
@@ -793,6 +803,7 @@ class AdvancedStyleTab(QWidget):
                 "connector_color": connector_config.get("color", "#666666"),
             }
             
+            print(f"DEBUG: Applying style={connector_style}")
             edge_item.update_style(connector_style)
 
     def _convert_layer_to_role_style(self, layer_data: dict):
