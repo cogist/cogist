@@ -8,47 +8,91 @@ from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QPixmap
 
 
 def generate_bezier_preview(size: QSize, selected: bool = False) -> QPixmap:
-    """Generate preview for Bezier (S-curve) connector.
+    """Generate preview for Bezier (S-curve) connector with gradient width.
 
     Args:
         size: Preview size
 
     Returns:
-        QPixmap with Bezier curve preview
+        QPixmap with Bezier curve preview (wavy S-curve, thick left to thin right)
     """
     pixmap = QPixmap(size)
     pixmap.fill(Qt.transparent)
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.Antialiasing)
 
-    # Draw S-curve bezier - centered in pixmap
-    path = QPainterPath()
-    margin_x = size.width() * 0.05  # 5% margin on each side for better centering
+    # Draw wavy S-curve bezier with gradient width
+    margin_x = size.width() * 0.05
     start_x = margin_x
     start_y = size.height() * 0.5
     end_x = size.width() - margin_x
     end_y = size.height() * 0.5
 
-    path.moveTo(start_x, start_y)
-
-    # Calculate control points for S-curve
+    # Calculate control points for wavy S-curve
     dx = end_x - start_x
-    control_offset = abs(dx) * 0.4
+    control_offset_x = abs(dx) * 0.4
+    control_offset_y = size.height() * 0.3  # More pronounced curve
 
     if dx >= 0:
-        control1 = QPointF(start_x + control_offset, start_y)
-        control2 = QPointF(end_x - control_offset, end_y)
+        control1 = QPointF(start_x + control_offset_x, start_y - control_offset_y)
+        control2 = QPointF(end_x - control_offset_x, end_y + control_offset_y)
     else:
-        control1 = QPointF(start_x - control_offset, start_y)
-        control2 = QPointF(end_x + control_offset, end_y)
+        control1 = QPointF(start_x - control_offset_x, start_y)
+        control2 = QPointF(end_x + control_offset_x, end_y)
 
+    # Build complete path
+    path = QPainterPath()
+    path.moveTo(start_x, start_y)
     path.cubicTo(control1, control2, QPointF(end_x, end_y))
 
-    # Draw the curve
-    color = "#FFFFFF" if selected else "#000000"  # White if selected, black otherwise
-    pen = QPen(QColor(color), 2.0, Qt.SolidLine, Qt.RoundCap)
-    painter.setPen(pen)
-    painter.drawPath(path)
+    # Draw with gradient width effect (thick left to thin right)
+    color = QColor("#FFFFFF") if selected else QColor("#000000")
+    start_width = 4.0
+    end_width = 1.0
+    segments = 100
+
+    for i in range(segments):
+        t1 = i / segments
+        t2 = (i + 1) / segments
+        t_mid = (t1 + t2) / 2
+
+        # Interpolate width
+        width = start_width * (1 - t_mid) + end_width * t_mid
+
+        pen = QPen(color, width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+        painter.setPen(pen)
+
+        # Calculate points on bezier curve
+        t1_2 = 1 - t1
+        t2_2 = 1 - t2
+
+        pt1_x = (
+            t1_2**3 * start_x
+            + 3 * t1_2**2 * t1 * control1.x()
+            + 3 * t1_2 * t1**2 * control2.x()
+            + t1**3 * end_x
+        )
+        pt1_y = (
+            t1_2**3 * start_y
+            + 3 * t1_2**2 * t1 * control1.y()
+            + 3 * t1_2 * t1**2 * control2.y()
+            + t1**3 * end_y
+        )
+
+        pt2_x = (
+            t2_2**3 * start_x
+            + 3 * t2_2**2 * t2 * control1.x()
+            + 3 * t2_2 * t2**2 * control2.x()
+            + t2**3 * end_x
+        )
+        pt2_y = (
+            t2_2**3 * start_y
+            + 3 * t2_2**2 * t2 * control1.y()
+            + 3 * t2_2 * t2**2 * control2.y()
+            + t2**3 * end_y
+        )
+
+        painter.drawLine(QPointF(pt1_x, pt1_y), QPointF(pt2_x, pt2_y))
 
     painter.end()
     return pixmap
