@@ -214,7 +214,15 @@ class AdvancedStyleTab(QWidget):
 
         # Apply updates to role_style
         for key, value in updates.items():
-            if hasattr(role_style, key):
+            if key == "shape":
+                # Handle shape type update
+                if hasattr(role_style, 'shape'):
+                    role_style.shape.basic_shape = value
+            elif key == "radius":
+                # Handle border radius update
+                if hasattr(role_style, 'shape'):
+                    role_style.shape.border_radius = value
+            elif hasattr(role_style, key):
                 setattr(role_style, key, value)
             elif key.startswith("shadow_"):
                 # Handle shadow attributes
@@ -328,9 +336,7 @@ class AdvancedStyleTab(QWidget):
 
     def _on_layer_changed(self, layer_name: str):
         """Handle layer selection change."""
-        # Save current layer style before switching
-        self._save_current_layer_style()
-
+        # No need to save - styles are already saved directly to global config
         # Update current layer
         self.current_layer = layer_name
 
