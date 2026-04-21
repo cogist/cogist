@@ -60,9 +60,9 @@ class EdgeItem(QGraphicsPathItem):
                 pen = QPen(self.color, self.end_width, self.line_style, Qt.RoundCap)
                 # Adjust dash pattern for better visibility
                 if self.line_style == Qt.DashLine:
-                    pen.setDashPattern([8.0, 6.0])  # Longer dashes
+                    pen.setDashPattern([6.0, 4.0])  # Dash length, gap
                 elif self.line_style == Qt.DotLine:
-                    pen.setDashPattern([1.0, 4.0])  # Clear dots
+                    pen.setDashPattern([1.0, 3.0])  # Dot size, gap
                 
                 painter.setPen(pen)
                 painter.drawPath(full_path)
