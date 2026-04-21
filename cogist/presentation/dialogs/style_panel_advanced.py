@@ -187,6 +187,11 @@ class AdvancedStyleTab(QWidget):
         assert self.style_config is not None
 
         if layer_name == "canvas":
+            # Handle canvas background color separately
+            if "bg_color" in updates:
+                self.style_config.canvas_bg_color = updates["bg_color"]
+                if self.style_config.resolved_color_scheme:
+                    self.style_config.resolved_color_scheme.canvas_bg_color = updates["bg_color"]
             return  # Canvas doesn't have role styles
 
         # Map layer to role
@@ -207,12 +212,14 @@ class AdvancedStyleTab(QWidget):
         role = NodeRole(role_str)
 
         template = self.style_config.resolved_template
+        color_scheme = self.style_config.resolved_color_scheme
+        
         if not template or role not in template.role_styles:
             return
 
         role_style = template.role_styles[role]
 
-        # Apply updates to role_style
+        # Apply updates to role_style and color_scheme
         for key, value in updates.items():
             if key == "shape":
                 # Handle shape type update
@@ -222,6 +229,22 @@ class AdvancedStyleTab(QWidget):
                 # Handle border radius update
                 if hasattr(role_style, 'shape'):
                     role_style.shape.border_radius = value
+            elif key == "bg_color":
+                # Background color goes to color_scheme
+                if color_scheme:
+                    color_scheme.node_colors[role] = value
+            elif key == "text_color":
+                # Text color goes to color_scheme
+                if color_scheme:
+                    if not color_scheme.text_colors:
+                        color_scheme.text_colors = {}
+                    color_scheme.text_colors[role] = value
+            elif key == "border_color":
+                # Border color goes to color_scheme
+                if color_scheme:
+                    if not color_scheme.border_colors:
+                        color_scheme.border_colors = {}
+                    color_scheme.border_colors[role] = value
             elif hasattr(role_style, key):
                 setattr(role_style, key, value)
             elif key.startswith("shadow_"):
