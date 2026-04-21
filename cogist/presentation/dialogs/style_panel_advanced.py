@@ -45,28 +45,18 @@ class AdvancedStyleTab(QWidget):
         self.setMinimumWidth(self.PANEL_WIDTH)
         self.setMaximumWidth(self.PANEL_WIDTH)
 
-        # Store style parameters by layer
+        # Store reference to global style configuration
+        self.style_config = style_config
+        if not self.style_config:
+            raise ValueError("style_config is required - panel must have access to global style data")
+
         self.current_layer = "canvas"
-        self.layer_styles = {
-            "canvas": self._get_default_canvas_style(),
-            "root": self._get_default_layer_style("root"),
-            "level_1": self._get_default_layer_style("level_1"),
-            "level_2": self._get_default_layer_style("level_2"),
-            "level_3_plus": self._get_default_layer_style("level_3_plus"),
-            "critical": self._get_default_layer_style("critical"),
-            "minor": self._get_default_layer_style("minor"),
-        }
 
         # Initialize UI with modular components
         self._init_ui()
 
         # Connect signals
         self._connect_signals()
-
-        # CRITICAL: Initialize layer_styles from style_config if available
-        # This ensures ALL fields are populated, not just defaults
-        if style_config:
-            self._initialize_layer_styles_from_config(style_config)
 
         # Set initial visibility based on default layer (canvas)
         self._set_initial_visibility()
@@ -821,121 +811,3 @@ class AdvancedStyleTab(QWidget):
         )
 
         return style
-
-    # === Default Style Methods ===
-
-    def _get_default_canvas_style(self):
-        """Get default canvas style."""
-        return {
-            "bg_color": "#FFFFFF",
-        }
-
-    def _get_default_layer_style(self, layer_type):
-        """Get default style for a layer with ALL fields explicitly defined."""
-        # Base style with complete field set - NO missing fields allowed
-        style = {
-            # Shape
-            "shape": "rounded_rect",
-            "radius": 10,
-            # Colors
-            "bg_color": "#2196F3",
-            "text_color": "#FFFFFF",
-            "border_color": "#1976D2",
-            # Font
-            "font_family": "Arial",
-            "font_size": 22,
-            "font_weight": "Bold",
-            "font_italic": False,
-            "font_underline": False,
-            "font_strikeout": False,
-            # Shadow (complete configuration)
-            "shadow_enabled": False,
-            "shadow_offset_x": 2,
-            "shadow_offset_y": 2,
-            "shadow_blur": 4,
-            "shadow_color": "#000000",
-            # Border
-            "border_style": "solid",
-            "border_width": 2,
-            # Padding
-            "padding_w": 20,
-            "padding_h": 16,
-            # Connector (per-layer)
-            "connector_type": "bezier",
-            "connector_style": "solid",
-            "connector_width": 2,
-            "connector_color": "#666666",
-            # Spacing (per-layer)
-            "parent_child_spacing": 80,
-            "sibling_spacing": 0 if layer_type == "root" else 80,
-        }
-
-        # Adjust based on layer type
-        if layer_type == "root":
-            style.update(
-                {
-                    "bg_color": "#2196F3",
-                    "text_color": "#FFFFFF",
-                    "font_size": 22,
-                    "font_weight": "Bold",
-                }
-            )
-        elif layer_type == "level_1":
-            style.update(
-                {
-                    "bg_color": "#4CAF50",
-                    "text_color": "#FFFFFF",
-                    "font_size": 18,
-                    "font_weight": "Normal",
-                }
-            )
-        elif layer_type == "level_2":
-            style.update(
-                {
-                    "bg_color": "#FF9800",
-                    "text_color": "#FFFFFF",
-                    "font_size": 16,
-                    "font_weight": "Normal",
-                }
-            )
-        elif layer_type == "level_3_plus":
-            style.update(
-                {
-                    "bg_color": "#9E9E9E",
-                    "text_color": "#FFFFFF",
-                    "font_size": 14,
-                    "font_weight": "Normal",
-                }
-            )
-        elif layer_type == "critical":
-            style.update(
-                {
-                    "bg_color": "#D32F2F",
-                    "text_color": "#FFFFFF",
-                    "font_size": 24,
-                    "font_weight": "ExtraBold",
-                    "border_width": 4,
-                    "border_color": "#B71C1C",
-                }
-            )
-        elif layer_type == "minor":
-            style.update(
-                {
-                    "bg_color": "#BDBDBD",
-                    "text_color": "#FFFFFF",
-                    "font_size": 18,
-                    "font_weight": "Light",
-                    "border_width": 1,
-                }
-            )
-
-        return style
-
-    def _get_default_connector_style(self):
-        """Get default connector (edge) style."""
-        return {
-            "connector_type": "bezier",
-            "connector_style": "solid",
-            "line_width": 2,
-            "connector_color": "#666666",
-        }
