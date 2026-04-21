@@ -179,9 +179,12 @@ class EdgeItem(QGraphicsPathItem):
                 - connector_style: str (solid/dashed/dotted)
                 - connector_type: str (bezier/straight/orthogonal) - not yet implemented
         """
+        print(f"DEBUG EdgeItem.update_style called with: {style_config}")
+        
         # Update color
         if "connector_color" in style_config:
             self.color = QColor(style_config["connector_color"])
+            print(f"DEBUG: Set color to {self.color.name()}")
 
         # Update widths - support both uniform line_width and separate start/end widths
         if "line_width" in style_config:
@@ -189,6 +192,7 @@ class EdgeItem(QGraphicsPathItem):
             width = float(style_config["line_width"])
             self.start_width = width
             self.end_width = width
+            print(f"DEBUG: Set start_width={self.start_width}, end_width={self.end_width}")
         else:
             # Separate widths for gradient effect
             if "start_width" in style_config:
@@ -204,6 +208,7 @@ class EdgeItem(QGraphicsPathItem):
         }
         if "connector_style" in style_config:
             self.line_style = style_map.get(style_config["connector_style"], Qt.SolidLine)
+            print(f"DEBUG: Set line_style to {self.line_style}")
 
         # Note: connector_type (bezier/straight/orthogonal) requires path recalculation
         # This would need to be handled by updating the curve generation logic
@@ -212,3 +217,4 @@ class EdgeItem(QGraphicsPathItem):
         # Invalidate cache and trigger repaint
         self._gradient_path = None
         self.update()
+        print(f"DEBUG: Called update(), current state: color={self.color.name()}, line_style={self.line_style}, start_width={self.start_width}, end_width={self.end_width}")
