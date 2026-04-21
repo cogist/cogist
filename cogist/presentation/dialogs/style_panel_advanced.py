@@ -365,49 +365,41 @@ class AdvancedStyleTab(QWidget):
 
     def _on_spacing_changed(self, spacing: dict):
         """Handle spacing configuration change for the current layer."""
+        assert self.style_config is not None
         if self.current_layer != "canvas":
-            # Directly update mindmap_view.style_config to ensure layout refresh picks it up
-            try:
-                from cogist.application.services.app_context import get_app_context
-                app_context = get_app_context()
-                if app_context:
-                    mindmap_view = app_context.get_mindmap_view()
-                    if mindmap_view and hasattr(mindmap_view, "style_config"):
-                        # Map layers to depths for spacing application
-                        depth_map = {
-                            "root": 0,
-                            "level_1": 1,
-                            "level_2": 2,
-                            "level_3_plus": 3,
-                        }
-                        depth = depth_map[self.current_layer]
+            # Directly update our own style_config since we have direct access
+            # Map layers to depths for spacing application
+            depth_map = {
+                "root": 0,
+                "level_1": 1,
+                "level_2": 2,
+                "level_3_plus": 3,
+            }
+            depth = depth_map[self.current_layer]
 
-                        if "parent_child" in spacing:
-                            # Initialize dictionary if not exists
-                            if not hasattr(mindmap_view.style_config, 'level_spacing_by_depth'):
-                                mindmap_view.style_config.level_spacing_by_depth = {}
-                            # Update ONLY the specific depth's level spacing (true isolation)
-                            mindmap_view.style_config.level_spacing_by_depth[depth] = spacing["parent_child"]
+            if "parent_child" in spacing:
+                # Initialize dictionary if not exists
+                if not hasattr(self.style_config, 'level_spacing_by_depth'):
+                    self.style_config.level_spacing_by_depth = {}
+                # Update ONLY the specific depth's level spacing (true isolation)
+                self.style_config.level_spacing_by_depth[depth] = spacing["parent_child"]
 
-                        if "sibling" in spacing:
-                            # Initialize dictionary if not exists
-                            if not hasattr(mindmap_view.style_config, 'sibling_spacing_by_depth'):
-                                mindmap_view.style_config.sibling_spacing_by_depth = {}
-                            # Update ONLY the specific depth's sibling spacing (true isolation)
-                            # Root layer has no siblings, but we still store it for completeness
-                            mindmap_view.style_config.sibling_spacing_by_depth[depth] = spacing["sibling"]
+            if "sibling" in spacing:
+                # Initialize dictionary if not exists
+                if not hasattr(self.style_config, 'sibling_spacing_by_depth'):
+                    self.style_config.sibling_spacing_by_depth = {}
+                # Update ONLY the specific depth's sibling spacing (true isolation)
+                # Root layer has no siblings, but we still store it for completeness
+                self.style_config.sibling_spacing_by_depth[depth] = spacing["sibling"]
 
-                        # Trigger layout refresh
-                        if hasattr(mindmap_view, "_refresh_layout"):
-                            mindmap_view._refresh_layout(skip_measurement=True)
-            except Exception as e:
-                print(f"Error applying spacing: {e}")
+            # Trigger layout refresh through _apply_styles_to_mindmap
+            self._apply_styles_to_mindmap()
 
     def _on_node_style_changed(self, style: dict):
         """Handle node style changes."""
         if self.current_layer != "canvas":
-            # Update layer_styles directly with the received style
-            self.layer_styles[self.current_layer].update(style)
+            # Update global style_config directly
+            self._update_role_style_in_config(self.current_layer, style)
             self._apply_styles_to_mindmap()
 
     def _on_shadow_enabled_changed(self, enabled: bool):
@@ -416,149 +408,33 @@ class AdvancedStyleTab(QWidget):
         if enabled:
             self.shadow_section.setCollapsed(False)
 
-        # Update layer_styles and apply
+        # Update global style_config directly
         if self.current_layer != "canvas":
-            self.layer_styles[self.current_layer]["shadow_enabled"] = enabled
+            self._update_role_style_in_config(self.current_layer, {"shadow_enabled": enabled})
             self._apply_styles_to_mindmap()
 
     def _on_shadow_changed(self, shadow: dict):
         """Handle shadow style changes."""
         if self.current_layer != "canvas":
-            print(f"DEBUG _on_shadow_changed: received shadow = {shadow}")
-            print(
-                f"DEBUG _on_shadow_changed: before update - layer_styles[{self.current_layer}]['shadow_enabled'] = {self.layer_styles[self.current_layer]['shadow_enabled']}"
-            )
-
-            # Update only the fields that changed, preserve existing values for others
-            # This ensures we don't accidentally reset shadow_enabled to False
-            layer_data = self.layer_styles[self.current_layer]
-
-            # Update shadow parameters from the received dict
-            if "offset_x" in shadow:
-                layer_data["shadow_offset_x"] = shadow["offset_x"]
-            if "offset_y" in shadow:
-                layer_data["shadow_offset_y"] = shadow["offset_y"]
-            if "blur" in shadow:
-                layer_data["shadow_blur"] = shadow["blur"]
-            if "color" in shadow:
-                layer_data["shadow_color"] = shadow["color"]
-            if "enabled" in shadow:
-                layer_data["shadow_enabled"] = shadow["enabled"]
-
-            print(
-                f"DEBUG _on_shadow_changed: after update - layer_styles[{self.current_layer}]['shadow_enabled'] = {layer_data['shadow_enabled']}"
-            )
-            print(
-                f"DEBUG _on_shadow_changed: after update - layer_styles[{self.current_layer}]['shadow_offset_x'] = {layer_data['shadow_offset_x']}"
-            )
-
+            # Update global style_config directly
+            self._update_role_style_in_config(self.current_layer, shadow)
             self._apply_styles_to_mindmap()
 
     def _on_border_style_changed(self, style: dict):
         """Handle border style changes."""
         if self.current_layer != "canvas":
-            # Update layer_styles directly with the received style
-            self.layer_styles[self.current_layer].update(style)
+            # Update global style_config directly
+            self._update_role_style_in_config(self.current_layer, style)
             self._apply_styles_to_mindmap()
 
     def _on_connector_style_changed(self, style: dict):
         """Handle connector style changes for the current layer."""
         if self.current_layer != "canvas":
-            self.layer_styles[self.current_layer].update(style)
+            # Connector styles are stored in color_scheme.edge_color
+            assert self.style_config is not None
+            if "connector_color" in style and self.style_config.resolved_color_scheme:
+                self.style_config.resolved_color_scheme.edge_color = style["connector_color"]
             self._apply_styles_to_mindmap()
-
-    def _initialize_layer_styles_from_config(self, style_config):
-        """Initialize layer_styles from style_config's resolved_template and resolved_color_scheme.
-
-        This ensures ALL fields are populated with actual values from the loaded file,
-        not just defaults. This is CRITICAL for data integrity.
-
-        Args:
-            style_config: MindMapStyle instance with resolved_template and resolved_color_scheme
-        """
-        if not style_config.resolved_template or not style_config.resolved_color_scheme:
-            # No resolved data, keep defaults
-            return
-
-        template = style_config.resolved_template
-        color_scheme = style_config.resolved_color_scheme
-
-        # Map NodeRole to layer names
-        role_to_layer = {
-            "root": "root",
-            "primary": "level_1",
-            "secondary": "level_2",
-            "tertiary": "level_3_plus",
-        }
-
-        # Initialize each layer from template role_styles
-        for role_str, layer_name in role_to_layer.items():
-            from cogist.domain.styles import NodeRole
-
-            role = NodeRole(role_str)
-
-            if role not in template.role_styles:
-                continue
-
-            role_style = template.role_styles[role]
-
-            # Build complete layer_data dict with ALL fields
-            layer_data = {
-                # Shape
-                "shape": role_style.shape.basic_shape,
-                "radius": role_style.shape.border_radius,
-                # Colors (from color_scheme) - ensure ALL colors are populated
-                "bg_color": color_scheme.node_colors[
-                    role
-                ],  # node_colors always has all roles
-                "text_color": (
-                    color_scheme.text_colors[role]
-                    if color_scheme.text_colors and role in color_scheme.text_colors
-                    else self._auto_contrast(color_scheme.node_colors[role])
-                ),
-                "border_color": (
-                    color_scheme.border_colors[role]
-                    if color_scheme.border_colors and role in color_scheme.border_colors
-                    else None
-                ),
-                # Font
-                "font_family": role_style.font_family,
-                "font_size": role_style.font_size,
-                "font_weight": role_style.font_weight,
-                "font_italic": role_style.font_style == "Italic",
-                "font_underline": role_style.font_underline,
-                "font_strikeout": role_style.font_strikeout,
-                # Shadow (complete configuration)
-                "shadow_enabled": role_style.shadow_enabled,
-                "shadow_offset_x": role_style.shadow_offset_x,
-                "shadow_offset_y": role_style.shadow_offset_y,
-                "shadow_blur": role_style.shadow_blur,
-                "shadow_color": role_style.shadow_color or "#000000",
-                # Border
-                "border_style": role_style.border.border_style,
-                "border_width": role_style.border.border_width,
-                # Padding
-                "padding_w": role_style.padding_w,
-                "padding_h": role_style.padding_h,
-                # Connector (per-layer)
-                "connector_type": "bezier",
-                "connector_style": "solid",
-                "connector_width": 2,
-                "connector_color": color_scheme.edge_color,
-                # Spacing (per-layer) - Initialize from style_config
-                "parent_child_spacing": style_config.parent_child_spacing,
-                "sibling_spacing": 0 if layer_name == "root" else style_config.sibling_spacing,
-            }
-
-            # Update layer_styles - this replaces the default completely
-            self.layer_styles[layer_name] = layer_data
-
-        # Update canvas background
-        self.layer_styles["canvas"]["bg_color"] = color_scheme.canvas_bg_color
-
-        print(
-            f"✓ Initialized layer_styles from style_config ({len(template.role_styles)} roles)"
-        )
 
     @staticmethod
     def _auto_contrast(bg_color: str) -> str:
@@ -652,63 +528,6 @@ class AdvancedStyleTab(QWidget):
             }
             self.connector_section.set_style(connector_style)
 
-    def _save_current_layer_style(self):
-        """Save current UI state to layer_styles dict."""
-        if self.current_layer == "canvas":
-            # Save canvas style
-            self.layer_styles["canvas"]["bg_color"] = self.canvas_section.get_color()
-        else:
-            # Save node style
-            node_style = self.node_style_section.get_style()
-            self.layer_styles[self.current_layer].update(node_style)
-
-            # Save border style
-            border_style = self.border_section.get_style()
-            self.layer_styles[self.current_layer].update(border_style)
-
-            # Save shadow configuration
-            shadow_config = self.shadow_section.get_shadow()
-            if shadow_config:
-                # Direct access - shadow_config always has complete fields
-                self.layer_styles[self.current_layer]["shadow_enabled"] = shadow_config[
-                    "enabled"
-                ]
-                self.layer_styles[self.current_layer]["shadow_offset_x"] = (
-                    shadow_config["offset_x"]
-                )
-                self.layer_styles[self.current_layer]["shadow_offset_y"] = (
-                    shadow_config["offset_y"]
-                )
-                self.layer_styles[self.current_layer]["shadow_blur"] = shadow_config[
-                    "blur"
-                ]
-                self.layer_styles[self.current_layer]["shadow_color"] = shadow_config[
-                    "color"
-                ]
-
-            # Save spacing configuration (per-layer)
-            self.layer_styles[self.current_layer]["parent_child_spacing"] = self.spacing_section.parent_child_spin.value()
-            if self.current_layer != "root":
-                self.layer_styles[self.current_layer]["sibling_spacing"] = self.spacing_section.sibling_spin.value()
-            else:
-                self.layer_styles[self.current_layer]["sibling_spacing"] = 0
-
-            # Save connector style (per-layer)
-            if hasattr(self.connector_section, 'connector_type_combo'):
-                type_map_inv = {"Straight": "straight", "Orthogonal": "orthogonal", "Bezier": "bezier"}
-                self.layer_styles[self.current_layer]["connector_type"] = type_map_inv[
-                    self.connector_section.connector_type_combo.text()
-                ]
-            if hasattr(self.connector_section, 'connector_style_combo'):
-                style_map_inv = {"Solid": "solid", "Dashed": "dashed", "Dotted": "dotted"}
-                self.layer_styles[self.current_layer]["connector_style"] = style_map_inv[
-                    self.connector_section.connector_style_combo.text()
-                ]
-            if hasattr(self.connector_section, 'connector_width_spin'):
-                self.layer_styles[self.current_layer]["connector_width"] = self.connector_section.connector_width_spin.value()
-            if hasattr(self.connector_section, 'current_style'):
-                self.layer_styles[self.current_layer]["connector_color"] = self.connector_section.current_style["connector_color"]
-
     def _apply_styles_to_mindmap(self):
         """Unified method to apply all styles to mindmap_view.
 
@@ -736,7 +555,8 @@ class AdvancedStyleTab(QWidget):
 
             # Apply spacing configuration (per-layer, skip canvas)
             if hasattr(mindmap_view, "style_config") and self.current_layer != "canvas":
-                layer_style = self.layer_styles[self.current_layer]
+                # Get spacing directly from global config
+                layer_data = self._get_layer_data(self.current_layer)
 
                 # Map layers to depths
                 depth_map = {
@@ -754,8 +574,8 @@ class AdvancedStyleTab(QWidget):
                     mindmap_view.style_config.sibling_spacing_by_depth = {}
 
                 # Update ONLY the specific depth's spacing (true per-layer isolation)
-                mindmap_view.style_config.level_spacing_by_depth[depth] = layer_style["parent_child_spacing"]
-                mindmap_view.style_config.sibling_spacing_by_depth[depth] = layer_style["sibling_spacing"]
+                mindmap_view.style_config.level_spacing_by_depth[depth] = layer_data["parent_child_spacing"]
+                mindmap_view.style_config.sibling_spacing_by_depth[depth] = layer_data["sibling_spacing"]
 
             # Refresh layout to apply all changes
             # CRITICAL: Skip measurement when applying style changes
@@ -795,7 +615,8 @@ class AdvancedStyleTab(QWidget):
 
         # Convert each layer to RoleBasedStyle + update ColorScheme
         for layer_name, role in layer_to_role.items():
-            layer_data = self.layer_styles[layer_name]
+            # Get layer data directly from global style_config
+            layer_data = self._get_layer_data(layer_name)
 
             # Build RoleBasedStyle
             role_style = self._convert_layer_to_role_style(layer_data)
@@ -829,16 +650,17 @@ class AdvancedStyleTab(QWidget):
                 ]
 
         # Update canvas background color
-        if "canvas" in self.layer_styles:
-            canvas_color = self.layer_styles["canvas"]["bg_color"]
+        canvas_data = self._get_layer_data("canvas")
+        if "bg_color" in canvas_data:
+            canvas_color = canvas_data["bg_color"]
             style.canvas_bg_color = canvas_color
             if style.resolved_color_scheme:
                 style.resolved_color_scheme.canvas_bg_color = canvas_color
 
         # Update connector (edge) styles (per-layer)
         if style.resolved_color_scheme and self.current_layer != "canvas":
-            layer_style = self.layer_styles[self.current_layer]
-            style.resolved_color_scheme.edge_color = layer_style["connector_color"]
+            layer_data = self._get_layer_data(self.current_layer)
+            style.resolved_color_scheme.edge_color = layer_data["connector_color"]
 
         # Update all existing node items with new style
         if hasattr(mindmap_view, "node_items"):
@@ -854,12 +676,12 @@ class AdvancedStyleTab(QWidget):
             return
 
         # Get connector style from current layer
-        layer_style = self.layer_styles[self.current_layer]
+        layer_data = self._get_layer_data(self.current_layer)
         connector_style = {
-            "connector_type": layer_style["connector_type"],
-            "connector_style": layer_style["connector_style"],
-            "line_width": layer_style["connector_width"],
-            "connector_color": layer_style["connector_color"],
+            "connector_type": layer_data["connector_type"],
+            "connector_style": layer_data["connector_style"],
+            "line_width": layer_data["connector_width"],
+            "connector_color": layer_data["connector_color"],
         }
 
         for edge_item in mindmap_view.edge_items:
