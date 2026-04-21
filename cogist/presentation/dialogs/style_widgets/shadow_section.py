@@ -9,7 +9,6 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QGridLayout, QLabel, QPushButton, QSpinBox
 
 from .collapsible_panel import CollapsiblePanel
-from .dialog_utils import position_color_dialog
 
 
 class ShadowSection(CollapsiblePanel):
@@ -145,30 +144,18 @@ class ShadowSection(CollapsiblePanel):
         from PySide6.QtWidgets import QColorDialog
 
         current_color = self.current_shadow.get("color", "#000000")
-        color_dialog = QColorDialog(QColor(current_color), self)
-        color_dialog.setWindowTitle("Select Shadow Color")
+        color = QColorDialog.getColor(QColor(current_color), self, "Select Shadow Color", QColorDialog.ShowAlphaChannel)
 
-        # Use Qt's standard dialog instead of native dialog to allow positioning
-        color_dialog.setOption(QColorDialog.DontUseNativeDialog)
-
-        # Enable alpha channel (transparency) support
-        color_dialog.setOption(QColorDialog.ShowAlphaChannel)
-
-        # Position dialog with boundary check
-        position_color_dialog(color_dialog, self.shadow_color_btn)
-
-        if color_dialog.exec():
-            color = color_dialog.currentColor()
-            if color.isValid():
-                color_name = color.name()
-                self.current_shadow["color"] = color_name
-                self.shadow_color_btn.setStyleSheet(
-                    f"background-color: {color_name}; border: 1px solid #ccc; border-radius: 4px;"
-                )
-                # Emit with shadow_ prefix to match role_style field names
-                self.shadow_changed.emit({
-                    "shadow_color": color_name,
-                })
+        if color.isValid():
+            color_name = color.name()
+            self.current_shadow["color"] = color_name
+            self.shadow_color_btn.setStyleSheet(
+                f"background-color: {color_name}; border: 1px solid #ccc; border-radius: 4px;"
+            )
+            # Emit with shadow_ prefix to match role_style field names
+            self.shadow_changed.emit({
+                "shadow_color": color_name,
+            })
 
     def _emit_shadow_changed(self):
         """Emit shadow changed signal."""

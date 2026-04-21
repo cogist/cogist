@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
 )
 
 from .collapsible_panel import CollapsiblePanel
-from .dialog_utils import position_color_dialog
 
 
 class NodeStyleSection(CollapsiblePanel):
@@ -331,14 +330,6 @@ class NodeStyleSection(CollapsiblePanel):
 
         current_color = self.current_style.get(f"{color_type}", "#FFFFFF")
         current = QColor(current_color)
-        color_dialog = QColorDialog(current, self)
-        color_dialog.setWindowTitle(f"Select {color_type.replace('_', ' ').title()} Color")
-
-        # Use Qt's standard dialog instead of native dialog to allow positioning
-        color_dialog.setOption(QColorDialog.DontUseNativeDialog)
-
-        # Enable alpha channel (transparency) support
-        color_dialog.setOption(QColorDialog.ShowAlphaChannel)
 
         # Determine which button was clicked
         if color_type == "bg_color":
@@ -348,21 +339,18 @@ class NodeStyleSection(CollapsiblePanel):
         else:
             return
 
-        # Position dialog with boundary check
-        position_color_dialog(color_dialog, button)
+        color = QColorDialog.getColor(current, self, f"Select {color_type.replace('_', ' ').title()} Color", QColorDialog.ShowAlphaChannel)
 
-        if color_dialog.exec():
-            color = color_dialog.currentColor()
-            if color.isValid():
-                color_name = color.name()
-                self.current_style[color_type] = color_name
+        if color.isValid():
+            color_name = color.name()
+            self.current_style[color_type] = color_name
 
-                # Update button appearance
-                button.setStyleSheet(
-                    f"background-color: {color_name}; border: 1px solid #ccc; border-radius: 6px;"
-                )
+            # Update button appearance
+            button.setStyleSheet(
+                f"background-color: {color_name}; border: 1px solid #ccc; border-radius: 6px;"
+            )
 
-                self._emit_style_changed()
+            self._emit_style_changed()
 
     def _on_padding_changed(self):
         """Handle padding changes."""

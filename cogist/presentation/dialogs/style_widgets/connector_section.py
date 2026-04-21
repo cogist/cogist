@@ -9,7 +9,6 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QGridLayout, QLabel, QMenu, QPushButton, QSpinBox
 
 from .collapsible_panel import CollapsiblePanel
-from .dialog_utils import position_color_dialog
 
 
 class ConnectorSection(CollapsiblePanel):
@@ -195,27 +194,15 @@ class ConnectorSection(CollapsiblePanel):
         from PySide6.QtWidgets import QColorDialog
 
         current = QColor(self.current_style["connector_color"])
-        color_dialog = QColorDialog(current, self)
-        color_dialog.setWindowTitle("Select Connector Color")
+        color = QColorDialog.getColor(current, self, "Select Connector Color", QColorDialog.ShowAlphaChannel)
 
-        # Use Qt's standard dialog instead of native dialog to allow positioning
-        color_dialog.setOption(QColorDialog.DontUseNativeDialog)
-
-        # Enable alpha channel (transparency) support
-        color_dialog.setOption(QColorDialog.ShowAlphaChannel)
-
-        # Position dialog with boundary check
-        position_color_dialog(color_dialog, self.connector_color_btn)
-
-        if color_dialog.exec():
-            color = color_dialog.currentColor()
-            if color.isValid():
-                self.current_style["connector_color"] = color.name()
-                self.connector_color_btn.setStyleSheet(
-                    f"background-color: {self.current_style['connector_color']}; "
-                    "border: 1px solid #ccc; border-radius: 6px;"
-                )
-                self._emit_style_changed()
+        if color.isValid():
+            self.current_style["connector_color"] = color.name()
+            self.connector_color_btn.setStyleSheet(
+                f"background-color: {self.current_style['connector_color']}; "
+                "border: 1px solid #ccc; border-radius: 6px;"
+            )
+            self._emit_style_changed()
 
     def _emit_style_changed(self):
         """Emit style changed signal."""
