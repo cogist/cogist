@@ -180,7 +180,8 @@ class AdvancedStyleTab(QWidget):
     def _get_connector_type_for_layer(self, layer_name: str) -> str:
         """Get connector type for a layer from per-depth configuration."""
         assert self.style_config is not None
-        depth_map = {"root": 0, "level_1": 0, "level_2": 1, "level_3_plus": 2}
+        # Layer controls the edge FROM that layer TO the next level
+        depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
         depth = depth_map.get(layer_name, 2)
 
         if hasattr(self.style_config, 'connector_config_by_depth'):
@@ -190,7 +191,7 @@ class AdvancedStyleTab(QWidget):
     def _get_connector_style_for_layer(self, layer_name: str) -> str:
         """Get connector style for a layer from per-depth configuration."""
         assert self.style_config is not None
-        depth_map = {"root": 0, "level_1": 0, "level_2": 1, "level_3_plus": 2}
+        depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
         depth = depth_map.get(layer_name, 2)
 
         if hasattr(self.style_config, 'connector_config_by_depth'):
@@ -200,7 +201,7 @@ class AdvancedStyleTab(QWidget):
     def _get_connector_width_for_layer(self, layer_name: str) -> float:
         """Get connector width for a layer from per-depth configuration."""
         assert self.style_config is not None
-        depth_map = {"root": 0, "level_1": 0, "level_2": 1, "level_3_plus": 2}
+        depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
         depth = depth_map.get(layer_name, 2)
 
         if hasattr(self.style_config, 'connector_config_by_depth'):
@@ -210,7 +211,7 @@ class AdvancedStyleTab(QWidget):
     def _get_connector_color_for_layer(self, layer_name: str) -> str:
         """Get connector color for a layer from per-depth configuration."""
         assert self.style_config is not None
-        depth_map = {"root": 0, "level_1": 0, "level_2": 1, "level_3_plus": 2}
+        depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
         depth = depth_map.get(layer_name, 2)
 
         if hasattr(self.style_config, 'connector_config_by_depth'):
@@ -506,8 +507,8 @@ class AdvancedStyleTab(QWidget):
         if self.current_layer != "canvas":
             assert self.style_config is not None
             
-            # Map layer to depth
-            depth_map = {"root": 0, "level_1": 0, "level_2": 1, "level_3_plus": 2}
+            # Map layer to depth (layer controls edge FROM that layer)
+            depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
             depth = depth_map.get(self.current_layer, 2)
             
             # Initialize connector config for this depth if not exists

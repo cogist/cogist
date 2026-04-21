@@ -53,7 +53,8 @@ class MindMapStyle:
     connector_config_by_depth: dict[int, dict] = field(default_factory=lambda: {
         0: {"connector_type": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Root → Level 1
         1: {"connector_type": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 1 → Level 2
-        2: {"connector_type": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 2+
+        2: {"connector_type": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 2 → Level 3
+        3: {"connector_type": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 3+
     })
 
     # === Runtime resolved styles (computed by resolve_style()) ===
