@@ -23,18 +23,10 @@ class BaseLayoutConfig:
 @dataclass
 class DefaultLayoutConfig(BaseLayoutConfig):
     """Default layout configuration (left-right balanced)"""
-    level_spacing: float = 80.0
-    sibling_spacing: float = 60.0
-    level_spacing_by_depth: dict[int, float] = field(default_factory=lambda: {
-        0: 80.0,   # Root → Level 1
-        1: 60.0,   # Level 1 → Level 2
-        2: 40.0,   # Level 2+
-    })
-    sibling_spacing_by_depth: dict[int, float] = field(default_factory=lambda: {
-        0: 60.0,   # Level 1 siblings
-        1: 45.0,   # Level 2 siblings
-        2: 35.0,   # Level 3+ siblings
-    })
+    level_spacing: float = 0.0  # Not used, kept for API compatibility
+    sibling_spacing: float = 0.0  # Not used, kept for API compatibility
+    level_spacing_by_depth: dict[int, float] = field(default_factory=dict)
+    sibling_spacing_by_depth: dict[int, float] = field(default_factory=dict)
 
     def get_level_spacing(self, depth: int) -> float:
         """Get level spacing for a specific depth

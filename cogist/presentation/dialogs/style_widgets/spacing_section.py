@@ -29,7 +29,7 @@ class SpacingSection(CollapsiblePanel):
 
         # State - will be initialized from style_config when loaded
         self._initialized = False
-        self.current_spacing = {"parent_child": 80, "sibling": 60}  # Placeholder, will be updated by set_spacing()
+        self.current_spacing = {}  # No hardcoded defaults, will be set by set_spacing()
         self.hide_sibling = False  # Flag to control sibling visibility on init
 
         # Connect toggle signal for lazy initialization
@@ -111,15 +111,23 @@ class SpacingSection(CollapsiblePanel):
         return self.current_spacing.copy()
 
     def set_spacing(self, spacing: dict):
-        """Set spacing configuration programmatically."""
+        """Set spacing configuration programmatically without triggering signals."""
         self.current_spacing = spacing.copy()
 
         if self._initialized:
-            if "parent_child" in spacing:
-                self.parent_child_spin.setValue(spacing["parent_child"])
+            # Block signals to prevent triggering layout refresh when loading data
+            self.parent_child_spin.blockSignals(True)
+            self.sibling_spin.blockSignals(True)
 
-            if "sibling" in spacing:
-                self.sibling_spin.setValue(spacing["sibling"])
+            try:
+                if "parent_child" in spacing:
+                    self.parent_child_spin.setValue(spacing["parent_child"])
+                if "sibling" in spacing:
+                    self.sibling_spin.setValue(spacing["sibling"])
+            finally:
+                # Restore signal emission
+                self.parent_child_spin.blockSignals(False)
+                self.sibling_spin.blockSignals(False)
 
     def set_hide_sibling(self, hide: bool):
         """Control visibility of sibling spacing controls (for Root layer)."""
