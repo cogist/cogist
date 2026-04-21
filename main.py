@@ -787,13 +787,22 @@ class MindMapView(QGraphicsView):
                 edge_color = current_color
                 edge = EdgeItem(parent_item, item, color=edge_color)
 
-                # Apply edge style from style_config
+                # Apply edge style from style_config (per-depth configuration)
                 if hasattr(self, 'style_config') and self.style_config:
+                    # Get source node depth to determine which connector config to use
+                    source_depth = parent_item.depth if hasattr(parent_item, 'depth') else 0
+                    
+                    # Try to get per-depth connector config
+                    connector_config = {}
+                    if hasattr(self.style_config, 'connector_config_by_depth'):
+                        connector_config = self.style_config.connector_config_by_depth.get(source_depth, {})
+                    
+                    # Build edge style config with per-depth values or fallback to legacy config
                     edge_style_config = {
-                        "connector_color": self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666",
-                        "start_width": self.style_config.edge.start_width,
-                        "end_width": self.style_config.edge.end_width,
-                        "connector_style": self.style_config.edge.connector_style,
+                        "connector_color": connector_config.get("color", self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666"),
+                        "start_width": connector_config.get("line_width", self.style_config.edge.start_width),
+                        "end_width": connector_config.get("line_width", self.style_config.edge.end_width),
+                        "connector_style": connector_config.get("connector_style", self.style_config.edge.connector_style),
                     }
                     edge.update_style(edge_style_config)
 
