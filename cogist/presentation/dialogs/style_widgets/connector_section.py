@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from cogist.presentation.widgets import (
     generate_bezier_preview,
+    generate_bezier_uniform_preview,
     generate_orthogonal_preview,
     generate_straight_preview,
 )
@@ -65,6 +66,7 @@ class ConnectorShapePopup(QDialog):
         self.preview_labels = {}
         connector_shapes = [
             ("bezier", generate_bezier_preview),
+            ("bezier_uniform", generate_bezier_uniform_preview),
             ("straight", generate_straight_preview),
             ("orthogonal", generate_orthogonal_preview),
         ]
@@ -200,6 +202,7 @@ class ConnectorSection(CollapsiblePanel):
         # Store preview options for popup
         self.connector_shape_options = [
             ("bezier", generate_bezier_preview),
+            ("bezier_uniform", generate_bezier_uniform_preview),
             ("straight", generate_straight_preview),
             ("orthogonal", generate_orthogonal_preview),
         ]
@@ -378,14 +381,7 @@ class ConnectorSection(CollapsiblePanel):
 
         if self._initialized:
             if "connector_shape" in style:
-                shape_map = {
-                    "straight": "Straight",
-                    "orthogonal": "Orthogonal",
-                    "bezier": "Bezier",
-                }
-                self.connector_shape_btn.setText(
-                    shape_map.get(style["connector_shape"], "Bezier")
-                )
+                self._update_shape_preview()
 
             if "connector_style" in style:
                 style_map = {

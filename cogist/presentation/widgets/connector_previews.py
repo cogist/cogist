@@ -98,6 +98,54 @@ def generate_bezier_preview(size: QSize, selected: bool = False) -> QPixmap:
     return pixmap
 
 
+def generate_bezier_uniform_preview(size: QSize, selected: bool = False) -> QPixmap:
+    """Generate preview for Bezier connector with uniform width (2px).
+
+    Args:
+        size: Preview size
+
+    Returns:
+        QPixmap with uniform width Bezier curve preview (wavy S-curve, 2px width)
+    """
+    pixmap = QPixmap(size)
+    pixmap.fill(Qt.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing)
+
+    # Draw wavy S-curve bezier with uniform width
+    margin_x = size.width() * 0.05
+    start_x = margin_x
+    start_y = size.height() * 0.5
+    end_x = size.width() - margin_x
+    end_y = size.height() * 0.5
+
+    # Calculate control points for wavy S-curve (same curvature as gradient version)
+    dx = end_x - start_x
+    control_offset_x = abs(dx) * 0.4
+    control_offset_y = size.height() * 0.3
+
+    if dx >= 0:
+        control1 = QPointF(start_x + control_offset_x, start_y - control_offset_y)
+        control2 = QPointF(end_x - control_offset_x, end_y + control_offset_y)
+    else:
+        control1 = QPointF(start_x - control_offset_x, start_y)
+        control2 = QPointF(end_x + control_offset_x, end_y)
+
+    # Build complete path
+    path = QPainterPath()
+    path.moveTo(start_x, start_y)
+    path.cubicTo(control1, control2, QPointF(end_x, end_y))
+
+    # Draw with uniform width (2px)
+    color = "#FFFFFF" if selected else "#000000"
+    pen = QPen(QColor(color), 2.0, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+    painter.setPen(pen)
+    painter.drawPath(path)
+
+    painter.end()
+    return pixmap
+
+
 def generate_straight_preview(size: QSize, selected: bool = False) -> QPixmap:
     """Generate preview for Straight connector.
 

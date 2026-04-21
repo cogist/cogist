@@ -220,12 +220,18 @@ class EdgeItem(QGraphicsPathItem):
         if "line_width" in style_config:
             base_width = float(style_config["line_width"])
 
-        # Check if gradient is enabled (only for bezier)
-        enable_gradient = style_config.get("enable_gradient", True)
+        # Check connector shape type
+        shape = style_config.get("connector_shape", "bezier")
+        is_uniform_bezier = shape == "bezier_uniform"
         is_bezier = isinstance(self.connector_strategy, BezierConnector)
 
-        if is_bezier and enable_gradient:
-            # For bezier with gradient: use start_width and end_width
+        if is_uniform_bezier:
+            # For bezier_uniform: use uniform width (2px default or line_width)
+            uniform_width = base_width if base_width is not None else 2.0
+            self.start_width = uniform_width
+            self.end_width = uniform_width
+        elif is_bezier:
+            # For regular bezier: use gradient width
             if "start_width" in style_config:
                 self.start_width = float(style_config["start_width"])
             elif base_width is not None:
@@ -238,7 +244,7 @@ class EdgeItem(QGraphicsPathItem):
                 gradient_ratio = style_config.get("gradient_ratio", 0.5)
                 self.end_width = base_width * max(0.3, min(1.0, gradient_ratio))
         else:
-            # For non-bezier or disabled gradient: use uniform width
+            # For non-bezier: use uniform width
             if base_width is not None:
                 self.start_width = base_width
                 self.end_width = base_width
