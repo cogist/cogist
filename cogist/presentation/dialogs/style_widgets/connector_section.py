@@ -4,11 +4,116 @@ Provides controls for customizing edge appearance between nodes.
 Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QPoint, QSize, Qt, Signal
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QGridLayout, QLabel, QMenu, QPushButton, QSpinBox
+from PySide6.QtWidgets import (
+    QDialog,
+    QGraphicsDropShadowEffect,
+    QGridLayout,
+    QLabel,
+    QMenu,
+    QPushButton,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
+)
+
+from cogist.presentation.widgets import (
+    generate_bezier_preview,
+    generate_orthogonal_preview,
+    generate_straight_preview,
+)
 
 from .collapsible_panel import CollapsiblePanel
+
+
+class ConnectorShapePopup(QDialog):
+    """Custom popup widget for connector shape selection with visual previews."""
+
+    shape_selected = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Popup)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+
+        # Main layout
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Content widget with background (flat design)
+        content_widget = QWidget()
+        content_widget.setStyleSheet("""
+            background-color: rgb(236, 236, 236);
+            border-radius: 6px;
+        """)
+
+        # Add shadow effect
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(10)
+        shadow.setColor(QColor(0, 0, 0, 50))
+        shadow.setOffset(0, 2)
+        content_widget.setGraphicsEffect(shadow)
+
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(0, 4, 0, 4)
+        content_layout.setSpacing(2)
+
+        # Create preview options
+        self.preview_labels = {}
+        connector_shapes = [
+            ("bezier", generate_bezier_preview),
+            ("straight", generate_straight_preview),
+            ("orthogonal", generate_orthogonal_preview),
+        ]
+
+        for value, preview_gen in connector_shapes:
+            item_widget = QWidget()
+            item_widget.setProperty("connector_shape_value", value)
+            item_widget.setCursor(Qt.PointingHandCursor)
+
+            item_layout = QVBoxLayout(item_widget)
+            item_layout.setContentsMargins(0, 2, 0, 2)
+            item_layout.setSpacing(0)
+
+            # Create preview with smaller width for better centering
+            preview_size = QSize(140, 30)
+            pixmap = preview_gen(preview_size, selected=False)
+            preview_label = QLabel()
+            preview_label.setPixmap(pixmap)
+            preview_label.setAlignment(Qt.AlignCenter)
+            preview_label.setFixedSize(preview_size)
+            preview_label.setStyleSheet("background: transparent;")
+            item_layout.addWidget(preview_label, alignment=Qt.AlignCenter)
+
+            self.preview_labels[value] = {
+                "widget": item_widget,
+                "label": preview_label,
+                "generator": preview_gen,
+                "size": preview_size,
+            }
+
+            # Connect click event
+            item_widget.mousePressEvent = lambda _, v=value: self._on_item_clicked(v)
+            item_widget.enterEvent = lambda _, v=value: self._on_item_hover(v, True)
+            item_widget.leaveEvent = lambda _, v=value: self._on_item_hover(v, False)
+
+            content_layout.addWidget(item_widget)
+
+        main_layout.addWidget(content_widget)
+
+    def _on_item_clicked(self, value: str):
+        """Handle item click."""
+        self.shape_selected.emit(value)
+        self.close()
+
+    def _on_item_hover(self, value: str, hovered: bool):
+        """Update preview on hover."""
+        if value in self.preview_labels:
+            info = self.preview_labels[value]
+            pixmap = info["generator"](info["size"], selected=hovered)
+            info["label"].setPixmap(pixmap)
 
 
 class ConnectorSection(CollapsiblePanel):
@@ -31,7 +136,7 @@ class ConnectorSection(CollapsiblePanel):
         # State
         self._initialized = False
         self.current_style = {
-            "connector_type": "bezier",
+            "connector_shape": "bezier",
             "connector_style": "solid",
             "line_width": 2,
             "connector_color": "#666666",
@@ -54,35 +159,31 @@ class ConnectorSection(CollapsiblePanel):
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
 
-        # Connector type
-        type_label = QLabel("Type:")
-        type_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        type_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(type_label, 0, 0)
+        # Connector shape selector (visual dropdown)
+        shape_label = QLabel("Shape:")
+        shape_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        shape_label.setMinimumWidth(self.LABEL_WIDTH)
+        layout.addWidget(shape_label, 0, 0)
 
-        # Get initial connector shape from current_style
-        connector_type_map = {
-            "straight": "Straight",
-            "orthogonal": "Orthogonal",
-            "bezier": "Bezier",
-        }
-        initial_connector_type = connector_type_map.get(self.current_style.get("connector_shape", "bezier"), "Bezier")
-        self.connector_type_combo = QPushButton(initial_connector_type)
-        self.connector_type_combo.setFixedHeight(self.WIDGET_HEIGHT)
-        self.connector_type_combo.setStyleSheet(self._button_style())
+        # Create a button that shows a dropdown menu with visual options
+        self.connector_shape_btn = QPushButton("Bezier")
+        self.connector_shape_btn.setFixedHeight(self.WIDGET_HEIGHT)
+        self.connector_shape_btn.setStyleSheet(self._button_style())
 
-        self.connector_type_menu = QMenu()
-        self.connector_type_menu.aboutToShow.connect(
-            lambda: self.connector_type_menu.setFixedWidth(self.connector_type_combo.width())
-        )
+        # Create custom popup widget instead of QMenu
+        self.connector_shape_popup = ConnectorShapePopup(self)
+        self.connector_shape_btn.clicked.connect(self._show_connector_shape_popup)
 
-        connector_types = ["Straight", "Orthogonal", "Bezier"]
-        for ctype in connector_types:
-            action = self.connector_type_menu.addAction(ctype)
-            action.triggered.connect(lambda _, t=ctype: self._set_connector_type(t))
+        # Store preview options for popup
+        self.connector_shape_options = [
+            ("bezier", generate_bezier_preview),
+            ("straight", generate_straight_preview),
+            ("orthogonal", generate_orthogonal_preview),
+        ]
 
-        self.connector_type_combo.setMenu(self.connector_type_menu)
-        layout.addWidget(self.connector_type_combo, 0, 1)
+        # Connect popup selection signal
+        self.connector_shape_popup.shape_selected.connect(self._on_connector_shape_changed)
+        layout.addWidget(self.connector_shape_btn, 0, 1)
 
         # Connector style
         style_label = QLabel("Style:")
@@ -162,15 +263,21 @@ class ConnectorSection(CollapsiblePanel):
             }
         """
 
-    def _set_connector_type(self, value: str):
-        """Set connector shape."""
-        self.connector_type_combo.setText(value)
-        type_map = {
-            "Straight": "straight",
-            "Orthogonal": "orthogonal",
-            "Bezier": "bezier",
-        }
-        self.current_style["connector_shape"] = type_map.get(value, "bezier")
+    def _show_connector_shape_popup(self):
+        """Show custom popup for connector shape selection."""
+        # Position popup below the button with same width
+        btn_width = self.connector_shape_btn.width()
+        btn_pos = self.connector_shape_btn.mapToGlobal(QPoint(0, self.connector_shape_btn.height()))
+        self.connector_shape_popup.setFixedWidth(btn_width)
+        self.connector_shape_popup.move(btn_pos)
+        self.connector_shape_popup.show()
+
+    def _on_connector_shape_changed(self, value: str):
+        """Handle connector shape selection change."""
+        self.current_style["connector_shape"] = value
+        shape_map = {"bezier": "Bezier", "straight": "Straight", "orthogonal": "Orthogonal"}
+        self.connector_shape_btn.setText(shape_map.get(value, "Bezier"))
+        self.connector_shape_popup.close()
         self._emit_style_changed()
 
     def _set_connector_style(self, value: str):
@@ -220,12 +327,12 @@ class ConnectorSection(CollapsiblePanel):
 
         if self._initialized:
             if "connector_shape" in style:
-                type_map = {
+                shape_map = {
                     "straight": "Straight",
                     "orthogonal": "Orthogonal",
                     "bezier": "Bezier",
                 }
-                self.connector_type_combo.setText(type_map.get(style["connector_shape"], "Bezier"))
+                self.connector_shape_btn.setText(shape_map.get(style["connector_shape"], "Bezier"))
 
             if "connector_style" in style:
                 style_map = {
