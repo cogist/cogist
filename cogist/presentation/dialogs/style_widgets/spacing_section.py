@@ -27,9 +27,9 @@ class SpacingSection(CollapsiblePanel):
     def __init__(self, parent=None):
         super().__init__("Spacing", collapsed=True, parent=parent)
 
-        # State
+        # State - will be initialized from style_config when loaded
         self._initialized = False
-        self.current_spacing = self._get_default_spacing()
+        self.current_spacing = {"parent_child": 80, "sibling": 60}  # Placeholder, will be updated by set_spacing()
         self.hide_sibling = False  # Flag to control sibling visibility on init
 
         # Connect toggle signal for lazy initialization
@@ -112,7 +112,7 @@ class SpacingSection(CollapsiblePanel):
 
     def set_spacing(self, spacing: dict):
         """Set spacing configuration programmatically."""
-        self.current_spacing.update(spacing)
+        self.current_spacing = spacing.copy()
 
         if self._initialized:
             if "parent_child" in spacing:

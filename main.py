@@ -651,24 +651,25 @@ class MindMapView(QGraphicsView):
         from cogist.domain.layout import DefaultLayoutConfig
 
         # Create layout config from style_config spacing values
-        pc_spacing = self.style_config.parent_child_spacing
-        sib_spacing = self.style_config.sibling_spacing
+        # Use per-depth spacing if available, otherwise fall back to global values
+        level_spacing_by_depth = {}
+        sibling_spacing_by_depth = {}
 
-        # Initialize per-depth spacing dictionaries
-        level_spacing_by_depth = {
-            0: pc_spacing,   # Root → Level 1
-            1: pc_spacing * 0.75,   # Level 1 → Level 2
-            2: pc_spacing * 0.5,    # Level 2+
-        }
-        sibling_spacing_by_depth = {
-            0: sib_spacing,   # Level 1 siblings
-            1: sib_spacing * 0.75,   # Level 2 siblings
-            2: sib_spacing * 0.5,    # Level 3+ siblings
-        }
+        if hasattr(self.style_config, 'level_spacing_by_depth'):
+            level_spacing_by_depth = self.style_config.level_spacing_by_depth.copy()
+        if hasattr(self.style_config, 'sibling_spacing_by_depth'):
+            sibling_spacing_by_depth = self.style_config.sibling_spacing_by_depth.copy()
+
+        # Ensure we have at least the default depths defined
+        for depth in [0, 1, 2]:
+            if depth not in level_spacing_by_depth:
+                level_spacing_by_depth[depth] = self.style_config.parent_child_spacing
+            if depth not in sibling_spacing_by_depth:
+                sibling_spacing_by_depth[depth] = self.style_config.sibling_spacing
 
         layout_config = DefaultLayoutConfig(
-            level_spacing=pc_spacing,
-            sibling_spacing=sib_spacing,
+            level_spacing=self.style_config.parent_child_spacing,
+            sibling_spacing=self.style_config.sibling_spacing,
             level_spacing_by_depth=level_spacing_by_depth,
             sibling_spacing_by_depth=sibling_spacing_by_depth,
         )
