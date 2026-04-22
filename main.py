@@ -9,7 +9,11 @@ This is the main demo application showing the four-layer architecture:
 - Application Layer: Command pattern integration
 """
 
+import os
 import sys
+
+# Suppress Qt/macOS warnings at the environment level
+os.environ['QT_LOGGING_RULES'] = '*.debug=false;qt.scenegraph=false'
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QKeySequence, QPainter, QShortcut

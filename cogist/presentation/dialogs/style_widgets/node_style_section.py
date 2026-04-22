@@ -45,11 +45,9 @@ class NodeStyleSection(CollapsiblePanel):
     GROUP_MARGIN = 10
 
     def __init__(self, parent=None):
-        super().__init__("Node Style", collapsed=True, parent=parent)
-
-        # State
+        super().__init__("Node", parent)
+        self.current_style = {}
         self._initialized = False
-        self.current_style = self._get_default_style()
         self._font_data_cache = None  # Cache for loaded fonts
         self._font_dialog = None
         self._load_fonts()  # Pre-load fonts on initialization
@@ -621,6 +619,30 @@ class NodeStyleSection(CollapsiblePanel):
                 color: white;
             }
         """)
+        
+        # Set scrollbar colors using QScrollBar styling
+        scrollbar = font_list.verticalScrollBar()
+        scrollbar.setStyleSheet("""
+            QScrollBar:vertical {
+                width: 10px;
+                background-color: transparent;
+            }
+            QScrollBar::handle:vertical {
+                background-color: rgb(127, 127, 127);
+                border-radius: 5px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: rgb(150, 150, 150);
+            }
+            QScrollBar::handle:vertical:pressed {
+                background-color: rgb(100, 100, 100);
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+        """)
+        
         layout.addWidget(font_list)
 
         # Show dialog immediately
@@ -642,7 +664,7 @@ class NodeStyleSection(CollapsiblePanel):
     def _populate_fonts_from_cache(self, font_list, dialog):
         """Populate font list from pre-loaded cache."""
         from PySide6.QtGui import QFont
-        from PySide6.QtWidgets import QListWidgetItem
+        from PySide6.QtWidgets import QDialog, QListWidgetItem
 
         # Check if cache is ready
         if self._font_data_cache is None:
@@ -684,6 +706,7 @@ class NodeStyleSection(CollapsiblePanel):
                 self._font_dialog = None
                 dialog.reject()
             else:
+                # Call base class implementation
                 QDialog.keyPressEvent(dialog, event)
 
         dialog.keyPressEvent = on_key_press
