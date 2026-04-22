@@ -472,23 +472,86 @@ class NodeStyleSection(CollapsiblePanel):
         return font_family
 
     def _show_font_menu(self):
-        """Show font family selection dialog with localized names."""
-        from PySide6.QtGui import QFont, QFontDatabase
-        from PySide6.QtWidgets import QDialog, QListWidget, QVBoxLayout
+        """Show font family selection popup with localized names.
 
-        # Create dialog
+        Uses a frameless dialog with single-click selection for better UX.
+        """
+        from PySide6.QtCore import QEvent, QObject, Qt
+        from PySide6.QtGui import QFont, QFontDatabase, QFocusEvent
+        from PySide6.QtWidgets import (
+            QDialog,
+            QListWidget,
+            QListWidgetItem,
+            QVBoxLayout,
+        )
+
+        # Prevent multiple dialogs from opening
+        if hasattr(self, '_font_dialog') and self._font_dialog is not None:
+            self._font_dialog.close()
+
+        # Store default button style to restore later
+        self._default_font_button_style = self.font_family_combo.styleSheet()
+
+        # Set button background to match dialog while open
+        self.font_family_combo.setStyleSheet("""
+            QPushButton {
+                background-color: rgb(236, 236, 236);
+                border: 1px solid #C8C8C8;
+                border-radius: 6px;
+                padding: 4px 24px 4px 12px;
+                font-size: 13px;
+                text-align: left;
+            }
+        """)
+
+        # Create frameless dialog with rounded corners
         dialog = QDialog(self)
-        dialog.setWindowTitle("Select Font")
-        dialog.setFixedSize(350, 450)
+        dialog.setWindowFlags(
+            Qt.Dialog | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
+        )
+        dialog.setAttribute(Qt.WA_DeleteOnClose)
+        dialog.setFixedSize(300, 400)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: rgb(236, 236, 236);
+                border: 1px solid #C8C8C8;
+                border-radius: 8px;
+            }
+        """)
+
+        # Store reference to prevent multiple dialogs
+        self._font_dialog = dialog
 
         # Layout
         layout = QVBoxLayout(dialog)
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Font list
+        # Font list with custom styling for rounded corners
         font_list = QListWidget()
-        font_list.setFont(QFont("Arial", 15))
+        font_list.setFont(QFont("Arial", 14))
+        font_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        font_list.setFrameShape(QListWidget.NoFrame)
+        font_list.setStyleSheet("""
+            QListWidget {
+                background-color: transparent;
+                border: none;
+                outline: none;
+            }
+            QListWidget::item {
+                background-color: transparent;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            QListWidget::item:hover {
+                background-color: rgb(84, 143, 255);
+                color: white;
+            }
+            QListWidget::item:selected {
+                background-color: rgb(84, 143, 255);
+                color: white;
+            }
+        """)
         layout.addWidget(font_list)
 
         # Get all available fonts
@@ -516,6 +579,7 @@ class NodeStyleSection(CollapsiblePanel):
         # Build font list with localized names and deduplication
         font_name_map = {}  # Maps display name -> actual font family
         seen_base_names = set()  # Track base font names for deduplication
+        items_map = {}  # Maps display name -> QListWidgetItem
 
         for family in families:
             # Get localized name first
@@ -536,44 +600,84 @@ class NodeStyleSection(CollapsiblePanel):
                 seen_base_names.add(base_name)
                 font_name_map[localized_name] = family
 
-                from PySide6.QtWidgets import QListWidgetItem
                 item = QListWidgetItem(localized_name)
                 item.setFont(QFont(family))  # Use actual font for rendering
                 font_list.addItem(item)
+                items_map[localized_name] = item
 
                 if family == current_family:
                     font_list.setCurrentItem(item)
 
-        # Double-click to select
-        def on_item_double_clicked(item):
+        # Track last hovered item to avoid redundant updates
+        last_hovered_item = [None]
+
+        # Hover to set focus (with deduplication)
+        def on_item_entered(item):
+            if item != last_hovered_item[0]:
+                font_list.setCurrentItem(item)
+                last_hovered_item[0] = item
+
+        font_list.itemEntered.connect(on_item_entered)
+        
+        # Enable mouse tracking on the list widget
+        font_list.setMouseTracking(True)
+
+        # Single-click to select
+        def on_item_clicked(item):
             display_name = item.text()
             actual_family = font_name_map.get(display_name, display_name)
             self._set_font_family(actual_family)
+            # Restore button style immediately before closing
+            self.font_family_combo.setStyleSheet(self._button_style())
+            self._font_dialog = None
             dialog.accept()
 
-        font_list.itemDoubleClicked.connect(on_item_double_clicked)
+        font_list.itemClicked.connect(on_item_clicked)
 
-        # Position dialog to the right of the font button
-        button_pos = self.font_family_combo.mapToGlobal(self.font_family_combo.rect().topLeft())
-        button_width = self.font_family_combo.width()
-        dialog_x = button_pos.x() + button_width + 4  # 4px gap to the right
-        dialog_y = button_pos.y()  # Align top edges
+        # ESC to close
+        def on_key_press(event):
+            if event.key() == Qt.Key_Escape:
+                # Restore button style
+                self.font_family_combo.setStyleSheet(self._button_style())
+                self._font_dialog = None
+                dialog.reject()
+            else:
+                QDialog.keyPressEvent(dialog, event)
 
-        # Show dialog first, then move it (to avoid Qt's automatic positioning)
+        dialog.keyPressEvent = on_key_press
+
+        # Close dialog when clicking outside
+        def on_mouse_press(event):
+            if event.button() == Qt.LeftButton:
+                # Restore button style
+                self.font_family_combo.setStyleSheet(self._button_style())
+                self._font_dialog = None
+                dialog.reject()
+
+        dialog.mousePressEvent = on_mouse_press
+
+        # Cleanup when dialog closes (handles ESC, focus loss, and click)
+        def cleanup_and_restore():
+            # Restore button style using the original method
+            self.font_family_combo.setStyleSheet(self._button_style())
+            self._font_dialog = None
+
+        # Connect to both accepted and rejected to handle all close scenarios
+        dialog.finished.connect(cleanup_and_restore)
+
+        # Position dialog below the font button (like QMenu)
+        button_pos = self.font_family_combo.mapToGlobal(
+            self.font_family_combo.rect().bottomLeft()
+        )
+        dialog_x = button_pos.x()
+        dialog_y = button_pos.y() + 2  # 2px gap below button
+
+        # Show dialog first, then move it
         dialog.show()
         dialog.move(dialog_x, dialog_y)
         dialog.raise_()
         dialog.activateWindow()
-
-        # Click outside to close
-        dialog.setMouseTracking(True)
-        def on_mouse_press(event):
-            if event.button() == Qt.LeftButton:
-                dialog.reject()
-        dialog.mousePressEvent = on_mouse_press
-
-        # ESC to close
-        dialog.keyPressEvent = lambda event: dialog.reject() if event.key() == Qt.Key_Escape else QDialog.keyPressEvent(dialog, event)
+        dialog.setFocus()
 
         # Show dialog
         dialog.exec()
