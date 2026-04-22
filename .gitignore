@@ -30,7 +30,6 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-.python-version
 
 # Chinese documentation (personal reference, do not commit)
 docs/zh-CN/
