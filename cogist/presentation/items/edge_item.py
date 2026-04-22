@@ -139,35 +139,70 @@ class EdgeItem(QGraphicsPathItem):
                 # For dashed/dotted/dash-dot lines with gradient: manual dash implementation
                 assert self._gradient_path is not None  # Guaranteed by _create_gradient_path above
 
-                # Define dash patterns (dash_length, gap_length)
+                # Define dash patterns as list of (segment_length, is_visible)
+                # Each pattern repeats along the path
+                # Match the patterns used for uniform width lines (lines 129-134)
                 dash_patterns = {
-                    Qt.DashLine: (6.0, 4.0),
-                    Qt.DotLine: (1.0, 3.0),
-                    Qt.DashDotLine: (6.0, 4.0),  # Simplified for gradient
+                    Qt.DashLine: [(6.0, True), (4.0, False)],  # Dash-Gap
+                    Qt.DotLine: [(1.0, True), (3.0, False)],   # Dot-Gap
+                    Qt.DashDotLine: [(6.0, True), (4.0, False), (1.0, True), (4.0, False)],  # Dash-Gap-Dot-Gap
                 }
-                dash_len, gap_len = dash_patterns.get(line_style, (6.0, 4.0))
+                pattern = dash_patterns.get(line_style, [(6.0, True), (4.0, False)])
+
+                # Calculate total path length for proper dash distribution
+                total_length = sum(
+                    ((end.x() - start.x())**2 + (end.y() - start.y())**2) ** 0.5
+                    for (start, end), _ in self._gradient_path  # type: ignore[union-attr]
+                )
 
                 # Manual dash implementation with gradient width
-                accumulated_length = 0.0
-                is_dash = True  # Start with dash segment
+                path_position = 0.0  # Current position along total path
+                pattern_position = 0.0  # Current position within current pattern segment
+                pattern_index = 0  # Current pattern segment index
 
-                for (start, end), width in self._gradient_path:
+                for (start, end), width in self._gradient_path:  # type: ignore[union-attr]
                     # Calculate segment length
                     seg_length = ((end.x() - start.x())**2 + (end.y() - start.y())**2) ** 0.5
+                    if seg_length < 0.001:
+                        continue
 
-                    if is_dash:
-                        # Draw this segment
-                        pen = QPen(color, width, Qt.SolidLine, Qt.RoundCap)
-                        painter.setPen(pen)
-                        painter.drawLine(start, end)
+                    # Get current pattern segment
+                    seg_len, is_visible = pattern[pattern_index]
+                    remaining_in_pattern = seg_len - pattern_position
 
-                    accumulated_length += seg_length
+                    # Process this path segment, potentially splitting across pattern boundaries
+                    segment_remaining = seg_length
+                    segment_start = start
 
-                    # Toggle between dash and gap
-                    threshold = dash_len if is_dash else gap_len
-                    if accumulated_length >= threshold:
-                        accumulated_length -= threshold
-                        is_dash = not is_dash
+                    while segment_remaining > 0.001:
+                        # How much to draw/skip in this iteration
+                        draw_length = min(segment_remaining, remaining_in_pattern)
+
+                        # Calculate end point for this sub-segment
+                        t = draw_length / seg_length
+                        sub_end = QPointF(
+                            segment_start.x() + (end.x() - segment_start.x()) * t,
+                            segment_start.y() + (end.y() - segment_start.y()) * t
+                        )
+
+                        if is_visible:
+                            # Draw this sub-segment with its specific width
+                            pen = QPen(color, width, Qt.SolidLine, Qt.RoundCap)
+                            painter.setPen(pen)
+                            painter.drawLine(segment_start, sub_end)
+
+                        # Update positions
+                        segment_remaining -= draw_length
+                        pattern_position += draw_length
+                        path_position += draw_length
+                        segment_start = sub_end
+
+                        # Check if we need to move to next pattern segment
+                        if pattern_position >= seg_len - 0.001:
+                            pattern_position = 0.0
+                            pattern_index = (pattern_index + 1) % len(pattern)
+                            seg_len, is_visible = pattern[pattern_index]
+                            remaining_in_pattern = seg_len
             else:
                 # For solid lines: use gradient width effect
                 for (start, end), width in self._gradient_path:
@@ -225,9 +260,16 @@ class EdgeItem(QGraphicsPathItem):
             self._gradient_path = []
             return
 
-        segments = 20  # Same as original demo
-        points = []
+        # Calculate total path length to determine appropriate segment count
+        total_length = path.length()
 
+        # Ensure segments are small enough for dash patterns
+        # Max segment length should be smaller than smallest dash pattern unit (1.0 for dots)
+        max_segment_length = 1.0  # Small enough for smooth gradient and accurate dashes
+        segments = max(20, int(total_length / max_segment_length))  # At least 20 segments
+        segments = min(segments, 200)  # Cap at 200 to avoid performance issues
+
+        points = []
         for i in range(segments + 1):
             t = i / segments
             pt = path.pointAtPercent(t)
