@@ -119,96 +119,93 @@ class EdgeItem(QGraphicsPathItem):
             # Check if uniform width (no gradient needed)
             is_uniform = abs(start_width - end_width) < 0.01
 
-            if is_uniform:
-                # For uniform width: draw the path directly for sharp corners
-                # self.path() is already in item coordinates (set by update_curve)
-                pen = QPen(color, start_width, line_style, Qt.FlatCap)
-                pen.setJoinStyle(Qt.MiterJoin)
+            if line_style == Qt.SolidLine:
+                # For solid lines: use optimized drawing
+                if is_uniform:
+                    # Uniform width: draw path directly for best performance
+                    pen = QPen(color, start_width, Qt.SolidLine, Qt.FlatCap)
+                    pen.setJoinStyle(Qt.MiterJoin)
+                    painter.setPen(pen)
+                    painter.drawPath(self.path())
+                else:
+                    # Gradient width: draw segment by segment
+                    for (start, end), width in self._gradient_path:  # type: ignore[union-attr]
+                        pen = QPen(color, width, Qt.SolidLine, Qt.RoundCap)
+                        painter.setPen(pen)
+                        painter.drawLine(start, end)
+            else:
+                # For dashed/dotted/dash-dot lines: use manual dash implementation
+                # This ensures consistent dash patterns across all connector shapes
+                self._draw_dashed_line(painter, color, line_style)
 
-                # Adjust dash pattern for better visibility
-                if line_style == Qt.DashLine:
-                    pen.setDashPattern([6.0, 4.0])
-                elif line_style == Qt.DotLine:
-                    pen.setDashPattern([1.0, 3.0])
-                elif line_style == Qt.DashDotLine:
-                    pen.setDashPattern([6.0, 4.0, 1.0, 4.0])
+    def _draw_dashed_line(self, painter, color, line_style):
+        """Draw dashed/dotted/dash-dot lines with precise pattern control.
 
-                painter.setPen(pen)
-                painter.drawPath(self.path())
-            elif line_style in (Qt.DashLine, Qt.DotLine, Qt.DashDotLine):
-                # For dashed/dotted/dash-dot lines with gradient: manual dash implementation
-                assert self._gradient_path is not None  # Guaranteed by _create_gradient_path above
+        This method uses a manual dash algorithm that works for all connector shapes
+        (bezier, straight, orthogonal) and supports gradient widths.
 
-                # Define dash patterns as list of (segment_length, is_visible)
-                # Each pattern repeats along the path
-                # Match the patterns used for uniform width lines (lines 129-134)
-                dash_patterns = {
-                    Qt.DashLine: [(6.0, True), (4.0, False)],  # Dash-Gap
-                    Qt.DotLine: [(1.0, True), (3.0, False)],   # Dot-Gap
-                    Qt.DashDotLine: [(6.0, True), (4.0, False), (1.0, True), (4.0, False)],  # Dash-Gap-Dot-Gap
-                }
-                pattern = dash_patterns.get(line_style, [(6.0, True), (4.0, False)])
+        Args:
+            painter: QPainter instance
+            color: Line color
+            line_style: Qt.PenStyle (DashLine, DotLine, or DashDotLine)
+        """
+        assert self._gradient_path is not None
 
-                # Calculate total path length for proper dash distribution
-                total_length = sum(
-                    ((end.x() - start.x())**2 + (end.y() - start.y())**2) ** 0.5
-                    for (start, end), _ in self._gradient_path  # type: ignore[union-attr]
+        # Define dash patterns as list of (segment_length, is_visible)
+        # Match the patterns used for uniform width lines
+        dash_patterns = {
+            Qt.DashLine: [(6.0, True), (4.0, False)],  # Dash-Gap
+            Qt.DotLine: [(1.0, True), (3.0, False)],   # Dot-Gap
+            Qt.DashDotLine: [(6.0, True), (4.0, False), (1.0, True), (4.0, False)],  # Dash-Gap-Dot-Gap
+        }
+        pattern = dash_patterns.get(line_style, [(6.0, True), (4.0, False)])
+
+        # Manual dash implementation with gradient width support
+        pattern_position = 0.0  # Current position within current pattern segment
+        pattern_index = 0  # Current pattern segment index
+
+        for (start, end), width in self._gradient_path:  # type: ignore[union-attr]
+            # Calculate segment length
+            seg_length = ((end.x() - start.x())**2 + (end.y() - start.y())**2) ** 0.5
+            if seg_length < 0.001:
+                continue
+
+            # Get current pattern segment
+            seg_len, is_visible = pattern[pattern_index]
+            remaining_in_pattern = seg_len - pattern_position
+
+            # Process this path segment, potentially splitting across pattern boundaries
+            segment_remaining = seg_length
+            segment_start = start
+
+            while segment_remaining > 0.001:
+                # How much to draw/skip in this iteration
+                draw_length = min(segment_remaining, remaining_in_pattern)
+
+                # Calculate end point for this sub-segment using linear interpolation
+                t = draw_length / seg_length
+                sub_end = QPointF(
+                    segment_start.x() + (end.x() - segment_start.x()) * t,
+                    segment_start.y() + (end.y() - segment_start.y()) * t
                 )
 
-                # Manual dash implementation with gradient width
-                path_position = 0.0  # Current position along total path
-                pattern_position = 0.0  # Current position within current pattern segment
-                pattern_index = 0  # Current pattern segment index
-
-                for (start, end), width in self._gradient_path:  # type: ignore[union-attr]
-                    # Calculate segment length
-                    seg_length = ((end.x() - start.x())**2 + (end.y() - start.y())**2) ** 0.5
-                    if seg_length < 0.001:
-                        continue
-
-                    # Get current pattern segment
-                    seg_len, is_visible = pattern[pattern_index]
-                    remaining_in_pattern = seg_len - pattern_position
-
-                    # Process this path segment, potentially splitting across pattern boundaries
-                    segment_remaining = seg_length
-                    segment_start = start
-
-                    while segment_remaining > 0.001:
-                        # How much to draw/skip in this iteration
-                        draw_length = min(segment_remaining, remaining_in_pattern)
-
-                        # Calculate end point for this sub-segment
-                        t = draw_length / seg_length
-                        sub_end = QPointF(
-                            segment_start.x() + (end.x() - segment_start.x()) * t,
-                            segment_start.y() + (end.y() - segment_start.y()) * t
-                        )
-
-                        if is_visible:
-                            # Draw this sub-segment with its specific width
-                            pen = QPen(color, width, Qt.SolidLine, Qt.RoundCap)
-                            painter.setPen(pen)
-                            painter.drawLine(segment_start, sub_end)
-
-                        # Update positions
-                        segment_remaining -= draw_length
-                        pattern_position += draw_length
-                        path_position += draw_length
-                        segment_start = sub_end
-
-                        # Check if we need to move to next pattern segment
-                        if pattern_position >= seg_len - 0.001:
-                            pattern_position = 0.0
-                            pattern_index = (pattern_index + 1) % len(pattern)
-                            seg_len, is_visible = pattern[pattern_index]
-                            remaining_in_pattern = seg_len
-            else:
-                # For solid lines: use gradient width effect
-                for (start, end), width in self._gradient_path:
+                if is_visible:
+                    # Draw this sub-segment with its specific width (gradient preserved!)
                     pen = QPen(color, width, Qt.SolidLine, Qt.RoundCap)
                     painter.setPen(pen)
-                    painter.drawLine(start, end)
+                    painter.drawLine(segment_start, sub_end)
+
+                # Update positions
+                segment_remaining -= draw_length
+                pattern_position += draw_length
+                segment_start = sub_end
+
+                # Check if we need to move to next pattern segment
+                if pattern_position >= seg_len - 0.001:
+                    pattern_position = 0.0
+                    pattern_index = (pattern_index + 1) % len(pattern)
+                    seg_len, is_visible = pattern[pattern_index]
+                    remaining_in_pattern = seg_len
 
     def _create_gradient_path(self, start_width=None, end_width=None):
         """Create cached gradient path.
