@@ -350,7 +350,7 @@ class AdvancedStyleTab(QWidget):
         )  # Ensure content fills panel width
         layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(1)
+        layout.setSpacing(0)  # No spacing between collapsible panels
 
         # Add modular components
         self.layer_selector = LayerSelector()
