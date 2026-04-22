@@ -107,6 +107,7 @@ class NodeItem(QGraphicsRectItem):
         self.is_root = is_root
         self.depth = depth
         self.style_config = style_config  # Store style configuration
+        self.is_right_side = True  # Default: right side of root (will be set by main.py)
 
         # Connected edges (will be updated by layout)
         self.connected_edges = []
@@ -563,6 +564,7 @@ class NodeItem(QGraphicsRectItem):
             "border_style": self.template_style.border.border_style,
             "padding_w": self.template_style.padding_w,
             "padding_h": self.template_style.padding_h,
+            "is_right_side": self.is_right_side,  # For adaptive decorative lines
         }
 
         # Get and execute border strategy

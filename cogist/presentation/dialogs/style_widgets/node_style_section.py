@@ -88,14 +88,14 @@ class NodeStyleSection(CollapsiblePanel):
 
         row = 0
 
-        # Shape selector - using reusable VisualPreviewButton
-        shape_label = QLabel("Shape:")
-        shape_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        shape_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(shape_label, row, 0)
+        # Style selector - using reusable VisualPreviewButton
+        style_label = QLabel("Style:")
+        style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        style_label.setMinimumWidth(self.LABEL_WIDTH)
+        layout.addWidget(style_label, row, 0)
 
         # Create visual options for popup
-        shape_options = [
+        style_options = [
             ("rounded_rect", generate_rounded_rect_preview, QSize(140, 50)),
             ("circle", generate_circle_preview, QSize(140, 50)),
             ("bottom_line", generate_bottom_line_preview, QSize(140, 50)),
@@ -103,14 +103,14 @@ class NodeStyleSection(CollapsiblePanel):
         ]
 
         # Create reusable visual preview button
-        self.shape_btn = VisualPreviewButton(
-            options=shape_options,
+        self.style_btn = VisualPreviewButton(
+            options=style_options,
             initial_value=self.current_style.get("shape", "rounded_rect"),
             preview_size=QSize(140, 50),
             button_height=self.WIDGET_HEIGHT,
         )
-        self.shape_btn.value_changed.connect(self._on_shape_changed)
-        layout.addWidget(self.shape_btn, row, 1)
+        self.style_btn.value_changed.connect(self._on_shape_changed)
+        layout.addWidget(self.style_btn, row, 1)
         row += 1
 
         # Corner radius

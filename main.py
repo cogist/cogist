@@ -828,6 +828,14 @@ class MindMapView(QGraphicsView):
 
         create_items_recursive(root)
 
+        # Mark each node's side (left/right of root) for decorative line rendering
+        # This is done after all items are created and positioned in the scene
+        root_item = self.node_items.get(root.id)
+        if root_item:
+            root_x = root_item.scenePos().x()
+            for item in self.node_items.values():
+                item.is_right_side = item.scenePos().x() >= root_x
+
     def _get_main_window(self):
         """Get the main window reference using AppContext.
 
