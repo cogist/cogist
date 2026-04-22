@@ -69,17 +69,23 @@ class SharpFirstRoundedConnector(ConnectorStrategy):
             path.lineTo(target_point)
             return path
 
-        # Draw first segment: source to corner1 (horizontal)
-        path.moveTo(source_point)
+        # Build the list of key points
+        points = [source_point, corner1, corner2, target_point]
+
+        # Start path from source
+        path.moveTo(points[0])
+
+        # First corner (corner1): Keep it SHARP - draw directly to it
         path.lineTo(corner1)
 
-        # Draw sharp 90° turn at corner1: corner1 to corner2 (vertical)
-        path.lineTo(corner2)
+        # Second corner (corner2): Round it
+        p1 = points[1]  # Previous point (corner1)
+        p2 = points[2]  # Current corner point (corner2) - to round
+        p3 = points[3]  # Next point (target)
 
-        # Draw rounded turn at corner2
-        # Calculate direction vectors
-        v1 = corner1 - corner2  # corner2 -> corner1 (incoming vertical)
-        v2 = target_point - corner2  # corner2 -> target (outgoing horizontal)
+        # Calculate direction vectors from corner to previous and next points
+        v1 = p1 - p2  # p2 -> p1
+        v2 = p3 - p2  # p2 -> p3
 
         len1 = (v1.x() ** 2 + v1.y() ** 2) ** 0.5
         len2 = (v2.x() ** 2 + v2.y() ** 2) ** 0.5
@@ -89,19 +95,16 @@ class SharpFirstRoundedConnector(ConnectorStrategy):
             v2 = QPointF(v2.x() / len2, v2.y() / len2)
 
             # Calculate arc start and end points
-            arc_start = corner2 + v1 * radius
-            arc_end = corner2 + v2 * radius
+            arc_start = p2 + v1 * radius
+            arc_end = p2 + v2 * radius
 
             # Draw straight line to arc start
             path.lineTo(arc_start)
 
-            # Use quadratic Bezier curve with corner2 as control point
-            path.quadTo(corner2, arc_end)
+            # Use quadratic Bezier curve with corner as control point
+            path.quadTo(p2, arc_end)
 
-            # Draw final segment to target
-            path.lineTo(target_point)
-        else:
-            # Fallback if vectors are zero
-            path.lineTo(target_point)
+        # Draw final segment to end point
+        path.lineTo(points[-1])
 
         return path

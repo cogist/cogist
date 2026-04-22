@@ -127,12 +127,12 @@ def generate_sharp_first_rounded_preview(
     end_y = size.height() - margin_y
     mid_x = (start_x + end_x) / 2
 
-    # Calculate corner radius
+    # Calculate corner length (same as rounded_orthogonal for consistency)
     dx = end_x - start_x
     dy = end_y - start_y
-    max_radius_x = abs(dx) * 0.35
-    max_radius_y = abs(dy) * 0.35
-    radius = min(15.0, max_radius_x, max_radius_y)
+    max_corner_x = abs(dx) * 0.35
+    max_corner_y = abs(dy) * 0.35
+    corner_length = min(15.0, max_corner_x, max_corner_y)
 
     # Define corner points
     corner1 = QPointF(mid_x, start_y)  # Sharp corner
@@ -141,15 +141,18 @@ def generate_sharp_first_rounded_preview(
     path = QPainterPath()
     path.moveTo(start_x, start_y)
 
-    # Draw to sharp corner (horizontal then vertical)
+    # Draw to sharp corner (horizontal then vertical) - keep it sharp
     path.lineTo(corner1)
-    path.lineTo(corner2)
 
     # Draw rounded corner at corner2
-    if radius > 0:
-        # Calculate direction vectors
-        v1 = corner1 - corner2  # Incoming (vertical)
-        v2 = QPointF(end_x - corner2.x(), 0)  # Outgoing (horizontal)
+    if corner_length > 0:
+        # Calculate direction vectors (exact copy from rounded_orthogonal_preview)
+        p1 = corner1  # Previous point
+        p2 = corner2  # Current corner point (to round)
+        p3 = QPointF(end_x, end_y)  # Next point
+
+        v1 = p1 - p2  # p2 -> p1
+        v2 = p3 - p2  # p2 -> p3
 
         len1 = (v1.x() ** 2 + v1.y() ** 2) ** 0.5
         len2 = (v2.x() ** 2 + v2.y() ** 2) ** 0.5
@@ -159,21 +162,17 @@ def generate_sharp_first_rounded_preview(
             v2 = QPointF(v2.x() / len2, v2.y() / len2)
 
             # Calculate arc start and end points
-            arc_start = corner2 + v1 * radius
-            arc_end = corner2 + v2 * radius
+            arc_start = p2 + v1 * corner_length
+            arc_end = p2 + v2 * corner_length
 
-            # Draw to arc start
+            # Draw from corner1 to arc_start
             path.lineTo(arc_start)
 
-            # Use quadratic Bezier for rounded corner
-            path.quadTo(corner2, arc_end)
+            # Draw rounded corner
+            path.quadTo(p2, arc_end)
 
             # Draw final segment
-            path.lineTo(end_x, end_y)
-        else:
-            path.lineTo(end_x, end_y)
-    else:
-        path.lineTo(end_x, end_y)
+            path.lineTo(p3)
 
     # Draw the path
     color = "#FFFFFF" if selected else "#000000"
