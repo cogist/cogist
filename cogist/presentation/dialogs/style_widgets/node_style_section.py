@@ -50,6 +50,9 @@ class NodeStyleSection(CollapsiblePanel):
         # State
         self._initialized = False
         self.current_style = self._get_default_style()
+        self._font_data_cache = None  # Cache for loaded fonts
+        self._font_dialog = None
+        self._load_fonts()  # Pre-load fonts on initialization
 
         # Connect toggle signal for lazy initialization
         self.toggled.connect(self._on_toggled)
@@ -72,6 +75,66 @@ class NodeStyleSection(CollapsiblePanel):
             "font_strikeout": False,
             "shadow_enabled": False,
         }
+
+    def _load_fonts(self):
+        """Pre-load all available fonts in background thread on initialization."""
+        from PySide6.QtCore import QThread, Signal
+        from PySide6.QtGui import QFontDatabase
+
+        class FontLoaderThread(QThread):
+            """Background thread for loading fonts."""
+            fonts_loaded = Signal(object)
+
+            def run(self):
+                """Load and process fonts."""
+                font_db = QFontDatabase()
+                families = font_db.families()
+
+                # Filter out bitmap/system fonts
+                filtered_families = []
+                for family in families:
+                    if family.startswith('.'):
+                        continue
+                    if any(keyword in family.lower() for keyword in ['bitmap', 'dingbats', 'symbol', 'icon']):
+                        continue
+                    if not font_db.styles(family):
+                        continue
+                    filtered_families.append(family)
+
+                # Return raw family names (localization done in main thread)
+                self.fonts_loaded.emit(filtered_families)
+
+        def on_fonts_loaded(filtered_families):
+            """Cache the loaded font data."""
+            # Process fonts in main thread (for localization)
+            font_name_map = {}
+            seen_base_names = set()
+            items_data = []
+
+            for family in filtered_families:
+                # Get localized name
+                localized_name = self._get_localized_font_name(family)
+                
+                # Normalize for deduplication
+                base_name = family.split('(')[0].strip().lower()
+
+                is_duplicate = False
+                for seen_base in seen_base_names:
+                    if base_name in seen_base or seen_base in base_name:
+                        is_duplicate = True
+                        break
+
+                if not is_duplicate:
+                    seen_base_names.add(base_name)
+                    font_name_map[localized_name] = family
+                    items_data.append((localized_name, family, family))
+
+            self._font_data_cache = (items_data, font_name_map)
+
+        # Start background loader
+        self._font_loader = FontLoaderThread()
+        self._font_loader.fonts_loaded.connect(on_fonts_loaded)
+        self._font_loader.start()
 
     def _on_toggled(self, checked: bool):
         """Handle expand/collapse events."""
@@ -475,9 +538,10 @@ class NodeStyleSection(CollapsiblePanel):
         """Show font family selection popup with localized names.
 
         Uses a frameless dialog with single-click selection for better UX.
+        Uses pre-loaded font cache for instant display.
         """
-        from PySide6.QtCore import QEvent, QObject, Qt
-        from PySide6.QtGui import QFont, QFontDatabase, QFocusEvent
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QFont, QFocusEvent
         from PySide6.QtWidgets import (
             QDialog,
             QListWidget,
@@ -485,9 +549,14 @@ class NodeStyleSection(CollapsiblePanel):
             QVBoxLayout,
         )
 
-        # Prevent multiple dialogs from opening
+        # Reuse existing dialog if available
         if hasattr(self, '_font_dialog') and self._font_dialog is not None:
-            self._font_dialog.close()
+            # Dialog already created, just show it
+            self._font_dialog.show()
+            self._font_dialog.raise_()
+            self._font_dialog.activateWindow()
+            self._font_dialog.setFocus()
+            return
 
         # Store default button style to restore later
         self._default_font_button_style = self.font_family_combo.styleSheet()
@@ -527,7 +596,7 @@ class NodeStyleSection(CollapsiblePanel):
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Font list with custom styling for rounded corners
+        # Font list with custom styling
         font_list = QListWidget()
         font_list.setFont(QFont("Arial", 14))
         font_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -554,59 +623,34 @@ class NodeStyleSection(CollapsiblePanel):
         """)
         layout.addWidget(font_list)
 
-        # Get all available fonts
-        font_db = QFontDatabase()
-        families = font_db.families()
+        # Show dialog immediately
+        button_pos = self.font_family_combo.mapToGlobal(
+            self.font_family_combo.rect().bottomLeft()
+        )
+        dialog_x = button_pos.x()
+        dialog_y = button_pos.y() + 2  # 2px gap below button
 
-        # Filter out bitmap/system fonts that cause warnings
-        filtered_families = []
-        for family in families:
-            # Skip system internal fonts (start with '.')
-            if family.startswith('.'):
-                continue
-            # Skip bitmap fonts and system fonts
-            if any(keyword in family.lower() for keyword in ['bitmap', 'dingbats', 'symbol', 'icon']):
-                continue
-            # Skip if font has no styles
-            if not font_db.styles(family):
-                continue
-            filtered_families.append(family)
+        dialog.show()
+        dialog.move(dialog_x, dialog_y)
+        dialog.raise_()
+        dialog.activateWindow()
+        dialog.setFocus()
 
-        families = filtered_families
+        # Populate fonts from cache (instant!)
+        self._populate_fonts_from_cache(font_list, dialog)
 
+    def _populate_fonts_from_cache(self, font_list, dialog):
+        """Populate font list from pre-loaded cache."""
+        from PySide6.QtGui import QFont
+        from PySide6.QtWidgets import QListWidgetItem
+
+        # Check if cache is ready
+        if self._font_data_cache is None:
+            # Cache not ready yet, wait for it
+            return
+
+        items_data, font_name_map = self._font_data_cache
         current_family = self.current_style.get("font_family", "Arial")
-
-        # Build font list with localized names and deduplication
-        font_name_map = {}  # Maps display name -> actual font family
-        seen_base_names = set()  # Track base font names for deduplication
-        items_map = {}  # Maps display name -> QListWidgetItem
-
-        for family in families:
-            # Get localized name first
-            localized_name = self._get_localized_font_name(family)
-
-            # Normalize for deduplication: remove common suffixes to get base font name
-            base_name = family.split('(')[0].strip().lower()
-
-            # Check if we've seen this base font name before
-            is_duplicate = False
-            for seen_base in seen_base_names:
-                # If one contains the other, they're likely variants of the same font
-                if base_name in seen_base or seen_base in base_name:
-                    is_duplicate = True
-                    break
-
-            if not is_duplicate:
-                seen_base_names.add(base_name)
-                font_name_map[localized_name] = family
-
-                item = QListWidgetItem(localized_name)
-                item.setFont(QFont(family))  # Use actual font for rendering
-                font_list.addItem(item)
-                items_map[localized_name] = item
-
-                if family == current_family:
-                    font_list.setCurrentItem(item)
 
         # Track last hovered item to avoid redundant updates
         last_hovered_item = [None]
@@ -618,8 +662,6 @@ class NodeStyleSection(CollapsiblePanel):
                 last_hovered_item[0] = item
 
         font_list.itemEntered.connect(on_item_entered)
-        
-        # Enable mouse tracking on the list widget
         font_list.setMouseTracking(True)
 
         # Single-click to select
@@ -643,6 +685,35 @@ class NodeStyleSection(CollapsiblePanel):
                 dialog.reject()
             else:
                 QDialog.keyPressEvent(dialog, event)
+
+        dialog.keyPressEvent = on_key_press
+
+        # Close dialog when clicking outside
+        def on_mouse_press(event):
+            if event.button() == Qt.LeftButton:
+                # Restore button style
+                self.font_family_combo.setStyleSheet(self._button_style())
+                self._font_dialog = None
+                dialog.reject()
+
+        dialog.mousePressEvent = on_mouse_press
+
+        # Cleanup when dialog closes
+        def cleanup_and_restore():
+            self.font_family_combo.setStyleSheet(self._button_style())
+            self._font_dialog = None
+
+        dialog.finished.connect(cleanup_and_restore)
+
+        # Populate the list from cache
+        font_list.clear()
+        for display_name, actual_family, render_family in items_data:
+            item = QListWidgetItem(display_name)
+            item.setFont(QFont(render_family))
+            font_list.addItem(item)
+
+            if actual_family == current_family:
+                font_list.setCurrentItem(item)
 
         dialog.keyPressEvent = on_key_press
 
