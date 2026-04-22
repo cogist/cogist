@@ -147,20 +147,25 @@ def generate_bezier_uniform_preview(size: QSize, selected: bool = False) -> QPix
 
 
 def generate_straight_preview(size: QSize, selected: bool = False) -> QPixmap:
-    """Generate preview for Straight connector.
+    """Generate preview for Straight connector with horizontal segments.
+
+    The preview shows:
+    - First 1/4: Horizontal line from start
+    - Middle 2/4: Diagonal connecting line
+    - Last 1/4: Horizontal line to end
 
     Args:
         size: Preview size
 
     Returns:
-        QPixmap with straight line preview
+        QPixmap with segmented line preview
     """
     pixmap = QPixmap(size)
     pixmap.fill(Qt.transparent)
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.Antialiasing)
 
-    # Draw straight diagonal line - centered in pixmap
+    # Draw segmented line - centered in pixmap
     margin_x = size.width() * 0.05  # 5% margin for better centering
     margin_y = size.height() * 0.2  # 20% margin top/bottom
     start_x = margin_x
@@ -168,9 +173,24 @@ def generate_straight_preview(size: QSize, selected: bool = False) -> QPixmap:
     end_x = size.width() - margin_x
     end_y = size.height() - margin_y
 
+    # Calculate segment points
+    dx = end_x - start_x
+    horizontal_segment = dx / 4.0
+
+    # First point: 1/4 horizontal from start
+    point1_x = start_x + horizontal_segment
+    point1_y = start_y
+
+    # Second point: 3/4 horizontal, 1/4 vertical (start of last horizontal segment)
+    point2_x = start_x + 3 * horizontal_segment
+    point2_y = end_y
+
+    # Draw the segmented path
     path = QPainterPath()
     path.moveTo(start_x, start_y)
-    path.lineTo(end_x, end_y)
+    path.lineTo(point1_x, point1_y)  # First 1/4 horizontal
+    path.lineTo(point2_x, point2_y)  # Middle 2/4 diagonal
+    path.lineTo(end_x, end_y)  # Last 1/4 horizontal
 
     # Draw the line
     color = "#FFFFFF" if selected else "#000000"  # White if selected, black otherwise
