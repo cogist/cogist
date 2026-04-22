@@ -98,6 +98,93 @@ def generate_bezier_preview(size: QSize, selected: bool = False) -> QPixmap:
     return pixmap
 
 
+def generate_sharp_first_rounded_preview(
+    size: QSize, selected: bool = False
+) -> QPixmap:
+    """Generate preview for Sharp-First Rounded connector.
+
+    Shows a path with:
+    - First corner: Sharp 90-degree angle
+    - Second corner: Rounded corner
+
+    Args:
+        size: Preview size
+
+    Returns:
+        QPixmap with sharp-first rounded orthogonal preview
+    """
+    pixmap = QPixmap(size)
+    pixmap.fill(Qt.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing)
+
+    # Draw sharp-first rounded path - centered in pixmap
+    margin_x = size.width() * 0.05
+    margin_y = size.height() * 0.2
+    start_x = margin_x
+    start_y = margin_y
+    end_x = size.width() - margin_x
+    end_y = size.height() - margin_y
+    mid_x = (start_x + end_x) / 2
+
+    # Calculate corner radius
+    dx = end_x - start_x
+    dy = end_y - start_y
+    max_radius_x = abs(dx) * 0.35
+    max_radius_y = abs(dy) * 0.35
+    radius = min(15.0, max_radius_x, max_radius_y)
+
+    # Define corner points
+    corner1 = QPointF(mid_x, start_y)  # Sharp corner
+    corner2 = QPointF(mid_x, end_y)  # Rounded corner
+
+    path = QPainterPath()
+    path.moveTo(start_x, start_y)
+
+    # Draw to sharp corner (horizontal then vertical)
+    path.lineTo(corner1)
+    path.lineTo(corner2)
+
+    # Draw rounded corner at corner2
+    if radius > 0:
+        # Calculate direction vectors
+        v1 = corner1 - corner2  # Incoming (vertical)
+        v2 = QPointF(end_x - corner2.x(), 0)  # Outgoing (horizontal)
+
+        len1 = (v1.x() ** 2 + v1.y() ** 2) ** 0.5
+        len2 = (v2.x() ** 2 + v2.y() ** 2) ** 0.5
+
+        if len1 > 0 and len2 > 0:
+            v1 = QPointF(v1.x() / len1, v1.y() / len1)
+            v2 = QPointF(v2.x() / len2, v2.y() / len2)
+
+            # Calculate arc start and end points
+            arc_start = corner2 + v1 * radius
+            arc_end = corner2 + v2 * radius
+
+            # Draw to arc start
+            path.lineTo(arc_start)
+
+            # Use quadratic Bezier for rounded corner
+            path.quadTo(corner2, arc_end)
+
+            # Draw final segment
+            path.lineTo(end_x, end_y)
+        else:
+            path.lineTo(end_x, end_y)
+    else:
+        path.lineTo(end_x, end_y)
+
+    # Draw the path
+    color = "#FFFFFF" if selected else "#000000"
+    pen = QPen(QColor(color), 2.0, Qt.SolidLine, Qt.RoundCap)
+    painter.setPen(pen)
+    painter.drawPath(path)
+
+    painter.end()
+    return pixmap
+
+
 def generate_bezier_uniform_preview(size: QSize, selected: bool = False) -> QPixmap:
     """Generate preview for Bezier connector with uniform width (2px).
 

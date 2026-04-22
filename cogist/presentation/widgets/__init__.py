@@ -5,6 +5,7 @@ from .connector_previews import (
     generate_bezier_uniform_preview,
     generate_orthogonal_preview,
     generate_rounded_orthogonal_preview,
+    generate_sharp_first_rounded_preview,
     generate_straight_preview,
 )
 from .visual_list_popup import VisualListPopup
@@ -22,4 +23,5 @@ __all__ = [
     "generate_straight_preview",
     "generate_orthogonal_preview",
     "generate_rounded_orthogonal_preview",
+    "generate_sharp_first_rounded_preview",
 ]

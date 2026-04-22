@@ -8,6 +8,7 @@ from .base import ConnectorStrategy
 from .bezier_connector import BezierConnector
 from .orthogonal_connector import OrthogonalConnector
 from .rounded_orthogonal_connector import RoundedOrthogonalConnector
+from .sharp_first_rounded_connector import SharpFirstRoundedConnector
 from .straight_connector import StraightConnector
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "StraightConnector",
     "OrthogonalConnector",
     "RoundedOrthogonalConnector",
+    "SharpFirstRoundedConnector",
 ]

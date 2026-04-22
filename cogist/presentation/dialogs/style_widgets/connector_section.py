@@ -20,6 +20,7 @@ from cogist.presentation.widgets import (
     generate_bezier_uniform_preview,
     generate_orthogonal_preview,
     generate_rounded_orthogonal_preview,
+    generate_sharp_first_rounded_preview,
     generate_straight_preview,
 )
 
@@ -83,6 +84,11 @@ class ConnectorSection(CollapsiblePanel):
             ("straight", generate_straight_preview, QSize(140, 30)),
             ("orthogonal", generate_orthogonal_preview, QSize(140, 30)),
             ("rounded_orthogonal", generate_rounded_orthogonal_preview, QSize(140, 30)),
+            (
+                "sharp_first_rounded",
+                generate_sharp_first_rounded_preview,
+                QSize(140, 30),
+            ),
         ]
 
         # Create reusable visual preview button

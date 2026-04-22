@@ -456,11 +456,14 @@ class EdgeItem(QGraphicsPathItem):
         """
         # Update connector shape (strategy pattern) - this is the only thing that needs updating
         if "connector_shape" in style_config:
+            from cogist.domain.connectors import SharpFirstRoundedConnector
+            
             shape_map = {
                 "bezier": BezierConnector(),
                 "straight": StraightConnector(),
                 "orthogonal": OrthogonalConnector(),
                 "rounded_orthogonal": RoundedOrthogonalConnector(),
+                "sharp_first_rounded": SharpFirstRoundedConnector(),
             }
             new_strategy = shape_map.get(style_config["connector_shape"])
             if new_strategy and not isinstance(self.connector_strategy, type(new_strategy)):
