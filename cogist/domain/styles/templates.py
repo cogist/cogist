@@ -44,7 +44,15 @@ def create_default_template() -> MindMapStyle:
             padding_h=16,
             font_size=22,
             font_weight="Bold",
+            font_style="Normal",
             font_family="Arial",
+            font_underline=False,
+            font_strikeout=False,
+            shadow_enabled=False,
+            shadow_offset_x=2,
+            shadow_offset_y=2,
+            shadow_blur=4,
+            shadow_color=None,
         ),
         NodeRole.PRIMARY: RoleBasedStyle(
             role=NodeRole.PRIMARY,
@@ -64,7 +72,15 @@ def create_default_template() -> MindMapStyle:
             padding_h=12,
             font_size=18,
             font_weight="Normal",
+            font_style="Normal",
             font_family="Arial",
+            font_underline=False,
+            font_strikeout=False,
+            shadow_enabled=False,
+            shadow_offset_x=2,
+            shadow_offset_y=2,
+            shadow_blur=4,
+            shadow_color=None,
         ),
         NodeRole.SECONDARY: RoleBasedStyle(
             role=NodeRole.SECONDARY,
@@ -84,7 +100,15 @@ def create_default_template() -> MindMapStyle:
             padding_h=10,
             font_size=16,
             font_weight="Normal",
+            font_style="Normal",
             font_family="Arial",
+            font_underline=False,
+            font_strikeout=False,
+            shadow_enabled=False,
+            shadow_offset_x=2,
+            shadow_offset_y=2,
+            shadow_blur=4,
+            shadow_color=None,
         ),
         NodeRole.TERTIARY: RoleBasedStyle(
             role=NodeRole.TERTIARY,
@@ -104,7 +128,15 @@ def create_default_template() -> MindMapStyle:
             padding_h=8,
             font_size=14,
             font_weight="Normal",
+            font_style="Normal",
             font_family="Arial",
+            font_underline=False,
+            font_strikeout=False,
+            shadow_enabled=False,
+            shadow_offset_x=2,
+            shadow_offset_y=2,
+            shadow_blur=4,
+            shadow_color=None,
         ),
     }
 
@@ -129,6 +161,13 @@ def create_default_template() -> MindMapStyle:
             NodeRole.SECONDARY: "#FFFF9800",
             NodeRole.TERTIARY: "#FF9E9E9E",
         },
+        # Border colors (same as node colors for decorative lines)
+        border_colors={
+            NodeRole.ROOT: "#FF2196F3",
+            NodeRole.PRIMARY: "#FF4CAF50",
+            NodeRole.SECONDARY: "#FFFF9800",
+            NodeRole.TERTIARY: "#FF9E9E9E",
+        },
         canvas_bg_color="#FFFFFFFF",
         edge_color="#FF666666",
     )
@@ -138,6 +177,9 @@ def create_default_template() -> MindMapStyle:
         name="Default",
         template_name="default",
         color_scheme_name="default",
+        # === Global spacing configuration (fallback for non-per-depth scenarios) ===
+        parent_child_spacing=80.0,  # Horizontal spacing between parent and child
+        sibling_spacing=60.0,       # Vertical spacing between siblings
         # === Per-depth spacing configuration (4 levels: root, level1, level2, level3+) ===
         level_spacing_by_depth={
             0: 80.0,   # Root → Level 1
@@ -152,21 +194,21 @@ def create_default_template() -> MindMapStyle:
             3: 28.0,   # Level 3+ siblings (all deeper levels)
         },
         # === Per-depth connector configuration (4 levels: root, level1, level2, level3+) ===
+        # Note: enable_gradient is automatically determined by connector_shape
         connector_config_by_depth={
-            0: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Root → Level 1
-            1: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 1 → Level 2
-            2: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 2 → Level 3
-            3: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 3+ (all deeper)
+            0: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666", "gradient_ratio": 0.33},  # Root → Level 1
+            1: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666", "gradient_ratio": 0.33},  # Level 1 → Level 2
+            2: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666", "gradient_ratio": 0.33},  # Level 2 → Level 3
+            3: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666", "gradient_ratio": 0.33},  # Level 3+ (all deeper)
         },
         # === Legacy edge configuration (backward compatibility) ===
+        # Note: enable_gradient and gradient_ratio are now in connector_config_by_depth
         edge=LegacyEdgeConfig(
             connector_shape="bezier",
             connector_style="solid",
             start_width=6.0,
             end_width=2.0,
             color="#666666",
-            enable_gradient=True,
-            gradient_ratio=0.33,
         ),
     )
 

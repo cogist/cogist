@@ -10,21 +10,24 @@ class RoundedRectBorder(BorderStrategy):
     """Rounded rectangle with background and border."""
 
     def draw(self, painter: QPainter, rect, style_config: dict) -> None:
-        """Draw rounded rectangle node.
+        """Draw rounded rectangle border.
 
         Args:
             painter: QPainter instance
             rect: Node bounding rectangle
             style_config: Style configuration dictionary
         """
+        bg_color = style_config.get("bg_color")
         radius = style_config.get("border_radius", 8)
-        bg_color = style_config.get("bg_color", "#FFFFFF")
         border_color = style_config.get("border_color")
         border_width = style_config.get("border_width", 0)
         border_style = style_config.get("border_style", "solid")
 
-        # Draw background
-        painter.setBrush(QBrush(QColor(bg_color)))
+        # Draw background fill
+        if bg_color:
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(QColor(bg_color)))
+            painter.drawRoundedRect(rect, radius, radius)
 
         # Draw border if specified
         if border_width > 0 and border_color:
@@ -41,11 +44,8 @@ class RoundedRectBorder(BorderStrategy):
                 pen.setStyle(Qt.SolidLine)
 
             painter.setPen(pen)
-        else:
-            painter.setPen(Qt.NoPen)
-
-        # Draw rounded rectangle
-        painter.drawRoundedRect(rect, radius, radius)
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRoundedRect(rect, radius, radius)
 
     def get_selection_path(self, rect, style_config: dict) -> QPainterPath:
         """Get selection highlight path for rounded rectangle."""
@@ -60,20 +60,23 @@ class CircleBorder(BorderStrategy):
     """Circle/ellipse with background and border."""
 
     def draw(self, painter: QPainter, rect, style_config: dict) -> None:
-        """Draw circle/ellipse node.
+        """Draw circle/ellipse border.
 
         Args:
             painter: QPainter instance
             rect: Node bounding rectangle
             style_config: Style configuration dictionary
         """
-        bg_color = style_config.get("bg_color", "#FFFFFF")
+        bg_color = style_config.get("bg_color")
         border_color = style_config.get("border_color")
         border_width = style_config.get("border_width", 0)
         border_style = style_config.get("border_style", "solid")
 
-        # Draw background
-        painter.setBrush(QBrush(QColor(bg_color)))
+        # Draw background fill
+        if bg_color:
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(QColor(bg_color)))
+            painter.drawEllipse(rect)
 
         # Draw border if specified
         if border_width > 0 and border_color:
@@ -90,11 +93,8 @@ class CircleBorder(BorderStrategy):
                 pen.setStyle(Qt.SolidLine)
 
             painter.setPen(pen)
-        else:
-            painter.setPen(Qt.NoPen)
-
-        # Draw ellipse
-        painter.drawEllipse(rect)
+            painter.setBrush(Qt.NoBrush)
+            painter.drawEllipse(rect)
 
     def get_selection_path(self, rect, style_config: dict) -> QPainterPath:
         """Get selection highlight path for circle/ellipse."""

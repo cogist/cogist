@@ -774,7 +774,7 @@ class MindMapView(QGraphicsView):
                 parent_item.add_child_item(item)
                 # Use the branch color for the edge (same as parent and child nodes)
                 edge_color = current_color
-                edge = EdgeItem(parent_item, item, color=edge_color)
+                edge = EdgeItem(parent_item, item, color=edge_color, style_config=self.style_config)
 
                 # Apply edge style from style_config (per-depth configuration)
                 if hasattr(self, 'style_config') and self.style_config:

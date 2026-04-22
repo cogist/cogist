@@ -157,8 +157,8 @@ class BorderSection(CollapsiblePanel):
         color_dialog = QColorDialog(current, self)
         color_dialog.setWindowTitle("Select Border Color")
 
-        # Use Qt's standard dialog instead of native dialog to allow positioning
-        color_dialog.setOption(QColorDialog.DontUseNativeDialog)
+        # Use native system dialog for better UX
+        # (Removed DontUseNativeDialog to use system native picker)
 
         # Enable alpha channel (transparency) support
         color_dialog.setOption(QColorDialog.ShowAlphaChannel)

@@ -553,8 +553,8 @@ class AdvancedStyleTab(QWidget):
                 if "connector_color" in style:
                     connector_config["color"] = style["connector_color"]
 
-                # Add enable_gradient=False to ensure uniform line width for all connector types
-                connector_config["enable_gradient"] = False
+                # Note: enable_gradient is automatically determined by connector_shape
+                # No need to store it separately (bezier -> True, others -> False)
 
             self._apply_styles_to_mindmap()
 
@@ -823,16 +823,15 @@ class AdvancedStyleTab(QWidget):
                 max_depth = max(self.style_config.connector_config_by_depth.keys())
                 connector_config = self.style_config.connector_config_by_depth[max_depth]
 
-            # Build connector style dict
+            # Build connector style dict (only shape is needed for update_style)
             connector_style = {
                 "connector_shape": connector_config["connector_shape"],
-                "connector_style": connector_config["connector_style"],
-                "line_width": connector_config["line_width"],
-                "connector_color": connector_config["color"],
-                "enable_gradient": connector_config.get("enable_gradient", False),
             }
 
             edge_item.update_style(connector_style)
+
+            # Trigger repaint (paint() will read latest config directly)
+            edge_item.update()
 
     def _convert_layer_to_role_style(self, layer_data: dict):
         """Convert layer style dictionary to RoleBasedStyle object.

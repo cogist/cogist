@@ -515,10 +515,26 @@ class NodeItem(QGraphicsRectItem):
         shape_type = self.template_style.shape.basic_shape
         rect = self.rect()
 
+        # Map depth to role
+        role = self._depth_to_role(self.depth)
+
+        # Read colors directly from global style_config (no caching)
+        if self.style_config and self.style_config.resolved_color_scheme:
+            color_scheme = self.style_config.resolved_color_scheme
+            bg_color = color_scheme.node_colors[role]
+            border_color = (
+                color_scheme.border_colors[role]
+                if color_scheme.border_colors and role in color_scheme.border_colors
+                else None
+            )
+        else:
+            bg_color = "#FFFFFF"
+            border_color = None
+
         # Build style config dict for strategy
         style_config = {
-            "bg_color": self.bg_color,
-            "border_color": self.border_color,
+            "bg_color": bg_color,
+            "border_color": border_color,
             "border_width": self.template_style.border.border_width,
             "border_radius": self.template_style.shape.border_radius,
             "border_style": self.template_style.border.border_style,
@@ -540,7 +556,7 @@ class NodeItem(QGraphicsRectItem):
             painter.setBrush(Qt.NoBrush)
             painter.drawPath(highlight_path)
 
-        # Draw node shape
+        # Draw node shape/border
         strategy.draw(painter, rect, style_config)
 
     def get_text(self) -> str:

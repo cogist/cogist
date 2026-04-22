@@ -10,15 +10,17 @@ MAX_TEXT_WIDTH = 250.0
 
 @dataclass
 class LegacyEdgeConfig:
-    """Legacy edge style configuration (used for backward compatibility with main.py)."""
+    """Legacy edge style configuration (used for backward compatibility with main.py).
+
+    Note: enable_gradient is automatically determined by connector_shape.
+    gradient_ratio should be stored in connector_config_by_depth, not here.
+    """
 
     connector_shape: str = "bezier"  # bezier, straight, orthogonal
     connector_style: str = "solid"  # solid, dashed, dotted, dash_dot
     start_width: float = 6.0  # Width at source node
     end_width: float = 2.0    # Width at target node
     color: str = "#666666"
-    enable_gradient: bool = True  # Enable width gradient for bezier curves
-    gradient_ratio: float = 0.33  # end_width / start_width ratio
 
 
 @dataclass
@@ -36,8 +38,8 @@ class MindMapStyle:
     color_scheme_name: str = "default"
 
     # === Spacing configuration (pixel values) ===
-    parent_child_spacing: float = 80.0  # Horizontal spacing between parent and child
-    sibling_spacing: float = 60.0       # Vertical spacing between siblings
+    parent_child_spacing: float = field(default=0.0)  # Must be set in create_default_template()
+    sibling_spacing: float = field(default=0.0)       # Must be set in create_default_template()
 
     # === Per-depth spacing configuration (for true layer isolation) ===
     # NOTE: All initialization should happen in create_default_template(), not here

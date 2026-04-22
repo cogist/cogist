@@ -5,7 +5,7 @@ Connector edge between nodes with strategy pattern support.
 """
 
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QPainterPath, QPen
+from PySide6.QtGui import QColor, QPen
 from PySide6.QtWidgets import QGraphicsPathItem
 
 from cogist.domain.connectors import (
@@ -27,13 +27,14 @@ class EdgeItem(QGraphicsPathItem):
     - Auto-update on node move
     """
 
-    def __init__(self, source_item, target_item, color: str = "#90CAF9"):
+    def __init__(self, source_item, target_item, color: str = "#90CAF9", style_config=None):
         super().__init__()
         self.source_item = source_item
         self.target_item = target_item
         self.color = QColor(color)
+        self.style_config = style_config  # Store global style config reference
 
-        # Edge style configuration
+        # Edge style configuration (will be read from style_config in paint)
         self.start_width = 6.0
         self.end_width = 2.0
         self.line_style = Qt.SolidLine
@@ -56,57 +57,169 @@ class EdgeItem(QGraphicsPathItem):
 
         painter.setRenderHint(QPainter.Antialiasing)
 
-        if self._gradient_path is None:
-            self._create_gradient_path()
+        # Read style from global config if available (real-time, no caching)
+        if self.style_config and hasattr(self.source_item, 'depth'):
+            source_depth = self.source_item.depth
+
+            # Get connector config for this depth
+            if source_depth in self.style_config.connector_config_by_depth:
+                connector_config = self.style_config.connector_config_by_depth[source_depth]
+            else:
+                # Use the deepest configured level for deeper nodes
+                max_depth = max(self.style_config.connector_config_by_depth.keys())
+                connector_config = self.style_config.connector_config_by_depth[max_depth]
+
+            # Extract style values directly from config
+            color = QColor(connector_config["color"])
+            line_width = connector_config["line_width"]
+            connector_style_str = connector_config["connector_style"]
+            connector_shape = connector_config.get("connector_shape", "bezier")
+
+            # Determine enable_gradient based on connector_shape (no need to store it)
+            enable_gradient = (connector_shape == "bezier")
+
+            # Map connector style string to Qt enum
+            style_map = {
+                "solid": Qt.SolidLine,
+                "dashed": Qt.DashLine,
+                "dotted": Qt.DotLine,
+                "dash_dot": Qt.DashDotLine,
+            }
+            line_style = style_map.get(connector_style_str, Qt.SolidLine)
+
+            # Determine start/end widths based on shape type and enable_gradient
+            is_uniform_bezier = connector_shape == "bezier_uniform"
+            is_bezier = isinstance(self.connector_strategy, BezierConnector)
+
+            if is_uniform_bezier:
+                # Uniform bezier: always use uniform width
+                start_width = line_width
+                end_width = line_width
+            elif is_bezier and enable_gradient:
+                # Regular bezier with gradient: apply gradient ratio
+                start_width = line_width
+                gradient_ratio = connector_config.get("gradient_ratio", 0.5)
+                end_width = line_width * max(0.3, min(1.0, gradient_ratio))
+            else:
+                # Non-bezier or bezier without gradient: use uniform width
+                start_width = line_width
+                end_width = line_width
+        else:
+            # Fallback to instance variables (for backward compatibility)
+            color = self.color
+            start_width = self.start_width
+            end_width = self.end_width
+            line_style = self.line_style
+
+        # Invalidate gradient path cache and recreate with current widths
+        self._gradient_path = None
+        self._create_gradient_path(start_width, end_width)
 
         if self._gradient_path:
             # Check if uniform width (no gradient needed)
-            is_uniform = abs(self.start_width - self.end_width) < 0.01
+            is_uniform = abs(start_width - end_width) < 0.01
 
             if is_uniform:
                 # For uniform width: draw the path directly for sharp corners
                 # self.path() is already in item coordinates (set by update_curve)
-                pen = QPen(self.color, self.start_width, self.line_style, Qt.FlatCap)
+                pen = QPen(color, start_width, line_style, Qt.FlatCap)
                 pen.setJoinStyle(Qt.MiterJoin)
 
                 # Adjust dash pattern for better visibility
-                if self.line_style == Qt.DashLine:
+                if line_style == Qt.DashLine:
                     pen.setDashPattern([6.0, 4.0])
-                elif self.line_style == Qt.DotLine:
+                elif line_style == Qt.DotLine:
                     pen.setDashPattern([1.0, 3.0])
-                elif self.line_style == Qt.DashDotLine:
+                elif line_style == Qt.DashDotLine:
                     pen.setDashPattern([6.0, 4.0, 1.0, 4.0])
 
                 painter.setPen(pen)
                 painter.drawPath(self.path())
-            elif self.line_style in (Qt.DashLine, Qt.DotLine, Qt.DashDotLine):
-                # For dashed/dotted/dash-dot lines: draw as continuous path
-                full_path = QPainterPath()
-                for (start, end), _width in self._gradient_path:
-                    if full_path.isEmpty():
-                        full_path.moveTo(start)
-                    full_path.lineTo(end)
+            elif line_style in (Qt.DashLine, Qt.DotLine, Qt.DashDotLine):
+                # For dashed/dotted/dash-dot lines with gradient: manual dash implementation
+                assert self._gradient_path is not None  # Guaranteed by _create_gradient_path above
 
-                pen = QPen(self.color, self.end_width, self.line_style, Qt.RoundCap)
-                # Adjust dash pattern for better visibility
-                if self.line_style == Qt.DashLine:
-                    pen.setDashPattern([6.0, 4.0])  # Dash length, gap
-                elif self.line_style == Qt.DotLine:
-                    pen.setDashPattern([1.0, 3.0])  # Dot size, gap
-                elif self.line_style == Qt.DashDotLine:
-                    pen.setDashPattern([6.0, 4.0, 1.0, 4.0])  # Dash, gap, dot, gap
+                # Define dash patterns (dash_length, gap_length)
+                dash_patterns = {
+                    Qt.DashLine: (6.0, 4.0),
+                    Qt.DotLine: (1.0, 3.0),
+                    Qt.DashDotLine: (6.0, 4.0),  # Simplified for gradient
+                }
+                dash_len, gap_len = dash_patterns.get(line_style, (6.0, 4.0))
 
-                painter.setPen(pen)
-                painter.drawPath(full_path)
+                # Manual dash implementation with gradient width
+                accumulated_length = 0.0
+                is_dash = True  # Start with dash segment
+
+                for (start, end), width in self._gradient_path:
+                    # Calculate segment length
+                    seg_length = ((end.x() - start.x())**2 + (end.y() - start.y())**2) ** 0.5
+
+                    if is_dash:
+                        # Draw this segment
+                        pen = QPen(color, width, Qt.SolidLine, Qt.RoundCap)
+                        painter.setPen(pen)
+                        painter.drawLine(start, end)
+
+                    accumulated_length += seg_length
+
+                    # Toggle between dash and gap
+                    threshold = dash_len if is_dash else gap_len
+                    if accumulated_length >= threshold:
+                        accumulated_length -= threshold
+                        is_dash = not is_dash
             else:
                 # For solid lines: use gradient width effect
                 for (start, end), width in self._gradient_path:
-                    pen = QPen(self.color, width, Qt.SolidLine, Qt.RoundCap)
+                    pen = QPen(color, width, Qt.SolidLine, Qt.RoundCap)
                     painter.setPen(pen)
                     painter.drawLine(start, end)
 
-    def _create_gradient_path(self):
-        """Create cached gradient path."""
+    def _create_gradient_path(self, start_width=None, end_width=None):
+        """Create cached gradient path.
+
+        Args:
+            start_width: Width at start point (read from config if None)
+            end_width: Width at end point (read from config if None)
+        """
+        # If widths not provided, read from global config
+        if start_width is None or end_width is None:
+            if self.style_config and hasattr(self.source_item, 'depth'):
+                source_depth = self.source_item.depth
+
+                if source_depth in self.style_config.connector_config_by_depth:
+                    connector_config = self.style_config.connector_config_by_depth[source_depth]
+                else:
+                    max_depth = max(self.style_config.connector_config_by_depth.keys())
+                    connector_config = self.style_config.connector_config_by_depth[max_depth]
+
+                line_width = connector_config["line_width"]
+                connector_shape = connector_config.get("connector_shape", "bezier")
+
+                # Determine enable_gradient based on connector_shape (no need to store it)
+                enable_gradient = (connector_shape == "bezier")
+
+                is_uniform_bezier = connector_shape == "bezier_uniform"
+                is_bezier = isinstance(self.connector_strategy, BezierConnector)
+
+                if start_width is None:
+                    start_width = line_width
+
+                if end_width is None:
+                    if is_uniform_bezier:
+                        end_width = line_width
+                    elif is_bezier and enable_gradient:
+                        gradient_ratio = connector_config.get("gradient_ratio", 0.5)
+                        end_width = line_width * max(0.3, min(1.0, gradient_ratio))
+                    else:
+                        end_width = line_width
+            else:
+                # Fallback to instance variables
+                if start_width is None:
+                    start_width = self.start_width
+                if end_width is None:
+                    end_width = self.end_width
+
         path = self.path()
         if path.isEmpty():
             self._gradient_path = []
@@ -124,8 +237,8 @@ class EdgeItem(QGraphicsPathItem):
         for i in range(len(points) - 1):
             # Use segment index for linear gradient
             t = i / (len(points) - 1)
-            line_width = self.start_width - t * (self.start_width - self.end_width)
-            self._gradient_path.append(((points[i], points[i + 1]), line_width))
+            width = start_width - t * (start_width - end_width)
+            self._gradient_path.append(((points[i], points[i + 1]), width))
 
     def update_curve(self):
         """Update connector path using strategy pattern.
@@ -207,22 +320,14 @@ class EdgeItem(QGraphicsPathItem):
     def update_style(self, style_config: dict):
         """Update edge style from configuration.
 
+        Note: Most style values are now read directly from global config in paint().
+        This method only updates the connector strategy when shape changes.
+
         Args:
             style_config: Dictionary containing edge style parameters
-                - connector_color: str (hex color)
-                - line_width: float (uniform width for both ends)
-                - start_width: float (width at source node, optional)
-                - end_width: float (width at target node, optional)
-                - connector_style: str (solid/dashed/dotted/dash_dot)
                 - connector_shape: str (bezier/straight/orthogonal)
-                - enable_gradient: bool (only for bezier, default True)
-                - gradient_ratio: float (end_width/start_width ratio, 0.3-1.0)
         """
-        # Update color
-        if "connector_color" in style_config:
-            self.color = QColor(style_config["connector_color"])
-
-        # Update connector shape (strategy pattern)
+        # Update connector shape (strategy pattern) - this is the only thing that needs updating
         if "connector_shape" in style_config:
             shape_map = {
                 "bezier": BezierConnector(),
@@ -235,58 +340,3 @@ class EdgeItem(QGraphicsPathItem):
                 self.connector_strategy = new_strategy
                 # Path changed, need to recalculate
                 self.update_curve()
-
-        # Update widths - support both uniform line_width and separate start/end widths
-        base_width = None
-        if "line_width" in style_config:
-            base_width = float(style_config["line_width"])
-
-        # Check connector shape type
-        shape = style_config.get("connector_shape", "bezier")
-        is_uniform_bezier = shape == "bezier_uniform"
-        is_bezier = isinstance(self.connector_strategy, BezierConnector)
-
-        if is_uniform_bezier:
-            # For bezier_uniform: use uniform width (2px default or line_width)
-            uniform_width = base_width if base_width is not None else 2.0
-            self.start_width = uniform_width
-            self.end_width = uniform_width
-        elif is_bezier:
-            # For regular bezier: use gradient width
-            if "start_width" in style_config:
-                self.start_width = float(style_config["start_width"])
-            elif base_width is not None:
-                self.start_width = base_width
-
-            if "end_width" in style_config:
-                self.end_width = float(style_config["end_width"])
-            elif base_width is not None:
-                # Apply gradient ratio if specified
-                gradient_ratio = style_config.get("gradient_ratio", 0.5)
-                self.end_width = base_width * max(0.3, min(1.0, gradient_ratio))
-        else:
-            # For non-bezier: use uniform width
-            if base_width is not None:
-                self.start_width = base_width
-                self.end_width = base_width
-            else:
-                # Fallback to individual settings
-                if "start_width" in style_config:
-                    self.start_width = float(style_config["start_width"])
-                if "end_width" in style_config:
-                    self.end_width = float(style_config["end_width"])
-
-        # Update line style
-        style_map = {
-            "solid": Qt.SolidLine,
-            "dashed": Qt.DashLine,
-            "dotted": Qt.DotLine,
-            "dash_dot": Qt.DashDotLine,
-        }
-        if "connector_style" in style_config:
-            self.line_style = style_map.get(style_config["connector_style"], Qt.SolidLine)
-
-        # Invalidate cache and trigger repaint (if path didn't change)
-        if "connector_shape" not in style_config:
-            self._gradient_path = None
-            self.update()

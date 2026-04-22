@@ -1,7 +1,7 @@
 """Decorative line border strategies (single-side lines, no background)."""
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
+from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 
 from .base import BorderStrategy
 
@@ -17,14 +17,19 @@ class BottomLineBorder(BorderStrategy):
             rect: Node bounding rectangle
             style_config: Style configuration dictionary
         """
+        bg_color = style_config.get("bg_color")
         border_color = style_config.get("border_color")
         border_width = style_config.get("border_width", 2)
 
-        if not border_color:
-            return
+        # Draw background fill (rectangle for decorative lines)
+        if bg_color:
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(QColor(bg_color)))
+            painter.drawRect(rect)
 
-        # No background fill
-        painter.setBrush(Qt.NoBrush)
+        # Don't draw line if width is 0 or color is missing
+        if not border_color or border_width <= 0:
+            return
 
         # Draw bottom line
         pen = QPen(QColor(border_color), border_width)
@@ -60,14 +65,19 @@ class LeftLineBorder(BorderStrategy):
             rect: Node bounding rectangle
             style_config: Style configuration dictionary
         """
+        bg_color = style_config.get("bg_color")
         border_color = style_config.get("border_color")
         border_width = style_config.get("border_width", 2)
 
-        if not border_color:
-            return
+        # Draw background fill (rectangle for decorative lines)
+        if bg_color:
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(QColor(bg_color)))
+            painter.drawRect(rect)
 
-        # No background fill
-        painter.setBrush(Qt.NoBrush)
+        # Don't draw line if width is 0 or color is missing
+        if not border_color or border_width <= 0:
+            return
 
         # Draw left line
         pen = QPen(QColor(border_color), border_width)
