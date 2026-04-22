@@ -89,7 +89,7 @@ cogist/
 ├── pyproject.toml          # Project configuration
 ├── README.md               # Project documentation
 ├── LICENSE                 # License file
-├── CHANGELOG.md            # Version history
+├── CHANGELOG.md            # Version history (v0.3.0 latest)
 ├── docs/                   # 📚 Documentation center
 │   ├── INDEX.md                    # Documentation index
 │   ├── ARCHITECTURE.md             # Architecture design
@@ -98,23 +98,31 @@ cogist/
 │   ├── ROADMAP.md                  # Development roadmap
 │   └── zh-CN/                      # Chinese documentation
 ├── cogist/                 # Source code package
-│   ├── domain/             # Domain layer (entities, value objects, styles, layout)
+│   ├── domain/             # Domain layer (entities, styles, layout, connectors, borders)
 │   │   ├── entities/       # Node, Edge entities
-│   │   ├── styles/         # Style system (Template, ColorScheme, RoleBasedStyle)
+│   │   ├── styles/         # Style system (Template, ColorScheme, RoleBasedStyle, SpacingConfig)
+│   │   │   ├── extended_styles.py  # Core style data structures
+│   │   │   └── style_resolver.py   # Style resolution and serialization
+│   │   ├── connectors/     # Connector algorithms (Bezier, Orthogonal, Rounded, etc.)
+│   │   ├── borders/        # Border system (Container, Decorative lines)
 │   │   ├── layout/         # Layout algorithms and registry
 │   │   └── colors/         # Color theme definitions
 │   ├── application/        # Application layer (services, commands)
-│   │   ├── services/       # MindMapService, NodeService
+│   │   ├── services/       # MindMapService, AppContext
 │   │   └── commands/       # Command pattern (AddNode, DeleteNode, EditText)
 │   ├── presentation/       # Presentation layer (UI components)
 │   │   ├── items/          # QGraphicsItem implementations (NodeItem, EdgeItem)
-│   │   ├── dialogs/        # Dialogs (StylePanel with Simple/Advanced modes)
-│   │   └── widgets/        # Custom widgets
-│   └── infrastructure/     # Infrastructure layer (persistence, plugins)
+│   │   ├── dialogs/        # Dialogs (StylePanelAdvanced, ActivityBar)
+│   │   │   ├── style_panel_advanced.py  # Advanced style panel
+│   │   │   └── style_widgets/           # Reusable style widgets
+│   │   └── widgets/        # Custom widgets (ConnectorPreviews, VisualSelector, etc.)
+│   └── infrastructure/     # Infrastructure layer (persistence, serialization)
 │       ├── repositories/   # Data persistence
-│       ├── io/             # Serialization (JSON)
-│       └── plugins/        # Plugin system
+│       └── io/             # Serialization (CGS format, JSON)
 └── tests/                  # Unit tests
+    ├── test_extended_styles.py
+    ├── test_style_serialization.py
+    └── test_cgs_serializer.py
 ```
 
 ## 🎯 Key Features
@@ -123,22 +131,25 @@ cogist/
 
 **Core Functionality:**
 - Smart curve connection with automatic edge anchor selection
-- Gradient line width curves for professional appearance
+- Gradient line width curves for professional appearance (10→2px)
 - Child node following when dragging parent
 - Keyboard navigation (pan + zoom)
-- Branch color differentiation
+- Branch color differentiation with role-based coloring
 - High-performance rendering with path caching
 - Undo/Redo support (Ctrl+Z/Y)
 - Node editing (Tab, Enter, Delete, Space)
-- File save/load in `.cgs` format (JSON-based ZIP container)
+- File save/load in `.cgs` format (ZIP-compressed JSON container)
+- Real-time style preview with Template + ColorScheme system
 
 **Settings Panel:**
-- Dual-mode design: Simple Mode (placeholder) + Advanced Mode (full features)
-- Layer-based style editing (Root/Level 1/Level 2/Level 3+)
+- Advanced mode with full-featured style editing
+- Role-based style editing (Root/Primary/Secondary/Tertiary)
 - Real-time preview of all style changes
-- Customizable shapes, borders, backgrounds, fonts
+- Customizable shapes, borders, backgrounds, shadows, fonts
 - Font decorations: Italic, Underline, Strikethrough
 - Template and Color Scheme management
+- Multiple connector styles (Bezier, Orthogonal, Rounded, Sharp-First Rounded)
+- Node shape previews and visual selectors
 
 **Run:**
 ```bash
@@ -202,13 +213,15 @@ template = Template(
 
 After running the program, you can experience:
 - Center-radial layout with balanced node distribution
-- Color-coded nodes for different branches
+- Color-coded nodes for different branches (Root/Primary/Secondary/Tertiary)
 - Gradient curves connecting parent-child nodes
 - Interactive drag and zoom functionality
-- Real-time style preview in Settings Panel
+- Real-time style preview in Advanced Settings Panel
 - Professional appearance with customizable templates
-- Multiple connector styles and node shapes
+- Multiple connector styles (Bezier, Orthogonal, Rounded, Sharp-First Rounded)
+- Node shapes (Rounded Rect, Circle, Ellipse, etc.) with live previews
 - Shadow effects and font decorations
+- Visual selectors for shapes, connectors, and borders
 
 ## 📖 Documentation
 
