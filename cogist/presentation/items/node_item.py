@@ -136,6 +136,7 @@ class NodeItem(QGraphicsRectItem):
 
         # Set text alignment to left-top with forced wrapping
         from PySide6.QtGui import QTextOption
+
         doc = self.text_item.document()
         doc.setDocumentMargin(0)  # Remove default document margin
         text_option = QTextOption(Qt.AlignLeft | Qt.AlignTop)
@@ -167,12 +168,14 @@ class NodeItem(QGraphicsRectItem):
         color_scheme = self.style_config.resolved_color_scheme
         if color_scheme:
             bg_color = color_scheme.node_colors.get(role, "#FFFFFF")
-            text_color = (color_scheme.text_colors.get(role)
-                          if color_scheme.text_colors
-                          else None) or self._auto_contrast(bg_color)
-            border_color = (color_scheme.border_colors.get(role)
-                            if color_scheme.border_colors
-                            else None)
+            text_color = (
+                color_scheme.text_colors.get(role) if color_scheme.text_colors else None
+            ) or self._auto_contrast(bg_color)
+            border_color = (
+                color_scheme.border_colors.get(role)
+                if color_scheme.border_colors
+                else None
+            )
         else:
             bg_color = "#FFFFFF"
             text_color = "#000000"
@@ -188,27 +191,27 @@ class NodeItem(QGraphicsRectItem):
 
         # Convert font weight string to QFont.Weight enum
         weight_map = {
-            "Thin": QFont.Weight.Thin,              # 0
-            "Hairline": QFont.Weight.Thin,          # 0
-            "Extra Light": QFont.Weight.ExtraLight, # 12
+            "Thin": QFont.Weight.Thin,  # 0
+            "Hairline": QFont.Weight.Thin,  # 0
+            "Extra Light": QFont.Weight.ExtraLight,  # 12
             "ExtraLight": QFont.Weight.ExtraLight,  # 12
-            "Ultra Light": QFont.Weight.ExtraLight, # 12
+            "Ultra Light": QFont.Weight.ExtraLight,  # 12
             "UltraLight": QFont.Weight.ExtraLight,  # 12
-            "Light": QFont.Weight.Light,            # 25
-            "Regular": QFont.Weight.Normal,         # 50
-            "Normal": QFont.Weight.Normal,          # 50
-            "Medium": QFont.Weight.Medium,          # 57
-            "Semi Bold": QFont.Weight.DemiBold,     # 63
-            "SemiBold": QFont.Weight.DemiBold,      # 63
-            "Demi Bold": QFont.Weight.DemiBold,     # 63
-            "DemiBold": QFont.Weight.DemiBold,      # 63
-            "Bold": QFont.Weight.Bold,              # 70
-            "Extra Bold": QFont.Weight.ExtraBold,   # 80
-            "ExtraBold": QFont.Weight.ExtraBold,    # 80
-            "Ultra Bold": QFont.Weight.Black,       # 87
-            "UltraBold": QFont.Weight.Black,        # 87
-            "Black": QFont.Weight.Black,            # 87
-            "Heavy": QFont.Weight.Black,            # 87
+            "Light": QFont.Weight.Light,  # 25
+            "Regular": QFont.Weight.Normal,  # 50
+            "Normal": QFont.Weight.Normal,  # 50
+            "Medium": QFont.Weight.Medium,  # 57
+            "Semi Bold": QFont.Weight.DemiBold,  # 63
+            "SemiBold": QFont.Weight.DemiBold,  # 63
+            "Demi Bold": QFont.Weight.DemiBold,  # 63
+            "DemiBold": QFont.Weight.DemiBold,  # 63
+            "Bold": QFont.Weight.Bold,  # 70
+            "Extra Bold": QFont.Weight.ExtraBold,  # 80
+            "ExtraBold": QFont.Weight.ExtraBold,  # 80
+            "Ultra Bold": QFont.Weight.Black,  # 87
+            "UltraBold": QFont.Weight.Black,  # 87
+            "Black": QFont.Weight.Black,  # 87
+            "Heavy": QFont.Weight.Black,  # 87
         }
         font_weight = weight_map.get(font_weight_str, QFont.Weight.Normal)
 
@@ -217,11 +220,14 @@ class NodeItem(QGraphicsRectItem):
         font.setWeight(font_weight)  # Use setWeight for better compatibility
 
         # Apply font decorations from template_style
-        if hasattr(template_style, 'font_style') and template_style.font_style == "Italic":
+        if (
+            hasattr(template_style, "font_style")
+            and template_style.font_style == "Italic"
+        ):
             font.setItalic(True)
-        if hasattr(template_style, 'font_underline') and template_style.font_underline:
+        if hasattr(template_style, "font_underline") and template_style.font_underline:
             font.setUnderline(True)
-        if hasattr(template_style, 'font_strikeout') and template_style.font_strikeout:
+        if hasattr(template_style, "font_strikeout") and template_style.font_strikeout:
             font.setStrikeOut(True)
 
         self.text_item.setFont(font)
@@ -246,12 +252,14 @@ class NodeItem(QGraphicsRectItem):
             self.node_width = actual_width
             self.node_height = actual_height
             self.setRect(
-                -self.node_width / 2, -self.node_height / 2,
-                self.node_width, self.node_height
+                -self.node_width / 2,
+                -self.node_height / 2,
+                self.node_width,
+                self.node_height,
             )
 
             # Position text with padding and vertical centering
-            if style_for_calc and hasattr(style_for_calc, 'padding_w'):
+            if style_for_calc and hasattr(style_for_calc, "padding_w"):
                 padding_left = style_for_calc.padding_w
                 padding_top = style_for_calc.padding_h
             else:
@@ -260,7 +268,11 @@ class NodeItem(QGraphicsRectItem):
 
             # Calculate text position: left padding + vertical centering
             text_x = -self.node_width / 2 + padding_left
-            text_y = -self.node_height / 2 + padding_top + (self.node_height - text_rect.height() - padding_top * 2) / 2
+            text_y = (
+                -self.node_height / 2
+                + padding_top
+                + (self.node_height - text_rect.height() - padding_top * 2) / 2
+            )
             self.text_item.setPos(text_x, text_y)
         else:
             # Measure and auto-size using unified method
@@ -274,7 +286,7 @@ class NodeItem(QGraphicsRectItem):
                 -actual_width / 2, -actual_height / 2, actual_width, actual_height
             )
             # Position text with padding and vertical centering
-            if style_for_calc and hasattr(style_for_calc, 'padding_w'):
+            if style_for_calc and hasattr(style_for_calc, "padding_w"):
                 padding_left = style_for_calc.padding_w
                 padding_top = style_for_calc.padding_h
             else:
@@ -283,7 +295,11 @@ class NodeItem(QGraphicsRectItem):
 
             # Calculate text position: left padding + vertical centering
             text_x = -actual_width / 2 + padding_left
-            text_y = -actual_height / 2 + padding_top + (actual_height - text_rect.height() - padding_top * 2) / 2
+            text_y = (
+                -actual_height / 2
+                + padding_top
+                + (actual_height - text_rect.height() - padding_top * 2) / 2
+            )
             self.text_item.setPos(text_x, text_y)
 
     def add_edge(self, edge):
@@ -320,22 +336,22 @@ class NodeItem(QGraphicsRectItem):
             '#FFFFFF' for dark backgrounds, '#000000' for light backgrounds
         """
         # Parse hex color
-        bg_color = bg_color.lstrip('#')
+        bg_color = bg_color.lstrip("#")
         if len(bg_color) != 6:
-            return '#000000'
+            return "#000000"
 
         try:
             r = int(bg_color[0:2], 16)
             g = int(bg_color[2:4], 16)
             b = int(bg_color[4:6], 16)
         except ValueError:
-            return '#000000'
+            return "#000000"
 
         # Calculate luminance
         luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
 
         # Return white for dark backgrounds, black for light
-        return '#FFFFFF' if luminance < 0.5 else '#000000'
+        return "#FFFFFF" if luminance < 0.5 else "#000000"
 
     def _apply_font_shadow(self):
         """Apply font shadow effect to text_item based on template_style.
@@ -345,7 +361,7 @@ class NodeItem(QGraphicsRectItem):
         """
         from PySide6.QtWidgets import QGraphicsDropShadowEffect
 
-        if not hasattr(self.template_style, 'shadow_enabled'):
+        if not hasattr(self.template_style, "shadow_enabled"):
             return
 
         if self.template_style.shadow_enabled:
@@ -358,13 +374,12 @@ class NodeItem(QGraphicsRectItem):
 
             # Update shadow parameters
             shadow_effect.setOffset(
-                self.template_style.shadow_offset_x,
-                self.template_style.shadow_offset_y
+                self.template_style.shadow_offset_x, self.template_style.shadow_offset_y
             )
             shadow_effect.setBlurRadius(self.template_style.shadow_blur)
 
             # Update shadow color
-            shadow_color_str = self.template_style.shadow_color or '#000000'
+            shadow_color_str = self.template_style.shadow_color or "#000000"
             if isinstance(shadow_color_str, str):
                 shadow_qcolor = QColor(shadow_color_str)
             else:
@@ -404,8 +419,14 @@ class NodeItem(QGraphicsRectItem):
                 color_scheme = self.style_config.resolved_color_scheme
                 if color_scheme:
                     bg_color = color_scheme.node_colors.get(role, "#FFFFFF")
-                    text_color = color_scheme.text_colors.get(role) or self._auto_contrast(bg_color)
-                    border_color = color_scheme.border_colors.get(role) if color_scheme.border_colors else None
+                    text_color = color_scheme.text_colors.get(
+                        role
+                    ) or self._auto_contrast(bg_color)
+                    border_color = (
+                        color_scheme.border_colors.get(role)
+                        if color_scheme.border_colors
+                        else None
+                    )
                 else:
                     bg_color = "#FFFFFF"
                     text_color = "#000000"
@@ -452,7 +473,9 @@ class NodeItem(QGraphicsRectItem):
                 font.setWeight(font_weight)
 
                 # Apply font decorations
-                is_italic_style = "italic" in font_weight_str.lower() if font_weight_str else False
+                is_italic_style = (
+                    "italic" in font_weight_str.lower() if font_weight_str else False
+                )
 
                 if template_style.font_style == "Italic" and not is_italic_style:
                     font.setItalic(True)
@@ -580,11 +603,15 @@ class NodeItem(QGraphicsRectItem):
             Tuple of (actual_width, actual_height, text_rect)
         """
         # Support RoleBasedStyle, NodeStyleConfig, and dict
-        if hasattr(style, 'padding_w'):
+        if hasattr(style, "padding_w"):
             # It's a RoleBasedStyle object (new architecture)
-            max_text_width = getattr(style, 'max_text_width', 250.0)  # Default to 250
-            padding_width = style.padding_w * 2  # padding_w is single-side, need both sides
-            padding_height = style.padding_h * 2  # padding_h is single-side, need top+bottom
+            max_text_width = getattr(style, "max_text_width", 250.0)  # Default to 250
+            padding_width = (
+                style.padding_w * 2
+            )  # padding_w is single-side, need both sides
+            padding_height = (
+                style.padding_h * 2
+            )  # padding_h is single-side, need top+bottom
         elif hasattr(style, "max_text_width"):
             # It's a NodeStyleConfig object
             max_text_width = style.max_text_width
@@ -598,6 +625,7 @@ class NodeItem(QGraphicsRectItem):
 
         # Ensure wrap mode is set to WrapAnywhere for forced wrapping
         from PySide6.QtGui import QTextOption
+
         doc = self.text_item.document()
         text_option = doc.defaultTextOption()
         text_option.setWrapMode(QTextOption.WrapAnywhere)
@@ -622,7 +650,16 @@ class NodeItem(QGraphicsRectItem):
             text_rect.width() + padding_width,
             max_text_width + padding_width,
         )
-        actual_height = text_rect.height() + padding_height
+
+        # CRITICAL FIX for Qt Anti-aliasing:
+        # Ensure height is always an even number.
+        # If height is odd, rect.bottom() lands on a half-pixel (e.g., 15.5),
+        # causing blurry anti-aliased lines that look misaligned.
+        # Even height ensures rect.bottom() is an integer (e.g., 15.0) for crisp rendering.
+        raw_height = text_rect.height() + padding_height
+        actual_height = (
+            int(raw_height) if int(raw_height) % 2 == 0 else int(raw_height) + 1
+        )
 
         return actual_width, actual_height, text_rect
 
@@ -636,7 +673,7 @@ class NodeItem(QGraphicsRectItem):
             text: New text content
         """
         # Use template_style if available (new architecture), otherwise fallback to legacy
-        if hasattr(self, 'template_style') and self.template_style:
+        if hasattr(self, "template_style") and self.template_style:
             # Use new role-based style system
             style_for_calc = self.template_style
             padding_left = style_for_calc.padding_w
@@ -648,7 +685,9 @@ class NodeItem(QGraphicsRectItem):
             padding_top = style_for_calc["padding_height"]
 
         # Calculate new size
-        actual_width, actual_height, text_rect = self._calculate_node_size(text, style_for_calc)
+        actual_width, actual_height, text_rect = self._calculate_node_size(
+            text, style_for_calc
+        )
 
         # Update node dimensions
         self.node_width = actual_width
@@ -667,7 +706,9 @@ class NodeItem(QGraphicsRectItem):
         # Use unified geometry update method
         self._update_node_geometry(text)
 
-    def start_editing(self, on_edit_callback=None, cursor_position: int = -1, mindmap_view=None):
+    def start_editing(
+        self, on_edit_callback=None, cursor_position: int = -1, mindmap_view=None
+    ):
         """Start inline editing with EditableTextItem.
 
         Args:
@@ -695,7 +736,7 @@ class NodeItem(QGraphicsRectItem):
 
         # Position to match text item exactly (top-left with padding)
         # Get style to calculate padding
-        if hasattr(self, 'template_style') and self.template_style:
+        if hasattr(self, "template_style") and self.template_style:
             padding_left = self.template_style.padding_w
             padding_top = self.template_style.padding_h
         else:
@@ -703,8 +744,7 @@ class NodeItem(QGraphicsRectItem):
             padding_left = style["padding_width"]
             padding_top = style["padding_height"]
         self.edit_widget.setPos(
-            -self.node_width / 2 + padding_left,
-            -self.node_height / 2 + padding_top
+            -self.node_width / 2 + padding_left, -self.node_height / 2 + padding_top
         )
 
         # Hide text item during editing
@@ -726,7 +766,7 @@ class NodeItem(QGraphicsRectItem):
                 return
 
             # Get style to calculate padding
-            if hasattr(self, 'template_style') and self.template_style:
+            if hasattr(self, "template_style") and self.template_style:
                 padding_width = self.template_style.padding_w * 2  # Both sides
                 padding_height = self.template_style.padding_h * 2
             else:
@@ -761,7 +801,7 @@ class NodeItem(QGraphicsRectItem):
                     -new_node_width / 2,
                     -new_node_height / 2,
                     new_node_width,
-                    new_node_height
+                    new_node_height,
                 )
             else:
                 # Non-root nodes: directional expansion to maintain parent edge
@@ -773,10 +813,7 @@ class NodeItem(QGraphicsRectItem):
                     new_rect_left = old_left
                     new_rect_top = -new_node_height / 2
                     self.setRect(
-                        new_rect_left,
-                        new_rect_top,
-                        new_node_width,
-                        new_node_height
+                        new_rect_left, new_rect_top, new_node_width, new_node_height
                     )
                 else:
                     # Left branch: RIGHT edge stays fixed in scene coordinates
@@ -787,18 +824,14 @@ class NodeItem(QGraphicsRectItem):
                     new_rect_left = new_rect_right - new_node_width
                     new_rect_top = -new_node_height / 2
                     self.setRect(
-                        new_rect_left,
-                        new_rect_top,
-                        new_node_width,
-                        new_node_height
+                        new_rect_left, new_rect_top, new_node_width, new_node_height
                     )
 
             # Update edit widget position (relative to new rect with padding)
             # Get the new rect's left and top
             rect = self.rect()
             self.edit_widget.setPos(
-                rect.left() + padding_width / 2,
-                rect.top() + padding_height / 2
+                rect.left() + padding_width / 2, rect.top() + padding_height / 2
             )
 
             # CRITICAL: Force full repaint after rect change
@@ -829,7 +862,7 @@ class NodeItem(QGraphicsRectItem):
         self.edit_widget.editing_finished.connect(on_editing_finished)
 
         # Start editing mode
-        select_all = (cursor_position < 0)
+        select_all = cursor_position < 0
         self.edit_widget.start_editing(select_all=select_all)
 
     def finish_editing(self, on_edit_callback=None):

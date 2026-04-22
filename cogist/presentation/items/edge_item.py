@@ -123,7 +123,8 @@ class EdgeItem(QGraphicsPathItem):
                 # For solid lines: use optimized drawing
                 if is_uniform:
                     # Uniform width: draw path directly for best performance
-                    pen = QPen(color, start_width, Qt.SolidLine, Qt.FlatCap)
+                    # Use RoundCap to match decorative line rendering
+                    pen = QPen(color, start_width, Qt.SolidLine, Qt.RoundCap)
                     pen.setJoinStyle(Qt.MiterJoin)
                     painter.setPen(pen)
                     painter.drawPath(self.path())
@@ -293,28 +294,47 @@ class EdgeItem(QGraphicsPathItem):
 
         dx = self.target_item.scenePos().x() - self.source_item.scenePos().x()
 
+        # Get border shape types and widths for source and target nodes
+        source_shape = self._get_node_border_shape(self.source_item)
+        target_shape = self._get_node_border_shape(self.target_item)
+        source_border_width = self._get_node_border_width(self.source_item)
+        target_border_width = self._get_node_border_width(self.target_item)
+
+        # Get connector width from style config if available
+        connector_width = 2.0  # Default value
+        if self.style_config and hasattr(self.source_item, 'depth'):
+            source_depth = self.source_item.depth
+            if source_depth in self.style_config.connector_config_by_depth:
+                connector_config = self.style_config.connector_config_by_depth[source_depth]
+                connector_width = connector_config.get("line_width", 2.0)
+
         # For mind map: always use left/right edge based on horizontal direction
         # Parent (source) should connect from right edge (if child is on right)
         # or left edge (if child is on left)
         if dx >= 0:
             # Child is on right: connect from source's right edge
-            # Map the right edge of source rect to scene coordinates
-            source_local_right = QPointF(source_rect.right(), source_rect.center().y())
+            # Adjust connection point based on border shape
+            source_local_right = self._get_edge_point_for_shape(
+                source_rect, "right", source_shape, source_border_width, connector_width
+            )
             source_point = self.source_item.mapToScene(source_local_right)
 
             # Connect to target's left edge
-            # Map the left edge of target rect to scene coordinates
-            target_local_left = QPointF(target_rect.left(), target_rect.center().y())
+            target_local_left = self._get_edge_point_for_shape(
+                target_rect, "left", target_shape, target_border_width, connector_width
+            )
             target_point = self.target_item.mapToScene(target_local_left)
         else:
             # Child is on left: connect from source's left edge
-            # Map the left edge of source rect to scene coordinates
-            source_local_left = QPointF(source_rect.left(), source_rect.center().y())
+            source_local_left = self._get_edge_point_for_shape(
+                source_rect, "left", source_shape, source_border_width, connector_width
+            )
             source_point = self.source_item.mapToScene(source_local_left)
 
             # Connect to target's right edge
-            # Map the right edge of target rect to scene coordinates
-            target_local_right = QPointF(target_rect.right(), target_rect.center().y())
+            target_local_right = self._get_edge_point_for_shape(
+                target_rect, "right", target_shape, target_border_width, connector_width
+            )
             target_point = self.target_item.mapToScene(target_local_right)
 
         # Use strategy to generate path
@@ -327,6 +347,74 @@ class EdgeItem(QGraphicsPathItem):
 
         # CRITICAL: Force full repaint to clear old drawing
         self.update()
+
+    def _get_node_border_shape(self, node_item) -> str:
+        """Get the border shape type of a node.
+
+        Args:
+            node_item: NodeItem instance
+
+        Returns:
+            Border shape type string (e.g., 'rounded_rect', 'bottom_line')
+        """
+        try:
+            return node_item.template_style.shape.basic_shape
+        except AttributeError:
+            # Fallback to default if template_style is not available
+            return "rounded_rect"
+
+    def _get_node_border_width(self, node_item) -> float:
+        """Get the border width of a node.
+
+        Args:
+            node_item: NodeItem instance
+
+        Returns:
+            Border width in pixels
+        """
+        try:
+            return node_item.template_style.border.border_width
+        except AttributeError:
+            return 2.0  # Default border width
+
+    def _get_edge_point_for_shape(
+        self, rect, edge: str, shape_type: str, border_width: float = 2.0, connector_width: float = 2.0  # noqa: ARG002
+    ) -> QPointF:
+        """Get connection point on node edge based on border shape.
+
+        Args:
+            rect: Node rectangle in local coordinates
+            edge: Which edge to connect from ('left' or 'right')
+            shape_type: Border shape type (e.g., 'bottom_line', 'left_line')
+            border_width: Border width (unused: node height is now forced to even numbers)
+            connector_width: Connector line width (unused: node height is now forced to even numbers)
+
+        Returns:
+            QPointF in local coordinates for the connection point
+        """
+        # Decorative line shapes: connect to the decorative line position
+        if shape_type == "bottom_line":
+            # CRITICAL: Use exact rect.bottom() to match decorative line drawing coordinate.
+            # Node height is now forced to be even (see node_item.py), so rect.bottom()
+            # is always an integer, ensuring crisp anti-aliased rendering for both lines.
+            y = rect.bottom()
+
+            if edge == "left":
+                return QPointF(rect.left(), y)
+            else:
+                return QPointF(rect.right(), y)
+        elif shape_type == "left_line":
+            # Left line is drawn exactly at rect.left()
+            if edge == "left":
+                return QPointF(rect.left(), rect.center().y())
+            else:  # edge == 'right', shouldn't happen for left_line but handle gracefully
+                return QPointF(rect.right(), rect.center().y())
+        else:
+            # Default: connect to edge center (for rounded_rect, circle, etc.)
+            if edge == "left":
+                return QPointF(rect.left(), rect.center().y())
+            else:  # edge == 'right'
+                return QPointF(rect.right(), rect.center().y())
 
     def _find_edge_point(
         self, center: QPointF, direction_x: float, direction_y: float, item
