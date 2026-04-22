@@ -45,7 +45,7 @@ class NodeStyleSection(CollapsiblePanel):
     GROUP_MARGIN = 10
 
     def __init__(self, parent=None):
-        super().__init__("Node", parent)
+        super().__init__("Node", collapsed=True, parent=parent)
         self.current_style = {}
         self._initialized = False
         self._font_data_cache = None  # Cache for loaded fonts
