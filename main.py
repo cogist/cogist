@@ -651,9 +651,9 @@ class MindMapView(QGraphicsView):
         from cogist.domain.layout import DefaultLayoutConfig
 
         # Create layout config from style_config spacing values
-        # All spacing values should be initialized in create_default_template()
-        level_spacing_by_depth = self.style_config.level_spacing_by_depth.copy() if hasattr(self.style_config, 'level_spacing_by_depth') else {}
-        sibling_spacing_by_depth = self.style_config.sibling_spacing_by_depth.copy() if hasattr(self.style_config, 'sibling_spacing_by_depth') else {}
+        # All spacing values are initialized in create_default_template()
+        level_spacing_by_depth = self.style_config.level_spacing_by_depth.copy()
+        sibling_spacing_by_depth = self.style_config.sibling_spacing_by_depth.copy()
 
         layout_config = DefaultLayoutConfig(
             level_spacing=self.style_config.parent_child_spacing,
@@ -781,8 +781,14 @@ class MindMapView(QGraphicsView):
                     # Get source node depth to determine which connector config to use
                     source_depth = parent_item.depth if hasattr(parent_item, 'depth') else 0
 
-                    # Get per-depth connector config (all depths should be initialized in create_default_template())
-                    connector_config = self.style_config.connector_config_by_depth[source_depth]
+                    # Get per-depth connector config
+                    # For depths beyond configured range, use the max configured depth (level 3+)
+                    if source_depth in self.style_config.connector_config_by_depth:
+                        connector_config = self.style_config.connector_config_by_depth[source_depth]
+                    else:
+                        # Use the deepest configured level for deeper nodes
+                        max_depth = max(self.style_config.connector_config_by_depth.keys())
+                        connector_config = self.style_config.connector_config_by_depth[max_depth]
 
                     # Build edge style config from per-depth values
                     edge_style_config = {
@@ -973,7 +979,6 @@ class MindMapView(QGraphicsView):
             if item == node_item:
                 self.selected_node_id = node_id
                 item.setSelected(True)
-                print(f"Selected: {node_id}")
                 break
 
     def _select_node_by_id(self, node_id: str):
@@ -988,7 +993,6 @@ class MindMapView(QGraphicsView):
         # Select new
         self.selected_node_id = node_id
         self.node_items[node_id].setSelected(True)
-        print(f"Selected: {node_id}")
 
     def _deselect_node(self):
         """Deselect all nodes."""
@@ -1051,8 +1055,6 @@ class MindMapView(QGraphicsView):
         # Ensure the new node is visible in the viewport (with margin)
         # Only scrolls if the node is outside the current view
         QTimer.singleShot(0, lambda: self._ensure_node_visible(new_node_id))
-
-        print(f"Added child '{new_name}' to '{parent_node.text}'")
 
     def _delete_selected_node(self):
         """Delete the selected node."""
@@ -1183,8 +1185,6 @@ class MindMapView(QGraphicsView):
         # Only scrolls if the node is outside the current view
         QTimer.singleShot(0, lambda: self._ensure_node_visible(new_node_id))
 
-        print(f"Added sibling '{new_name}' as child of '{parent_node.text}'")
-
     def _find_node_by_id(self, root: Node, target_id: str) -> Node | None:
         """Find a node by ID in the tree."""
         if root.id == target_id:
@@ -1239,22 +1239,8 @@ class MindMapView(QGraphicsView):
         from cogist.domain.layout import DefaultLayoutConfig
 
         # Create layout config using per-depth spacing values (true isolation)
-        # Use dictionaries directly if they exist, otherwise fall back to global values
-        level_spacing_by_depth = {}
-        sibling_spacing_by_depth = {}
-
-        if hasattr(self.style_config, 'level_spacing_by_depth'):
-            level_spacing_by_depth = self.style_config.level_spacing_by_depth
-        if hasattr(self.style_config, 'sibling_spacing_by_depth'):
-            sibling_spacing_by_depth = self.style_config.sibling_spacing_by_depth
-
-        # Ensure we have at least the default depths defined
-        # This prevents missing depth errors in the layout algorithm
-        for depth in [0, 1, 2]:
-            if depth not in level_spacing_by_depth:
-                level_spacing_by_depth[depth] = self.style_config.parent_child_spacing
-            if depth not in sibling_spacing_by_depth:
-                sibling_spacing_by_depth[depth] = self.style_config.sibling_spacing
+        level_spacing_by_depth = self.style_config.level_spacing_by_depth.copy()
+        sibling_spacing_by_depth = self.style_config.sibling_spacing_by_depth.copy()
 
         layout_config = DefaultLayoutConfig(
             level_spacing=self.style_config.parent_child_spacing,
@@ -1280,19 +1266,14 @@ class MindMapView(QGraphicsView):
             if saved_selection_id in self.node_items:
                 # Original node still exists, select it
                 self._select_node_by_id(saved_selection_id)
-                print(f"Restored selection: {saved_selection_id}")
             elif parent_id and parent_id in self.node_items:
                 # Original node was deleted, select its parent
                 self._select_node_by_id(parent_id)
-                print(f"Restored selection to parent: {parent_id}")
             else:
                 # Fallback to root
                 self._select_node_by_id(self.root_node.id)
-                print("Restored selection to root")
             # Ensure view has keyboard focus for keyboard shortcuts
             self.setFocus(Qt.OtherFocusReason)
-
-        print("Layout refreshed")
 
     def _restore_selection_state_after_undo(self, node_id_before_undo):
         """Restore selection state after undo operation.
