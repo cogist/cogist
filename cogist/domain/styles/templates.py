@@ -138,31 +138,25 @@ def create_default_template() -> MindMapStyle:
         name="Default",
         template_name="default",
         color_scheme_name="default",
-        # === Per-depth spacing configuration (depth 0-5 for deep trees) ===
+        # === Per-depth spacing configuration (4 levels: root, level1, level2, level3+) ===
         level_spacing_by_depth={
             0: 80.0,   # Root → Level 1
             1: 60.0,   # Level 1 → Level 2
             2: 40.0,   # Level 2 → Level 3
-            3: 30.0,   # Level 3 → Level 4
-            4: 25.0,   # Level 4 → Level 5
-            5: 20.0,   # Level 5+
+            3: 30.0,   # Level 3+ → Level 4+ (all deeper levels)
         },
         sibling_spacing_by_depth={
             0: 60.0,   # Level 1 siblings
             1: 45.0,   # Level 2 siblings
             2: 35.0,   # Level 3 siblings
-            3: 28.0,   # Level 4 siblings
-            4: 22.0,   # Level 5 siblings
-            5: 18.0,   # Level 6+ siblings
+            3: 28.0,   # Level 3+ siblings (all deeper levels)
         },
-        # === Per-depth connector configuration (depth 0-5 for deep trees) ===
+        # === Per-depth connector configuration (4 levels: root, level1, level2, level3+) ===
         connector_config_by_depth={
             0: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Root → Level 1
             1: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 1 → Level 2
             2: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 2 → Level 3
-            3: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 3 → Level 4
-            4: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 4 → Level 5
-            5: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 5+
+            3: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666"},  # Level 3+ (all deeper)
         },
         # === Legacy edge configuration (backward compatibility) ===
         edge=LegacyEdgeConfig(

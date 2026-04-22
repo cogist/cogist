@@ -440,6 +440,7 @@ class AdvancedStyleTab(QWidget):
         if self.current_layer != "canvas":
             # Directly update our own style_config since we have direct access
             # Map layers to depths for spacing application
+            # level_3_plus maps to depth 3 and affects all deeper levels (3, 4, 5, ...)
             depth_map = {
                 "root": 0,
                 "level_1": 1,
@@ -448,20 +449,38 @@ class AdvancedStyleTab(QWidget):
             }
             depth = depth_map[self.current_layer]
 
+            # Determine which depths to update (level_3_plus affects all depths >= 3)
+            is_level_3_plus = self.current_layer == "level_3_plus"
+            if is_level_3_plus:
+                # Collect all depths >= 3 from existing config
+                all_depths = set()
+                all_depths.update(self.style_config.level_spacing_by_depth.keys())
+                all_depths.update(self.style_config.sibling_spacing_by_depth.keys())
+                # Also include depths from connector config
+                if hasattr(self.style_config, 'connector_config_by_depth'):
+                    all_depths.update(self.style_config.connector_config_by_depth.keys())
+                depths_to_update = [d for d in all_depths if d >= 3]
+                # If no depths >= 3 exist yet, just use depth 3
+                if not depths_to_update:
+                    depths_to_update = [3]
+            else:
+                depths_to_update = [depth]
+
             if "parent_child" in spacing:
                 # Initialize dictionary if not exists
                 if not hasattr(self.style_config, 'level_spacing_by_depth'):
                     self.style_config.level_spacing_by_depth = {}
-                # Update ONLY the specific depth's level spacing (true isolation)
-                self.style_config.level_spacing_by_depth[depth] = spacing["parent_child"]
+                # Update spacing for all target depths (true layer isolation)
+                for d in depths_to_update:
+                    self.style_config.level_spacing_by_depth[d] = spacing["parent_child"]
 
             if "sibling" in spacing:
                 # Initialize dictionary if not exists
                 if not hasattr(self.style_config, 'sibling_spacing_by_depth'):
                     self.style_config.sibling_spacing_by_depth = {}
-                # Update ONLY the specific depth's sibling spacing (true isolation)
-                # Root layer has no siblings, but we still store it for completeness
-                self.style_config.sibling_spacing_by_depth[depth] = spacing["sibling"]
+                # Update spacing for all target depths (true layer isolation)
+                for d in depths_to_update:
+                    self.style_config.sibling_spacing_by_depth[d] = spacing["sibling"]
 
             # Trigger layout refresh through _apply_styles_to_mindmap
             self._apply_styles_to_mindmap()
@@ -504,24 +523,38 @@ class AdvancedStyleTab(QWidget):
             assert self.style_config is not None
 
             # Map layer to depth (layer controls edge FROM that layer)
+            # level_3_plus maps to depth 3 and affects all deeper levels (3, 4, 5, ...)
             depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
             depth = depth_map.get(self.current_layer, 2)
 
-            # Get connector config for this depth (should be initialized in create_default_template())
-            connector_config = self.style_config.connector_config_by_depth[depth]
+            # Determine which depths to update (level_3_plus affects all depths >= 3)
+            is_level_3_plus = self.current_layer == "level_3_plus"
+            if is_level_3_plus:
+                # Collect all depths >= 3 from existing config
+                all_depths = set(self.style_config.connector_config_by_depth.keys())
+                depths_to_update = [d for d in all_depths if d >= 3]
+                if not depths_to_update:
+                    depths_to_update = [3]
+            else:
+                depths_to_update = [depth]
 
-            # Update connector config
-            if "connector_shape" in style:
-                connector_config["connector_shape"] = style["connector_shape"]
-            if "connector_style" in style:
-                connector_config["connector_style"] = style["connector_style"]
-            if "line_width" in style:
-                connector_config["line_width"] = style["line_width"]
-            if "connector_color" in style:
-                connector_config["color"] = style["connector_color"]
+            # Update connector config for all target depths
+            for d in depths_to_update:
+                connector_config = self.style_config.connector_config_by_depth.get(d, {})
+                self.style_config.connector_config_by_depth[d] = connector_config
 
-            # Add enable_gradient=False to ensure uniform line width for all connector types
-            connector_config["enable_gradient"] = False
+                # Update connector config
+                if "connector_shape" in style:
+                    connector_config["connector_shape"] = style["connector_shape"]
+                if "connector_style" in style:
+                    connector_config["connector_style"] = style["connector_style"]
+                if "line_width" in style:
+                    connector_config["line_width"] = style["line_width"]
+                if "connector_color" in style:
+                    connector_config["color"] = style["connector_color"]
+
+                # Add enable_gradient=False to ensure uniform line width for all connector types
+                connector_config["enable_gradient"] = False
 
             self._apply_styles_to_mindmap()
 
@@ -783,8 +816,12 @@ class AdvancedStyleTab(QWidget):
 
             depth = source_node.depth
 
-            # Get connector config for this depth (all depths should be initialized in create_default_template())
-            connector_config = self.style_config.connector_config_by_depth[depth]
+            # Get connector config for this depth, fallback to max configured depth
+            if depth in self.style_config.connector_config_by_depth:
+                connector_config = self.style_config.connector_config_by_depth[depth]
+            else:
+                max_depth = max(self.style_config.connector_config_by_depth.keys())
+                connector_config = self.style_config.connector_config_by_depth[max_depth]
 
             # Build connector style dict
             connector_style = {

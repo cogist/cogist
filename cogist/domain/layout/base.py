@@ -40,11 +40,13 @@ class DefaultLayoutConfig(BaseLayoutConfig):
 
         Returns:
             Horizontal spacing for this parent-child relationship
-
-        Raises:
-            KeyError: If depth is not configured (should not happen if main.py sets up correctly)
+            Falls back to the maximum configured depth if depth exceeds config.
         """
-        return self.level_spacing_by_depth[depth]
+        if depth in self.level_spacing_by_depth:
+            return self.level_spacing_by_depth[depth]
+        # Use the spacing of the deepest configured level for deeper nodes
+        max_depth = max(self.level_spacing_by_depth.keys())
+        return self.level_spacing_by_depth[max_depth]
 
     def get_sibling_spacing(self, depth: int) -> float:
         """Get sibling spacing for a specific depth.
@@ -54,11 +56,13 @@ class DefaultLayoutConfig(BaseLayoutConfig):
 
         Returns:
             Sibling spacing for this depth
-
-        Raises:
-            KeyError: If depth is not configured (should not happen if main.py sets up correctly)
+            Falls back to the maximum configured depth if depth exceeds config.
         """
-        return self.sibling_spacing_by_depth[depth]
+        if depth in self.sibling_spacing_by_depth:
+            return self.sibling_spacing_by_depth[depth]
+        # Use the spacing of the deepest configured level for deeper nodes
+        max_depth = max(self.sibling_spacing_by_depth.keys())
+        return self.sibling_spacing_by_depth[max_depth]
 
 
 # === Type Union for all layout configs ===
