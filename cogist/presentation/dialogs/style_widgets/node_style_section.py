@@ -126,10 +126,15 @@ class NodeStyleSection(CollapsiblePanel):
         self.radius_spin.setAlignment(Qt.AlignLeft)
         self.radius_spin.valueChanged.connect(self._on_radius_changed)
 
-        # Set initial enabled state based on current shape
-        container_shapes = ["rounded_rect", "rect", "circle", "ellipse"]
+        # Set initial visibility based on current shape
+        # Only show radius for rounded_rect and rect (shapes that support border radius)
+        container_shapes = ["rounded_rect", "rect"]
         current_shape = self.current_style.get("shape", "rounded_rect")
-        self.radius_spin.setEnabled(current_shape in container_shapes)
+        show_radius = current_shape in container_shapes
+        self.radius_spin.setVisible(show_radius)
+
+        # Also set initial label visibility
+        radius_label.setVisible(show_radius)
 
         layout.addWidget(self.radius_spin, row, 1)
         row += 1
@@ -311,11 +316,22 @@ class NodeStyleSection(CollapsiblePanel):
         self.current_style["shape"] = shape_name
 
         # Show/hide radius control based on shape type
-        container_shapes = ["rounded_rect", "rect", "circle", "ellipse"]
+        # Only show radius for rounded_rect and rect (shapes that support border radius)
+        container_shapes = ["rounded_rect", "rect"]
         show_radius = shape_name in container_shapes
 
         if hasattr(self, 'radius_spin'):
-            self.radius_spin.setEnabled(show_radius)
+            self.radius_spin.setVisible(show_radius)
+
+            # Also hide/show the label
+            layout = self._content_widget.layout()
+            if layout:
+                for i in range(layout.count()):
+                    item = layout.itemAt(i)
+                    widget = item.widget() if item else None
+                    if widget and isinstance(widget, QLabel) and widget.text() == "Radius:":
+                        widget.setVisible(show_radius)
+                        break
 
         self._emit_style_changed()
 
@@ -748,10 +764,22 @@ class NodeStyleSection(CollapsiblePanel):
                 # Update preview button
                 self.style_btn.set_value(style["shape"])
 
-                # Update radius enabled state
-                container_shapes = ["rounded_rect", "rect", "circle", "ellipse"]
+                # Update radius visibility based on shape
+                # Only show radius for rounded_rect and rect (shapes that support border radius)
+                container_shapes = ["rounded_rect", "rect"]
+                show_radius = style["shape"] in container_shapes
                 if hasattr(self, 'radius_spin'):
-                    self.radius_spin.setEnabled(style["shape"] in container_shapes)
+                    self.radius_spin.setVisible(show_radius)
+
+                    # Also hide/show the label
+                    layout = self._content_widget.layout()
+                    if layout:
+                        for i in range(layout.count()):
+                            item = layout.itemAt(i)
+                            widget = item.widget() if item else None
+                            if widget and isinstance(widget, QLabel) and widget.text() == "Radius:":
+                                widget.setVisible(show_radius)
+                                break
 
             if "radius" in style:
                 self.radius_spin.setValue(style["radius"])
