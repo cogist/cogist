@@ -91,12 +91,10 @@ cogist/
 ├── LICENSE                 # License file
 ├── CHANGELOG.md            # Version history (v0.3.0 latest)
 ├── docs/                   # 📚 Documentation center
-│   ├── INDEX.md                    # Documentation index
 │   ├── ARCHITECTURE.md             # Architecture design
 │   ├── DESIGN_PHILOSOPHY.md        # Design philosophy
 │   ├── PRODUCT_STRATEGY.md         # Product strategy
-│   ├── ROADMAP.md                  # Development roadmap
-│   └── zh-CN/                      # Chinese documentation
+│   └── ROADMAP.md                  # Development roadmap
 ├── cogist/                 # Source code package
 │   ├── domain/             # Domain layer (entities, styles, layout, connectors, borders)
 │   │   ├── entities/       # Node, Edge entities
@@ -228,7 +226,6 @@ After running the program, you can experience:
 - **[Architecture](docs/ARCHITECTURE.md)** - System architecture overview
 - **[Roadmap](docs/ROADMAP.md)** - Development roadmap and future plans
 - **[Changelog](CHANGELOG.md)** - Version history and release notes
-- **[Chinese Docs](docs/zh-CN/)** - 中文文档
 
 ## 📝 License
 
