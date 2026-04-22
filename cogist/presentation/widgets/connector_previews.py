@@ -244,51 +244,55 @@ def generate_rounded_orthogonal_preview(size: QSize, selected: bool = False) -> 
     end_y = size.height() - margin_y
     mid_x = (start_x + end_x) / 2
 
-    # Calculate corner radius (limit to avoid overlapping)
+    # Calculate corner length (limit to avoid overlapping)
     dx = end_x - start_x
     dy = end_y - start_y
-    corner_length = 15.0
+    # Dynamically calculate corner length based on available space
+    # Each corner needs corner_length on both sides, so max is min segment / 2
+    max_corner_x = abs(dx) * 0.35
+    max_corner_y = abs(dy) * 0.35
+    corner_length = min(15.0, max_corner_x, max_corner_y)
+
+    # Build the list of key points
+    points = [
+        QPointF(start_x, start_y),
+        QPointF(mid_x, start_y),
+        QPointF(mid_x, end_y),
+        QPointF(end_x, end_y),
+    ]
 
     path = QPainterPath()
-    path.moveTo(start_x, start_y)
+    path.moveTo(points[0])
 
-    # Draw orthogonal path with rounded corners using quadratic Bezier curves
-    # Corner points: (mid_x, start_y) and (mid_x, end_y)
-    corner1 = QPointF(mid_x, start_y)
-    corner2 = QPointF(mid_x, end_y)
+    # Iterate through intermediate corner points and round them
+    for i in range(1, len(points) - 1):
+        p1 = points[i - 1]  # Previous point
+        p2 = points[i]  # Current corner point
+        p3 = points[i + 1]  # Next point
 
-    # First segment: from start to corner1
-    # Calculate distance from corner1 to start and end_y
-    dist_start_to_corner1 = abs(mid_x - start_x)
-    dist_corner1_to_corner2_y = abs(end_y - start_y)
+        # Calculate direction vectors from corner to previous and next points
+        v1 = p1 - p2  # p2 -> p1
+        v2 = p3 - p2  # p2 -> p3
 
-    if (
-        dist_start_to_corner1 > corner_length
-        and dist_corner1_to_corner2_y > corner_length
-    ):
-        # Draw to corner1 with rounded corner
-        curve_start1 = corner1 + QPointF(-corner_length if dx > 0 else corner_length, 0)
-        path.lineTo(curve_start1)
-        # Quadratic curve through corner1
-        curve_end1 = corner1 + QPointF(0, corner_length if dy > 0 else -corner_length)
-        path.quadTo(corner1, curve_end1)
-    else:
-        path.lineTo(corner1)
+        len1 = (v1.x() ** 2 + v1.y() ** 2) ** 0.5
+        len2 = (v2.x() ** 2 + v2.y() ** 2) ** 0.5
+        if len1 == 0 or len2 == 0:
+            continue
+        v1 = QPointF(v1.x() / len1, v1.y() / len1)
+        v2 = QPointF(v2.x() / len2, v2.y() / len2)
 
-    # Second segment: from corner1 to corner2
-    # Draw to corner2 with rounded corner
-    if dist_corner1_to_corner2_y > 2 * corner_length:
-        curve_start2 = corner2 + QPointF(0, -corner_length if dy > 0 else corner_length)
-        path.lineTo(curve_start2)
-        # Quadratic curve through corner2
-        curve_end2 = corner2 + QPointF(corner_length if dx > 0 else -corner_length, 0)
-        path.quadTo(corner2, curve_end2)
-    else:
-        path.lineTo(corner2)
-        curve_end2 = QPointF(end_x, end_y)
+        # Calculate arc start and end points
+        arc_start = p2 + v1 * corner_length
+        arc_end = p2 + v2 * corner_length
 
-    # Final segment to end point
-    path.lineTo(end_x, end_y)
+        # Draw straight line to arc start
+        path.lineTo(arc_start)
+
+        # Use quadratic Bezier curve with corner as control point
+        path.quadTo(p2, arc_end)
+
+    # Draw final segment to end point
+    path.lineTo(points[-1])
 
     # Draw the path
     color = "#FFFFFF" if selected else "#000000"  # White if selected, black otherwise
