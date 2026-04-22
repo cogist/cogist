@@ -96,17 +96,17 @@ class NodeStyleSection(CollapsiblePanel):
 
         # Create visual options for popup
         style_options = [
-            ("rounded_rect", generate_rounded_rect_preview, QSize(140, 50)),
-            ("circle", generate_circle_preview, QSize(140, 50)),
-            ("bottom_line", generate_bottom_line_preview, QSize(140, 50)),
-            ("left_line", generate_left_line_preview, QSize(140, 50)),
+            ("rounded_rect", generate_rounded_rect_preview, QSize(100, 24)),
+            ("circle", generate_circle_preview, QSize(100, 24)),
+            ("bottom_line", generate_bottom_line_preview, QSize(100, 24)),
+            ("left_line", generate_left_line_preview, QSize(100, 24)),
         ]
 
         # Create reusable visual preview button
         self.style_btn = VisualPreviewButton(
             options=style_options,
             initial_value=self.current_style.get("shape", "rounded_rect"),
-            preview_size=QSize(140, 50),
+            preview_size=QSize(100, 24),
             button_height=self.WIDGET_HEIGHT,
         )
         self.style_btn.value_changed.connect(self._on_shape_changed)

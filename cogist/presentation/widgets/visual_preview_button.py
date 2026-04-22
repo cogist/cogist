@@ -141,18 +141,8 @@ class VisualPreviewButton(QWidget):
         """Update the preview image based on current value."""
         for value, generator, _size in self.options:
             if value == self.current_value:
-                # Use button's actual size for preview (stretch to fill)
-                button_width = self.button.width() - 8  # Account for margins
-                preview_height = self.button.height() - 4  # Account for margins
-
-                # If button not yet laid out, use popup preview size as fallback
-                if button_width <= 0:
-                    preview_size = self.popup_preview_size
-                else:
-                    preview_size = QSize(button_width, preview_height)
-
-                # Generate preview with button size (stretched, no aspect ratio preservation)
-                pixmap = generator(preview_size, selected=False)
+                # Always use popup_preview_size for consistent appearance
+                pixmap = generator(self.popup_preview_size, selected=False)
                 self.preview_label.setPixmap(pixmap)
                 break
 
