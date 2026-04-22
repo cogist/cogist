@@ -5,7 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![PySide6 6.8+](https://img.shields.io/badge/PySide6-6.8+-green.svg)](https://doc.qt.io/qtforpython-6/)
-[![Changelog](https://img.shields.io/badge/changelog-latest-purple.svg)](CHANGELOG.md)
+[![Version: 0.3.0](https://img.shields.io/badge/version-0.3.0-purple.svg)](https://github.com/cogist/cogist/releases/tag/v0.3.0)
+[![Changelog](https://img.shields.io/badge/changelog-latest-orange.svg)](CHANGELOG.md)
 
 ## ✨ Core Features
 
@@ -30,13 +31,15 @@
 - Undo/Redo support (Ctrl+Z/Y)
 - Node editing (Tab, Enter, Delete, Space)
 
-### 🎭 Advanced Style System
+### 🎭 Advanced Style System (v0.3.0)
 - Role-based styling (Root/Primary/Secondary/Tertiary)
 - Template + Color Scheme separation
-- Customizable shapes, borders, backgrounds
+- Customizable shapes, borders, backgrounds, shadows
 - Font decorations (Italic, Underline, Strikethrough)
 - Real-time preview in Settings Panel
 - Save and load custom templates
+- Multiple connector styles (Bezier, Orthogonal, Rounded)
+- Abstract spacing levels (Compact/Normal/Relaxed/Spacious)
 
 ## 🛠️ Tech Stack
 
@@ -204,6 +207,15 @@ After running the program, you can experience:
 - Interactive drag and zoom functionality
 - Real-time style preview in Settings Panel
 - Professional appearance with customizable templates
+- Multiple connector styles and node shapes
+- Shadow effects and font decorations
+
+## 📖 Documentation
+
+- **[Architecture](docs/ARCHITECTURE.md)** - System architecture overview
+- **[Roadmap](docs/ROADMAP.md)** - Development roadmap and future plans
+- **[Changelog](CHANGELOG.md)** - Version history and release notes
+- **[Chinese Docs](docs/zh-CN/)** - 中文文档
 
 ## 📝 License
 
@@ -230,8 +242,9 @@ See the [LICENSE](LICENSE) file for the complete license text.
 
 **Cogist** - Map Your Thinking 🧠
 
+[![Version: 0.3.0](https://img.shields.io/badge/version-0.3.0-purple.svg)](https://github.com/cogist/cogist/releases/tag/v0.3.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![PySide6 6.8+](https://img.shields.io/badge/PySide6-6.8+-green.svg)](https://doc.qt.io/qtforpython-6/)
-[![Changelog](https://img.shields.io/badge/changelog-latest-purple.svg)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/changelog-latest-orange.svg)](CHANGELOG.md)
 

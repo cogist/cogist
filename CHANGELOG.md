@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-04-23
+
+### Added
+- **Style System Data Structures**: Template, ColorScheme, SpacingConfig, RoleBasedStyle
+- **Style Serialization**: JSON serialization/deserialization for all style components
+- **Real-time Preview**: Live preview of style changes in Settings Panel
+- **Advanced Settings Panel**: Dual-mode panel (Simple/Advanced) with layer-based editing
+- **Node Shape System**: Support for basic shapes, SVG shapes, and custom shapes
+- **Border System**: Container borders and decorative line borders
+- **Connector System**: Multiple connector types (Bezier, Orthogonal, Rounded, Sharp-First Rounded)
+- **Visual Previews**: Shape previews, connector previews, visual selectors
+- **Activity Bar**: Modern activity bar for tool access
+- **Shadow Effects**: Node shadow configuration
+- **Spacing System**: Abstract spacing levels (Compact/Normal/Relaxed/Spacious)
+- **Font Decorations**: Italic, Underline, Strikethrough support
+- **Template System**: Role-based style templates with recommended layouts
+- **Color Scheme System**: Node colors, border colors, text colors, branch color pools
+
+### Changed
+- **Architecture**: Complete DDD four-layer architecture implementation
+- **File Format**: Updated to `.cgs` format (ZIP-compressed JSON container)
+- **Style Panel**: Refactored from depth-based to role-based editing
+- **Node Rendering**: Improved node size measurement and caching
+- **Edge Rendering**: Enhanced gradient curve rendering with varying line widths
+- **Layout System**: Decoupled layout algorithms from rendering
+- **Documentation**: Reorganized documentation structure with Chinese localization
+
+### Technical Details
+- New modules: `extended_styles.py`, `style_resolver.py`, `cgs_serializer.py`
+- New UI components: `style_panel_advanced.py`, `menu_button.py`, `collapsible_panel.py`
+- New domain modules: `borders/`, `connectors/`, `templates/`
+- Comprehensive unit tests for style serialization and extended styles
+
+### Files Added
+- `cogist/domain/styles/extended_styles.py` - Core style data structures
+- `cogist/domain/styles/style_resolver.py` - Style resolution and serialization
+- `cogist/domain/borders/` - Border system implementation
+- `cogist/domain/connectors/` - Connector algorithms
+- `cogist/presentation/dialogs/style_panel_advanced.py` - Advanced settings panel
+- `cogist/presentation/dialogs/style_widgets/` - Reusable style widgets
+- `cogist/infrastructure/io/cgs_serializer.py` - CGS file format support
+- `tests/unit/test_extended_styles.py` - Style system tests
+- `tests/unit/test_style_serialization.py` - Serialization tests
+
+### Fixed
+- Various UI styling issues
+- Connector rendering improvements
+- Panel spacing adjustments
+
+## [0.2.0] - 2026-04-18
+
+### Added
+- **Layout System Refactoring**: Decoupled layout from rendering
+- **Multiple Layout Support**: Infrastructure for multiple layout algorithms
+- **Center-Radial Layout**: Balanced node distribution algorithm
+- **Gradient Curves**: Professional curve rendering with varying line widths (10→2px)
+- **Smart Edge Anchors**: Automatic edge anchor point selection
+- **Performance Optimization**: Path caching for high-performance rendering
+- **Branch Colors**: Auto-matching curve colors to branches
+- **View Controls**: Zoom (+/-/0), pan (arrow keys)
+- **Node Operations**: Add child (Tab), add sibling (Enter), delete (Delete)
+
+### Technical Stack
+- Python 3.13+
+- PySide6 6.8+ (Qt for Python)
+- QGraphicsView Framework
+- uv package manager
+
 ## [0.1.0] - 2026-04-11
 
 ### Added
@@ -29,4 +97,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-*Last updated: 2026-04-11*
+*Last updated: 2026-04-23*
