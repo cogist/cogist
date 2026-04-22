@@ -23,6 +23,7 @@ from cogist.presentation.widgets import (
     generate_bezier_preview,
     generate_bezier_uniform_preview,
     generate_orthogonal_preview,
+    generate_rounded_orthogonal_preview,
     generate_straight_preview,
 )
 
@@ -69,6 +70,7 @@ class ConnectorShapePopup(QDialog):
             ("bezier_uniform", generate_bezier_uniform_preview),
             ("straight", generate_straight_preview),
             ("orthogonal", generate_orthogonal_preview),
+            ("rounded_orthogonal", generate_rounded_orthogonal_preview),
         ]
 
         for value, preview_gen in connector_shapes:
@@ -205,6 +207,7 @@ class ConnectorSection(CollapsiblePanel):
             ("bezier_uniform", generate_bezier_uniform_preview),
             ("straight", generate_straight_preview),
             ("orthogonal", generate_orthogonal_preview),
+            ("rounded_orthogonal", generate_rounded_orthogonal_preview),
         ]
 
         # Set initial preview pattern

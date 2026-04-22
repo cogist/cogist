@@ -4,10 +4,11 @@ Provides a reusable component for selecting options with visual previews,
 supporting both dynamically drawn graphics and bitmap images.
 """
 
-from typing import Callable, Optional
-from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
-from PySide6.QtGui import QPixmap, QPainter, QPen, QColor
+from collections.abc import Callable
+
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
+from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
 
 class VisualOption:
@@ -64,7 +65,7 @@ class VisualOptionButton(QWidget):
         option: VisualOption,
         preview_size: QSize = QSize(60, 40),
         show_label: bool = True,
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.option = option
@@ -140,7 +141,7 @@ class VisualSelector(QWidget):
         orientation: Qt.Orientation = Qt.Horizontal,
         preview_size: QSize = QSize(60, 40),
         spacing: int = 8,
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
     ):
         """Initialize visual selector.
 
@@ -155,7 +156,7 @@ class VisualSelector(QWidget):
         self.options = {opt.value: opt for opt in options}
         self.orientation = orientation
         self.preview_size = preview_size
-        self.selected_value: Optional[str] = None
+        self.selected_value: str | None = None
 
         # Create layout
         if orientation == Qt.Horizontal:

@@ -12,6 +12,7 @@ from cogist.domain.connectors import (
     BezierConnector,
     ConnectorStrategy,
     OrthogonalConnector,
+    RoundedOrthogonalConnector,
     StraightConnector,
 )
 
@@ -227,6 +228,7 @@ class EdgeItem(QGraphicsPathItem):
                 "bezier": BezierConnector(),
                 "straight": StraightConnector(),
                 "orthogonal": OrthogonalConnector(),
+                "rounded_orthogonal": RoundedOrthogonalConnector(),
             }
             new_strategy = shape_map.get(style_config["connector_shape"])
             if new_strategy and not isinstance(self.connector_strategy, type(new_strategy)):

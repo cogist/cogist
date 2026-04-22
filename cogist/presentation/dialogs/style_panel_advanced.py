@@ -520,6 +520,9 @@ class AdvancedStyleTab(QWidget):
             if "connector_color" in style:
                 connector_config["color"] = style["connector_color"]
 
+            # Add enable_gradient=False to ensure uniform line width for all connector types
+            connector_config["enable_gradient"] = False
+
             self._apply_styles_to_mindmap()
 
     @staticmethod
@@ -789,6 +792,7 @@ class AdvancedStyleTab(QWidget):
                 "connector_style": connector_config["connector_style"],
                 "line_width": connector_config["line_width"],
                 "connector_color": connector_config["color"],
+                "enable_gradient": connector_config.get("enable_gradient", False),
             }
 
             edge_item.update_style(connector_style)

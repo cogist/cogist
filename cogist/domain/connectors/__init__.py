@@ -7,6 +7,7 @@ Each connector type implements the ConnectorStrategy interface.
 from .base import ConnectorStrategy
 from .bezier_connector import BezierConnector
 from .orthogonal_connector import OrthogonalConnector
+from .rounded_orthogonal_connector import RoundedOrthogonalConnector
 from .straight_connector import StraightConnector
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "BezierConnector",
     "StraightConnector",
     "OrthogonalConnector",
+    "RoundedOrthogonalConnector",
 ]

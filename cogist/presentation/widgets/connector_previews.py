@@ -219,3 +219,82 @@ def generate_orthogonal_preview(size: QSize, selected: bool = False) -> QPixmap:
 
     painter.end()
     return pixmap
+
+
+def generate_rounded_orthogonal_preview(size: QSize, selected: bool = False) -> QPixmap:
+    """Generate preview for Rounded Orthogonal connector.
+
+    Args:
+        size: Preview size
+
+    Returns:
+        QPixmap with rounded orthogonal line preview
+    """
+    pixmap = QPixmap(size)
+    pixmap.fill(Qt.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing)
+
+    # Draw rounded orthogonal path - centered in pixmap
+    margin_x = size.width() * 0.05  # 5% margin for better centering
+    margin_y = size.height() * 0.2  # 20% margin top/bottom
+    start_x = margin_x
+    start_y = margin_y
+    end_x = size.width() - margin_x
+    end_y = size.height() - margin_y
+    mid_x = (start_x + end_x) / 2
+
+    # Calculate corner radius (limit to avoid overlapping)
+    dx = end_x - start_x
+    dy = end_y - start_y
+    corner_length = 15.0
+
+    path = QPainterPath()
+    path.moveTo(start_x, start_y)
+
+    # Draw orthogonal path with rounded corners using quadratic Bezier curves
+    # Corner points: (mid_x, start_y) and (mid_x, end_y)
+    corner1 = QPointF(mid_x, start_y)
+    corner2 = QPointF(mid_x, end_y)
+
+    # First segment: from start to corner1
+    # Calculate distance from corner1 to start and end_y
+    dist_start_to_corner1 = abs(mid_x - start_x)
+    dist_corner1_to_corner2_y = abs(end_y - start_y)
+
+    if (
+        dist_start_to_corner1 > corner_length
+        and dist_corner1_to_corner2_y > corner_length
+    ):
+        # Draw to corner1 with rounded corner
+        curve_start1 = corner1 + QPointF(-corner_length if dx > 0 else corner_length, 0)
+        path.lineTo(curve_start1)
+        # Quadratic curve through corner1
+        curve_end1 = corner1 + QPointF(0, corner_length if dy > 0 else -corner_length)
+        path.quadTo(corner1, curve_end1)
+    else:
+        path.lineTo(corner1)
+
+    # Second segment: from corner1 to corner2
+    # Draw to corner2 with rounded corner
+    if dist_corner1_to_corner2_y > 2 * corner_length:
+        curve_start2 = corner2 + QPointF(0, -corner_length if dy > 0 else corner_length)
+        path.lineTo(curve_start2)
+        # Quadratic curve through corner2
+        curve_end2 = corner2 + QPointF(corner_length if dx > 0 else -corner_length, 0)
+        path.quadTo(corner2, curve_end2)
+    else:
+        path.lineTo(corner2)
+        curve_end2 = QPointF(end_x, end_y)
+
+    # Final segment to end point
+    path.lineTo(end_x, end_y)
+
+    # Draw the path
+    color = "#FFFFFF" if selected else "#000000"  # White if selected, black otherwise
+    pen = QPen(QColor(color), 2.0, Qt.SolidLine, Qt.RoundCap)
+    painter.setPen(pen)
+    painter.drawPath(path)
+
+    painter.end()
+    return pixmap
