@@ -24,6 +24,7 @@ from cogist.presentation.widgets import (
 )
 
 from .collapsible_panel import CollapsiblePanel
+from .menu_button import MenuButton
 
 
 class ConnectorSection(CollapsiblePanel):
@@ -109,23 +110,19 @@ class ConnectorSection(CollapsiblePanel):
         initial_connector_style = connector_style_map.get(
             self.current_style.get("connector_style", "solid"), "Solid"
         )
-        self.connector_style_combo = QPushButton(initial_connector_style)
-        self.connector_style_combo.setFixedHeight(self.WIDGET_HEIGHT)
-        self.connector_style_combo.setStyleSheet(self._button_style())
 
         self.connector_style_menu = QMenu()
-        self.connector_style_menu.aboutToShow.connect(
-            lambda: self.connector_style_menu.setFixedWidth(
-                self.connector_style_combo.width()
-            )
-        )
-
         connector_styles = ["Solid", "Dashed", "Dotted", "Dash-Dot"]
         for cstyle in connector_styles:
             action = self.connector_style_menu.addAction(cstyle)
             action.triggered.connect(lambda _, s=cstyle: self._set_connector_style(s))
 
-        self.connector_style_combo.setMenu(self.connector_style_menu)
+        # Use reusable MenuButton instead of QPushButton
+        self.connector_style_combo = MenuButton(
+            initial_connector_style, self.WIDGET_HEIGHT
+        )
+        self.connector_style_combo.setStyleSheet(self._button_style())
+        self.connector_style_combo.set_menu(self.connector_style_menu)
         layout.addWidget(self.connector_style_combo, 1, 1)
 
         # Connector width

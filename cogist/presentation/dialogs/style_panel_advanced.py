@@ -157,7 +157,15 @@ class AdvancedStyleTab(QWidget):
     def _get_level_spacing_for_layer(self, layer_name: str) -> float:
         """Get parent-child spacing for a layer from per-depth configuration."""
         assert self.style_config is not None
-        depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
+        # Map layer names to depth; critical/minor use level_3_plus spacing (depth 3)
+        depth_map = {
+            "root": 0,
+            "level_1": 1,
+            "level_2": 2,
+            "level_3_plus": 3,
+            "critical": 3,  # Use same spacing as level_3_plus
+            "minor": 3,     # Use same spacing as level_3_plus
+        }
         depth = depth_map[layer_name]
 
         return self.style_config.level_spacing_by_depth[depth]
@@ -169,7 +177,14 @@ class AdvancedStyleTab(QWidget):
             return 0
 
         # Map layer to the depth of children (siblings are at child's depth)
-        depth_map = {"level_1": 1, "level_2": 2, "level_3_plus": 3}
+        # critical/minor use level_3_plus spacing (depth 3)
+        depth_map = {
+            "level_1": 1,
+            "level_2": 2,
+            "level_3_plus": 3,
+            "critical": 3,  # Use same spacing as level_3_plus
+            "minor": 3,     # Use same spacing as level_3_plus
+        }
         depth = depth_map[layer_name]
 
         return self.style_config.sibling_spacing_by_depth[depth]
@@ -178,7 +193,15 @@ class AdvancedStyleTab(QWidget):
         """Get connector type for a layer from per-depth configuration."""
         assert self.style_config is not None
         # Layer controls the edge FROM that layer TO the next level
-        depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
+        # critical/minor use level_3_plus connector config (depth 3)
+        depth_map = {
+            "root": 0,
+            "level_1": 1,
+            "level_2": 2,
+            "level_3_plus": 3,
+            "critical": 3,
+            "minor": 3,
+        }
         depth = depth_map.get(layer_name, 2)
 
         if hasattr(self.style_config, 'connector_config_by_depth'):
@@ -188,7 +211,15 @@ class AdvancedStyleTab(QWidget):
     def _get_connector_style_for_layer(self, layer_name: str) -> str:
         """Get connector style for a layer from per-depth configuration."""
         assert self.style_config is not None
-        depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
+        # critical/minor use level_3_plus connector config (depth 3)
+        depth_map = {
+            "root": 0,
+            "level_1": 1,
+            "level_2": 2,
+            "level_3_plus": 3,
+            "critical": 3,
+            "minor": 3,
+        }
         depth = depth_map.get(layer_name, 2)
 
         if hasattr(self.style_config, 'connector_config_by_depth'):

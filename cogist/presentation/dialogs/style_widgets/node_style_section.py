@@ -25,6 +25,7 @@ from cogist.presentation.widgets.node_shape_previews import (
 )
 
 from .collapsible_panel import CollapsiblePanel
+from .menu_button import MenuButton
 
 
 class NodeStyleSection(CollapsiblePanel):
@@ -235,10 +236,6 @@ class NodeStyleSection(CollapsiblePanel):
         font_weight_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(font_weight_label, row, 0)
 
-        self.font_weight_combo = QPushButton(self.current_style["font_weight"])
-        self.font_weight_combo.setFixedHeight(self.WIDGET_HEIGHT)
-        self.font_weight_combo.setStyleSheet(self._button_style())
-
         self.font_weight_menu = QMenu()
         self.font_weight_menu.aboutToShow.connect(
             lambda: self._update_font_weight_options()
@@ -250,7 +247,10 @@ class NodeStyleSection(CollapsiblePanel):
             action = self.font_weight_menu.addAction(option)
             action.triggered.connect(lambda _, opt=option: self._set_font_weight(opt))
 
-        self.font_weight_combo.setMenu(self.font_weight_menu)
+        # Use reusable MenuButton instead of QPushButton
+        self.font_weight_combo = MenuButton(self.current_style["font_weight"], self.WIDGET_HEIGHT)
+        self.font_weight_combo.setStyleSheet(self._button_style())
+        self.font_weight_combo.set_menu(self.font_weight_menu)
         layout.addWidget(self.font_weight_combo, row, 1)
         row += 1
 
@@ -308,6 +308,11 @@ class NodeStyleSection(CollapsiblePanel):
             QPushButton:hover {
                 background-color: #F0F0F0;
                 border-color: #A0A0A0;
+            }
+            QPushButton::menu-indicator {
+                image: none;
+                width: 0;
+                height: 0;
             }
         """
 

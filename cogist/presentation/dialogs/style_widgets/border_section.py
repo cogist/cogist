@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QGridLayout, QLabel, QMenu, QPushButton, QSpinBox
 
 from .collapsible_panel import CollapsiblePanel
 from .dialog_utils import position_color_dialog
+from .menu_button import MenuButton
 
 
 class BorderSection(CollapsiblePanel):
@@ -67,21 +68,17 @@ class BorderSection(CollapsiblePanel):
             "dotted": "Dotted",
         }
         initial_border_style = border_style_map.get(self.current_style.get("border_style", "solid"), "Solid")
-        self.border_style_combo = QPushButton(initial_border_style)
-        self.border_style_combo.setFixedHeight(self.WIDGET_HEIGHT)
-        self.border_style_combo.setStyleSheet(self._button_style())
 
         self.border_style_menu = QMenu()
-        self.border_style_menu.aboutToShow.connect(
-            lambda: self.border_style_menu.setFixedWidth(self.border_style_combo.width())
-        )
-
         border_styles = ["Solid", "Dashed", "Dotted", "Dash-Dot"]
         for style in border_styles:
             action = self.border_style_menu.addAction(style)
             action.triggered.connect(lambda _, s=style: self._set_border_style(s))
 
-        self.border_style_combo.setMenu(self.border_style_menu)
+        # Use reusable MenuButton instead of QPushButton
+        self.border_style_combo = MenuButton(initial_border_style, self.WIDGET_HEIGHT)
+        self.border_style_combo.setStyleSheet(self._button_style())
+        self.border_style_combo.set_menu(self.border_style_menu)
         layout.addWidget(self.border_style_combo, 0, 1)
 
         # Border width

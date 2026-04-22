@@ -10,9 +10,10 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,
-    QPushButton,
     QVBoxLayout,
 )
+
+from .menu_button import MenuButton
 
 
 class LayerSelector(QFrame):
@@ -82,24 +83,6 @@ class LayerSelector(QFrame):
 
         # Layer combo button - get initial layer from parent panel
         # This is set by the parent panel after initialization
-        self.layer_combo = QPushButton("Canvas")
-        self.layer_combo.setFixedHeight(self.WIDGET_HEIGHT)
-        self.layer_combo.setStyleSheet("""
-            QPushButton {
-                background-color: #FFFFFF;
-                border: 1px solid #C8C8C8;
-                border-radius: 6px;
-                padding: 4px 24px 4px 12px;
-                font-size: 13px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background-color: #F0F0F0;
-                border-color: #A0A0A0;
-            }
-        """)
-
-        # Create menu
         self.layer_menu = QMenu()
         self.layer_menu.aboutToShow.connect(self._adjust_menu_width)
 
@@ -123,7 +106,23 @@ class LayerSelector(QFrame):
                 action = self.layer_menu.addAction(option)
                 action.triggered.connect(lambda _, opt=option: self._on_layer_selected(opt))
 
-        self.layer_combo.setMenu(self.layer_menu)
+        # Use reusable MenuButton instead of QPushButton
+        self.layer_combo = MenuButton("Canvas", self.WIDGET_HEIGHT)
+        self.layer_combo.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                border: 1px solid #C8C8C8;
+                border-radius: 6px;
+                padding: 4px 24px 4px 12px;
+                font-size: 13px;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: #F0F0F0;
+                border-color: #A0A0A0;
+            }
+        """)
+        self.layer_combo.set_menu(self.layer_menu)
         content_layout.addWidget(self.layer_combo, 0, 1)
 
         main_layout.addLayout(content_layout)
