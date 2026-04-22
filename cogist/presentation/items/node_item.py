@@ -8,7 +8,7 @@ Handles all UI rendering and user interaction.
 import contextlib
 
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen
+from PySide6.QtGui import QColor, QFont, QPen
 from PySide6.QtWidgets import (
     QGraphicsRectItem,
     QGraphicsTextItem,
@@ -505,104 +505,43 @@ class NodeItem(QGraphicsRectItem):
         return super().itemChange(change, value)
 
     def paint(self, painter, option, widget=None):  # noqa: ARG002
-        """Custom paint for node with shape support using style_config."""
+        """Custom paint using border strategy pattern."""
         from PySide6.QtGui import QPainter
 
-        # Use template_style from new architecture
-        shape_type = self.template_style.shape.basic_shape
-        radius = self.template_style.shape.border_radius
-        bg_color = self.bg_color  # Color comes from color scheme
-        border_color = self.border_color  # Border color from color scheme or None
-        border_width = self.template_style.border.border_width
-        border_style = self.template_style.border.border_style
+        from cogist.domain.borders.registry import BorderStrategyRegistry
 
+        painter.setRenderHint(QPainter.Antialiasing, True)
+
+        shape_type = self.template_style.shape.basic_shape
         rect = self.rect()
 
-        # Create path based on shape
-        path = QPainterPath()
-        if shape_type == "circle":
-            # Draw circle/ellipse
-            path.addEllipse(rect)
-        elif shape_type == "rect":
-            # Draw rectangle (no radius)
-            path.addRect(rect)
-        else:  # rounded_rect (default)
-            # Draw rounded rectangle
-            path.addRoundedRect(
-                rect.x(),
-                rect.y(),
-                rect.width(),
-                rect.height(),
-                radius,
-                radius,
-            )
+        # Build style config dict for strategy
+        style_config = {
+            "bg_color": self.bg_color,
+            "border_color": self.border_color,
+            "border_width": self.template_style.border.border_width,
+            "border_radius": self.template_style.shape.border_radius,
+            "border_style": self.template_style.border.border_style,
+            "padding_w": self.template_style.padding_w,
+            "padding_h": self.template_style.padding_h,
+        }
 
-        # Draw selection highlight if selected
+        # Get and execute border strategy
+        try:
+            strategy = BorderStrategyRegistry.get_strategy(shape_type)
+        except ValueError:
+            # Fallback to default rounded rect
+            strategy = BorderStrategyRegistry.get_strategy("rounded_rect")
+
+        # Draw selection highlight first (if selected)
         if self.isSelected():
-            highlight_path = QPainterPath()
-            if shape_type == "circle":
-                # Ellipse highlight with offset
-                highlight_rect = rect.adjusted(-3, -3, 3, 3)
-                highlight_path.addEllipse(highlight_rect)
-            elif shape_type == "rect":
-                # Rectangle highlight with offset
-                highlight_rect = rect.adjusted(-3, -3, 3, 3)
-                highlight_path.addRect(highlight_rect)
-            else:  # rounded_rect
-                highlight_path.addRoundedRect(
-                    rect.x() - 3,
-                    rect.y() - 3,
-                    rect.width() + 6,
-                    rect.height() + 6,
-                    radius + 2,
-                    radius + 2,
-                )
+            highlight_path = strategy.get_selection_path(rect, style_config)
             painter.setPen(QPen(QColor("#FFD700"), 3))  # Gold border
             painter.setBrush(Qt.NoBrush)
             painter.drawPath(highlight_path)
 
-        painter.setRenderHint(QPainter.Antialiasing, True)
-
-        # Check if this node should have no background (depth >= 3 or explicit flag)
-        # For now, always draw background in new architecture
-        has_background = True
-
-        if not has_background:
-            # No background fill, no border - just text
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(Qt.NoBrush)
-        else:
-            # Apply background color
-            bg_qcolor = QColor(bg_color) if isinstance(bg_color, str) else bg_color
-
-            # Create gradient or solid color
-            # For now, just use solid color (gradient can be added later)
-            painter.setBrush(QBrush(bg_qcolor))
-
-            # Apply border if specified
-            if border_width > 0 and border_color:
-                if isinstance(border_color, str):
-                    border_qcolor = QColor(border_color)
-                else:
-                    border_qcolor = border_color
-
-                pen = QPen(border_qcolor, border_width)
-
-                # Set border style
-                if border_style == "dashed":
-                    pen.setStyle(Qt.DashLine)
-                elif border_style == "dotted":
-                    pen.setStyle(Qt.DotLine)
-                elif border_style == "dash_dot":
-                    pen.setStyle(Qt.DashDotLine)
-                else:
-                    pen.setStyle(Qt.SolidLine)
-
-                painter.setPen(pen)
-            else:
-                painter.setPen(Qt.NoPen)
-
-        painter.drawPath(path)
+        # Draw node shape
+        strategy.draw(painter, rect, style_config)
 
     def get_text(self) -> str:
         """Get node text."""

@@ -22,13 +22,22 @@ class SpacingConfig:
 
 @dataclass
 class NodeShape:
-    """Node shape configuration (supports basic and custom shapes)."""
+    """Node shape configuration (supports basic and custom shapes).
+
+    Shape categories:
+    - Container shapes (with background fill): rounded_rect, rect, circle, ellipse
+    - Decorative line shapes (transparent background): bottom_line, left_line
+    - No shape: none (pure text only)
+    """
 
     shape_type: str = "basic"  # basic / svg / custom
 
     # Basic shape
-    basic_shape: str = "rounded_rect"  # rounded_rect / circle / rect / ellipse / none
-    border_radius: int = 8  # Corner radius
+    # Container shapes: rounded_rect, rect, circle, ellipse
+    # Decorative lines: bottom_line, left_line
+    # No shape: none
+    basic_shape: str = "rounded_rect"
+    border_radius: int = 8  # Corner radius (only for container shapes)
 
     # SVG shape (for fan, scroll, etc.)
     svg_path: str | None = None  # SVG path data

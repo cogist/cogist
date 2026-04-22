@@ -4,7 +4,7 @@ Provides controls for customizing node appearance including shape, colors,
 padding, and font properties. Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -14,6 +14,14 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSpinBox,
     QWidget,
+)
+
+from cogist.presentation.widgets import VisualPreviewButton
+from cogist.presentation.widgets.node_shape_previews import (
+    generate_bottom_line_preview,
+    generate_circle_preview,
+    generate_left_line_preview,
+    generate_rounded_rect_preview,
 )
 
 from .collapsible_panel import CollapsiblePanel
@@ -80,33 +88,29 @@ class NodeStyleSection(CollapsiblePanel):
 
         row = 0
 
-        # Shape selector
+        # Shape selector - using reusable VisualPreviewButton
         shape_label = QLabel("Shape:")
         shape_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         shape_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(shape_label, row, 0)
 
-        # Get initial shape from current_style
-        shape_map = {
-            "rect": "Rectangle",
-            "rounded_rect": "Rounded Rect",
-            "circle": "Circle",
-        }
-        initial_shape = shape_map.get(self.current_style.get("shape", "rounded_rect"), "Rounded Rect")
-        self.shape_combo = QPushButton(initial_shape)
-        self.shape_combo.setFixedHeight(self.WIDGET_HEIGHT)
-        self.shape_combo.setStyleSheet(self._button_style())
+        # Create visual options for popup
+        shape_options = [
+            ("rounded_rect", generate_rounded_rect_preview, QSize(140, 50)),
+            ("circle", generate_circle_preview, QSize(140, 50)),
+            ("bottom_line", generate_bottom_line_preview, QSize(140, 50)),
+            ("left_line", generate_left_line_preview, QSize(140, 50)),
+        ]
 
-        self.shape_menu = QMenu()
-        self.shape_menu.aboutToShow.connect(lambda: self.shape_menu.setFixedWidth(self.shape_combo.width()))
-
-        shape_options = ["Rectangle", "Rounded Rect", "Circle"]
-        for option in shape_options:
-            action = self.shape_menu.addAction(option)
-            action.triggered.connect(lambda _, opt=option: self._set_shape(opt))
-
-        self.shape_combo.setMenu(self.shape_menu)
-        layout.addWidget(self.shape_combo, row, 1)
+        # Create reusable visual preview button
+        self.shape_btn = VisualPreviewButton(
+            options=shape_options,
+            initial_value=self.current_style.get("shape", "rounded_rect"),
+            preview_size=QSize(140, 50),
+            button_height=self.WIDGET_HEIGHT,
+        )
+        self.shape_btn.value_changed.connect(self._on_shape_changed)
+        layout.addWidget(self.shape_btn, row, 1)
         row += 1
 
         # Corner radius
@@ -123,10 +127,9 @@ class NodeStyleSection(CollapsiblePanel):
         self.radius_spin.valueChanged.connect(self._on_radius_changed)
 
         # Set initial enabled state based on current shape
-        current_shape_display = "Rounded Rect" if self.current_style.get("shape") == "rounded_rect" else \
-                               "Rectangle" if self.current_style.get("shape") == "rect" else \
-                               "Circle"
-        self.radius_spin.setEnabled(current_shape_display == "Rounded Rect")
+        container_shapes = ["rounded_rect", "rect", "circle", "ellipse"]
+        current_shape = self.current_style.get("shape", "rounded_rect")
+        self.radius_spin.setEnabled(current_shape in container_shapes)
 
         layout.addWidget(self.radius_spin, row, 1)
         row += 1
@@ -303,19 +306,16 @@ class NodeStyleSection(CollapsiblePanel):
             }
         """
 
-    def _set_shape(self, value: str):
-        """Set node shape."""
-        self.shape_combo.setText(value)
-        shape_map = {
-            "Rectangle": "rect",
-            "Rounded Rect": "rounded_rect",
-            "Circle": "circle",
-        }
-        self.current_style["shape"] = shape_map.get(value, "rounded_rect")
+    def _on_shape_changed(self, shape_name: str):
+        """Handle shape selection change."""
+        self.current_style["shape"] = shape_name
 
-        # Enable/disable radius based on shape
+        # Show/hide radius control based on shape type
+        container_shapes = ["rounded_rect", "rect", "circle", "ellipse"]
+        show_radius = shape_name in container_shapes
+
         if hasattr(self, 'radius_spin'):
-            self.radius_spin.setEnabled(value == "Rounded Rect")
+            self.radius_spin.setEnabled(show_radius)
 
         self._emit_style_changed()
 
@@ -745,12 +745,13 @@ class NodeStyleSection(CollapsiblePanel):
         # Update UI if initialized
         if self._initialized:
             if "shape" in style:
-                shape_map = {
-                    "rect": "Rectangle",
-                    "rounded_rect": "Rounded Rect",
-                    "circle": "Circle",
-                }
-                self.shape_combo.setText(shape_map.get(style["shape"], "Rounded Rect"))
+                # Update preview button
+                self.shape_btn.set_value(style["shape"])
+
+                # Update radius enabled state
+                container_shapes = ["rounded_rect", "rect", "circle", "ellipse"]
+                if hasattr(self, 'radius_spin'):
+                    self.radius_spin.setEnabled(style["shape"] in container_shapes)
 
             if "radius" in style:
                 self.radius_spin.setValue(style["radius"])
