@@ -60,6 +60,7 @@ htmlcov/
 
 # Pyright type checker
 .pyrightcache/
+pyrightconfig.json
 
 # Lingma IDE cache
 .lingma/
