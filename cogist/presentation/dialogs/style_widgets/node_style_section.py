@@ -746,7 +746,7 @@ class NodeStyleSection(CollapsiblePanel):
         if self._initialized:
             if "shape" in style:
                 # Update preview button
-                self.shape_btn.set_value(style["shape"])
+                self.style_btn.set_value(style["shape"])
 
                 # Update radius enabled state
                 container_shapes = ["rounded_rect", "rect", "circle", "ellipse"]
