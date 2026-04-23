@@ -51,8 +51,8 @@ class NodeStyle:
                 "font_size": 18,
                 "font_weight": QFont.Bold,
                 "max_text_width": MAX_TEXT_WIDTH,
-                "padding_width": 20,
-                "padding_height": 16,
+                "padding_width": 16,  # Match RoleBasedStyle PRIMARY
+                "padding_height": 12,
                 "border_radius": 8,
             }
         elif depth == 2:
@@ -60,8 +60,8 @@ class NodeStyle:
                 "font_size": 16,
                 "font_weight": QFont.Normal,
                 "max_text_width": MAX_TEXT_WIDTH,
-                "padding_width": 8,
-                "padding_height": 6,
+                "padding_width": 12,  # Match RoleBasedStyle SECONDARY
+                "padding_height": 10,
                 "border_radius": 6,
             }
         else:
@@ -70,8 +70,8 @@ class NodeStyle:
                 "font_size": 14,
                 "font_weight": QFont.Normal,
                 "max_text_width": MAX_TEXT_WIDTH,
-                "padding_width": 6,
-                "padding_height": 4,
+                "padding_width": 10,  # Match RoleBasedStyle TERTIARY
+                "padding_height": 8,
                 "border_radius": 4,
                 "no_background": True,  # Flag to indicate no background fill
             }
