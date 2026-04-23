@@ -1032,10 +1032,20 @@ class MindMapView(QGraphicsView):
 
                     # Only flip if sides are different
                     if is_currently_right != recorded_side:
-                        # Determine if we need to mirror based on target side
-                        # If moving to right side, don't mirror (normal)
-                        # If moving to left side, mirror
-                        should_mirror = not is_currently_right
+                        # CRITICAL FIX: Mirror based on the saved offset direction
+                        # Get a child offset (not root's 0,0) to determine subtree layout direction
+                        # Skip the first entry which is the root node (0,0)
+                        offsets = list(self._subtree_initial_positions.values())[1:]  # Skip root
+                        if offsets:
+                            first_child_offset = offsets[0]
+                            offset_is_positive = first_child_offset.x() >= 0
+
+                            # If offset is positive (right-side layout), mirror when going to left
+                            # If offset is negative (left-side layout), mirror when going to right
+                            should_mirror = (is_currently_right != offset_is_positive)
+                        else:
+                            # No children, no need to mirror
+                            should_mirror = False
 
                         # Flip subtree
                         self._apply_subtree_positions(new_pos, should_mirror)
