@@ -148,17 +148,13 @@ class NodeItem(QGraphicsRectItem):
         # style_config is always set (from create_default_template or update_style)
         assert self.style_config is not None, "style_config must be set"
 
-        from cogist.domain.styles import NodeRole
 
         # Map depth to role
         role = self._depth_to_role(depth)
 
-        # Get template style for this role (fallback to TERTIARY if not found)
-        template_style = self.style_config.resolved_template.role_styles.get(role)
-        if not template_style:
-            template_style = self.style_config.resolved_template.role_styles.get(
-                NodeRole.TERTIARY
-            )
+        # CRITICAL: Get template style for this role - must exist in template
+        # No fallback allowed - all roles must be defined in the template
+        template_style = self.style_config.resolved_template.role_styles[role]
 
         # Extract font properties from template (without colors)
         font_size = template_style.font_size
@@ -168,15 +164,20 @@ class NodeItem(QGraphicsRectItem):
         # Get colors from color scheme
         color_scheme = self.style_config.resolved_color_scheme
         if color_scheme:
-            bg_color = color_scheme.node_colors.get(role, "#FFFFFF")
-            text_color = (
-                color_scheme.text_colors.get(role) if color_scheme.text_colors else None
-            ) or self._auto_contrast(bg_color)
-            border_color = (
-                color_scheme.border_colors.get(role)
-                if color_scheme.border_colors
-                else None
-            )
+            # node_colors is required and contains all roles
+            bg_color = color_scheme.node_colors[role]
+
+            # text_colors is optional - auto contrast if not provided
+            if color_scheme.text_colors and role in color_scheme.text_colors:
+                text_color = color_scheme.text_colors[role]
+            else:
+                text_color = self._auto_contrast(bg_color)
+
+            # border_colors is optional - None if not provided
+            if color_scheme.border_colors and role in color_scheme.border_colors:
+                border_color = color_scheme.border_colors[role]
+            else:
+                border_color = None
         else:
             bg_color = "#FFFFFF"
             text_color = "#000000"
@@ -415,31 +416,32 @@ class NodeItem(QGraphicsRectItem):
 
         # Recalculate style based on new config using role-based system
         if self.style_config and self.style_config.resolved_template:
-            from cogist.domain.styles import NodeRole
 
             # Map depth to role
             role = self._depth_to_role(self.depth)
 
-            # Get template style
-            template_style = self.style_config.resolved_template.role_styles.get(role)
-            if not template_style:
-                template_style = self.style_config.resolved_template.role_styles.get(
-                    NodeRole.TERTIARY
-                )
+            # CRITICAL: Get template style for this role - must exist in template
+            # No fallback allowed - all roles must be defined in the template
+            template_style = self.style_config.resolved_template.role_styles[role]
 
             if template_style:
                 # Get colors from color scheme
                 color_scheme = self.style_config.resolved_color_scheme
                 if color_scheme:
-                    bg_color = color_scheme.node_colors.get(role, "#FFFFFF")
-                    text_color = color_scheme.text_colors.get(
-                        role
-                    ) or self._auto_contrast(bg_color)
-                    border_color = (
-                        color_scheme.border_colors.get(role)
-                        if color_scheme.border_colors
-                        else None
-                    )
+                    # node_colors is required and contains all roles
+                    bg_color = color_scheme.node_colors[role]
+
+                    # text_colors is optional - auto contrast if not provided
+                    if color_scheme.text_colors and role in color_scheme.text_colors:
+                        text_color = color_scheme.text_colors[role]
+                    else:
+                        text_color = self._auto_contrast(bg_color)
+
+                    # border_colors is optional - None if not provided
+                    if color_scheme.border_colors and role in color_scheme.border_colors:
+                        border_color = color_scheme.border_colors[role]
+                    else:
+                        border_color = None
                 else:
                     bg_color = "#FFFFFF"
                     text_color = "#000000"

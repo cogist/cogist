@@ -111,15 +111,17 @@ class AdvancedStyleTab(QWidget):
             # Shape
             "shape": role_style.shape.basic_shape,
             "radius": role_style.shape.border_radius,
-            # Colors
-            "bg_color": color_scheme.node_colors.get(role, "#FFFFFF"),
+            # Colors - node_colors is required and contains all roles
+            "bg_color": color_scheme.node_colors[role],
+            # text_colors is optional - auto contrast if not provided
             "text_color": (
-                color_scheme.text_colors.get(role)
+                color_scheme.text_colors[role]
                 if color_scheme.text_colors and role in color_scheme.text_colors
-                else self._auto_contrast(color_scheme.node_colors.get(role, "#FFFFFF"))
+                else self._auto_contrast(color_scheme.node_colors[role])
             ),
+            # border_colors is optional - None if not provided
             "border_color": (
-                color_scheme.border_colors.get(role)
+                color_scheme.border_colors[role]
                 if color_scheme.border_colors and role in color_scheme.border_colors
                 else None
             ),
