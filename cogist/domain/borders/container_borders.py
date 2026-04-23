@@ -96,7 +96,7 @@ class CircleBorder(BorderStrategy):
             painter.setBrush(Qt.NoBrush)
             painter.drawEllipse(rect)
 
-    def get_selection_path(self, rect, style_config: dict) -> QPainterPath:
+    def get_selection_path(self, rect, style_config: dict) -> QPainterPath:  # noqa: ARG002
         """Get selection highlight path for circle/ellipse."""
         highlight_rect = rect.adjusted(-3, -3, 3, 3)
         path = QPainterPath()

@@ -89,7 +89,7 @@ class SharpFirstRoundedConnector(ConnectorStrategy):
 
         len1 = (v1.x() ** 2 + v1.y() ** 2) ** 0.5
         len2 = (v2.x() ** 2 + v2.y() ** 2) ** 0.5
-        
+
         if len1 > 0 and len2 > 0:
             v1 = QPointF(v1.x() / len1, v1.y() / len1)
             v2 = QPointF(v2.x() / len2, v2.y() / len2)

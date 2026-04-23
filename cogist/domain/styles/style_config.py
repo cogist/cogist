@@ -49,7 +49,7 @@ class MindMapStyle:
     # === Per-depth connector configuration (for layer-specific edge styles) ===
     # NOTE: All initialization should happen in create_default_template(), not here
     connector_config_by_depth: dict[int, dict] = field(default_factory=dict)
-    
+
     # === Per-depth text constraints (for layer-specific max text width) ===
     # NOTE: All initialization should happen in create_default_template(), not here
     max_text_width_by_depth: dict[int, float] = field(default_factory=dict)

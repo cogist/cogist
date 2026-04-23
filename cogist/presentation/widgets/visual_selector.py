@@ -63,19 +63,19 @@ class VisualOptionButton(QWidget):
     def __init__(
         self,
         option: VisualOption,
-        preview_size: QSize = QSize(60, 40),
+        preview_size: QSize | None = None,
         show_label: bool = True,
         parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.option = option
-        self.preview_size = preview_size
+        self.preview_size = preview_size if preview_size is not None else QSize(60, 40)
         self.show_label = show_label
         self.is_selected = False
 
         # Set fixed size based on preview and label
-        height = preview_size.height() + (24 if show_label else 8)
-        self.setFixedSize(preview_size.width() + 16, height)
+        height = self.preview_size.height() + (24 if show_label else 8)
+        self.setFixedSize(self.preview_size.width() + 16, height)
         self.setCursor(Qt.PointingHandCursor)
         self.setToolTip(option.tooltip)
 
@@ -84,7 +84,7 @@ class VisualOptionButton(QWidget):
         self.is_selected = selected
         self.update()
 
-    def paintEvent(self, event):
+    def paintEvent(self, _event):  # noqa: N802
         """Paint the option button with preview and selection indicator."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -119,11 +119,11 @@ class VisualOptionButton(QWidget):
             label_rect = self.rect().adjusted(0, y + pixmap.height() + 2, 0, 0)
             painter.drawText(label_rect, Qt.AlignHCenter | Qt.AlignTop, self.option.value.capitalize())
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event):  # noqa: N802
         """Handle click event."""
         if event.button() == Qt.LeftButton:
             self.clicked.emit(self.option.value)
-            super().mousePressEvent(event)
+        super().mousePressEvent(event)
 
 
 class VisualSelector(QWidget):
@@ -139,7 +139,7 @@ class VisualSelector(QWidget):
         self,
         options: list[VisualOption],
         orientation: Qt.Orientation = Qt.Horizontal,
-        preview_size: QSize = QSize(60, 40),
+        preview_size: QSize | None = None,
         spacing: int = 8,
         parent: QWidget | None = None,
     ):
@@ -155,7 +155,7 @@ class VisualSelector(QWidget):
         super().__init__(parent)
         self.options = {opt.value: opt for opt in options}
         self.orientation = orientation
-        self.preview_size = preview_size
+        self.preview_size = preview_size if preview_size is not None else QSize(60, 40)
         self.selected_value: str | None = None
 
         # Create layout
