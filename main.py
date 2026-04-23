@@ -46,50 +46,14 @@ from PySide6.QtWidgets import (
 
 from cogist.application.commands import (
     AddNodeCommand,
+    CommandHistory,
     DeleteNodeCommand,
     EditTextCommand,
 )
 from cogist.domain.entities.node import Node
-from cogist.domain.layout.default_layout import DefaultLayout
+from cogist.domain.layout.registry import layout_registry
 from cogist.presentation.items.edge_item import EdgeItem
 from cogist.presentation.items.node_item import NodeItem
-
-
-class CommandHistory:
-    """Simple command history manager for undo/redo."""
-
-    def __init__(self):
-        self._history = []
-        self._current_index = -1
-
-    def execute(self, command):
-        """Execute a command and add it to history."""
-        # Remove any redo commands if we're not at the end
-        if self._current_index < len(self._history) - 1:
-            self._history = self._history[: self._current_index + 1]
-
-        # Execute and store
-        command.execute()
-        self._history.append(command)
-        self._current_index += 1
-
-    def undo(self):
-        """Undo the last command."""
-        if self._current_index >= 0:
-            command = self._history[self._current_index]
-            command.undo()
-            self._current_index -= 1
-            return True
-        return False
-
-    def redo(self):
-        """Redo the next command."""
-        if self._current_index < len(self._history) - 1:
-            self._current_index += 1
-            command = self._history[self._current_index]
-            command.execute()
-            return True
-        return False
 
 
 class MainWindow(QMainWindow):
@@ -681,7 +645,8 @@ class MindMapView(QGraphicsView):
             sibling_spacing_by_depth=sibling_spacing_by_depth,
         )
 
-        layout = DefaultLayout(layout_config)
+        # Use LayoutRegistry to create layout instance (demonstrates proper architecture)
+        layout = layout_registry.get_layout("default", layout_config)
         layout.layout(root, canvas_width=1200, canvas_height=800)
 
         # Step 3: Create final UI items with correct sizes and positions
@@ -1276,7 +1241,8 @@ class MindMapView(QGraphicsView):
             sibling_spacing_by_depth=sibling_spacing_by_depth,
         )
 
-        layout = DefaultLayout(layout_config)
+        # Use LayoutRegistry to create layout instance (demonstrates proper architecture)
+        layout = layout_registry.get_layout("default", layout_config)
         context = {'focused_node_id': saved_selection_id} if saved_selection_id else None
         layout.layout(
             self.root_node,
