@@ -607,7 +607,8 @@ class NodeItem(QGraphicsRectItem):
         # Support RoleBasedStyle, NodeStyleConfig, and dict
         if hasattr(style, "padding_w"):
             # It's a RoleBasedStyle object (new architecture)
-            max_text_width = getattr(style, "max_text_width", 250.0)  # Default to 250
+            # CRITICAL: Always read from style object, never use hardcoded defaults
+            max_text_width = style.max_text_width
             padding_width = (
                 style.padding_w * 2
             )  # padding_w is single-side, need both sides
@@ -722,9 +723,16 @@ class NodeItem(QGraphicsRectItem):
             return  # Already editing
 
         # Create editable text item with proper Tab key handling
+        # CRITICAL: Read max_text_width from template_style, never use hardcoded constants
+        if hasattr(self, "template_style") and self.template_style:
+            max_width = self.template_style.max_text_width
+        else:
+            # Fallback to global constant for backward compatibility
+            max_width = MAX_TEXT_WIDTH
+
         self.edit_widget = EditableTextItem(
             text=self.text_content,
-            max_width=MAX_TEXT_WIDTH,  # Use global constant for max text width
+            max_width=max_width,  # Read from style object
             mindmap_view=mindmap_view,  # Pass MindMapView reference
         )
 
@@ -745,7 +753,7 @@ class NodeItem(QGraphicsRectItem):
             style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
             padding_left = style["padding_width"]
             padding_top = style["padding_height"]
-        
+
         # CRITICAL: Use the same calculation as text_item position
         # text_item is positioned at: -actual_width/2 + padding_left
         # This ensures no visual jump when entering edit mode
