@@ -914,6 +914,31 @@ class MindMapView(QGraphicsView):
                         return True
                 return False
 
+            # Arrow keys: Navigate between nodes (only when not editing)
+            if self.selected_node_id and self.selected_node_id in self.node_items:
+                node_item = self.node_items[self.selected_node_id]
+                # If currently editing, let the edit widget handle arrow keys for cursor movement
+                if node_item.edit_widget is not None:
+                    return super().eventFilter(obj, event)
+
+                # Not editing - use arrow keys for node navigation
+                if key_event.key() == Qt.Key_Up:
+                    self._navigate_to_previous_sibling()
+                    key_event.accept()
+                    return True
+                elif key_event.key() == Qt.Key_Down:
+                    self._navigate_to_next_sibling()
+                    key_event.accept()
+                    return True
+                elif key_event.key() == Qt.Key_Left:
+                    self._navigate_to_parent()
+                    key_event.accept()
+                    return True
+                elif key_event.key() == Qt.Key_Right:
+                    self._navigate_to_first_child()
+                    key_event.accept()
+                    return True
+
         return super().eventFilter(obj, event)
 
     def mousePressEvent(self, event):  # noqa: N802
@@ -1017,6 +1042,73 @@ class MindMapView(QGraphicsView):
         if self.selected_node_id and self.selected_node_id in self.node_items:
             self.node_items[self.selected_node_id].setSelected(False)
         self.selected_node_id = None
+
+    def _navigate_to_previous_sibling(self):
+        """Navigate to the previous sibling node (Up arrow)."""
+        if not self.selected_node_id or self.selected_node_id not in self.node_items:
+            return
+
+        current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
+        if not current_node or not current_node.parent:
+            # No parent means this is root or orphan - can't navigate up
+            return
+
+        siblings = current_node.parent.children
+        current_index = siblings.index(current_node)
+
+        if current_index > 0:
+            # Select previous sibling
+            previous_sibling = siblings[current_index - 1]
+            self._select_node_by_id(previous_sibling.id)
+            self._ensure_node_visible(previous_sibling.id)
+
+    def _navigate_to_next_sibling(self):
+        """Navigate to the next sibling node (Down arrow)."""
+        if not self.selected_node_id or self.selected_node_id not in self.node_items:
+            return
+
+        current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
+        if not current_node or not current_node.parent:
+            # No parent means this is root or orphan - can't navigate down
+            return
+
+        siblings = current_node.parent.children
+        current_index = siblings.index(current_node)
+
+        if current_index < len(siblings) - 1:
+            # Select next sibling
+            next_sibling = siblings[current_index + 1]
+            self._select_node_by_id(next_sibling.id)
+            self._ensure_node_visible(next_sibling.id)
+
+    def _navigate_to_parent(self):
+        """Navigate to the parent node (Left arrow)."""
+        if not self.selected_node_id or self.selected_node_id not in self.node_items:
+            return
+
+        current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
+        if not current_node or not current_node.parent:
+            # No parent means this is root - can't navigate further left
+            return
+
+        # Select parent
+        self._select_node_by_id(current_node.parent.id)
+        self._ensure_node_visible(current_node.parent.id)
+
+    def _navigate_to_first_child(self):
+        """Navigate to the first child node (Right arrow)."""
+        if not self.selected_node_id or self.selected_node_id not in self.node_items:
+            return
+
+        current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
+        if not current_node or not current_node.children:
+            # No children - can't navigate right
+            return
+
+        # Select first child
+        first_child = current_node.children[0]
+        self._select_node_by_id(first_child.id)
+        self._ensure_node_visible(first_child.id)
 
     def _generate_node_name(self, parent_node: Node) -> str:
         """Generate unique node name based on hierarchy.
