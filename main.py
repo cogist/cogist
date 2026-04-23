@@ -350,13 +350,13 @@ class MainWindow(QMainWindow):
 
         # Add Child
         self.add_child_action = QAction("Add &Child", self)
-        self.add_child_action.setShortcut("Space")
+        self.add_child_action.setShortcut("Tab")
         self.add_child_action.triggered.connect(self._add_child)
         edit_menu.addAction(self.add_child_action)
 
         # Add Sibling
         self.add_sibling_action = QAction("Add Sibling", self)
-        self.add_sibling_action.setShortcut("Shift+Space")
+        self.add_sibling_action.setShortcut("Space")
         self.add_sibling_action.triggered.connect(self._add_sibling)
         edit_menu.addAction(self.add_sibling_action)
 
@@ -889,7 +889,7 @@ class MindMapView(QGraphicsView):
                 self._edit_selected_node()
                 return True
 
-            # Space: Add child node (alternative to Tab)
+            # Space: Add sibling node
             if key_event.key() == Qt.Key_Space and self.selected_node_id:
                 # Check if currently editing a node
                 if self.selected_node_id in self.node_items:
@@ -898,7 +898,7 @@ class MindMapView(QGraphicsView):
                         # Currently editing, let the edit widget handle Space for text input
                         # Return super() to allow normal event propagation to focused widget
                         return super().eventFilter(obj, event)
-                self._add_selected_child()
+                self._add_sibling_node()
                 key_event.accept()
                 return True
 
