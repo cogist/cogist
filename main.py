@@ -350,15 +350,21 @@ class MainWindow(QMainWindow):
 
         # Add Child
         self.add_child_action = QAction("Add &Child", self)
-        self.add_child_action.setShortcut("Tab")
+        self.add_child_action.setShortcut("Space")
         self.add_child_action.triggered.connect(self._add_child)
         edit_menu.addAction(self.add_child_action)
 
         # Add Sibling
         self.add_sibling_action = QAction("Add Sibling", self)
-        self.add_sibling_action.setShortcut("Return")
+        self.add_sibling_action.setShortcut("Shift+Space")
         self.add_sibling_action.triggered.connect(self._add_sibling)
         edit_menu.addAction(self.add_sibling_action)
+
+        # Edit Node
+        edit_action = QAction("&Edit Node", self)
+        edit_action.setShortcut("Return")
+        edit_action.triggered.connect(self._edit_selected_node)
+        edit_menu.addAction(edit_action)
 
         # Delete
         delete_action = QAction("&Delete", self)
@@ -477,6 +483,11 @@ class MainWindow(QMainWindow):
         """Add a sibling node."""
         if self.mindmap_view.selected_node_id:
             self.mindmap_view._add_sibling_node()
+
+    def _edit_selected_node(self):
+        """Edit the selected node text."""
+        if self.mindmap_view.selected_node_id:
+            self.mindmap_view._edit_selected_node()
 
     def _delete(self):
         """Delete the selected node."""
@@ -866,7 +877,19 @@ class MindMapView(QGraphicsView):
                 self._delete_selected_node()
                 return True
 
-            # Space: Edit selected node text
+            # Enter: Edit selected node text
+            if key_event.key() == Qt.Key_Return and self.selected_node_id:
+                # Check if currently editing a node
+                if self.selected_node_id in self.node_items:
+                    node_item = self.node_items[self.selected_node_id]
+                    if node_item.edit_widget is not None:
+                        # Currently editing, let the edit widget handle Enter for text input
+                        # Return super() to allow normal event propagation to focused widget
+                        return super().eventFilter(obj, event)
+                self._edit_selected_node()
+                return True
+
+            # Space: Add child node (alternative to Tab)
             if key_event.key() == Qt.Key_Space and self.selected_node_id:
                 # Check if currently editing a node
                 if self.selected_node_id in self.node_items:
@@ -875,7 +898,8 @@ class MindMapView(QGraphicsView):
                         # Currently editing, let the edit widget handle Space for text input
                         # Return super() to allow normal event propagation to focused widget
                         return super().eventFilter(obj, event)
-                self._edit_selected_node()
+                self._add_selected_child()
+                key_event.accept()
                 return True
 
             # Escape: Cancel editing (discard changes)
