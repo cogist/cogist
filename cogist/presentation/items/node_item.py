@@ -633,12 +633,18 @@ class NodeItem(QGraphicsRectItem):
             padding_width = style["padding_width"]
             padding_height = style["padding_height"]
 
-        # Ensure wrap mode is set to WrapAnywhere for forced wrapping
+        # Ensure wrap mode is set based on max_text_width
         from PySide6.QtGui import QTextOption
 
         doc = self.text_item.document()
         text_option = doc.defaultTextOption()
-        text_option.setWrapMode(QTextOption.WrapAnywhere)
+
+        # CRITICAL: max_text_width=0 means unlimited width (no wrapping)
+        if max_text_width > 0:
+            text_option.setWrapMode(QTextOption.WrapAnywhere)
+        else:
+            text_option.setWrapMode(QTextOption.NoWrap)
+
         doc.setDefaultTextOption(text_option)
 
         # First, measure text width without wrapping
@@ -647,19 +653,25 @@ class NodeItem(QGraphicsRectItem):
         text_rect_no_wrap = self.text_item.boundingRect()
         text_width_no_wrap = text_rect_no_wrap.width()
 
-        # If text exceeds max width, enable word wrap
-        if text_width_no_wrap > max_text_width:
+        # If max_text_width is 0, use natural width (unlimited)
+        # Otherwise, wrap if text exceeds max width
+        if max_text_width > 0 and text_width_no_wrap > max_text_width:
             self.text_item.setTextWidth(max_text_width)
             text_rect = self.text_item.boundingRect()
         else:
-            # Use natural width (no wrapping needed)
+            # Use natural width (no wrapping needed or unlimited)
             text_rect = text_rect_no_wrap
 
         # Calculate actual size with padding from style
-        actual_width = min(
-            text_rect.width() + padding_width,
-            max_text_width + padding_width,
-        )
+        if max_text_width > 0:
+            # Limit width to max_text_width
+            actual_width = min(
+                text_rect.width() + padding_width,
+                max_text_width + padding_width,
+            )
+        else:
+            # Unlimited width - use natural text width
+            actual_width = text_rect.width() + padding_width
 
         # CRITICAL FIX for Qt Anti-aliasing:
         # Ensure height is always an even number.

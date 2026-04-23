@@ -129,7 +129,7 @@ def create_default_template() -> MindMapStyle:
             ),
             padding_w=10,
             padding_h=8,
-            max_text_width=150,  # TERTIARY nodes: narrowest (150px)
+            max_text_width=0,  # TERTIARY nodes: unlimited width (no wrap)
             font_size=14,
             font_weight="Normal",
             font_style="Normal",

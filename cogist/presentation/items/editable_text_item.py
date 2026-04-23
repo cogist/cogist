@@ -100,10 +100,12 @@ class EditableTextItem(QGraphicsTextItem):
         # Calculate required width (ideal width without wrapping)
         self._current_ideal_width = self._calculate_ideal_width()
 
+        # CRITICAL: max_width=0 means unlimited width (no wrapping)
         # Dynamic wrapping strategy:
-        # - If ideal width < max_width: no wrapping, use natural width
-        # - If ideal width >= max_width: enable wrapping at max_width with WrapAnywhere
-        if self._current_ideal_width > self._max_width:
+        # - If max_width == 0: no wrapping, unlimited width
+        # - If ideal_width < max_width: no wrapping, use natural width
+        # - If ideal_width >= max_width: enable wrapping at max_width with WrapAnywhere
+        if self._max_width > 0 and self._current_ideal_width > self._max_width:
             # Enable wrapping at max width with forced wrapping for long words
             from PySide6.QtGui import QTextOption
             doc = self.document()
@@ -114,12 +116,12 @@ class EditableTextItem(QGraphicsTextItem):
             self.setTextWidth(self._max_width)
             actual_width = self._max_width
         else:
-            # No wrapping, use natural width
+            # No wrapping (either unlimited or natural width)
             # Reset to default wrap mode (wrap at word boundaries)
             from PySide6.QtGui import QTextOption
             doc = self.document()
             text_option = doc.defaultTextOption()
-            text_option.setWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
+            text_option.setWrapMode(QTextOption.NoWrap)
             doc.setDefaultTextOption(text_option)
 
             self.setTextWidth(-1)
