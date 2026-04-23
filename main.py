@@ -922,6 +922,7 @@ class MindMapView(QGraphicsView):
                     return super().eventFilter(obj, event)
 
                 # Not editing - use arrow keys for node navigation
+                # Navigation direction depends on which side of root the node is on
                 if key_event.key() == Qt.Key_Up:
                     self._navigate_to_previous_sibling()
                     key_event.accept()
@@ -931,11 +932,23 @@ class MindMapView(QGraphicsView):
                     key_event.accept()
                     return True
                 elif key_event.key() == Qt.Key_Left:
-                    self._navigate_to_parent()
+                    # Left arrow behavior depends on node position
+                    if node_item.is_right_side:
+                        # Right branch: left arrow goes to parent (towards center)
+                        self._navigate_to_parent()
+                    else:
+                        # Left branch: left arrow goes to first child (away from center)
+                        self._navigate_to_first_child_inward_outward(direction="outward")
                     key_event.accept()
                     return True
                 elif key_event.key() == Qt.Key_Right:
-                    self._navigate_to_first_child()
+                    # Right arrow behavior depends on node position
+                    if node_item.is_right_side:
+                        # Right branch: right arrow goes to first child (away from center)
+                        self._navigate_to_first_child()
+                    else:
+                        # Left branch: right arrow goes to parent (towards center)
+                        self._navigate_to_parent()
                     key_event.accept()
                     return True
 
@@ -1082,33 +1095,142 @@ class MindMapView(QGraphicsView):
             self._ensure_node_visible(next_sibling.id)
 
     def _navigate_to_parent(self):
-        """Navigate to the parent node (Left arrow)."""
+        """Navigate to the parent node (Left arrow).
+
+        Special case for root node:
+        - If current node is root, navigate to the first left-side child
+        - Otherwise, navigate to parent node
+        """
         if not self.selected_node_id or self.selected_node_id not in self.node_items:
             return
 
         current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
-        if not current_node or not current_node.parent:
-            # No parent means this is root - can't navigate further left
+        if not current_node:
             return
 
-        # Select parent
+        # Special case: if on root node, navigate to first left-side child
+        if current_node.is_root:
+            self._navigate_to_left_side_child()
+            return
+
+        # Normal case: navigate to parent
+        if not current_node.parent:
+            # No parent means this is root - should have been handled above
+            return
+
         self._select_node_by_id(current_node.parent.id)
         self._ensure_node_visible(current_node.parent.id)
 
     def _navigate_to_first_child(self):
-        """Navigate to the first child node (Right arrow)."""
+        """Navigate to the first child node (Right arrow for right branch).
+
+        Special case for root node:
+        - If current node is root, navigate to the first right-side child
+        - Otherwise, navigate to first child
+        """
         if not self.selected_node_id or self.selected_node_id not in self.node_items:
             return
 
         current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
-        if not current_node or not current_node.children:
-            # No children - can't navigate right
+        if not current_node:
             return
 
-        # Select first child
+        # Special case: if on root node, navigate to first right-side child
+        if current_node.is_root:
+            self._navigate_to_right_side_child()
+            return
+
+        # Normal case: navigate to first child
+        if not current_node.children:
+            # No children - can't navigate
+            return
+
         first_child = current_node.children[0]
         self._select_node_by_id(first_child.id)
         self._ensure_node_visible(first_child.id)
+
+    def _navigate_to_first_child_inward_outward(self, direction: str):
+        """Navigate to first child based on inward/outward direction.
+
+        For left branch nodes:
+        - "outward" means navigating away from center (to the left, to children)
+        - "inward" means navigating towards center (to the right, to parent)
+
+        Args:
+            direction: "inward" (towards root) or "outward" (away from root)
+        """
+        if not self.selected_node_id or self.selected_node_id not in self.node_items:
+            return
+
+        current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
+        if not current_node:
+            return
+
+        # Special case: if on root node
+        if current_node.is_root:
+            if direction == "outward":
+                # For root, outward on left side means left-side children
+                self._navigate_to_left_side_child()
+            else:
+                # For root, inward doesn't make sense (already at center)
+                pass
+            return
+
+        # Normal case: navigate to first child (outward from parent)
+        if direction == "outward" and current_node.children:
+            first_child = current_node.children[0]
+            self._select_node_by_id(first_child.id)
+            self._ensure_node_visible(first_child.id)
+
+    def _navigate_to_left_side_child(self):
+        """Navigate from root to the first left-side child."""
+        if not self.root_node.children:
+            return
+
+        # Find the first child on the left side (x < root_x)
+        root_item = self.node_items.get(self.root_node.id)
+        if not root_item:
+            return
+
+        root_x = root_item.scenePos().x()
+
+        # Find left-side children (those with x < root_x)
+        left_children = []
+        for child in self.root_node.children:
+            if child.id in self.node_items:
+                child_item = self.node_items[child.id]
+                if child_item.scenePos().x() < root_x:
+                    left_children.append(child)
+
+        if left_children:
+            # Select the first left-side child (topmost one)
+            self._select_node_by_id(left_children[0].id)
+            self._ensure_node_visible(left_children[0].id)
+
+    def _navigate_to_right_side_child(self):
+        """Navigate from root to the first right-side child."""
+        if not self.root_node.children:
+            return
+
+        # Find the first child on the right side (x >= root_x)
+        root_item = self.node_items.get(self.root_node.id)
+        if not root_item:
+            return
+
+        root_x = root_item.scenePos().x()
+
+        # Find right-side children (those with x >= root_x)
+        right_children = []
+        for child in self.root_node.children:
+            if child.id in self.node_items:
+                child_item = self.node_items[child.id]
+                if child_item.scenePos().x() >= root_x:
+                    right_children.append(child)
+
+        if right_children:
+            # Select the first right-side child (topmost one)
+            self._select_node_by_id(right_children[0].id)
+            self._ensure_node_visible(right_children[0].id)
 
     def _generate_node_name(self, parent_node: Node) -> str:
         """Generate unique node name based on hierarchy.
