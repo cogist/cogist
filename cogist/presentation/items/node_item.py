@@ -658,14 +658,10 @@ class NodeItem(QGraphicsRectItem):
         # If height is odd, rect.bottom() lands on a half-pixel (e.g., 15.5),
         # causing blurry anti-aliased lines that look misaligned.
         # Even height ensures rect.bottom() is an integer (e.g., 15.0) for crisp rendering.
-        # 
-        # COMMENTED OUT for thesis research: Testing Qt half-pixel rendering alignment issues
         raw_height = text_rect.height() + padding_height
-        actual_height = int(raw_height)
-        # Original code (forces even height):
-        # actual_height = (
-        #     int(raw_height) if int(raw_height) % 2 == 0 else int(raw_height) + 1
-        # )
+        actual_height = (
+            int(raw_height) if int(raw_height) % 2 == 0 else int(raw_height) + 1
+        )
 
         return actual_width, actual_height, text_rect
 
