@@ -15,22 +15,7 @@ import sys
 # Suppress Qt/macOS warnings at the environment level
 os.environ['QT_LOGGING_RULES'] = '*.debug=false;qt.scenegraph=false;qt.qpa.keymapper=false;qt.qpa.input=false'
 
-# Install custom message handler to suppress remaining warnings
-def qt_message_handler(msg_type, context, message):
-    msg_str = str(message)
-    # Suppress keyboard mapping warnings
-    if 'qt.qpa.keymapper' in msg_str.lower() or 'Cocoa' in msg_str or 'Carbon' in msg_str:
-        return
-    # Suppress macOS IMKC warnings
-    if 'IMKC' in msg_str or 'mach port' in msg_str.lower():
-        return
-    # Print other messages to stderr
-    sys.stderr.write(f'{msg_str}\n')
-
-from PySide6.QtCore import qInstallMessageHandler
-qInstallMessageHandler(qt_message_handler)
-
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, qInstallMessageHandler
 from PySide6.QtGui import QAction, QKeySequence, QPainter, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -54,6 +39,23 @@ from cogist.domain.entities.node import Node
 from cogist.domain.layout.registry import layout_registry
 from cogist.presentation.items.edge_item import EdgeItem
 from cogist.presentation.items.node_item import NodeItem
+
+
+# Install custom message handler to suppress remaining warnings
+def qt_message_handler(_msg_type, _context, message):
+    """Suppress Qt/macOS warning messages."""
+    msg_str = str(message)
+    # Suppress keyboard mapping warnings
+    if 'qt.qpa.keymapper' in msg_str.lower() or 'Cocoa' in msg_str or 'Carbon' in msg_str:
+        return
+    # Suppress macOS IMKC warnings
+    if 'IMKC' in msg_str or 'mach port' in msg_str.lower():
+        return
+    # Print other messages to stderr
+    sys.stderr.write(f'{msg_str}\n')
+
+# Install the message handler
+qInstallMessageHandler(qt_message_handler)
 
 
 class MainWindow(QMainWindow):
