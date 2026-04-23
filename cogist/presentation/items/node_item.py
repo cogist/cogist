@@ -745,6 +745,10 @@ class NodeItem(QGraphicsRectItem):
             style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
             padding_left = style["padding_width"]
             padding_top = style["padding_height"]
+        
+        # CRITICAL: Use the same calculation as text_item position
+        # text_item is positioned at: -actual_width/2 + padding_left
+        # This ensures no visual jump when entering edit mode
         self.edit_widget.setPos(
             -self.node_width / 2 + padding_left, -self.node_height / 2 + padding_top
         )
@@ -830,10 +834,11 @@ class NodeItem(QGraphicsRectItem):
                     )
 
             # Update edit widget position (relative to new rect with padding)
-            # Get the new rect's left and top
-            rect = self.rect()
+            # CRITICAL: Use consistent calculation to prevent position jump
+            # Same as initial position: -node_width/2 + padding_left
             self.edit_widget.setPos(
-                rect.left() + padding_width / 2, rect.top() + padding_height / 2
+                -new_node_width / 2 + padding_width / 2,
+                -new_node_height / 2 + padding_height / 2
             )
 
             # CRITICAL: Force full repaint after rect change
