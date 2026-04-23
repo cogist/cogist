@@ -588,7 +588,7 @@ class NodeItem(QGraphicsRectItem):
         """Get node text."""
         return self.text_content
 
-    def _calculate_node_size(self, text: str, style) -> tuple[float, float, object]:
+    def _calculate_node_size(self, text: str, style=None) -> tuple[float, float, object]:
         """
         Unified method to calculate node size based on text content and style.
 
@@ -604,6 +604,13 @@ class NodeItem(QGraphicsRectItem):
         Returns:
             Tuple of (actual_width, actual_height, text_rect)
         """
+        # CRITICAL: Use template_style from instance if available (new architecture)
+        if hasattr(self, "template_style") and self.template_style:
+            style = self.template_style
+        elif style is None:
+            # Fallback to legacy NodeStyle if no style provided
+            style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
+
         # Support RoleBasedStyle, NodeStyleConfig, and dict
         if hasattr(style, "padding_w"):
             # It's a RoleBasedStyle object (new architecture)

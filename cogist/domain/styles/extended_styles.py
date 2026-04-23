@@ -162,7 +162,7 @@ class RoleBasedStyle:
     padding_h: int = 8
 
     # === Text constraints ===
-    max_text_width: int = 250  # Maximum text width before wrapping
+    max_text_width: int = 250  # Maximum text width before wrapping (can vary by role/depth)
 
     # === Font properties (without colors) ===
     font_size: int = 14
