@@ -1033,7 +1033,8 @@ class MindMapView(QGraphicsView):
 
         # Execute add command
         cmd = AddNodeCommand(parent_node, new_name)
-        self.command_history.execute(cmd)
+        cmd.execute()
+        self.command_history.push(cmd)
 
         # Get the new node ID (it's the last child)
         new_node_id = parent_node.children[-1].id
@@ -1075,7 +1076,8 @@ class MindMapView(QGraphicsView):
 
         # Execute delete command
         cmd = DeleteNodeCommand(parent_node, node_to_delete)
-        self.command_history.execute(cmd)
+        cmd.execute()
+        self.command_history.push(cmd)
 
         # Select the determined node after deletion
         self.selected_node_id = next_selected_id
@@ -1106,7 +1108,8 @@ class MindMapView(QGraphicsView):
             if node:
                 # Update text
                 cmd = EditTextCommand(node, new_text)
-                self.command_history.execute(cmd)
+                cmd.execute()
+                self.command_history.push(cmd)
                 # Sync UI dimensions back to domain entity (width/height changed due to word wrap)
                 node.width = node_item.node_width
                 node.height = node_item.node_height
@@ -1162,7 +1165,8 @@ class MindMapView(QGraphicsView):
 
         # Execute add command
         cmd = AddNodeCommand(parent_node, new_name)
-        self.command_history.execute(cmd)
+        cmd.execute()
+        self.command_history.push(cmd)
 
         # Get the new node ID (it's the last child)
         new_node_id = parent_node.children[-1].id
