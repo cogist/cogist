@@ -260,12 +260,18 @@ class NodeItem(QGraphicsRectItem):
             )
 
             # Position text with padding and vertical centering
-            if style_for_calc and hasattr(style_for_calc, "padding_w"):
+            # CRITICAL: Always use template_style if available, never use hardcoded defaults
+            if hasattr(self, "template_style") and self.template_style:
+                padding_left = self.template_style.padding_w
+                padding_top = self.template_style.padding_h
+            elif style_for_calc and hasattr(style_for_calc, "padding_w"):
                 padding_left = style_for_calc.padding_w
                 padding_top = style_for_calc.padding_h
             else:
-                padding_left = 12
-                padding_top = 8
+                # Fallback to NodeStyle.get_style_for_depth() for consistency
+                fallback_style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
+                padding_left = fallback_style["padding_width"]
+                padding_top = fallback_style["padding_height"]
 
             # Calculate text position: left padding + vertical centering
             text_x = -self.node_width / 2 + padding_left
@@ -287,12 +293,18 @@ class NodeItem(QGraphicsRectItem):
                 -actual_width / 2, -actual_height / 2, actual_width, actual_height
             )
             # Position text with padding and vertical centering
-            if style_for_calc and hasattr(style_for_calc, "padding_w"):
+            # CRITICAL: Always use template_style if available, never use hardcoded defaults
+            if hasattr(self, "template_style") and self.template_style:
+                padding_left = self.template_style.padding_w
+                padding_top = self.template_style.padding_h
+            elif style_for_calc and hasattr(style_for_calc, "padding_w"):
                 padding_left = style_for_calc.padding_w
                 padding_top = style_for_calc.padding_h
             else:
-                padding_left = 12
-                padding_top = 8
+                # Fallback to NodeStyle.get_style_for_depth() for consistency
+                fallback_style = NodeStyle.get_style_for_depth(self.depth, self.is_root)
+                padding_left = fallback_style["padding_width"]
+                padding_top = fallback_style["padding_height"]
 
             # Calculate text position: left padding + vertical centering
             text_x = -actual_width / 2 + padding_left
