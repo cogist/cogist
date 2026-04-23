@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-04-24
+
+### Fixed
+- **Left-side subtree flip direction**: Fixed incorrect flip direction when dragging left-side node trees across the root
+- **Dragged node position preservation**: Added `is_locked_position` flag to prevent layout rebalancing from moving dragged nodes back to the original side
+- **Root node position detection bug**: Fixed drag-to-left-side failure caused by root node's `is_right_side` defaulting to `True`
+- **Double-flip issue**: Disabled position mirroring in `_flip_subtree_recursive` to prevent duplicate position flips after drag release
+
+### Technical Details
+- Added `is_locked_position` property to Node entity for layout rebalancing control
+- New top-level nodes are locked during creation to maintain right-side default behavior
+- Dragged node's top-level ancestor is locked on mouse release with position update based on actual drag coordinates
+- Locked nodes are excluded from `_rebalance_branches` candidate list
+- Position lock flags are automatically cleared after each layout pass
+
 ## [0.3.2] - 2026-04-23
 
 ### Changed
@@ -125,4 +140,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-*Last updated: 2026-04-23 (v0.3.1)*
+*Last updated: 2026-04-24 (v0.3.3)*
