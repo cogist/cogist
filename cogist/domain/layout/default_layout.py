@@ -324,10 +324,11 @@ class DefaultLayout(BaseLayout):
         """
         # Move oldest nodes first to keep newer nodes stable on their side
         # Use original order: oldest nodes are at the beginning of the list
+        # CRITICAL: Also exclude nodes with is_locked_position flag set
         candidates = [
             (node, self._calculate_subtree_height(node))
             for node in from_side
-            if node != locked_node
+            if node != locked_node and not getattr(node, 'is_locked_position', False)
         ]
 
         for node, height in candidates:

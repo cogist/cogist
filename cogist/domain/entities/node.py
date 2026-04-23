@@ -42,6 +42,7 @@ class Node:
     depth: int = 0
     priority_level: PriorityLevel = PriorityLevel.LEVEL_1  # Default: Normal
     custom_style: dict | None = None  # Reserved for future node-level override
+    is_locked_position: bool = False  # Lock for rebalancing (prevents moving to other side)
 
     # Runtime attributes (not part of equality)
     _ui_item: Any = field(default=None, repr=False, init=False)
