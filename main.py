@@ -991,9 +991,12 @@ class MindMapView(QGraphicsView):
                 self._drag_offset = pos - node_center
                 self._current_potential_parent = None
                 self._is_dragging_cross_side = False
-
+                            
                 # Hide edge to old parent during drag
                 self._hide_parent_edge(current_node)
+                            
+                # Save initial relative positions of entire subtree
+                self._save_subtree_relative_positions(current_node)
         else:
             self._deselect_node()
 
@@ -1011,6 +1014,22 @@ class MindMapView(QGraphicsView):
                 # Position node so that the offset point is under the mouse
                 new_pos = current_pos - self._drag_offset
                 dragged_item.setPos(new_pos)
+                
+                # Detect cross-side and apply subtree positions
+                root_item = self.node_items.get(self.root_node.id)
+                root_x = root_item.scenePos().x() if root_item else 0.0
+                dragged_center_x = dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2
+                is_currently_right = dragged_center_x >= root_x
+                
+                # Check if we need to flip
+                dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
+                if dragged_node and root_item:
+                    should_mirror = is_currently_right != dragged_item.is_right_side
+                    
+                    # Only apply positions if mirroring is needed
+                    if should_mirror:
+                        self._apply_subtree_positions(new_pos, True, root_x)
+                        dragged_item.is_right_side = is_currently_right
 
                 # Detect potential parent
                 dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
@@ -1023,16 +1042,11 @@ class MindMapView(QGraphicsView):
                 if potential_parent:
                     parent_item = self.node_items.get(potential_parent.id)
                     if parent_item:
-                        root_item = self.node_items.get(self.root_node.id)
-                        if root_item:
-                            root_x = root_item.scenePos().x()
-                            dragged_center_x = dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2
-                            parent_center_x = parent_item.scenePos().x() + parent_item.boundingRect().width() / 2
+                        parent_center_x = parent_item.scenePos().x() + parent_item.boundingRect().width() / 2
 
-                            # Check if dragged node and potential parent are on different sides
-                            dragged_is_right = dragged_center_x >= root_x
-                            parent_is_right = parent_center_x >= root_x
-                            self._is_dragging_cross_side = (dragged_is_right != parent_is_right)
+                        # Check if dragged node and potential parent are on different sides
+                        parent_is_right = parent_center_x >= root_x
+                        self._is_dragging_cross_side = (is_currently_right != parent_is_right)
 
                 self._current_potential_parent = potential_parent
 
@@ -1110,6 +1124,12 @@ class MindMapView(QGraphicsView):
 
                 # Add to new parent
                 new_parent.add_child(dragged_node)
+                
+                # Sort children by Y position to maintain visual order
+                new_parent.children.sort(
+                    key=lambda child: self.node_items[child.id].scenePos().y() 
+                    if child.id in self.node_items else 0
+                )
 
                 # If crossed sides, flip entire subtree's is_right_side
                 if is_cross_side:
@@ -2211,18 +2231,114 @@ class MindMapView(QGraphicsView):
                 self.scene.addItem(temp_edge)
                 self._temp_drag_edge = temp_edge
 
-    def _flip_subtree_side(self, node: Node, new_is_right: bool):
-        """Recursively flip is_right_side for entire subtree."""
-        node.is_right_side = new_is_right
+    def _save_subtree_relative_positions(self, node: Node):
+        """Save relative positions of all nodes in subtree relative to dragged node."""
+        dragged_item = self.node_items.get(node.id)
+        if not dragged_item:
+            return
+        
+        dragged_scene_pos = dragged_item.scenePos()
+        
+        # Clear previous data
+        self._subtree_initial_positions.clear()
+        
+        # Save for root of subtree (offset should be 0,0)
+        self._subtree_initial_positions[node.id] = QPointF(0.0, 0.0)
+        
+        # Recursively save children
+        self._save_children_relative_positions(node, dragged_scene_pos)
+        
+        print(f"Saved {len(self._subtree_initial_positions)} nodes in subtree")
+    
+    def _save_children_relative_positions(self, node: Node, root_scene_pos: QPointF):
+        """Recursively save children's positions relative to subtree root."""
+        for child in node.children:
+            child_item = self.node_items.get(child.id)
+            if child_item:
+                # Calculate offset from root
+                child_scene_pos = child_item.scenePos()
+                offset = QPointF(child_scene_pos.x() - root_scene_pos.x(),
+                               child_scene_pos.y() - root_scene_pos.y())
+                self._subtree_initial_positions[child.id] = offset
+                
+                # Recursively save grandchildren
+                self._save_children_relative_positions(child, root_scene_pos)
 
-        # Update NodeItem's is_right_side as well
+    def _apply_subtree_positions(self, new_root_pos: QPointF, mirror_x: bool, root_x: float):
+        """Apply saved relative positions to entire subtree."""
+        for node_id, offset in self._subtree_initial_positions.items():
+            item = self.node_items.get(node_id)
+            if item:
+                if mirror_x:
+                    # Mirror the X offset
+                    mirrored_offset_x = -offset.x()
+                    new_x = new_root_pos.x() + mirrored_offset_x
+                else:
+                    new_x = new_root_pos.x() + offset.x()
+                
+                new_y = new_root_pos.y() + offset.y()
+                
+                # Set position considering parent-child relationship
+                parent_item = item.parentItem()
+                if parent_item:
+                    local_pos = parent_item.mapFromScene(QPointF(new_x, new_y))
+                    item.setPos(local_pos)
+                else:
+                    item.setPos(new_x, new_y)
+
+    def _flip_subtree_visual(self, node: Node, root_x: float, new_is_right: bool):
+        """Visually flip subtree X positions during drag (without modifying Node entity)."""
         item = self.node_items.get(node.id)
         if item:
-            item.is_right_side = new_is_right
-
+            # Get current scene position
+            current_scene_pos = item.scenePos()
+            
+            # Mirror X coordinate across root
+            distance_from_root = current_scene_pos.x() - root_x
+            mirrored_x = root_x - distance_from_root
+            
+            # Set scene position directly (bypasses parent-child relative positioning)
+            # We need to convert scene pos to local pos for setPos
+            parent_item = item.parentItem()
+            if parent_item:
+                # Convert mirrored scene position to local position relative to parent
+                local_pos = parent_item.mapFromScene(QPointF(mirrored_x, current_scene_pos.y()))
+                item.setPos(local_pos)
+            else:
+                # No parent, set scene position directly
+                item.setPos(mirrored_x, current_scene_pos.y())
+        
         # Recursively flip children
         for child in node.children:
-            self._flip_subtree_side(child, new_is_right)
+            self._flip_subtree_visual(child, root_x, new_is_right)
+
+    def _flip_subtree_side(self, node: Node, new_is_right: bool):
+        """Recursively flip is_right_side and mirror X positions for entire subtree."""
+        root_item = self.node_items.get(self.root_node.id)
+        if not root_item:
+            return
+        
+        root_x = root_item.scenePos().x()
+        
+        # Recursively flip
+        self._flip_subtree_recursive(node, root_x, new_is_right)
+
+    def _flip_subtree_recursive(self, node: Node, root_x: float, new_is_right: bool):
+        """Mirror X position across root for node and all descendants."""
+        item = self.node_items.get(node.id)
+        if item:
+            # Mirror X coordinate across root
+            current_x = item.scenePos().x()
+            distance_from_root = current_x - root_x
+            mirrored_x = root_x - distance_from_root
+            
+            # Update position (keep Y unchanged during drag)
+            item.setPos(mirrored_x, item.scenePos().y())
+            item.is_right_side = new_is_right
+        
+        # Recursively flip children
+        for child in node.children:
+            self._flip_subtree_recursive(child, root_x, new_is_right)
 
     def _update_node_depths_recursive(self, node: Node):
         """Recursively update depth values after parent change."""
