@@ -1019,6 +1019,21 @@ class MindMapView(QGraphicsView):
                 # Update temporary edge
                 self._update_temp_drag_edge(dragged_node, potential_parent)
 
+                # Detect cross-side drag by comparing center X positions
+                if potential_parent:
+                    parent_item = self.node_items.get(potential_parent.id)
+                    if parent_item:
+                        root_item = self.node_items.get(self.root_node.id)
+                        if root_item:
+                            root_x = root_item.scenePos().x()
+                            dragged_center_x = dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2
+                            parent_center_x = parent_item.scenePos().x() + parent_item.boundingRect().width() / 2
+
+                            # Check if dragged node and potential parent are on different sides
+                            dragged_is_right = dragged_center_x >= root_x
+                            parent_is_right = parent_center_x >= root_x
+                            self._is_dragging_cross_side = (dragged_is_right != parent_is_right)
+
                 self._current_potential_parent = potential_parent
 
         super().mouseMoveEvent(event)
@@ -1069,22 +1084,58 @@ class MindMapView(QGraphicsView):
             super().mouseDoubleClickEvent(event)
 
     def mouseReleaseEvent(self, event):  # noqa: N802
-        """Handle mouse release - clean up drag state."""
-        # For now, just clean up. Will add reparenting logic later.
-        if self._temp_drag_edge:
-            self.scene.removeItem(self._temp_drag_edge)
-            self._temp_drag_edge = None
-
-        # Restore edge to old parent
-        if self._dragged_node_id:
-            dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
-            if dragged_node:
-                self._restore_parent_edge(dragged_node)
+        """Handle mouse release - reparent node and refresh layout."""
+        # Clear drag state FIRST to prevent further drag events
+        dragged_id = self._dragged_node_id
+        potential_parent = self._current_potential_parent
+        is_cross_side = self._is_dragging_cross_side
 
         self._dragged_node_id = None
         self._drag_offset = None
         self._current_potential_parent = None
         self._is_dragging_cross_side = False
+
+        if dragged_id and potential_parent:
+            dragged_node = self._find_node_by_id(self.root_node, dragged_id)
+            new_parent = potential_parent
+
+            if (dragged_node and new_parent and
+                dragged_node != new_parent and
+                new_parent not in dragged_node.get_all_descendants()):
+
+                # Remove from old parent
+                old_parent = dragged_node.parent
+                if old_parent:
+                    old_parent.remove_child(dragged_node)
+
+                # Add to new parent
+                new_parent.add_child(dragged_node)
+
+                # If crossed sides, flip entire subtree's is_right_side
+                if is_cross_side:
+                    # Get the side from the new parent's NodeItem
+                    new_parent_item = self.node_items.get(new_parent.id)
+                    if new_parent_item:
+                        self._flip_subtree_side(dragged_node, new_parent_item.is_right_side)
+
+                # Update depths recursively
+                self._update_node_depths_recursive(dragged_node)
+
+                # Refresh layout to reposition everything
+                self._refresh_layout(skip_measurement=False)
+
+        # Clean up temp edge
+        if self._temp_drag_edge:
+            import contextlib
+            with contextlib.suppress(RuntimeError):
+                self.scene.removeItem(self._temp_drag_edge)
+            self._temp_drag_edge = None
+
+        # Restore edge to old parent
+        if dragged_id:
+            dragged_node = self._find_node_by_id(self.root_node, dragged_id)
+            if dragged_node:
+                self._restore_parent_edge(dragged_node)
 
         super().mouseReleaseEvent(event)
 
@@ -2035,18 +2086,29 @@ class MindMapView(QGraphicsView):
 
     def _detect_potential_parent(self, dragged_item: NodeItem, mouse_pos: QPointF) -> Node | None:  # noqa: ARG002
         """
-        Detect the best potential parent based on mouse position.
+        Detect the best potential parent based on anchor point distance.
 
-        For right-side nodes: find the closest node to the LEFT
-        For left-side nodes: find the closest node to the RIGHT
+        Uses current position (not is_right_side) to determine which side the node is on.
+        Distance is calculated from dragged node center to candidate's anchor point.
         """
         dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
         if not dragged_node:
             return None
 
-        is_right_side = dragged_item.is_right_side
+        # Determine current side based on actual position, not is_right_side property
+        root_item = self.node_items.get(self.root_node.id)
+        if not root_item:
+            return None
+
+        root_x = root_item.scenePos().x()
+        dragged_center_x = dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2
+        is_currently_right = dragged_center_x >= root_x
+
         best_candidate = None
-        best_score = float('inf')
+        best_distance = float('inf')
+
+        # Calculate dragged node center
+        dragged_center = dragged_item.scenePos() + dragged_item.boundingRect().center()
 
         for node_id, item in self.node_items.items():
             if node_id == self._dragged_node_id:
@@ -2060,26 +2122,39 @@ class MindMapView(QGraphicsView):
             if target_node in dragged_node.get_all_descendants():
                 continue
 
-            # Get positions - use connection points instead of center
-            target_pos = item.scenePos() + item.boundingRect().center()
-            dragged_pos = dragged_item.scenePos() + dragged_item.boundingRect().center()
+            # Get positions
+            target_pos = item.scenePos()
 
             # For right-side dragged node, look for nodes on the left (smaller x)
             # For left-side dragged node, look for nodes on the right (larger x)
-            if is_right_side:
-                if target_pos.x() >= dragged_pos.x():
+            if is_currently_right:
+                if target_pos.x() >= dragged_center_x:
                     continue  # Skip nodes on the right or same x
             else:
-                if target_pos.x() <= dragged_pos.x():
+                if target_pos.x() <= dragged_center_x:
                     continue  # Skip nodes on the left or same x
 
-            # Calculate score: prefer closer nodes
-            dx = abs(dragged_pos.x() - target_pos.x())
-            dy = abs(dragged_pos.y() - target_pos.y())
-            score = dx + dy * 0.5  # Weight X more than Y
+            # Calculate anchor point for candidate node
+            # Right side: use right edge center; Left side: use left edge center
+            rect = item.boundingRect()
+            if is_currently_right:
+                # Candidate is on left, use its right edge as anchor
+                anchor_x = target_pos.x() + rect.width()
+                anchor_y = target_pos.y() + rect.height() / 2
+            else:
+                # Candidate is on right, use its left edge as anchor
+                anchor_x = target_pos.x()
+                anchor_y = target_pos.y() + rect.height() / 2
 
-            if score < best_score:
-                best_score = score
+            anchor_point = QPointF(anchor_x, anchor_y)
+
+            # Calculate Euclidean distance from dragged center to candidate anchor
+            dx = dragged_center.x() - anchor_point.x()
+            dy = dragged_center.y() - anchor_point.y()
+            distance = (dx * dx + dy * dy) ** 0.5
+
+            if distance < best_distance:
+                best_distance = distance
                 best_candidate = target_node
 
         return best_candidate
@@ -2135,6 +2210,30 @@ class MindMapView(QGraphicsView):
 
                 self.scene.addItem(temp_edge)
                 self._temp_drag_edge = temp_edge
+
+    def _flip_subtree_side(self, node: Node, new_is_right: bool):
+        """Recursively flip is_right_side for entire subtree."""
+        node.is_right_side = new_is_right
+
+        # Update NodeItem's is_right_side as well
+        item = self.node_items.get(node.id)
+        if item:
+            item.is_right_side = new_is_right
+
+        # Recursively flip children
+        for child in node.children:
+            self._flip_subtree_side(child, new_is_right)
+
+    def _update_node_depths_recursive(self, node: Node):
+        """Recursively update depth values after parent change."""
+        if node.parent:
+            node.depth = node.parent.depth + 1
+        else:
+            node.depth = 0
+
+        # Recursively update children
+        for child in node.children:
+            self._update_node_depths_recursive(child)
 
 
 def main():
