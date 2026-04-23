@@ -838,27 +838,33 @@ class NodeItem(QGraphicsRectItem):
             old_left = old_rect.left()
             old_right = old_rect.right()
 
-            # Update node dimensions
+            # Update node dimensions and determine expansion direction
             self.node_width = new_node_width
             self.node_height = new_node_height
 
+            new_rect_left = None
+            new_rect_top = -new_node_height / 2
+
             if self.depth == 0 or self.is_root:
                 # Root node: centered expansion (both sides)
+                new_rect_left = -new_node_width / 2
                 self.setRect(
-                    -new_node_width / 2,
-                    -new_node_height / 2,
+                    new_rect_left,
+                    new_rect_top,
                     new_node_width,
                     new_node_height,
                 )
             else:
-                # Non-root nodes: directional expansion to maintain parent edge
+                # Determine expansion direction based on node position
+                current_x = self.pos().x()
+                is_right_branch = current_x >= 0  # Right side of parent (or root)
+
                 if is_right_branch:
                     # Right branch: LEFT edge stays fixed in scene coordinates
                     # Old left edge (scene) = pos.x + old_left
                     # New left edge (local) should result in same scene position
                     # new_left = old_left (keep same local left)
                     new_rect_left = old_left
-                    new_rect_top = -new_node_height / 2
                     self.setRect(
                         new_rect_left, new_rect_top, new_node_width, new_node_height
                     )
@@ -869,20 +875,18 @@ class NodeItem(QGraphicsRectItem):
                     # new_right = old_right, so new_left = old_right - new_width
                     new_rect_right = old_right
                     new_rect_left = new_rect_right - new_node_width
-                    new_rect_top = -new_node_height / 2
                     self.setRect(
                         new_rect_left, new_rect_top, new_node_width, new_node_height
                     )
 
             # Update edit widget position (relative to new rect with padding)
-            # CRITICAL: Use consistent calculation to prevent position jump
-            # Same as initial position: -node_width/2 + padding_left
+            # CRITICAL: Must match the node expansion direction to prevent separation
+            # Edit widget left edge always aligns with node left edge + padding
             padding_left = padding_width / 2
             padding_top = padding_height / 2
-            self.edit_widget.setPos(
-                -new_node_width / 2 + padding_left,
-                -new_node_height / 2 + padding_top
-            )
+            edit_x = new_rect_left + padding_left
+            edit_y = new_rect_top + padding_top
+            self.edit_widget.setPos(edit_x, edit_y)
 
             # CRITICAL: Force full repaint after rect change
             # This ensures the background updates immediately during editing
