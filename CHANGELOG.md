@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-04-23
+
+### Changed
+- **Keyboard Navigation**: Implemented visual coordinate-based navigation for Up/Down arrow keys
+- **Same-Side Constraint**: Navigation now strictly stays within the same side (left or right branch)
+- **Same-Depth Constraint**: Navigation only moves between nodes at the same hierarchy level
+- **Visual Adjacency**: Uses actual rendered Y coordinates to determine node ordering
+- **Smart Cycling**: Automatically cycles to opposite end when reaching boundary
+
+### Technical Details
+- Added `_find_visually_adjacent_node()` method with strict filtering (same side + same depth)
+- Simplified navigation logic from 30+ lines to 5 lines per direction
+- Removed complex tree-structure based cousin detection algorithms
+- Improved user experience with intuitive visual navigation
+
 ## [0.3.1] - 2026-04-23
 
 ### Fixed

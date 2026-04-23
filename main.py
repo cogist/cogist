@@ -1057,42 +1057,46 @@ class MindMapView(QGraphicsView):
         self.selected_node_id = None
 
     def _navigate_to_previous_sibling(self):
-        """Navigate to the previous sibling node (Up arrow)."""
+        """Navigate to the previous sibling node (Up arrow).
+
+        Behavior:
+        - Find the visually closest node above on the same side
+        - Priority: previous sibling > cousin on same side > cycle within same side
+        """
         if not self.selected_node_id or self.selected_node_id not in self.node_items:
             return
 
         current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
         if not current_node or not current_node.parent:
-            # No parent means this is root or orphan - can't navigate up
+            # No parent means this is root - can't navigate up
             return
 
-        siblings = current_node.parent.children
-        current_index = siblings.index(current_node)
-
-        if current_index > 0:
-            # Select previous sibling
-            previous_sibling = siblings[current_index - 1]
-            self._select_node_by_id(previous_sibling.id)
-            self._ensure_node_visible(previous_sibling.id)
+        # Use visual-based navigation: find closest node above on same side
+        target = self._find_visually_adjacent_node(direction="up")
+        if target:
+            self._select_node_by_id(target.id)
+            self._ensure_node_visible(target.id)
 
     def _navigate_to_next_sibling(self):
-        """Navigate to the next sibling node (Down arrow)."""
+        """Navigate to the next sibling node (Down arrow).
+
+        Behavior:
+        - Find the visually closest node below on the same side
+        - Priority: next sibling > cousin on same side > cycle within same side
+        """
         if not self.selected_node_id or self.selected_node_id not in self.node_items:
             return
 
         current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
         if not current_node or not current_node.parent:
-            # No parent means this is root or orphan - can't navigate down
+            # No parent means this is root - can't navigate down
             return
 
-        siblings = current_node.parent.children
-        current_index = siblings.index(current_node)
-
-        if current_index < len(siblings) - 1:
-            # Select next sibling
-            next_sibling = siblings[current_index + 1]
-            self._select_node_by_id(next_sibling.id)
-            self._ensure_node_visible(next_sibling.id)
+        # Use visual-based navigation: find closest node below on same side
+        target = self._find_visually_adjacent_node(direction="down")
+        if target:
+            self._select_node_by_id(target.id)
+            self._ensure_node_visible(target.id)
 
     def _navigate_to_parent(self):
         """Navigate to the parent node (Left arrow).
@@ -1231,6 +1235,261 @@ class MindMapView(QGraphicsView):
             # Select the first right-side child (topmost one)
             self._select_node_by_id(right_children[0].id)
             self._ensure_node_visible(right_children[0].id)
+
+    def _cycle_to_last_sibling_on_same_side(self, direction: str):
+        """Cycle to the last sibling on the same side (for top-level nodes).
+
+        Args:
+            direction: "up" or "down"
+        """
+        if not self.selected_node_id or self.selected_node_id not in self.node_items:
+            return
+
+        current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
+        if not current_node or not current_node.parent or not current_node.parent.is_root:
+            return
+
+        # Get all siblings on the same side
+        root_item = self.node_items.get(self.root_node.id)
+        if not root_item:
+            return
+
+        current_item = self.node_items[self.selected_node_id]
+        is_right_side = current_item.is_right_side
+
+        # Filter siblings on the same side
+        same_side_siblings = []
+        for sibling in current_node.parent.children:
+            if sibling.id in self.node_items:
+                sibling_item = self.node_items[sibling.id]
+                if sibling_item.is_right_side == is_right_side:
+                    same_side_siblings.append(sibling)
+
+        if len(same_side_siblings) > 1:
+            # Cycle to the last/first on same side
+            if direction == "up":
+                # Go to last sibling on same side
+                target = same_side_siblings[-1]
+            else:
+                # Go to first sibling on same side
+                target = same_side_siblings[0]
+            self._select_node_by_id(target.id)
+            self._ensure_node_visible(target.id)
+
+    def _cycle_to_first_sibling_on_same_side(self, direction: str):
+        """Cycle to the first sibling on the same side (for top-level nodes).
+
+        Args:
+            direction: "up" or "down"
+        """
+        # This is essentially the same as _cycle_to_last_sibling_on_same_side
+        # but called from the opposite direction
+        self._cycle_to_last_sibling_on_same_side(direction)
+
+    def _find_visually_adjacent_node(self, direction: str):
+        """Find the visually adjacent node on the same side and same depth.
+
+        This method finds the closest node above/below the current node
+        by comparing actual scene Y coordinates, ensuring visual consistency.
+        Only considers nodes at the same depth level (same hierarchy level).
+
+        Args:
+            direction: "up" (find node above) or "down" (find node below)
+
+        Returns:
+            The target Node object, or None if no suitable node found
+        """
+        if not self.selected_node_id or self.selected_node_id not in self.node_items:
+            return None
+
+        current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
+        if not current_node:
+            return None
+
+        current_item = self.node_items[self.selected_node_id]
+        current_y = current_item.scenePos().y()
+        is_right_side = current_item.is_right_side
+        current_depth = current_node.depth
+
+        # Collect all candidate nodes on the same side AND same depth (excluding current node)
+        candidates = []
+        for node_id, item in self.node_items.items():
+            if node_id == self.selected_node_id:
+                continue
+            if item.is_right_side != is_right_side:
+                continue  # Skip nodes on different side
+
+            # Find the corresponding domain node
+            domain_node = self._find_node_by_id(self.root_node, node_id)
+            if not domain_node:
+                continue
+
+            # CRITICAL: Only consider nodes at the same depth level
+            if domain_node.depth != current_depth:
+                continue
+
+            candidates.append((domain_node, item.scenePos().y()))
+
+        if not candidates:
+            return None
+
+        # Filter candidates based on direction
+        if direction == "up":
+            # Find nodes with Y < current_y (above current node)
+            above_nodes = [(node, y) for node, y in candidates if y < current_y]
+            if not above_nodes:
+                # No nodes above, cycle to the bottom-most node on same side & depth
+                below_nodes = [(node, y) for node, y in candidates if y > current_y]
+                if below_nodes:
+                    # Get the one with maximum Y (bottom-most)
+                    return max(below_nodes, key=lambda x: x[1])[0]
+                return None
+            # Get the one with maximum Y (closest above)
+            return max(above_nodes, key=lambda x: x[1])[0]
+        else:
+            # Find nodes with Y > current_y (below current node)
+            below_nodes = [(node, y) for node, y in candidates if y > current_y]
+            if not below_nodes:
+                # No nodes below, cycle to the top-most node on same side & depth
+                above_nodes = [(node, y) for node, y in candidates if y < current_y]
+                if above_nodes:
+                    # Get the one with minimum Y (top-most)
+                    return min(above_nodes, key=lambda x: x[1])[0]
+                return None
+            # Get the one with minimum Y (closest below)
+            return min(below_nodes, key=lambda x: x[1])[0]
+
+    def _navigate_to_previous_group_last_node(self, direction: str):
+        """Navigate to the last node in the previous group on the same side.
+
+        When a node is the first child and has no previous sibling,
+        navigate to the last child of the previous uncle/aunt on the same side.
+
+        Args:
+            direction: "up" (to previous uncle's last child) or "down" (to next uncle's first child)
+        """
+        if not self.selected_node_id or self.selected_node_id not in self.node_items:
+            return
+
+        current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
+        if not current_node or not current_node.parent or current_node.parent.is_root:
+            return
+
+        parent = current_node.parent
+        grandparent = parent.parent
+        if not grandparent:
+            return
+
+        # Get all siblings of parent (uncles/aunts)
+        uncles = grandparent.children
+        parent_index = uncles.index(parent)
+
+        # Find the target uncle/aunt based on direction
+        if direction == "up":
+            # Look for previous uncle/aunt on the same side
+            for i in range(parent_index - 1, -1, -1):
+                uncle = uncles[i]
+                if uncle.children:
+                    # Check if this uncle's children are on the same side
+                    first_child = uncle.children[0]
+                    if first_child.id in self.node_items and self._is_on_same_side(
+                        current_node, first_child
+                    ):
+                        # Navigate to the last child of this uncle
+                        target = uncle.children[-1]
+                        self._select_node_by_id(target.id)
+                        self._ensure_node_visible(target.id)
+                        return
+        else:
+            # Look for next uncle/aunt on the same side
+            for i in range(parent_index + 1, len(uncles)):
+                uncle = uncles[i]
+                if uncle.children:
+                    # Check if this uncle's children are on the same side
+                    first_child = uncle.children[0]
+                    if first_child.id in self.node_items and self._is_on_same_side(
+                        current_node, first_child
+                    ):
+                        # Navigate to the first child of this uncle
+                        target = uncle.children[0]
+                        self._select_node_by_id(target.id)
+                        self._ensure_node_visible(target.id)
+                        return
+
+        # If no cousin found on same side, cycle within current siblings
+        siblings = parent.children
+        if len(siblings) > 1:
+            target = siblings[-1] if direction == "up" else siblings[0]
+            self._select_node_by_id(target.id)
+            self._ensure_node_visible(target.id)
+
+    def _navigate_to_cousin(self, direction: str) -> bool:
+        """Navigate to cousin node (parent's sibling's child).
+
+        Args:
+            direction: "up" (to previous uncle's last child) or "down" (to next uncle's first child)
+
+        Returns:
+            True if successfully navigated to a cousin, False otherwise
+        """
+        if not self.selected_node_id or self.selected_node_id not in self.node_items:
+            return False
+
+        current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
+        if not current_node or not current_node.parent or current_node.parent.is_root:
+            return False
+
+        parent = current_node.parent
+        grandparents = parent.parent
+        if not grandparents:
+            return False
+
+        # Get parent's siblings (uncles/aunts)
+        uncles = grandparents.children
+        parent_index = uncles.index(parent)
+
+        if direction == "up":
+            # Navigate to previous uncle's last child
+            if parent_index > 0:
+                previous_uncle = uncles[parent_index - 1]
+                if previous_uncle.children and self._is_on_same_side(
+                    current_node, previous_uncle.children[-1]
+                ):
+                    target = previous_uncle.children[-1]
+                    self._select_node_by_id(target.id)
+                    self._ensure_node_visible(target.id)
+                    return True
+        else:
+            # Navigate to next uncle's first child
+            if parent_index < len(uncles) - 1:
+                next_uncle = uncles[parent_index + 1]
+                if next_uncle.children and self._is_on_same_side(
+                    current_node, next_uncle.children[0]
+                ):
+                    target = next_uncle.children[0]
+                    self._select_node_by_id(target.id)
+                    self._ensure_node_visible(target.id)
+                    return True
+
+        return False
+
+    def _is_on_same_side(self, node1, node2) -> bool:
+        """Check if two nodes are on the same side of root.
+
+        Args:
+            node1: First node
+            node2: Second node
+
+        Returns:
+            True if both nodes are on the same side (both left or both right)
+        """
+        if node1.id not in self.node_items or node2.id not in self.node_items:
+            return False
+
+        item1 = self.node_items[node1.id]
+        item2 = self.node_items[node2.id]
+
+        return item1.is_right_side == item2.is_right_side
 
     def _generate_node_name(self, parent_node: Node) -> str:
         """Generate unique node name based on hierarchy.
