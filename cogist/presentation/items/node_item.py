@@ -875,9 +875,11 @@ class NodeItem(QGraphicsRectItem):
             # Update edit widget position (relative to new rect with padding)
             # CRITICAL: Use consistent calculation to prevent position jump
             # Same as initial position: -node_width/2 + padding_left
+            padding_left = padding_width / 2
+            padding_top = padding_height / 2
             self.edit_widget.setPos(
-                -new_node_width / 2 + padding_width / 2,
-                -new_node_height / 2 + padding_height / 2
+                -new_node_width / 2 + padding_left,
+                -new_node_height / 2 + padding_top
             )
 
             # CRITICAL: Force full repaint after rect change

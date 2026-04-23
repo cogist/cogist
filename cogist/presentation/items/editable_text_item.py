@@ -61,6 +61,10 @@ class EditableTextItem(QGraphicsTextItem):
         # This ensures width updates work with Chinese/Japanese input methods
         self.document().contentsChanged.connect(self._on_document_changed)
 
+        # CRITICAL: Remove default document margin to match NodeItem.text_item behavior
+        # This prevents size inflation when entering edit mode
+        self.document().setDocumentMargin(0)
+
     def _calculate_ideal_width(self) -> float:
         """Calculate the ideal width for current text (no wrapping)."""
         # Temporarily disable wrapping to measure
@@ -101,7 +105,7 @@ class EditableTextItem(QGraphicsTextItem):
         self._current_ideal_width = self._calculate_ideal_width()
 
         # CRITICAL: max_width=0 means unlimited width (no wrapping)
-        # Dynamic wrapping strategy:
+        # Dynamic wrapping strategy - MUST match NodeItem._calculate_node_size logic:
         # - If max_width == 0: no wrapping, unlimited width
         # - If ideal_width < max_width: no wrapping, use natural width
         # - If ideal_width >= max_width: enable wrapping at max_width with WrapAnywhere
@@ -117,11 +121,11 @@ class EditableTextItem(QGraphicsTextItem):
             actual_width = self._max_width
         else:
             # No wrapping (either unlimited or natural width)
-            # Reset to default wrap mode (wrap at word boundaries)
+            # Use WrapAnywhere mode to match NodeItem._calculate_node_size behavior
             from PySide6.QtGui import QTextOption
             doc = self.document()
             text_option = doc.defaultTextOption()
-            text_option.setWrapMode(QTextOption.NoWrap)
+            text_option.setWrapMode(QTextOption.WrapAnywhere)
             doc.setDefaultTextOption(text_option)
 
             self.setTextWidth(-1)
@@ -143,11 +147,18 @@ class EditableTextItem(QGraphicsTextItem):
         self._editing = True
         self._text_cache = self.toPlainText()
 
-        # Set text alignment to left-top (no forced wrapping initially)
+        # CRITICAL: Use WrapAnywhere mode to match NodeItem's calculation strategy
+        # This ensures consistent size measurement between display and edit modes
         from PySide6.QtGui import QTextOption
         doc = self.document()
         text_option = QTextOption(Qt.AlignLeft | Qt.AlignTop)
-        # Use default wrap mode - will be adjusted dynamically in _update_layout
+
+        # Set wrap mode based on max_width to match _calculate_node_size logic
+        if self._max_width > 0:
+            text_option.setWrapMode(QTextOption.WrapAnywhere)
+        else:
+            text_option.setWrapMode(QTextOption.NoWrap)
+
         doc.setDefaultTextOption(text_option)
 
         # CRITICAL: Ensure document change signal is connected when editing starts
