@@ -119,9 +119,9 @@ class NodeItem(QGraphicsRectItem):
         self._last_pos = QPointF(0, 0)
 
         # Set flags
-        self.setFlag(QGraphicsRectItem.ItemIsMovable)
+        # Disable ItemIsMovable - we handle drag manually for smart subtree dragging
         self.setFlag(QGraphicsRectItem.ItemSendsGeometryChanges)
-        self.setFlag(QGraphicsRectItem.ItemIsSelectable)  # Enable selection
+        self.setFlag(QGraphicsRectItem.ItemIsSelectable)
         self.setAcceptHoverEvents(True)
 
         # Z-value: nodes above edges

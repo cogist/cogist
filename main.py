@@ -15,7 +15,7 @@ import sys
 # Suppress Qt/macOS warnings at the environment level
 os.environ['QT_LOGGING_RULES'] = '*.debug=false;qt.scenegraph=false;qt.qpa.keymapper=false;qt.qpa.input=false'
 
-from PySide6.QtCore import Qt, QTimer, qInstallMessageHandler
+from PySide6.QtCore import QPointF, Qt, QTimer, qInstallMessageHandler
 from PySide6.QtGui import QAction, QKeySequence, QPainter, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -600,6 +600,14 @@ class MindMapView(QGraphicsView):
         # Selection
         self.selected_node_id = None
 
+        # Drag and drop state
+        self._dragged_node_id: str | None = None
+        self._drag_offset: QPointF | None = None
+        self._current_potential_parent: Node | None = None
+        self._subtree_initial_positions: dict[str, QPointF] = {}
+        self._temp_drag_edge: object | None = None
+        self._is_dragging_cross_side: bool = False
+
         # File tracking
         self.current_file_path: str | None = None
 
@@ -955,7 +963,7 @@ class MindMapView(QGraphicsView):
         return super().eventFilter(obj, event)
 
     def mousePressEvent(self, event):  # noqa: N802
-        """Handle mouse press to select nodes."""
+        """Handle mouse press to select nodes and start drag."""
 
         # Get clicked item
         pos = self.mapToScene(event.position().toPoint())
@@ -972,10 +980,48 @@ class MindMapView(QGraphicsView):
         # Update selection
         if node_item:
             self._select_node(node_item)
+
+            # Check if this is a draggable node (non-root)
+            current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
+            if current_node and not current_node.is_root:
+                # Start drag operation
+                self._dragged_node_id = self.selected_node_id
+                # Calculate offset from node center to mouse position
+                node_center = node_item.scenePos() + node_item.boundingRect().center()
+                self._drag_offset = pos - node_center
+                self._current_potential_parent = None
+                self._is_dragging_cross_side = False
+
+                # Hide edge to old parent during drag
+                self._hide_parent_edge(current_node)
         else:
             self._deselect_node()
 
         super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):  # noqa: N802
+        """Handle mouse move - drag node and detect potential parent."""
+        if self._dragged_node_id and self._drag_offset:
+            # Get current mouse position
+            current_pos = self.mapToScene(event.position().toPoint())
+
+            # Move the dragged node
+            dragged_item = self.node_items.get(self._dragged_node_id)
+            if dragged_item:
+                # Position node so that the offset point is under the mouse
+                new_pos = current_pos - self._drag_offset
+                dragged_item.setPos(new_pos)
+
+                # Detect potential parent
+                dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
+                potential_parent = self._detect_potential_parent(dragged_item, current_pos)
+
+                # Update temporary edge
+                self._update_temp_drag_edge(dragged_node, potential_parent)
+
+                self._current_potential_parent = potential_parent
+
+        super().mouseMoveEvent(event)
 
     def mouseDoubleClickEvent(self, event):  # noqa: N802
         """Handle double-click to enter edit mode with cursor at click position."""
@@ -1021,6 +1067,26 @@ class MindMapView(QGraphicsView):
             self._edit_selected_node(cursor_position=cursor_pos)
         else:
             super().mouseDoubleClickEvent(event)
+
+    def mouseReleaseEvent(self, event):  # noqa: N802
+        """Handle mouse release - clean up drag state."""
+        # For now, just clean up. Will add reparenting logic later.
+        if self._temp_drag_edge:
+            self.scene.removeItem(self._temp_drag_edge)
+            self._temp_drag_edge = None
+
+        # Restore edge to old parent
+        if self._dragged_node_id:
+            dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
+            if dragged_node:
+                self._restore_parent_edge(dragged_node)
+
+        self._dragged_node_id = None
+        self._drag_offset = None
+        self._current_potential_parent = None
+        self._is_dragging_cross_side = False
+
+        super().mouseReleaseEvent(event)
 
     def _select_node(self, node_item: NodeItem):
         """Select a node."""
@@ -1947,6 +2013,128 @@ class MindMapView(QGraphicsView):
                 f"Failed to open:\n{e}",
             )
             print(f"✗ Open failed: {e}")
+
+    def _hide_parent_edge(self, node: Node):
+        """Hide the edge from parent to this node during drag."""
+        item = self.node_items.get(node.id)
+        if item:
+            for edge in item.connected_edges:
+                # Find the edge where this node is the target
+                if hasattr(edge, 'target_item') and edge.target_item == item:
+                    edge.setVisible(False)
+                    break
+
+    def _restore_parent_edge(self, node: Node):
+        """Restore the edge from parent to this node after drag."""
+        item = self.node_items.get(node.id)
+        if item:
+            for edge in item.connected_edges:
+                if hasattr(edge, 'target_item') and edge.target_item == item:
+                    edge.setVisible(True)
+                    break
+
+    def _detect_potential_parent(self, dragged_item: NodeItem, mouse_pos: QPointF) -> Node | None:  # noqa: ARG002
+        """
+        Detect the best potential parent based on mouse position.
+
+        For right-side nodes: find the closest node to the LEFT
+        For left-side nodes: find the closest node to the RIGHT
+        """
+        dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
+        if not dragged_node:
+            return None
+
+        is_right_side = dragged_item.is_right_side
+        best_candidate = None
+        best_score = float('inf')
+
+        for node_id, item in self.node_items.items():
+            if node_id == self._dragged_node_id:
+                continue  # Skip self
+
+            target_node = self._find_node_by_id(self.root_node, node_id)
+            if not target_node:
+                continue
+
+            # Cannot be descendant (would create cycle)
+            if target_node in dragged_node.get_all_descendants():
+                continue
+
+            # Get positions - use connection points instead of center
+            target_pos = item.scenePos() + item.boundingRect().center()
+            dragged_pos = dragged_item.scenePos() + dragged_item.boundingRect().center()
+
+            # For right-side dragged node, look for nodes on the left (smaller x)
+            # For left-side dragged node, look for nodes on the right (larger x)
+            if is_right_side:
+                if target_pos.x() >= dragged_pos.x():
+                    continue  # Skip nodes on the right or same x
+            else:
+                if target_pos.x() <= dragged_pos.x():
+                    continue  # Skip nodes on the left or same x
+
+            # Calculate score: prefer closer nodes
+            dx = abs(dragged_pos.x() - target_pos.x())
+            dy = abs(dragged_pos.y() - target_pos.y())
+            score = dx + dy * 0.5  # Weight X more than Y
+
+            if score < best_score:
+                best_score = score
+                best_candidate = target_node
+
+        return best_candidate
+
+    def _update_temp_drag_edge(self, dragged_node: Node | None, potential_parent: Node | None):
+        """Create or update temporary edge to show connection during drag."""
+
+        # Remove old temp edge
+        if self._temp_drag_edge:
+            self.scene.removeItem(self._temp_drag_edge)
+            self._temp_drag_edge = None
+
+        # Create new temp edge if we have a potential parent
+        if potential_parent and dragged_node:
+            parent_item = self.node_items.get(potential_parent.id)
+            dragged_item = self.node_items.get(dragged_node.id)
+
+            if parent_item and dragged_item:
+                # Get connector config for potential parent's depth
+                parent_depth = potential_parent.depth
+                connector_config = self.style_config.connector_config_by_depth.get(parent_depth, {})
+
+                # Create a temporary EdgeItem with proper styling
+                from cogist.presentation.items.edge_item import EdgeItem
+
+                color = connector_config.get('color', '#999999')
+                temp_edge = EdgeItem(parent_item, dragged_item, color=color, style_config=self.style_config)
+
+                # Set the connector strategy based on config
+                connector_shape = connector_config.get('connector_shape', 'bezier')
+                from cogist.domain.connectors import (
+                    BezierConnector,
+                    OrthogonalConnector,
+                    RoundedOrthogonalConnector,
+                    SharpFirstRoundedConnector,
+                    StraightConnector,
+                )
+
+                shape_map = {
+                    'bezier': BezierConnector(),
+                    'bezier_uniform': BezierConnector(),
+                    'orthogonal': OrthogonalConnector(),
+                    'straight': StraightConnector(),
+                    'rounded_orthogonal': RoundedOrthogonalConnector(),
+                    'sharp_first_rounded': SharpFirstRoundedConnector(),
+                }
+
+                temp_edge.connector_strategy = shape_map.get(connector_shape, BezierConnector())
+                temp_edge.setZValue(0)  # Behind nodes
+
+                # Force update to calculate path
+                temp_edge.update_curve()
+
+                self.scene.addItem(temp_edge)
+                self._temp_drag_edge = temp_edge
 
 
 def main():
