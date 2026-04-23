@@ -4,14 +4,14 @@
 
 ---
 
-## 🎯 Current Version: v0.2.0
+## 🎯 Current Version: v0.3.1
 
-**Latest Release**: Foundation Architecture with Layout, Template, and Theme systems
+**Latest Release**: Node editing fixes and style data access standardization
 
-- ✅ Type-safe layout configuration with polymorphic switching
-- ✅ Node template system with priority rules
-- ✅ Color theme system with depth-based cycling
-- ✅ 39 comprehensive unit tests (100% pass)
+- ✅ Node editing size inflation fix
+- ✅ Style data access standardization (no .get() calls)
+- ✅ Edit widget synchronization with node expansion
+- ✅ Unified line wrapping strategy
 
 See [CHANGELOG.md](../CHANGELOG.md) for full release notes.
 
@@ -60,5 +60,5 @@ uv run cogist
 
 ---
 
-*Last updated: 2026-04-17*  
+*Last updated: 2026-04-23 (v0.3.1)*  
 *Maintained by: Cogist Team*

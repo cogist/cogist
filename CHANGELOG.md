@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-04-23
+
+### Fixed
+- **Node Editing Size Inflation**: Fixed document margin issue in EditableTextItem causing size increase when entering edit mode
+- **Style Data Access**: Replaced all `.get()` calls with direct dictionary access to ensure style data integrity
+- **Edit Widget Separation**: Fixed edit widget positioning to align with node expansion direction during typing
+- **Line Wrapping Consistency**: Unified wrapping strategy between display and edit modes (WrapAnywhere)
+
+### Technical Details
+- Added `setDocumentMargin(0)` to EditableTextItem initialization
+- Updated style panel to use direct dictionary access for required fields
+- Fixed coordinate calculation in on_width_changed callback
+
 ## [0.3.0] - 2026-04-23
 
 ### Added
@@ -97,4 +110,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-*Last updated: 2026-04-23*
+*Last updated: 2026-04-23 (v0.3.1)*
