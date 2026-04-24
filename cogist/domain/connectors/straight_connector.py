@@ -17,8 +17,8 @@ class StraightConnector(ConnectorStrategy):
         self,
         source_point: QPointF,
         target_point: QPointF,
-        source_rect,  # noqa: ARG002 - kept for interface consistency
-        target_rect,  # noqa: ARG002 - kept for interface consistency
+        source_rect,
+        target_rect,
     ) -> QPainterPath:
         """Generate straight line path with horizontal segments at both ends.
 

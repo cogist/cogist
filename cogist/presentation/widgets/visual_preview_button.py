@@ -99,7 +99,7 @@ class VisualPreviewButton(QWidget):
         # Set initial preview using popup_preview_size as fallback
         self._update_preview()
 
-    def resizeEvent(self, event):  # noqa: N802
+    def resizeEvent(self, event):
         """Handle resize event to update preview."""
         super().resizeEvent(event)
         # Update preview when button size changes

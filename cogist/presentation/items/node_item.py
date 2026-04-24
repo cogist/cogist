@@ -523,7 +523,7 @@ class NodeItem(QGraphicsRectItem):
         # Trigger repaint
         self.update()
 
-    def itemChange(self, change, value):  # noqa: N802
+    def itemChange(self, change, value):
         """Handle position changes - update edges and children."""
         if change == QGraphicsRectItem.ItemPositionHasChanged:
             new_pos = value
@@ -542,7 +542,7 @@ class NodeItem(QGraphicsRectItem):
 
         return super().itemChange(change, value)
 
-    def paint(self, painter, option, widget=None):  # noqa: ARG002
+    def paint(self, painter, option, widget=None):
         """Custom paint using border strategy pattern."""
         from PySide6.QtGui import QPainter
 

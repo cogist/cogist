@@ -43,7 +43,7 @@ class BottomLineBorder(BorderStrategy):
 
         painter.drawLine(x1, y, x2, y)
 
-    def get_selection_path(self, rect, style_config: dict) -> QPainterPath:  # noqa: ARG002
+    def get_selection_path(self, rect, style_config: dict) -> QPainterPath:
         """Get selection highlight path for bottom line shape.
 
         Uses a rounded rectangle around the text area for visibility.
@@ -94,7 +94,7 @@ class LeftLineBorder(BorderStrategy):
 
         painter.drawLine(x, y1, x, y2)
 
-    def get_selection_path(self, rect, style_config: dict) -> QPainterPath:  # noqa: ARG002
+    def get_selection_path(self, rect, style_config: dict) -> QPainterPath:
         """Get selection highlight path for left line shape.
 
         Uses a rounded rectangle around the text area for visibility.

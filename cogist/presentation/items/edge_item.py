@@ -51,7 +51,7 @@ class EdgeItem(QGraphicsPathItem):
         # Custom drawing
         self.update_curve()
 
-    def paint(self, painter, option, widget=None):  # noqa: ARG002
+    def paint(self, painter, option, widget=None):
         """Custom paint with gradient line width."""
         from PySide6.QtGui import QPainter
 
@@ -378,7 +378,7 @@ class EdgeItem(QGraphicsPathItem):
             return 2.0  # Default border width
 
     def _get_edge_point_for_shape(
-        self, rect, edge: str, shape_type: str, border_width: float = 2.0, connector_width: float = 2.0  # noqa: ARG002
+        self, rect, edge: str, shape_type: str, border_width: float = 2.0, connector_width: float = 2.0
     ) -> QPointF:
         """Get connection point on node edge based on border shape.
 

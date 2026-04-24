@@ -243,7 +243,7 @@ class EditableTextItem(QGraphicsTextItem):
 
     # Event handlers
 
-    def mousePressEvent(self, event):  # noqa: N802
+    def mousePressEvent(self, event):
         """Handle mouse press to start editing."""
         if not self._editing:
             self.start_editing(select_all=False)
@@ -251,7 +251,7 @@ class EditableTextItem(QGraphicsTextItem):
         # Call base for cursor positioning
         super().mousePressEvent(event)
 
-    def event(self, event):  # noqa: N802
+    def event(self, event):
         """Override event to intercept Tab key before Qt's default handling."""
         if event.type() == QEvent.KeyPress:
             key_value = event.key()
@@ -273,7 +273,7 @@ class EditableTextItem(QGraphicsTextItem):
         # Let base class handle all other events
         return super().event(event)
 
-    def keyPressEvent(self, event):  # noqa: N802
+    def keyPressEvent(self, event):
         """Handle key press events."""
         key_value = event.key()
         if not self._editing:
@@ -300,7 +300,7 @@ class EditableTextItem(QGraphicsTextItem):
         # _on_document_changed() will handle width updates via contentsChanged signal
         super().keyPressEvent(event)
 
-    def focusOutEvent(self, event):  # noqa: N802
+    def focusOutEvent(self, event):
         """Handle focus loss to finish editing."""
         if self._editing:
             self.finish_editing()
@@ -323,7 +323,7 @@ class EditableTextItem(QGraphicsTextItem):
             painter.drawRoundedRect(self.boundingRect(), 6, 6)
             painter.restore()
 
-    def boundingRect(self) -> QRectF:  # noqa: N802
+    def boundingRect(self) -> QRectF:
         """Get bounding rectangle."""
         base_rect = super().boundingRect()
 

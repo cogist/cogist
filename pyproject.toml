@@ -1,6 +1,6 @@
 [project]
 name = "Cogist"
-version = "0.3.3"
+version = "0.3.2"
 description = "A Beautiful Mind Mapping Tool with Intelligent Layout Algorithms"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -40,7 +40,12 @@ select = [
   "E", "W", "F", "I", "N", "UP", "B", "A", "C4", "T20", "SIM", "ARG", "PTH"
 ]
 fixable = ["ALL"]
-ignore = ["E501", "T20"]
+ignore = [
+  "E501",     # Line too long
+  "T20",      # Print statements
+  "N802",     # Function name should be lowercase (required for Qt event methods)
+  "ARG002",   # Unused method argument (kept for interface consistency)
+]
 
 [tool.ruff.format]
 quote-style = "double"

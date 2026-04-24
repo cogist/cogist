@@ -84,7 +84,7 @@ class VisualOptionButton(QWidget):
         self.is_selected = selected
         self.update()
 
-    def paintEvent(self, _event):  # noqa: N802
+    def paintEvent(self, _event):
         """Paint the option button with preview and selection indicator."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -119,7 +119,7 @@ class VisualOptionButton(QWidget):
             label_rect = self.rect().adjusted(0, y + pixmap.height() + 2, 0, 0)
             painter.drawText(label_rect, Qt.AlignHCenter | Qt.AlignTop, self.option.value.capitalize())
 
-    def mousePressEvent(self, event):  # noqa: N802
+    def mousePressEvent(self, event):
         """Handle click event."""
         if event.button() == Qt.LeftButton:
             self.clicked.emit(self.option.value)

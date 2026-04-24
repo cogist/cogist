@@ -23,8 +23,8 @@ class SharpFirstRoundedConnector(ConnectorStrategy):
         self,
         source_point: QPointF,
         target_point: QPointF,
-        source_rect,  # noqa: ARG002 - kept for interface consistency
-        target_rect,  # noqa: ARG002 - kept for interface consistency
+        source_rect,
+        target_rect,
     ) -> QPainterPath:
         """Generate path with sharp first corner and rounded second corner.
 

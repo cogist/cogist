@@ -851,7 +851,7 @@ class MindMapView(QGraphicsView):
         from cogist.application.services import get_app_context
         return get_app_context().get_main_window()
 
-    def eventFilter(self, obj, event):  # noqa: N802
+    def eventFilter(self, obj, event):
         """Handle keyboard shortcuts for editing commands."""
         from PySide6.QtCore import QEvent
 
@@ -963,7 +963,7 @@ class MindMapView(QGraphicsView):
 
         return super().eventFilter(obj, event)
 
-    def mousePressEvent(self, event):  # noqa: N802
+    def mousePressEvent(self, event):
         """Handle mouse press to select nodes and start drag."""
 
         # Get clicked item
@@ -1003,7 +1003,7 @@ class MindMapView(QGraphicsView):
 
         super().mousePressEvent(event)
 
-    def mouseMoveEvent(self, event):  # noqa: N802
+    def mouseMoveEvent(self, event):
         """Handle mouse move - drag node and detect potential parent."""
         if self._dragged_node_id and self._drag_offset:
             # Get current mouse position
@@ -1030,22 +1030,16 @@ class MindMapView(QGraphicsView):
                     # Recorded side from flag
                     recorded_side = dragged_item.is_right_side
 
+                    print(f"[DEBUG] current={is_currently_right}, recorded={recorded_side}, center_x={dragged_center_x:.0f}, root_x={root_x:.0f}")
+
                     # Only flip if sides are different
                     if is_currently_right != recorded_side:
-                        # CRITICAL FIX: Mirror based on the saved offset direction
-                        # Get a child offset (not root's 0,0) to determine subtree layout direction
-                        # Skip the first entry which is the root node (0,0)
-                        offsets = list(self._subtree_initial_positions.values())[1:]  # Skip root
-                        if offsets:
-                            first_child_offset = offsets[0]
-                            offset_is_positive = first_child_offset.x() >= 0
+                        # Determine if we need to mirror based on target side
+                        # If moving to right side, don't mirror (normal)
+                        # If moving to left side, mirror
+                        should_mirror = not is_currently_right
 
-                            # If offset is positive (right-side layout), mirror when going to left
-                            # If offset is negative (left-side layout), mirror when going to right
-                            should_mirror = (is_currently_right != offset_is_positive)
-                        else:
-                            # No children, no need to mirror
-                            should_mirror = False
+                        print(f"[DEBUG] FLIPPING! should_mirror={should_mirror}")
 
                         # Flip subtree
                         self._apply_subtree_positions(new_pos, should_mirror)
@@ -1074,7 +1068,7 @@ class MindMapView(QGraphicsView):
 
         super().mouseMoveEvent(event)
 
-    def mouseDoubleClickEvent(self, event):  # noqa: N802
+    def mouseDoubleClickEvent(self, event):
         """Handle double-click to enter edit mode with cursor at click position."""
         # Get clicked position
         pos = self.mapToScene(event.position().toPoint())
@@ -1119,7 +1113,7 @@ class MindMapView(QGraphicsView):
         else:
             super().mouseDoubleClickEvent(event)
 
-    def mouseReleaseEvent(self, event):  # noqa: N802
+    def mouseReleaseEvent(self, event):
         """Handle mouse release - reparent node and refresh layout."""
         # Clear drag state FIRST to prevent further drag events
         dragged_id = self._dragged_node_id
@@ -1162,33 +1156,6 @@ class MindMapView(QGraphicsView):
 
                 # Update depths recursively
                 self._update_node_depths_recursive(dragged_node)
-
-                # Find the top-level ancestor of the dragged node and mark it as locked
-                def get_top_level_ancestor(node):
-                    """Get the direct child of root for this node."""
-                    current = node
-                    while current.parent and not current.parent.is_root:
-                        current = current.parent
-                    return current
-
-                top_level_node = get_top_level_ancestor(dragged_node)
-                if top_level_node:
-                    top_level_node.is_locked_position = True
-
-                    # CRITICAL: Update the top-level node's position[0] to the new side
-                    # This ensures the layout algorithm assigns it to the correct side
-                    # Use is_currently_right instead of new_parent's is_right_side
-                    # (new_parent might be root with default is_right_side=True)
-                    root_item = self.node_items.get("root")
-                    root_x = root_item.scenePos().x() if root_item else 600.0
-                    dragged_item = self.node_items.get(dragged_id)
-                    dragged_center_x = dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2 if dragged_item else 800.0
-                    is_currently_right = dragged_center_x >= root_x
-
-                    if is_currently_right:
-                        top_level_node.position = (800.0, top_level_node.position[1])
-                    else:
-                        top_level_node.position = (400.0, top_level_node.position[1])
 
                 # Refresh layout to reposition everything
                 self._refresh_layout(skip_measurement=False)
@@ -1724,10 +1691,6 @@ class MindMapView(QGraphicsView):
         # Get the new node ID (it's the last child)
         new_node_id = parent_node.children[-1].id
 
-        # Mark new node as locked for rebalancing
-        new_node = parent_node.children[-1]
-        new_node.is_locked_position = True
-
         # Refresh UI
         self._refresh_layout()
 
@@ -1860,10 +1823,6 @@ class MindMapView(QGraphicsView):
         # Get the new node ID (it's the last child)
         new_node_id = parent_node.children[-1].id
 
-        # Mark new node as locked for rebalancing
-        new_node = parent_node.children[-1]
-        new_node.is_locked_position = True
-
         # Refresh UI
         self._refresh_layout()
 
@@ -1948,10 +1907,6 @@ class MindMapView(QGraphicsView):
             context=context,
         )
 
-        # Clear locked position flags after layout
-        for child in self.root_node.children:
-            child.is_locked_position = False
-
         # Step 3: Recreate UI items
         self._create_ui_items(self.root_node)
 
@@ -2017,7 +1972,7 @@ class MindMapView(QGraphicsView):
         margin_px = 50
         self.ensureVisible(node_item, margin_px, margin_px)
 
-    def showEvent(self, event):  # noqa: N802
+    def showEvent(self, event):
         """Handle show event to center on root node initially."""
         super().showEvent(event)
 
@@ -2165,7 +2120,7 @@ class MindMapView(QGraphicsView):
                     edge.setVisible(True)
                     break
 
-    def _detect_potential_parent(self, dragged_item: NodeItem, mouse_pos: QPointF) -> Node | None:  # noqa: ARG002
+    def _detect_potential_parent(self, dragged_item: NodeItem, mouse_pos: QPointF) -> Node | None:
         """
         Detect the best potential parent based on anchor point distance.
 
@@ -2394,16 +2349,19 @@ class MindMapView(QGraphicsView):
         self._flip_subtree_recursive(node, root_x, new_is_right)
 
     def _flip_subtree_recursive(self, node: Node, root_x: float, new_is_right: bool):
-        """Update is_right_side flag for entire subtree (position already updated during drag)."""
+        """Mirror X position across root for node and all descendants."""
         item = self.node_items.get(node.id)
         if item:
-            # CRITICAL FIX: Only update the is_right_side flag
-            # Position was already updated during drag by _apply_subtree_positions
-            # and mouseReleaseEvent position update
-            # DO NOT mirror position again to avoid double-flipping
+            # Mirror X coordinate across root
+            current_x = item.scenePos().x()
+            distance_from_root = current_x - root_x
+            mirrored_x = root_x - distance_from_root
+
+            # Update position (keep Y unchanged during drag)
+            item.setPos(mirrored_x, item.scenePos().y())
             item.is_right_side = new_is_right
 
-        # Recursively update children
+        # Recursively flip children
         for child in node.children:
             self._flip_subtree_recursive(child, root_x, new_is_right)
 
