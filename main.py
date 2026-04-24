@@ -623,6 +623,13 @@ class MindMapView(QGraphicsView):
         # Create sample data
         self.root_node = self._create_sample_data()
 
+        # Initialize Application Layer services
+        from cogist.application.services import DragHandler
+        from cogist.presentation.adapters import QtNodeProvider
+
+        self.node_provider = QtNodeProvider(self.node_items)
+        self.drag_handler = DragHandler(self.root_node, self.node_provider)
+
         # Install event filter for keyboard shortcuts
         self.installEventFilter(self)
 
@@ -644,6 +651,13 @@ class MindMapView(QGraphicsView):
 
         # Create sample data (this will also select the root node)
         self.root_node = self._create_sample_data()
+
+        # Re-initialize Application Layer services with new data
+        from cogist.application.services import DragHandler
+        from cogist.presentation.adapters import QtNodeProvider
+
+        self.node_provider = QtNodeProvider(self.node_items)
+        self.drag_handler = DragHandler(self.root_node, self.node_provider)
 
         # Reset view transformation (zoom, rotation, etc.)
         self.resetTransform()
@@ -1149,9 +1163,13 @@ class MindMapView(QGraphicsView):
                         # Update is_right_side for entire subtree
                         self._update_subtree_is_right_side(dragged_node, is_currently_right)
 
-                # Detect potential parent
+                # Detect potential parent using DragHandler (Application Layer)
                 dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
-                potential_parent = self._detect_potential_parent(dragged_item, current_pos)
+                from cogist.domain.value_objects.position import Position
+                potential_parent = self.drag_handler.detect_potential_parent(
+                    dragged_node_id=self._dragged_node_id,
+                    mouse_pos=Position(current_pos.x(), current_pos.y())
+                )
 
                 # Update temporary edge
                 self._update_temp_drag_edge(dragged_node, potential_parent)
