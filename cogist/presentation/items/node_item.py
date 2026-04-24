@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QGraphicsTextItem,
 )
 
-from cogist.domain.styles.style_config import MAX_TEXT_WIDTH
 from cogist.presentation.items.editable_text_item import EditableTextItem
 
 
@@ -38,38 +37,41 @@ class NodeStyle:
             Dictionary containing all style parameters
         """
         if is_root or depth == 0:
+            # ROOT: max_text_width=300
             return {
                 "font_size": 22,
                 "font_weight": QFont.Bold,
-                "max_text_width": MAX_TEXT_WIDTH,
+                "max_text_width": 300,
                 "padding_width": 20,
                 "padding_height": 16,
                 "border_radius": 10,
             }
         elif depth == 1:
+            # PRIMARY: max_text_width=250
             return {
                 "font_size": 18,
                 "font_weight": QFont.Bold,
-                "max_text_width": MAX_TEXT_WIDTH,
+                "max_text_width": 250,
                 "padding_width": 16,  # Match RoleBasedStyle PRIMARY
                 "padding_height": 12,
                 "border_radius": 8,
             }
         elif depth == 2:
+            # SECONDARY: max_text_width=200
             return {
                 "font_size": 16,
                 "font_weight": QFont.Normal,
-                "max_text_width": MAX_TEXT_WIDTH,
+                "max_text_width": 200,
                 "padding_width": 12,  # Match RoleBasedStyle SECONDARY
                 "padding_height": 10,
                 "border_radius": 6,
             }
         else:
-            # Depth >= 3: minimal style, no background
+            # Depth >= 3: TERTIARY: max_text_width=0 (unlimited, no wrapping)
             return {
                 "font_size": 14,
                 "font_weight": QFont.Normal,
-                "max_text_width": MAX_TEXT_WIDTH,
+                "max_text_width": 0,
                 "padding_width": 10,  # Match RoleBasedStyle TERTIARY
                 "padding_height": 8,
                 "border_radius": 4,
@@ -760,8 +762,10 @@ class NodeItem(QGraphicsRectItem):
         if hasattr(self, "template_style") and self.template_style:
             max_width = self.template_style.max_text_width
         else:
-            # Fallback to global constant for backward compatibility
-            max_width = MAX_TEXT_WIDTH
+            # Fallback to RoleBasedStyle values based on depth
+            # ROOT (depth=0): 300, PRIMARY (depth=1): 250, SECONDARY (depth=2): 200, TERTIARY (depth>=3): 0
+            fallback_widths = {0: 300, 1: 250, 2: 200}
+            max_width = fallback_widths.get(self.depth, 0)
 
         self.edit_widget = EditableTextItem(
             text=self.text_content,

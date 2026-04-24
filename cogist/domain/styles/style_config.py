@@ -4,8 +4,12 @@ from dataclasses import dataclass, field
 
 from .extended_styles import ColorScheme, Template
 
-# Global constant for maximum text width across all node levels
-MAX_TEXT_WIDTH = 250.0
+# NOTE: MAX_TEXT_WIDTH constant removed (v0.3.6)
+# Text width is now defined per-role in RoleBasedStyle.max_text_width:
+# - ROOT: 300px
+# - PRIMARY: 250px
+# - SECONDARY: 200px
+# - TERTIARY: 0 (unlimited, no wrapping)
 
 
 @dataclass
