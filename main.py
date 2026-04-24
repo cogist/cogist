@@ -1268,11 +1268,17 @@ class MindMapView(QGraphicsView):
                 )
 
                 # If crossed sides, flip entire subtree's is_right_side
+                # CRITICAL: Use actual position (is_currently_right) instead of new_parent's is_right_side
+                # because new_parent might be root with default is_right_side=True
+                # Calculate is_currently_right based on dragged node's actual position
+                root_item = self.node_items.get(self.root_node.id)
+                root_x = root_item.scenePos().x() if root_item else 600.0
+                dragged_item = self.node_items.get(dragged_id)
+                dragged_center_x = dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2 if dragged_item else 800.0
+                is_currently_right = dragged_center_x >= root_x
+
                 if is_cross_side:
-                    # Get the side from the new parent's NodeItem
-                    new_parent_item = self.node_items.get(new_parent.id)
-                    if new_parent_item:
-                        self._flip_subtree_side(dragged_node, new_parent_item.is_right_side)
+                    self._flip_subtree_side(dragged_node, is_currently_right)
 
                 # Update depths recursively
                 self._update_node_depths_recursive(dragged_node)
@@ -1291,18 +1297,13 @@ class MindMapView(QGraphicsView):
 
                     # CRITICAL: Update the top-level node's position[0] to the new side
                     # This ensures the layout algorithm assigns it to the correct side
-                    # Use is_currently_right instead of new_parent's is_right_side
-                    # (new_parent might be root with default is_right_side=True)
-                    root_item = self.node_items.get("root")
-                    root_x = root_item.scenePos().x() if root_item else 600.0
-                    dragged_item = self.node_items.get(dragged_id)
-                    dragged_center_x = dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2 if dragged_item else 800.0
-                    is_currently_right = dragged_center_x >= root_x
-
-                    if is_currently_right:
-                        top_level_node.position = (800.0, top_level_node.position[1])
-                    else:
-                        top_level_node.position = (400.0, top_level_node.position[1])
+                    # is_currently_right already calculated above for subtree flipping
+                    if is_cross_side:
+                        # Use the same is_currently_right value calculated for flipping
+                        if is_currently_right:
+                            top_level_node.position = (800.0, top_level_node.position[1])
+                        else:
+                            top_level_node.position = (400.0, top_level_node.position[1])
 
                 # OPTIMIZATION: Drag doesn't change node dimensions, skip measurement
                 # CRITICAL: Parent-child relationships changed, must force full rebuild
