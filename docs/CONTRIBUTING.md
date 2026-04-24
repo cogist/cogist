@@ -138,6 +138,49 @@ feat(domain): add Node entity class
 Closes #12
 ```
 
+### Release Workflow
+
+When a feature is complete and ready for release, follow these steps:
+
+1. **Global Code Quality Check**
+   ```bash
+   uv run ruff check . && uv run pyright
+   ```
+
+2. **Merge Feature Branch to main**
+   ```bash
+   git switch main
+   git merge <feature-branch> --no-ff -m "merge: <description>"
+   git branch -d <feature-branch>
+   ```
+
+3. **Update CHANGELOG.md**
+   - Add new version entry at the top
+   - Format: `## [X.Y.Z] - YYYY-MM-DD`
+   - Categories: Fixed / Added / Changed / Removed
+   - Include Technical Details section if needed
+
+4. **Sync Version Numbers**
+   - `pyproject.toml`: Update `version = "X.Y.Z"`
+   - `README.md`: Update badge and version references
+   - Other documents containing version numbers
+
+5. **Commit Version Updates**
+   ```bash
+   git add -A
+   git commit -m "chore: prepare vX.Y.Z release with version updates and changelog"
+   ```
+
+6. **Create Git Tag**
+   ```bash
+   git tag -a vX.Y.Z -m "Release vX.Y.Z: <brief description>"
+   ```
+
+7. **Push to Remote**
+   ```bash
+   git push origin main --tags
+   ```
+
 ---
 
 ## 📞 Need Help?
