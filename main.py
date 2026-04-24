@@ -1307,9 +1307,10 @@ class MindMapView(QGraphicsView):
                     else:
                         top_level_node.position = (400.0, top_level_node.position[1])
 
-                # OPTIMIZATION: Drag doesn't change node dimensions, skip measurement
-                # Refresh layout to reposition everything
-                self._refresh_layout(skip_measurement=True)
+                # CRITICAL: Node relationships have changed, must rebuild edges completely
+                # Incremental update won't work because parent-child connections changed
+                # OPTIMIZATION: Skip measurement since node dimensions haven't changed
+                self._refresh_layout(skip_measurement=True, force_rebuild_edges=True)
 
         # Clean up temp edge
         if self._temp_drag_edge:
@@ -2029,6 +2030,7 @@ class MindMapView(QGraphicsView):
         skip_measurement: bool = False,
         saved_selection_id: str = None,
         parent_id: str = None,
+        force_rebuild_edges: bool = False,
     ):
         """Refresh the entire layout after changes.
 
@@ -2036,6 +2038,9 @@ class MindMapView(QGraphicsView):
             skip_measurement: If True, skip _measure_actual_sizes because
                               domain sizes are already correct (e.g., after editing).
             saved_selection_id: Optional node ID to restore selection after refresh
+            parent_id: Optional parent node ID for selection restoration
+            force_rebuild_edges: If True, force complete edge rebuild instead of
+                                incremental update (needed when parent-child relationships change)
         """
         # Save selected node ID before clearing (if not provided)
         if saved_selection_id is None:
@@ -2075,11 +2080,16 @@ class MindMapView(QGraphicsView):
 
         # Step 3: OPTIMIZATION - Try incremental UI update first
         # This is much faster than clearing and recreating all items
-        success = self._update_ui_positions_incremental()
+        # However, if force_rebuild_edges is True, skip incremental update because
+        # parent-child relationships have changed and edges need to be rebuilt
+        if not force_rebuild_edges:
+            success = self._update_ui_positions_incremental()
+        else:
+            success = False
 
         if not success:
             # Fallback to full rebuild if incremental update failed
-            # (e.g., new nodes added or nodes deleted)
+            # (e.g., new nodes added, nodes deleted, or parent-child relationships changed)
             self.scene.clear()
             self.node_items.clear()
             self.edge_items.clear()
