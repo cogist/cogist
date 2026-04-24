@@ -1140,27 +1140,20 @@ class MindMapView(QGraphicsView):
                 # Current side based on position (needed for cross-side detection)
                 is_currently_right = dragged_center_x >= root_x
 
-                # Check if we need to flip
+                # Apply subtree positions based on current side
+                # CRITICAL: Don't compare with recorded_side, just use current position!
+                # If on right side: don't mirror (children on right)
+                # If on left side: mirror (children on left)
                 dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
                 if dragged_node and root_item:
-                    # Recorded side from flag
-                    recorded_side = dragged_item.is_right_side
+                    # Mirror when on left side, don't mirror when on right side
+                    should_mirror = not is_currently_right
 
-                    print(f"[DEBUG] current={is_currently_right}, recorded={recorded_side}, center_x={dragged_center_x:.0f}, root_x={root_x:.0f}")
+                    # Apply subtree positions
+                    self._apply_subtree_positions(new_pos, should_mirror)
 
-                    # Only flip if sides are different
-                    if is_currently_right != recorded_side:
-                        # CRITICAL: Same logic for both directions!
-                        # Always mirror when crossing sides, regardless of left-to-right or right-to-left
-                        should_mirror = True
-
-                        print(f"[DEBUG] FLIPPING! should_mirror={should_mirror}")
-
-                        # Flip subtree
-                        self._apply_subtree_positions(new_pos, should_mirror)
-
-                        # Update is_right_side for entire subtree
-                        self._update_subtree_is_right_side(dragged_node, is_currently_right)
+                    # Update is_right_side for entire subtree
+                    self._update_subtree_is_right_side(dragged_node, is_currently_right)
 
                 # Detect potential parent using DragHandler (Application Layer)
                 dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
