@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.7] - 2026-04-25
+
+### Fixed
+- **View focus management**: Fixed focus behavior after node deletion and undo/redo operations
+  - Delete key now properly moves focus to sibling nodes (previous > next > parent)
+  - Undo delete operation correctly restores focus to appropriate sibling node
+  - Undo add operation properly focuses on deleted node's sibling
+  - Redo add operation focuses on the restored node
+- **Dynamic sceneRect management**: Implemented intelligent canvas sizing
+  - Scene rect now dynamically adjusts based on content bounds + margin
+  - Root node properly centered in viewport using `setAlignment(Qt.AlignCenter)`
+  - Removed hardcoded canvas dimensions (1200x800), now uses viewport size
+  - Scrollbars no longer appear in initial empty state
+
+### Refactored
+- **Extracted common focus methods**: Created reusable methods for focus management
+  - `_calculate_next_focus_after_deletion()` - calculates focus priority
+  - `_focus_on_node_after_deletion()` - handles post-deletion focus
+  - `_focus_on_node_after_addition()` - handles post-addition focus
+  - `_finalize_node_addition()` - common post-add logic
+- **Moved focus methods to MindMapView**: Corrected class归属 for focus management methods
+- **Added SceneRectManager**: Dedicated class for dynamic scene rectangle management
+
+### Technical Details
+- Focus calculation now happens before undo execution to avoid accessing deleted nodes
+- All selection changes now clear previous selections to prevent multiple focus frames
+- SceneRectManager ensures scene rect is always at least viewport size for proper centering
+
 ## [0.3.6] - 2026-04-24
 
 ### Fixed
