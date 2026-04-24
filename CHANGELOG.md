@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.6] - 2026-04-24
+
+### Fixed
+- **Sibling node alignment after drag**: Fixed misalignment issue where sibling nodes' edges were not properly aligned after drag operations. Root cause was skipping size measurement when node depth changed, causing layout algorithm to use outdated width values.
+- **Canvas background color update**: Fixed canvas background color not updating immediately when changed in style panel. Issue occurred because incremental UI updates skipped `_create_ui_items()` which was the only place setting scene background.
+
+### Technical Details
+- Added `_measure_actual_sizes(dragged_node)` call before layout refresh in drag operations to ensure correct dimensions after depth changes
+- Added immediate `scene.setBackgroundBrush()` update in style panel's `_apply_node_styles_to_mindmap()` method
+- Both fixes maintain compatibility with incremental update optimization while ensuring visual consistency
+
 ## [0.3.5] - 2026-04-24
 
 ### Fixed
