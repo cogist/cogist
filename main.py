@@ -575,14 +575,13 @@ class MindMapView(QGraphicsView):
         self.scene = QGraphicsScene()
         self.scene.setBackgroundBrush(Qt.white)
 
-        # CRITICAL: Set a large scene rect to ensure centerOn() works properly
-        # Without this, when scene is smaller than viewport, centerOn() has no effect
-        # and alignment controls positioning instead
-        import sys
+        # Initialize scene rect manager for dynamic canvas sizing
+        from cogist.presentation.scene_manager import SceneRectManager
+        self.scene_manager = SceneRectManager(self.scene, default_margin=100.0)
 
-        self.scene.setSceneRect(
-            -sys.maxsize, -sys.maxsize, sys.maxsize * 2, sys.maxsize * 2
-        )
+        # Set a small initial scene rect (will be updated after layout)
+        # This prevents issues during initialization before viewport is ready
+        self.scene.setSceneRect(0, 0, 1, 1)
 
         self.setScene(self.scene)
 
@@ -699,10 +698,23 @@ class MindMapView(QGraphicsView):
 
         # Use LayoutRegistry to create layout instance (demonstrates proper architecture)
         layout = layout_registry.get_layout("default", layout_config)
-        layout.layout(root, canvas_width=1200, canvas_height=800)
 
-        # Step 3: Create final UI items with correct sizes and positions
+        # Get viewport size for canvas dimensions
+        viewport_size = self.viewport().size()
+        canvas_width = float(viewport_size.width())
+        canvas_height = float(viewport_size.height())
+
+        layout.layout(root, canvas_width=canvas_width, canvas_height=canvas_height)
+
+        # Create final UI items with correct sizes and positions
         self._create_ui_items(root)
+
+        # Step 4: Update scene rect based on actual content + margin
+        self.scene_manager.update_from_content()
+
+        # Step 5: Center the view by setting alignment to center
+        # This ensures content is centered in the viewport
+        self.setAlignment(Qt.AlignCenter)
 
         # Select root node by default
         self.selected_node_id = root.id
@@ -2074,11 +2086,17 @@ class MindMapView(QGraphicsView):
 
         # Use LayoutRegistry to create layout instance (demonstrates proper architecture)
         layout = layout_registry.get_layout("default", layout_config)
+
+        # Get viewport size for canvas dimensions
+        viewport_size = self.viewport().size()
+        canvas_width = float(viewport_size.width())
+        canvas_height = float(viewport_size.height())
+
         context = {'focused_node_id': saved_selection_id} if saved_selection_id else None
         layout.layout(
             self.root_node,
-            canvas_width=1200,
-            canvas_height=800,
+            canvas_width=canvas_width,
+            canvas_height=canvas_height,
             context=context,
         )
 
@@ -2102,6 +2120,9 @@ class MindMapView(QGraphicsView):
             self.node_items.clear()
             self.edge_items.clear()
             self._create_ui_items(self.root_node)
+
+        # Update scene rect based on new content
+        self.scene_manager.update_from_content()
 
         # Restore selection state and focus
         if saved_selection_id:
