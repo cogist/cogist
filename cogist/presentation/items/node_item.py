@@ -800,6 +800,10 @@ class NodeItem(QGraphicsRectItem):
         # Store callback for manual finish_editing calls
         self.edit_callback = on_edit_callback
 
+        # Cache original dimensions for cancel support
+        self._original_node_width = self.node_width
+        self._original_node_height = self.node_height
+
         # Connect signals
         def on_width_changed(new_width):
             """Handle width changes during editing - update node background size.
@@ -963,6 +967,12 @@ class NodeItem(QGraphicsRectItem):
             if callback:
                 callback(new_text)
 
+        # Clear cached original dimensions (editing finished successfully)
+        if hasattr(self, '_original_node_width'):
+            del self._original_node_width
+        if hasattr(self, '_original_node_height'):
+            del self._original_node_height
+
     def cancel_editing(self):
         """Cancel editing and discard changes."""
         if self.edit_widget is None:
@@ -984,6 +994,27 @@ class NodeItem(QGraphicsRectItem):
 
         # Clear references
         self.edit_widget = None
+
+        # Restore original dimensions
+        if hasattr(self, '_original_node_width') and hasattr(self, '_original_node_height'):
+            self.node_width = self._original_node_width
+            self.node_height = self._original_node_height
+
+            # Update rect with original dimensions (centered)
+            new_rect_left = -self.node_width / 2
+            new_rect_top = -self.node_height / 2
+            self.setRect(new_rect_left, new_rect_top, self.node_width, self.node_height)
+
+            # Force repaint
+            self.update()
+
+            # Update all connected edges
+            for edge in self.connected_edges:
+                edge.update_curve()
+
+            # Clear cached dimensions
+            del self._original_node_width
+            del self._original_node_height
 
         # Show text item again (text remains unchanged)
         self.text_item.setVisible(True)
