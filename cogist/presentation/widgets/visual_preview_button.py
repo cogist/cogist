@@ -25,7 +25,7 @@ class VisualPreviewButton(QWidget):
             preview_size=QSize(140, 50),
             parent=parent_widget
         )
-        button.value_changed.connect(lambda value: print(f"Selected: {value}"))
+        button.value_changed.connect(on_value_changed_handler)
         layout.addWidget(button)
 
         # Update value programmatically

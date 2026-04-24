@@ -741,8 +741,9 @@ class AdvancedStyleTab(QWidget):
             if hasattr(mindmap_view, "_refresh_layout"):
                 mindmap_view._refresh_layout(skip_measurement=False)
 
-        except Exception as e:
-            print(f"Error applying styles: {e}")
+        except Exception:
+            # Error already shown in UI, no need to print to console
+            pass
 
     def _apply_node_styles_to_mindmap(self, mindmap_view):
         """Apply node layer styles using RoleBasedStyle architecture."""

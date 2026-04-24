@@ -449,7 +449,6 @@ class MainWindow(QMainWindow):
                 parent_id_before_undo = node_before.parent.id
 
         if self.mindmap_view.command_history.undo():
-            print("Undo successful")
             # OPTIMIZATION: Undo restores old dimensions, no need to re-measure
             self.mindmap_view._refresh_layout(
                 skip_measurement=True,
@@ -472,7 +471,6 @@ class MainWindow(QMainWindow):
                 parent_id_before_redo = node_before.parent.id
 
         if self.mindmap_view.command_history.redo():
-            print("Redo successful")
             # OPTIMIZATION: Redo may need measurement for text changes
             # For now, use skip_measurement=True (commands should restore dimensions)
             self.mindmap_view._refresh_layout(
@@ -623,6 +621,13 @@ class MindMapView(QGraphicsView):
         # Create sample data
         self.root_node = self._create_sample_data()
 
+        # Initialize Application Layer services
+        from cogist.application.services import DragHandler
+        from cogist.presentation.adapters import QtNodeProvider
+
+        self.node_provider = QtNodeProvider(self.node_items)
+        self.drag_handler = DragHandler(self.root_node, self.node_provider)
+
         # Install event filter for keyboard shortcuts
         self.installEventFilter(self)
 
@@ -644,6 +649,13 @@ class MindMapView(QGraphicsView):
 
         # Create sample data (this will also select the root node)
         self.root_node = self._create_sample_data()
+
+        # Re-initialize Application Layer services with new data
+        from cogist.application.services import DragHandler
+        from cogist.presentation.adapters import QtNodeProvider
+
+        self.node_provider = QtNodeProvider(self.node_items)
+        self.drag_handler = DragHandler(self.root_node, self.node_provider)
 
         # Reset view transformation (zoom, rotation, etc.)
         self.resetTransform()
@@ -797,14 +809,12 @@ class MindMapView(QGraphicsView):
                 # New node - need to create it
                 # For simplicity in this phase, fall back to full rebuild if new nodes detected
                 # TODO: Implement incremental node creation
-                print("[WARN] New node detected during incremental update, falling back to full rebuild")
                 return False
 
         # Step 2: Check for deleted nodes
         deleted_nodes = set(self.node_items.keys()) - created_nodes
         if deleted_nodes:
             # For simplicity, fall back to full rebuild if nodes deleted
-            print("[WARN] Deleted nodes detected during incremental update, falling back to full rebuild")
             return False
 
         # Step 3: Update all edges
@@ -1126,32 +1136,39 @@ class MindMapView(QGraphicsView):
                 # Current side based on position (needed for cross-side detection)
                 is_currently_right = dragged_center_x >= root_x
 
-                # Check if we need to flip
+                # Apply subtree positions based on current side
+                # CRITICAL: Same logic for both sides!
+                # The saved offsets are from the original position.
+                # We need to mirror when the current side doesn't match the original side.
+                # - Original left (negative offset) + dragged to right: mirror
+                # - Original right (positive offset) + dragged to left: mirror
                 dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
                 if dragged_node and root_item:
-                    # Recorded side from flag
-                    recorded_side = dragged_item.is_right_side
+                    # Check if we need to mirror based on offset signs
+                    # Get first child offset to determine original side
+                    offsets = [off for off in self._subtree_initial_positions.values() if off.x() != 0]
+                    if offsets:
+                        # Original side: negative = left, positive = right
+                        original_is_right = offsets[0].x() > 0
+                        # Mirror if current side doesn't match original side
+                        should_mirror = (is_currently_right != original_is_right)
+                    else:
+                        # No children, no mirroring needed
+                        should_mirror = False
 
-                    print(f"[DEBUG] current={is_currently_right}, recorded={recorded_side}, center_x={dragged_center_x:.0f}, root_x={root_x:.0f}")
+                    # Apply subtree positions
+                    self._apply_subtree_positions(new_pos, should_mirror)
 
-                    # Only flip if sides are different
-                    if is_currently_right != recorded_side:
-                        # Determine if we need to mirror based on target side
-                        # If moving to right side, don't mirror (normal)
-                        # If moving to left side, mirror
-                        should_mirror = not is_currently_right
+                    # Update is_right_side for entire subtree
+                    self._update_subtree_is_right_side(dragged_node, is_currently_right)
 
-                        print(f"[DEBUG] FLIPPING! should_mirror={should_mirror}")
-
-                        # Flip subtree
-                        self._apply_subtree_positions(new_pos, should_mirror)
-
-                        # Update is_right_side for entire subtree
-                        self._update_subtree_is_right_side(dragged_node, is_currently_right)
-
-                # Detect potential parent
+                # Detect potential parent using DragHandler (Application Layer)
                 dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
-                potential_parent = self._detect_potential_parent(dragged_item, current_pos)
+                from cogist.domain.value_objects.position import Position
+                potential_parent = self.drag_handler.detect_potential_parent(
+                    dragged_node_id=self._dragged_node_id,
+                    mouse_pos=Position(current_pos.x(), current_pos.y())
+                )
 
                 # Update temporary edge
                 self._update_temp_drag_edge(dragged_node, potential_parent)
@@ -1286,9 +1303,10 @@ class MindMapView(QGraphicsView):
                     else:
                         top_level_node.position = (400.0, top_level_node.position[1])
 
-                # OPTIMIZATION: Drag doesn't change node dimensions, skip measurement
-                # Refresh layout to reposition everything
-                self._refresh_layout(skip_measurement=True)
+                # CRITICAL: Node relationships have changed, must rebuild edges completely
+                # Incremental update won't work because parent-child connections changed
+                # OPTIMIZATION: Skip measurement since node dimensions haven't changed
+                self._refresh_layout(skip_measurement=True, force_rebuild_edges=True)
 
         # Clean up temp edge
         if self._temp_drag_edge:
@@ -1874,7 +1892,6 @@ class MindMapView(QGraphicsView):
         # OPTIMIZATION: Deletion doesn't change node dimensions, skip measurement
         # Refresh UI
         self._refresh_layout(skip_measurement=True)
-        print(f"Deleted {node_to_delete.id}")
 
     def _edit_selected_node(self, cursor_position: int = -1):
         """Edit the selected node text with inline editing.
@@ -1883,7 +1900,6 @@ class MindMapView(QGraphicsView):
             cursor_position: Cursor position in text (-1 for select all)
         """
         if not self.selected_node_id or self.selected_node_id not in self.node_items:
-            print("No node selected")
             return
 
         node_item = self.node_items[self.selected_node_id]
@@ -1939,7 +1955,6 @@ class MindMapView(QGraphicsView):
     def _add_sibling_node(self):
         """Add a sibling node to the selected node."""
         if not self.selected_node_id or self.selected_node_id == "root":
-            print("Cannot add sibling to root or no selection")
             return  # Can't add sibling to root
 
         # Find parent and current node
@@ -1948,7 +1963,6 @@ class MindMapView(QGraphicsView):
         )
 
         if not parent_node or not current_node:
-            print("Parent or current node not found")
             return
 
         # Generate unique name (same as child naming)
@@ -2008,6 +2022,7 @@ class MindMapView(QGraphicsView):
         skip_measurement: bool = False,
         saved_selection_id: str = None,
         parent_id: str = None,
+        force_rebuild_edges: bool = False,
     ):
         """Refresh the entire layout after changes.
 
@@ -2015,6 +2030,9 @@ class MindMapView(QGraphicsView):
             skip_measurement: If True, skip _measure_actual_sizes because
                               domain sizes are already correct (e.g., after editing).
             saved_selection_id: Optional node ID to restore selection after refresh
+            parent_id: Optional parent node ID for selection restoration
+            force_rebuild_edges: If True, force complete edge rebuild instead of
+                                incremental update (needed when parent-child relationships change)
         """
         # Save selected node ID before clearing (if not provided)
         if saved_selection_id is None:
@@ -2054,11 +2072,16 @@ class MindMapView(QGraphicsView):
 
         # Step 3: OPTIMIZATION - Try incremental UI update first
         # This is much faster than clearing and recreating all items
-        success = self._update_ui_positions_incremental()
+        # However, if force_rebuild_edges is True, skip incremental update because
+        # parent-child relationships have changed and edges need to be rebuilt
+        if not force_rebuild_edges:
+            success = self._update_ui_positions_incremental()
+        else:
+            success = False
 
         if not success:
             # Fallback to full rebuild if incremental update failed
-            # (e.g., new nodes added or nodes deleted)
+            # (e.g., new nodes added, nodes deleted, or parent-child relationships changed)
             self.scene.clear()
             self.node_items.clear()
             self.edge_items.clear()
@@ -2204,15 +2227,12 @@ class MindMapView(QGraphicsView):
             # Update current file path
             self.current_file_path = file_path
 
-            print(f"✓ Saved to: {file_path}")
-
         except Exception as e:
             QMessageBox.critical(
                 self,
                 "Error",
                 f"Failed to save:\n{e}",
             )
-            print(f"✗ Save failed: {e}")
 
     def _open_file(self):
         """Load mind map from file."""
@@ -2246,15 +2266,12 @@ class MindMapView(QGraphicsView):
             # Select root node
             self._select_node_by_id(self.root_node.id)
 
-            print(f"✓ Loaded from: {file_path}")
-
         except Exception as e:
             QMessageBox.critical(
                 self,
                 "Error",
                 f"Failed to open:\n{e}",
             )
-            print(f"✗ Open failed: {e}")
 
     def _hide_parent_edge(self, node: Node):
         """Hide the edge from parent to this node during drag."""
@@ -2427,8 +2444,6 @@ class MindMapView(QGraphicsView):
 
         # Recursively save children
         self._save_children_relative_positions(node, dragged_scene_pos)
-
-        print(f"Saved {len(self._subtree_initial_positions)} nodes in subtree")
 
     def _save_children_relative_positions(self, node: Node, root_scene_pos: QPointF):
         """Recursively save children's positions relative to subtree root."""
