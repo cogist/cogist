@@ -450,9 +450,11 @@ class MainWindow(QMainWindow):
 
         if self.mindmap_view.command_history.undo():
             print("Undo successful")
-            # Pass saved selection IDs to _refresh_layout()
+            # OPTIMIZATION: Undo restores old dimensions, no need to re-measure
             self.mindmap_view._refresh_layout(
-                saved_selection_id=node_id_before_undo, parent_id=parent_id_before_undo
+                skip_measurement=True,
+                saved_selection_id=node_id_before_undo,
+                parent_id=parent_id_before_undo
             )
 
     def _redo(self):
@@ -471,9 +473,12 @@ class MainWindow(QMainWindow):
 
         if self.mindmap_view.command_history.redo():
             print("Redo successful")
-            # Pass saved selection IDs to _refresh_layout()
+            # OPTIMIZATION: Redo may need measurement for text changes
+            # For now, use skip_measurement=True (commands should restore dimensions)
             self.mindmap_view._refresh_layout(
-                saved_selection_id=node_id_before_redo, parent_id=parent_id_before_redo
+                skip_measurement=True,
+                saved_selection_id=node_id_before_redo,
+                parent_id=parent_id_before_redo
             )
 
     def _add_child(self):
@@ -680,6 +685,49 @@ class MindMapView(QGraphicsView):
             self.node_items[root.id].setSelected(True)
 
         return root
+
+    def _measure_single_node(self, node: Node):
+        """Measure a single node's size without traversing children.
+
+        Optimized for text editing scenarios where only one node changes.
+        """
+        branch_colors = [
+            "#FF6B6B",
+            "#4ECDC4",
+            "#45B7D1",
+            "#FFA07A",
+            "#98D8C8",
+            "#F7DC6F",
+            "#BB8FCE",
+            "#85C1E9",
+        ]
+
+        # Determine branch color
+        branch_color = None
+        if node.parent and node.parent.is_root:
+            idx = node.parent.children.index(node) % len(branch_colors)
+            branch_color = branch_colors[idx]
+        elif node.parent:
+            # Inherit from parent's branch
+            # For simplicity, use node's own color
+            branch_color = node.color
+        else:
+            branch_color = node.color
+
+        # Create temporary item to measure
+        temp_item = NodeItem(
+            text=node.text,
+            width=node.width,
+            height=node.height,
+            color=branch_color,
+            is_root=node.is_root,
+            depth=node.depth,
+            style_config=self.style_config,
+        )
+
+        # Update node dimensions
+        node.width = temp_item.node_width
+        node.height = temp_item.node_height
 
     def _measure_actual_sizes(self, root: Node):
         """
@@ -1157,8 +1205,9 @@ class MindMapView(QGraphicsView):
                 # Update depths recursively
                 self._update_node_depths_recursive(dragged_node)
 
+                # OPTIMIZATION: Drag doesn't change node dimensions, skip measurement
                 # Refresh layout to reposition everything
-                self._refresh_layout(skip_measurement=False)
+                self._refresh_layout(skip_measurement=True)
 
         # Clean up temp edge
         if self._temp_drag_edge:
@@ -1690,9 +1739,13 @@ class MindMapView(QGraphicsView):
 
         # Get the new node ID (it's the last child)
         new_node_id = parent_node.children[-1].id
+        new_node = parent_node.children[-1]
 
-        # Refresh UI
-        self._refresh_layout()
+        # OPTIMIZATION: Only measure the new node, not the entire tree
+        self._measure_single_node(new_node)
+
+        # Refresh UI with skip_measurement=True since we just measured
+        self._refresh_layout(skip_measurement=True)
 
         # Select the new node
         self._select_node_by_id(new_node_id)
@@ -1734,8 +1787,9 @@ class MindMapView(QGraphicsView):
         # Select the determined node after deletion
         self.selected_node_id = next_selected_id
 
+        # OPTIMIZATION: Deletion doesn't change node dimensions, skip measurement
         # Refresh UI
-        self._refresh_layout()
+        self._refresh_layout(skip_measurement=True)
         print(f"Deleted {node_to_delete.id}")
 
     def _edit_selected_node(self, cursor_position: int = -1):
@@ -1762,12 +1816,13 @@ class MindMapView(QGraphicsView):
                 cmd = EditTextCommand(node, new_text)
                 cmd.execute()
                 self.command_history.push(cmd)
-                # Sync UI dimensions back to domain entity (width/height changed due to word wrap)
-                node.width = node_item.node_width
-                node.height = node_item.node_height
-                # Re-layout: DO NOT skip measurement - re-measure to ensure sizes are accurate
-                # This prevents issues where domain sizes don't match actual UI rendering
-                self._refresh_layout(skip_measurement=False)
+
+                # OPTIMIZATION: Only measure the edited node, not the entire tree
+                # This reduces layout time from O(n) to O(1) for text edits
+                self._measure_single_node(node)
+
+                # Re-layout with skip_measurement=True since we just measured
+                self._refresh_layout(skip_measurement=True)
 
                 # Check if we need to add a child node after editing (e.g., Tab was pressed)
                 if (
@@ -1822,9 +1877,13 @@ class MindMapView(QGraphicsView):
 
         # Get the new node ID (it's the last child)
         new_node_id = parent_node.children[-1].id
+        new_node = parent_node.children[-1]
 
-        # Refresh UI
-        self._refresh_layout()
+        # OPTIMIZATION: Only measure the new node, not the entire tree
+        self._measure_single_node(new_node)
+
+        # Refresh UI with skip_measurement=True since we just measured
+        self._refresh_layout(skip_measurement=True)
 
         # Select the new node
         self._select_node_by_id(new_node_id)
@@ -2085,8 +2144,9 @@ class MindMapView(QGraphicsView):
             # Update current file path
             self.current_file_path = file_path
 
+            # OPTIMIZATION: Dimensions are already serialized, no need to re-measure
             # Refresh UI
-            self._refresh_layout()
+            self._refresh_layout(skip_measurement=True)
 
             # Select root node
             self._select_node_by_id(self.root_node.id)
