@@ -1259,6 +1259,33 @@ class MindMapView(QGraphicsView):
                 # Update depths recursively
                 self._update_node_depths_recursive(dragged_node)
 
+                # Find the top-level ancestor of the dragged node and mark it as locked
+                def get_top_level_ancestor(node):
+                    """Get the direct child of root for this node."""
+                    current = node
+                    while current.parent and not current.parent.is_root:
+                        current = current.parent
+                    return current
+
+                top_level_node = get_top_level_ancestor(dragged_node)
+                if top_level_node:
+                    top_level_node.is_locked_position = True
+
+                    # CRITICAL: Update the top-level node's position[0] to the new side
+                    # This ensures the layout algorithm assigns it to the correct side
+                    # Use is_currently_right instead of new_parent's is_right_side
+                    # (new_parent might be root with default is_right_side=True)
+                    root_item = self.node_items.get("root")
+                    root_x = root_item.scenePos().x() if root_item else 600.0
+                    dragged_item = self.node_items.get(dragged_id)
+                    dragged_center_x = dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2 if dragged_item else 800.0
+                    is_currently_right = dragged_center_x >= root_x
+
+                    if is_currently_right:
+                        top_level_node.position = (800.0, top_level_node.position[1])
+                    else:
+                        top_level_node.position = (400.0, top_level_node.position[1])
+
                 # OPTIMIZATION: Drag doesn't change node dimensions, skip measurement
                 # Refresh layout to reposition everything
                 self._refresh_layout(skip_measurement=True)
@@ -1795,6 +1822,9 @@ class MindMapView(QGraphicsView):
         new_node_id = parent_node.children[-1].id
         new_node = parent_node.children[-1]
 
+        # Mark new node as locked for rebalancing
+        new_node.is_locked_position = True
+
         # OPTIMIZATION: Only measure the new node, not the entire tree
         self._measure_single_node(new_node)
 
@@ -1933,6 +1963,9 @@ class MindMapView(QGraphicsView):
         new_node_id = parent_node.children[-1].id
         new_node = parent_node.children[-1]
 
+        # Mark new node as locked for rebalancing
+        new_node.is_locked_position = True
+
         # OPTIMIZATION: Only measure the new node, not the entire tree
         self._measure_single_node(new_node)
 
@@ -2014,6 +2047,10 @@ class MindMapView(QGraphicsView):
             canvas_height=800,
             context=context,
         )
+
+        # Clear locked position flags after layout
+        for child in self.root_node.children:
+            child.is_locked_position = False
 
         # Step 3: OPTIMIZATION - Try incremental UI update first
         # This is much faster than clearing and recreating all items
@@ -2467,19 +2504,16 @@ class MindMapView(QGraphicsView):
         self._flip_subtree_recursive(node, root_x, new_is_right)
 
     def _flip_subtree_recursive(self, node: Node, root_x: float, new_is_right: bool):
-        """Mirror X position across root for node and all descendants."""
+        """Update is_right_side flag for entire subtree (position already updated during drag)."""
         item = self.node_items.get(node.id)
         if item:
-            # Mirror X coordinate across root
-            current_x = item.scenePos().x()
-            distance_from_root = current_x - root_x
-            mirrored_x = root_x - distance_from_root
-
-            # Update position (keep Y unchanged during drag)
-            item.setPos(mirrored_x, item.scenePos().y())
+            # CRITICAL FIX: Only update the is_right_side flag
+            # Position was already updated during drag by _apply_subtree_positions
+            # and mouseReleaseEvent position update
+            # DO NOT mirror position again to avoid double-flipping
             item.is_right_side = new_is_right
 
-        # Recursively flip children
+        # Recursively update children
         for child in node.children:
             self._flip_subtree_recursive(child, root_x, new_is_right)
 
