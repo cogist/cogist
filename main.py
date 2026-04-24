@@ -1150,9 +1150,10 @@ class MindMapView(QGraphicsView):
 
                     # Only flip if sides are different
                     if is_currently_right != recorded_side:
-                        # CRITICAL: Always mirror when crossing sides, regardless of direction
-                        # Both left-to-right and right-to-left drags need mirroring
-                        should_mirror = True
+                        # Determine if we need to mirror based on target side
+                        # If moving to right side, don't mirror (normal)
+                        # If moving to left side, mirror
+                        should_mirror = not is_currently_right
 
                         print(f"[DEBUG] FLIPPING! should_mirror={should_mirror}")
 
@@ -1267,17 +1268,11 @@ class MindMapView(QGraphicsView):
                 )
 
                 # If crossed sides, flip entire subtree's is_right_side
-                # CRITICAL: Use actual position (is_currently_right) instead of new_parent's is_right_side
-                # because new_parent might be root with default is_right_side=True
-                # Calculate is_currently_right based on dragged node's actual position
-                root_item = self.node_items.get(self.root_node.id)
-                root_x = root_item.scenePos().x() if root_item else 600.0
-                dragged_item = self.node_items.get(dragged_id)
-                dragged_center_x = dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2 if dragged_item else 800.0
-                is_currently_right = dragged_center_x >= root_x
-
                 if is_cross_side:
-                    self._flip_subtree_side(dragged_node, is_currently_right)
+                    # Get the side from the new parent's NodeItem
+                    new_parent_item = self.node_items.get(new_parent.id)
+                    if new_parent_item:
+                        self._flip_subtree_side(dragged_node, new_parent_item.is_right_side)
 
                 # Update depths recursively
                 self._update_node_depths_recursive(dragged_node)
@@ -1296,18 +1291,22 @@ class MindMapView(QGraphicsView):
 
                     # CRITICAL: Update the top-level node's position[0] to the new side
                     # This ensures the layout algorithm assigns it to the correct side
-                    # is_currently_right already calculated above for subtree flipping
-                    if is_cross_side:
-                        # Use the same is_currently_right value calculated for flipping
-                        if is_currently_right:
-                            top_level_node.position = (800.0, top_level_node.position[1])
-                        else:
-                            top_level_node.position = (400.0, top_level_node.position[1])
+                    # Use is_currently_right instead of new_parent's is_right_side
+                    # (new_parent might be root with default is_right_side=True)
+                    root_item = self.node_items.get("root")
+                    root_x = root_item.scenePos().x() if root_item else 600.0
+                    dragged_item = self.node_items.get(dragged_id)
+                    dragged_center_x = dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2 if dragged_item else 800.0
+                    is_currently_right = dragged_center_x >= root_x
+
+                    if is_currently_right:
+                        top_level_node.position = (800.0, top_level_node.position[1])
+                    else:
+                        top_level_node.position = (400.0, top_level_node.position[1])
 
                 # OPTIMIZATION: Drag doesn't change node dimensions, skip measurement
-                # CRITICAL: Parent-child relationships changed, must force full rebuild
-                # because EdgeItem stores source/target references at creation time
-                self._refresh_layout(skip_measurement=True, force_full_rebuild=True)
+                # Refresh layout to reposition everything
+                self._refresh_layout(skip_measurement=True)
 
         # Clean up temp edge
         if self._temp_drag_edge:
@@ -2027,7 +2026,6 @@ class MindMapView(QGraphicsView):
         skip_measurement: bool = False,
         saved_selection_id: str = None,
         parent_id: str = None,
-        force_full_rebuild: bool = False,
     ):
         """Refresh the entire layout after changes.
 
@@ -2035,8 +2033,6 @@ class MindMapView(QGraphicsView):
             skip_measurement: If True, skip _measure_actual_sizes because
                               domain sizes are already correct (e.g., after editing).
             saved_selection_id: Optional node ID to restore selection after refresh
-            force_full_rebuild: If True, skip incremental update and force full rebuild
-                               (needed when parent-child relationships change)
         """
         # Save selected node ID before clearing (if not provided)
         if saved_selection_id is None:
@@ -2076,14 +2072,11 @@ class MindMapView(QGraphicsView):
 
         # Step 3: OPTIMIZATION - Try incremental UI update first
         # This is much faster than clearing and recreating all items
-        # But skip if force_full_rebuild (e.g., after drag with parent change)
-        success = False
-        if not force_full_rebuild:
-            success = self._update_ui_positions_incremental()
+        success = self._update_ui_positions_incremental()
 
         if not success:
             # Fallback to full rebuild if incremental update failed
-            # (e.g., new nodes added, nodes deleted, or parent-child relationships changed)
+            # (e.g., new nodes added or nodes deleted)
             self.scene.clear()
             self.node_items.clear()
             self.edge_items.clear()
