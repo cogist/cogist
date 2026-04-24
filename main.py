@@ -452,7 +452,8 @@ class MainWindow(QMainWindow):
             if node_before and node_before.parent:
                 parent_id_before_undo = node_before.parent.id
 
-        if self.mindmap_view.command_history.undo():
+        # Use MindMapService to undo (Application Layer)
+        if self.mindmap_service.undo():
             # OPTIMIZATION: Undo restores old dimensions, no need to re-measure
             self.mindmap_view._refresh_layout(
                 skip_measurement=True,
@@ -474,7 +475,8 @@ class MainWindow(QMainWindow):
             if node_before and node_before.parent:
                 parent_id_before_redo = node_before.parent.id
 
-        if self.mindmap_view.command_history.redo():
+        # Use MindMapService to redo (Application Layer)
+        if self.mindmap_service.redo():
             # OPTIMIZATION: Redo may need measurement for text changes
             # For now, use skip_measurement=True (commands should restore dimensions)
             self.mindmap_view._refresh_layout(
@@ -670,8 +672,8 @@ class MindMapView(QGraphicsView):
 
     def _create_sample_data(self):
         """Create sample mind map data with only a root node."""
-        # Root node only - user will add children via Tab key
-        root = Node(id="root", text="Central Topic", is_root=True, color="#2196F3")
+        # Use MindMapService to create new mind map (Application Layer)
+        root = self.mindmap_service.create_new_mindmap(root_text="Central Topic")
 
         # Step 1: Create temporary UI items to measure actual rendered sizes
         # (Don't add to scene yet)
@@ -691,6 +693,9 @@ class MindMapView(QGraphicsView):
             level_spacing_by_depth=level_spacing_by_depth,
             sibling_spacing_by_depth=sibling_spacing_by_depth,
         )
+
+        # Update service layout config
+        self.mindmap_service.set_layout_config(layout_config)
 
         # Use LayoutRegistry to create layout instance (demonstrates proper architecture)
         layout = layout_registry.get_layout("default", layout_config)
@@ -2224,16 +2229,11 @@ class MindMapView(QGraphicsView):
                 if not file_path:
                     return
 
-            # Use repository to save
-            from cogist.infrastructure.repositories.mindmap_repository import (
-                MindMapRepository,
-            )
-
-            repository = MindMapRepository()
-            repository.save(self.root_node, file_path)
+            # Use MindMapService to save (Application Layer)
+            saved_path = self.mindmap_service.save_mindmap(file_path)
 
             # Update current file path
-            self.current_file_path = file_path
+            self.current_file_path = str(saved_path)
 
         except Exception as e:
             QMessageBox.critical(
@@ -2256,16 +2256,11 @@ class MindMapView(QGraphicsView):
             if not file_path:
                 return
 
-            # Use repository to load
-            from cogist.infrastructure.repositories.mindmap_repository import (
-                MindMapRepository,
-            )
-
-            repository = MindMapRepository()
-            self.root_node = repository.load(file_path)
+            # Use MindMapService to load (Application Layer)
+            self.root_node = self.mindmap_service.load_mindmap(file_path)
 
             # Update current file path
-            self.current_file_path = file_path
+            self.current_file_path = str(self.mindmap_service.get_current_file())
 
             # OPTIMIZATION: Dimensions are already serialized, no need to re-measure
             # Refresh UI
