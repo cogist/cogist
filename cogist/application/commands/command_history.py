@@ -81,6 +81,26 @@ class CommandHistory:
         """Check if there's a command to redo."""
         return len(self.redo_stack) > 0
 
+    def peek_last_undo_command(self):
+        """Peek at the last command in undo stack without popping it.
+
+        Returns:
+            The last command or None if stack is empty
+        """
+        if self.undo_stack:
+            return self.undo_stack[-1]
+        return None
+
+    def peek_last_redo_command(self):
+        """Peek at the last command in redo stack without popping it.
+
+        Returns:
+            The last command or None if stack is empty
+        """
+        if self.redo_stack:
+            return self.redo_stack[-1]
+        return None
+
     def clear(self) -> None:
         """Clear both undo and redo stacks."""
         self.undo_stack.clear()

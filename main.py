@@ -439,6 +439,10 @@ class MainWindow(QMainWindow):
 
     def _undo(self):
         """Undo the last operation."""
+        # Check what type of command we're undoing
+        last_command = self.mindmap_service.node_service.command_history.peek_last_undo_command()
+        is_add_node_command = last_command and type(last_command).__name__ == "AddNodeCommand"
+
         # Save selection state BEFORE undo
         node_id_before_undo = self.mindmap_view.selected_node_id
         parent_id_before_undo = None
@@ -452,6 +456,17 @@ class MainWindow(QMainWindow):
             if node_before and node_before.parent:
                 parent_id_before_undo = node_before.parent.id
 
+        # If undoing an add command, save focus info BEFORE undo
+        undo_delete_focus_id = None
+        if is_add_node_command and last_command is not None and \
+           hasattr(last_command, 'new_node') and last_command.new_node:
+            node_to_delete = last_command.new_node
+            parent_node = node_to_delete.parent
+
+            if parent_node:
+                # Calculate which sibling to focus on after deletion (before undo removes the node)
+                undo_delete_focus_id = self.mindmap_view._calculate_next_focus_after_deletion(node_to_delete, parent_node)
+
         # Use MindMapService to undo (Application Layer)
         if self.mindmap_service.undo():
             # OPTIMIZATION: Undo restores old dimensions, no need to re-measure
@@ -461,8 +476,31 @@ class MainWindow(QMainWindow):
                 parent_id=parent_id_before_undo
             )
 
+            # Scroll to appropriate node based on command type
+            if is_add_node_command and undo_delete_focus_id:
+                # Undoing an add = deleting the added node
+                # Focus follows normal deletion logic: previous sibling > next sibling > parent
+                if undo_delete_focus_id in self.mindmap_view.node_items:
+                    # Clear all selections first
+                    for item in self.mindmap_view.node_items.values():
+                        item.setSelected(False)
+
+                    self.mindmap_view.selected_node_id = undo_delete_focus_id
+                    selected_item = self.mindmap_view.node_items[undo_delete_focus_id]
+                    selected_item.setSelected(True)
+                    self.mindmap_view.centerOn(selected_item)
+            elif self.mindmap_view.selected_node_id and \
+                 self.mindmap_view.selected_node_id in self.mindmap_view.node_items:
+                # Normal undo (e.g., undoing a delete), focus stays on current selection
+                selected_item = self.mindmap_view.node_items[self.mindmap_view.selected_node_id]
+                self.mindmap_view.centerOn(selected_item)
+
     def _redo(self):
         """Redo the last undone operation."""
+        # Check what type of command we're redoing
+        last_command = self.mindmap_service.node_service.command_history.peek_last_redo_command()
+        is_add_node_command = last_command and type(last_command).__name__ == "AddNodeCommand"
+
         # Save selection state BEFORE redo
         node_id_before_redo = self.mindmap_view.selected_node_id
         parent_id_before_redo = None
@@ -484,6 +522,17 @@ class MainWindow(QMainWindow):
                 saved_selection_id=node_id_before_redo,
                 parent_id=parent_id_before_redo
             )
+
+            # Scroll to appropriate node based on command type
+            if is_add_node_command and last_command is not None and \
+               hasattr(last_command, 'new_node') and last_command.new_node:
+                # Redoing an add = adding a new node again, focus on the added node
+                self.mindmap_view._focus_on_node_after_addition(last_command.new_node.id)
+            elif self.mindmap_view.selected_node_id and \
+                 self.mindmap_view.selected_node_id in self.mindmap_view.node_items:
+                # Normal redo (e.g., redoing a delete), focus stays on current selection
+                selected_item = self.mindmap_view.node_items[self.mindmap_view.selected_node_id]
+                self.mindmap_view.centerOn(selected_item)
 
     def _add_child(self):
         """Add a child node."""
@@ -575,14 +624,13 @@ class MindMapView(QGraphicsView):
         self.scene = QGraphicsScene()
         self.scene.setBackgroundBrush(Qt.white)
 
-        # CRITICAL: Set a large scene rect to ensure centerOn() works properly
-        # Without this, when scene is smaller than viewport, centerOn() has no effect
-        # and alignment controls positioning instead
-        import sys
+        # Initialize scene rect manager for dynamic canvas sizing
+        from cogist.presentation.scene_manager import SceneRectManager
+        self.scene_manager = SceneRectManager(self.scene, default_margin=100.0)
 
-        self.scene.setSceneRect(
-            -sys.maxsize, -sys.maxsize, sys.maxsize * 2, sys.maxsize * 2
-        )
+        # Set a small initial scene rect (will be updated after layout)
+        # This prevents issues during initialization before viewport is ready
+        self.scene.setSceneRect(0, 0, 1, 1)
 
         self.setScene(self.scene)
 
@@ -699,10 +747,23 @@ class MindMapView(QGraphicsView):
 
         # Use LayoutRegistry to create layout instance (demonstrates proper architecture)
         layout = layout_registry.get_layout("default", layout_config)
-        layout.layout(root, canvas_width=1200, canvas_height=800)
 
-        # Step 3: Create final UI items with correct sizes and positions
+        # Get viewport size for canvas dimensions
+        viewport_size = self.viewport().size()
+        canvas_width = float(viewport_size.width())
+        canvas_height = float(viewport_size.height())
+
+        layout.layout(root, canvas_width=canvas_width, canvas_height=canvas_height)
+
+        # Create final UI items with correct sizes and positions
         self._create_ui_items(root)
+
+        # Step 4: Update scene rect based on actual content + margin
+        self.scene_manager.update_from_content()
+
+        # Step 5: Center the view by setting alignment to center
+        # This ensures content is centered in the viewport
+        self.setAlignment(Qt.AlignCenter)
 
         # Select root node by default
         self.selected_node_id = root.id
@@ -1852,6 +1913,43 @@ class MindMapView(QGraphicsView):
         if new_node is None:
             return
 
+        # Common post-add logic
+        self._finalize_node_addition(new_node)
+
+    def _add_sibling_node(self):
+        """Add a sibling node to the selected node."""
+        if not self.selected_node_id or self.selected_node_id == "root":
+            return  # Can't add sibling to root
+
+        # Find parent and current node
+        parent_node, current_node = self._find_parent_and_node(
+            self.root_node, self.selected_node_id
+        )
+
+        if not parent_node or not current_node:
+            return
+
+        # Generate unique name (same as child naming)
+        new_name = self._generate_node_name(parent_node)
+
+        # Use MindMapService to add sibling (Application Layer)
+        parent_node, new_node = self.mindmap_service.add_sibling_node(
+            node_id=self.selected_node_id,
+            text=new_name
+        )
+
+        if new_node is None:
+            return
+
+        # Common post-add logic
+        self._finalize_node_addition(new_node)
+
+    def _finalize_node_addition(self, new_node):
+        """Common logic after adding a node.
+
+        Args:
+            new_node: The newly added domain node
+        """
         # Mark new node as locked for rebalancing
         new_node.is_locked_position = True
 
@@ -1869,6 +1967,79 @@ class MindMapView(QGraphicsView):
         # Only scrolls if the node is outside the current view
         QTimer.singleShot(0, lambda: self._ensure_node_visible(new_node_id))
 
+    def _calculate_next_focus_after_deletion(self, node_to_delete, parent_node):
+        """Calculate which node should receive focus after deletion.
+
+        Priority: previous sibling > next sibling > parent
+
+        Args:
+            node_to_delete: The node being deleted (domain object)
+            parent_node: The parent of the deleted node
+
+        Returns:
+            The ID of the node that should receive focus
+        """
+        next_selected_id = parent_node.id  # Default to parent
+
+        # Find the index of the node to delete in parent's children
+        for i, child in enumerate(parent_node.children):
+            if child.id == node_to_delete.id:
+                # Priority 1: Previous sibling
+                if i > 0:
+                    next_selected_id = parent_node.children[i - 1].id
+                # Priority 2: Next sibling
+                elif i < len(parent_node.children) - 1:
+                    next_selected_id = parent_node.children[i + 1].id
+                # Priority 3: Parent (already set as default)
+                break
+
+        return next_selected_id
+
+    def _focus_on_node_after_deletion(self, node_to_delete, parent_node):
+        """Set focus after deleting a node.
+
+        Focus priority: previous sibling > next sibling > parent
+
+        Args:
+            node_to_delete: The node being deleted (domain object)
+            parent_node: The parent of the deleted node
+        """
+        if not parent_node:
+            return
+
+        # Find which sibling to focus on
+        next_selected_id = self._calculate_next_focus_after_deletion(node_to_delete, parent_node)
+
+        # Clear all selections first
+        for item in self.node_items.values():
+            item.setSelected(False)
+
+        # Set new selection
+        if next_selected_id in self.node_items:
+            self.selected_node_id = next_selected_id
+            selected_item = self.node_items[next_selected_id]
+            selected_item.setSelected(True)
+            self.centerOn(selected_item)
+
+    def _focus_on_node_after_addition(self, added_node_id):
+        """Set focus after adding a node.
+
+        Args:
+            added_node_id: The ID of the newly added node
+        """
+        if added_node_id not in self.node_items:
+            return
+
+        # Clear all selections first
+        for item in self.node_items.values():
+            item.setSelected(False)
+
+        # Set new selection
+        self.selected_node_id = added_node_id
+        added_item = self.node_items[added_node_id]
+        added_item.setSelected(True)
+        self.centerOn(added_item)
+
     def _delete_selected_node(self):
         """Delete the selected node."""
         if not self.selected_node_id or self.selected_node_id == "root":
@@ -1882,17 +2053,8 @@ class MindMapView(QGraphicsView):
         if not parent_node or not node_to_delete:
             return
 
-        # Determine which node to select after deletion
-        # Priority: previous sibling > parent
-        next_selected_id = parent_node.id  # Default to parent
-
-        # Find the index of the node to delete
-        for i, child in enumerate(parent_node.children):
-            if child.id == node_to_delete.id:
-                # If there's a previous sibling, select it
-                if i > 0:
-                    next_selected_id = parent_node.children[i - 1].id
-                break
+        # Determine which node to select after deletion using common logic
+        next_selected_id = self._calculate_next_focus_after_deletion(node_to_delete, parent_node)
 
         # Use MindMapService to delete node (Application Layer)
         success = self.mindmap_service.delete_node_by_id(self.selected_node_id)
@@ -1905,6 +2067,16 @@ class MindMapView(QGraphicsView):
         # OPTIMIZATION: Deletion doesn't change node dimensions, skip measurement
         # Refresh UI
         self._refresh_layout(skip_measurement=True)
+
+        # Scroll to the newly selected node to ensure it's visible
+        if self.selected_node_id and self.selected_node_id in self.node_items:
+            # Clear all selections first to avoid multiple focus frames
+            for item in self.node_items.values():
+                item.setSelected(False)
+
+            selected_item = self.node_items[self.selected_node_id]
+            selected_item.setSelected(True)
+            self.centerOn(selected_item)
 
     def _edit_selected_node(self, cursor_position: int = -1):
         """Edit the selected node text with inline editing.
@@ -1966,48 +2138,6 @@ class MindMapView(QGraphicsView):
                 main_window.add_child_action.setEnabled(False)
             if hasattr(main_window, "add_sibling_action"):
                 main_window.add_sibling_action.setEnabled(False)
-
-    def _add_sibling_node(self):
-        """Add a sibling node to the selected node."""
-        if not self.selected_node_id or self.selected_node_id == "root":
-            return  # Can't add sibling to root
-
-        # Find parent and current node
-        parent_node, current_node = self._find_parent_and_node(
-            self.root_node, self.selected_node_id
-        )
-
-        if not parent_node or not current_node:
-            return
-
-        # Generate unique name (same as child naming)
-        new_name = self._generate_node_name(parent_node)
-
-        # Use MindMapService to add sibling (Application Layer)
-        parent_node, new_node = self.mindmap_service.add_sibling_node(
-            node_id=self.selected_node_id,
-            text=new_name
-        )
-
-        if new_node is None:
-            return
-
-        # Mark new node as locked for rebalancing
-        new_node.is_locked_position = True
-
-        # OPTIMIZATION: Only measure the new node, not the entire tree
-        self._measure_single_node(new_node)
-
-        # Refresh UI with skip_measurement=True since we just measured
-        self._refresh_layout(skip_measurement=True)
-
-        # Select the new node
-        new_node_id = new_node.id
-        self._select_node_by_id(new_node_id)
-
-        # Ensure the new node is visible in the viewport (with margin)
-        # Only scrolls if the node is outside the current view
-        QTimer.singleShot(0, lambda: self._ensure_node_visible(new_node_id))
 
     def _find_node_by_id(self, root: Node, target_id: str) -> Node | None:
         """Find a node by ID in the tree."""
@@ -2074,11 +2204,17 @@ class MindMapView(QGraphicsView):
 
         # Use LayoutRegistry to create layout instance (demonstrates proper architecture)
         layout = layout_registry.get_layout("default", layout_config)
+
+        # Get viewport size for canvas dimensions
+        viewport_size = self.viewport().size()
+        canvas_width = float(viewport_size.width())
+        canvas_height = float(viewport_size.height())
+
         context = {'focused_node_id': saved_selection_id} if saved_selection_id else None
         layout.layout(
             self.root_node,
-            canvas_width=1200,
-            canvas_height=800,
+            canvas_width=canvas_width,
+            canvas_height=canvas_height,
             context=context,
         )
 
@@ -2102,6 +2238,9 @@ class MindMapView(QGraphicsView):
             self.node_items.clear()
             self.edge_items.clear()
             self._create_ui_items(self.root_node)
+
+        # Update scene rect based on new content
+        self.scene_manager.update_from_content()
 
         # Restore selection state and focus
         if saved_selection_id:
