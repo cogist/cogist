@@ -279,3 +279,168 @@ class MindMapService:
     def is_modified(self) -> bool:
         """Check if the mind map has unsaved changes."""
         return self._is_modified
+
+    def add_child_node_by_id(
+        self,
+        parent_id: str,
+        text: str = "New Node",
+    ) -> tuple[Node | None, Node | None]:
+        """
+        Add a child node to the specified parent by ID.
+
+        Args:
+            parent_id: ID of the parent node
+            text: Text content for the new node
+
+        Returns:
+            Tuple of (parent_node, new_node) or (None, None) if failed
+        """
+        if self.root_node is None:
+            return None, None
+
+        # Find parent node
+        parent_node = self._find_node_by_id(self.root_node, parent_id)
+        if parent_node is None:
+            return None, None
+
+        # Use NodeService to add child
+        new_node = self.node_service.add_child_node(parent_node, text)
+        if new_node:
+            self.mark_modified()
+            return parent_node, new_node
+
+        return None, None
+
+    def add_sibling_node(
+        self,
+        node_id: str,
+        text: str = "New Node",
+    ) -> tuple[Node | None, Node | None]:
+        """
+        Add a sibling node to the specified node.
+
+        Args:
+            node_id: ID of the reference node
+            text: Text content for the new node
+
+        Returns:
+            Tuple of (parent_node, new_node) or (None, None) if failed
+        """
+        if self.root_node is None or self.root_node.id == node_id:
+            return None, None  # Can't add sibling to root
+
+        # Find parent and current node
+        parent_node, current_node = self._find_parent_and_node(
+            self.root_node, node_id
+        )
+
+        if parent_node is None or current_node is None:
+            return None, None
+
+        # Use NodeService to add child (sibling is just another child of same parent)
+        new_node = self.node_service.add_child_node(parent_node, text)
+        if new_node:
+            self.mark_modified()
+            return parent_node, new_node
+
+        return None, None
+
+    def delete_node_by_id(self, node_id: str) -> bool:
+        """
+        Delete a node by ID.
+
+        Args:
+            node_id: ID of the node to delete
+
+        Returns:
+            True if deleted successfully, False otherwise
+        """
+        if self.root_node is None or self.root_node.id == node_id:
+            return False  # Can't delete root
+
+        # Find parent and node to delete
+        parent_node, node_to_delete = self._find_parent_and_node(
+            self.root_node, node_id
+        )
+
+        if node_to_delete is None:
+            return False
+
+        # Use NodeService to delete
+        self.node_service.delete_node(node_to_delete)
+        self.mark_modified()
+        return True
+
+    def edit_node_text_by_id(self, node_id: str, new_text: str) -> bool:
+        """
+        Edit node text by ID.
+
+        Args:
+            node_id: ID of the node to edit
+            new_text: New text content
+
+        Returns:
+            True if edited successfully, False otherwise
+        """
+        if self.root_node is None:
+            return False
+
+        # Find the node
+        node = self._find_node_by_id(self.root_node, node_id)
+        if node is None:
+            return False
+
+        # Use NodeService to edit
+        self.node_service.edit_node_text(node, new_text)
+        self.mark_modified()
+        return True
+
+    def _find_node_by_id(self, root: Node, node_id: str) -> Node | None:
+        """
+        Find a node by ID using breadth-first search.
+
+        Args:
+            root: Root node to start search from
+            node_id: ID to search for
+
+        Returns:
+            Node if found, None otherwise
+        """
+        if root.id == node_id:
+            return root
+
+        queue = list(root.children)
+        while queue:
+            node = queue.pop(0)
+            if node.id == node_id:
+                return node
+            queue.extend(node.children)
+
+        return None
+
+    def _find_parent_and_node(
+        self, root: Node, node_id: str
+    ) -> tuple[Node | None, Node | None]:
+        """
+        Find both parent and node by node ID.
+
+        Args:
+            root: Root node to start search from
+            node_id: ID of the node to find
+
+        Returns:
+            Tuple of (parent_node, target_node) or (None, None) if not found
+        """
+        if root.id == node_id:
+            return None, root  # Root has no parent
+
+        # BFS to find node and track parent
+        queue = [(root, None)]  # (node, parent)
+        while queue:
+            current_node, parent = queue.pop(0)
+            for child in current_node.children:
+                if child.id == node_id:
+                    return current_node, child
+                queue.append((child, current_node))
+
+        return None, None

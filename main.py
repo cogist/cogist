@@ -30,10 +30,7 @@ from PySide6.QtWidgets import (
 )
 
 from cogist.application.commands import (
-    AddNodeCommand,
     CommandHistory,
-    DeleteNodeCommand,
-    EditTextCommand,
 )
 from cogist.domain.entities.node import Node
 from cogist.domain.layout.registry import layout_registry
@@ -69,6 +66,10 @@ class MainWindow(QMainWindow):
         app_context = get_app_context()
         app_context.set_main_window(self)
 
+        # Initialize Application Layer service
+        from cogist.application.services import MindMapService
+        self.mindmap_service = MindMapService()
+
         # Initialize style system
         from cogist.domain.styles import templates
 
@@ -77,8 +78,11 @@ class MainWindow(QMainWindow):
         # Apply global styles
         self._apply_global_styles()
 
-        # Create mind map view with style configuration
-        self.mindmap_view = MindMapView(style_config=self.current_style)
+        # Create mind map view with style configuration and service
+        self.mindmap_view = MindMapView(
+            style_config=self.current_style,
+            mindmap_service=self.mindmap_service
+        )
 
         # Create Activity Bar (left sidebar)
 
@@ -553,8 +557,12 @@ class MainWindow(QMainWindow):
 class MindMapView(QGraphicsView):
     """Mind map view with Default layout and command pattern integration."""
 
-    def __init__(self, style_config=None):
+    def __init__(self, style_config=None, mindmap_service=None):
         super().__init__()
+
+        # Store Application Layer service
+        from cogist.application.services import MindMapService
+        self.mindmap_service: MindMapService = mindmap_service or MindMapService()
 
         # Store style configuration
         from cogist.domain.styles import templates
@@ -1819,26 +1827,22 @@ class MindMapView(QGraphicsView):
         if not self.selected_node_id:
             return
 
-        parent_node = self.root_node if self.selected_node_id == "root" else None
-
         # Find parent node in tree
-        if not parent_node:
-            parent_node = self._find_node_by_id(self.root_node, self.selected_node_id)
-
+        parent_node = self._find_node_by_id(self.root_node, self.selected_node_id)
         if not parent_node:
             return
 
         # Generate unique name
         new_name = self._generate_node_name(parent_node)
 
-        # Execute add command
-        cmd = AddNodeCommand(parent_node, new_name)
-        cmd.execute()
-        self.command_history.push(cmd)
+        # Use MindMapService to add child (Application Layer)
+        parent_node, new_node = self.mindmap_service.add_child_node_by_id(
+            parent_id=self.selected_node_id,
+            text=new_name
+        )
 
-        # Get the new node ID (it's the last child)
-        new_node_id = parent_node.children[-1].id
-        new_node = parent_node.children[-1]
+        if new_node is None:
+            return
 
         # Mark new node as locked for rebalancing
         new_node.is_locked_position = True
@@ -1850,6 +1854,7 @@ class MindMapView(QGraphicsView):
         self._refresh_layout(skip_measurement=True)
 
         # Select the new node
+        new_node_id = new_node.id
         self._select_node_by_id(new_node_id)
 
         # Ensure the new node is visible in the viewport (with margin)
@@ -1881,10 +1886,10 @@ class MindMapView(QGraphicsView):
                     next_selected_id = parent_node.children[i - 1].id
                 break
 
-        # Execute delete command
-        cmd = DeleteNodeCommand(parent_node, node_to_delete)
-        cmd.execute()
-        self.command_history.push(cmd)
+        # Use MindMapService to delete node (Application Layer)
+        success = self.mindmap_service.delete_node_by_id(self.selected_node_id)
+        if not success:
+            return
 
         # Select the determined node after deletion
         self.selected_node_id = next_selected_id
@@ -1909,28 +1914,30 @@ class MindMapView(QGraphicsView):
 
         # Start inline editing
         def on_text_changed(new_text):
-            # Update domain node using EditTextCommand
-            node = self._find_node_by_id(self.root_node, editing_node_id)
-            if node:
-                # Update text
-                cmd = EditTextCommand(node, new_text)
-                cmd.execute()
-                self.command_history.push(cmd)
+            # Use MindMapService to edit node text (Application Layer)
+            success = self.mindmap_service.edit_node_text_by_id(
+                node_id=editing_node_id,
+                new_text=new_text
+            )
 
-                # OPTIMIZATION: Only measure the edited node, not the entire tree
-                # This reduces layout time from O(n) to O(1) for text edits
-                self._measure_single_node(node)
+            if success:
+                # Find the node for measurement
+                node = self._find_node_by_id(self.root_node, editing_node_id)
+                if node:
+                    # OPTIMIZATION: Only measure the edited node, not the entire tree
+                    # This reduces layout time from O(n) to O(1) for text edits
+                    self._measure_single_node(node)
 
-                # Re-layout with skip_measurement=True since we just measured
-                self._refresh_layout(skip_measurement=True)
+                    # Re-layout with skip_measurement=True since we just measured
+                    self._refresh_layout(skip_measurement=True)
 
-                # Check if we need to add a child node after editing (e.g., Tab was pressed)
-                if (
-                    hasattr(self, "_add_child_after_edit")
-                    and self._add_child_after_edit
-                ):
-                    self._add_child_after_edit = False
-                    self._add_selected_child()
+                    # Check if we need to add a child node after editing (e.g., Tab was pressed)
+                    if (
+                        hasattr(self, "_add_child_after_edit")
+                        and self._add_child_after_edit
+                    ):
+                        self._add_child_after_edit = False
+                        self._add_selected_child()
 
             # CRITICAL: Re-enable Tab and Return shortcuts after editing completes
             main_window = self._get_main_window()
@@ -1968,14 +1975,14 @@ class MindMapView(QGraphicsView):
         # Generate unique name (same as child naming)
         new_name = self._generate_node_name(parent_node)
 
-        # Execute add command
-        cmd = AddNodeCommand(parent_node, new_name)
-        cmd.execute()
-        self.command_history.push(cmd)
+        # Use MindMapService to add sibling (Application Layer)
+        parent_node, new_node = self.mindmap_service.add_sibling_node(
+            node_id=self.selected_node_id,
+            text=new_name
+        )
 
-        # Get the new node ID (it's the last child)
-        new_node_id = parent_node.children[-1].id
-        new_node = parent_node.children[-1]
+        if new_node is None:
+            return
 
         # Mark new node as locked for rebalancing
         new_node.is_locked_position = True
@@ -1987,6 +1994,7 @@ class MindMapView(QGraphicsView):
         self._refresh_layout(skip_measurement=True)
 
         # Select the new node
+        new_node_id = new_node.id
         self._select_node_by_id(new_node_id)
 
         # Ensure the new node is visible in the viewport (with margin)
