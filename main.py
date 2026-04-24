@@ -450,9 +450,11 @@ class MainWindow(QMainWindow):
 
         if self.mindmap_view.command_history.undo():
             print("Undo successful")
-            # Pass saved selection IDs to _refresh_layout()
+            # OPTIMIZATION: Undo restores old dimensions, no need to re-measure
             self.mindmap_view._refresh_layout(
-                saved_selection_id=node_id_before_undo, parent_id=parent_id_before_undo
+                skip_measurement=True,
+                saved_selection_id=node_id_before_undo,
+                parent_id=parent_id_before_undo
             )
 
     def _redo(self):
@@ -471,9 +473,12 @@ class MainWindow(QMainWindow):
 
         if self.mindmap_view.command_history.redo():
             print("Redo successful")
-            # Pass saved selection IDs to _refresh_layout()
+            # OPTIMIZATION: Redo may need measurement for text changes
+            # For now, use skip_measurement=True (commands should restore dimensions)
             self.mindmap_view._refresh_layout(
-                saved_selection_id=node_id_before_redo, parent_id=parent_id_before_redo
+                skip_measurement=True,
+                saved_selection_id=node_id_before_redo,
+                parent_id=parent_id_before_redo
             )
 
     def _add_child(self):
@@ -681,6 +686,49 @@ class MindMapView(QGraphicsView):
 
         return root
 
+    def _measure_single_node(self, node: Node):
+        """Measure a single node's size without traversing children.
+
+        Optimized for text editing scenarios where only one node changes.
+        """
+        branch_colors = [
+            "#FF6B6B",
+            "#4ECDC4",
+            "#45B7D1",
+            "#FFA07A",
+            "#98D8C8",
+            "#F7DC6F",
+            "#BB8FCE",
+            "#85C1E9",
+        ]
+
+        # Determine branch color
+        branch_color = None
+        if node.parent and node.parent.is_root:
+            idx = node.parent.children.index(node) % len(branch_colors)
+            branch_color = branch_colors[idx]
+        elif node.parent:
+            # Inherit from parent's branch
+            # For simplicity, use node's own color
+            branch_color = node.color
+        else:
+            branch_color = node.color
+
+        # Create temporary item to measure
+        temp_item = NodeItem(
+            text=node.text,
+            width=node.width,
+            height=node.height,
+            color=branch_color,
+            is_root=node.is_root,
+            depth=node.depth,
+            style_config=self.style_config,
+        )
+
+        # Update node dimensions
+        node.width = temp_item.node_width
+        node.height = temp_item.node_height
+
     def _measure_actual_sizes(self, root: Node):
         """
         Create temporary NodeItems to measure actual rendered sizes,
@@ -729,6 +777,60 @@ class MindMapView(QGraphicsView):
                 measure_recursive(child, child_branch_color)
 
         measure_recursive(root)
+
+    def _update_ui_positions_incremental(self):
+        """Update UI item positions without recreating them (incremental update).
+
+        This is much faster than clearing and recreating all items.
+        Only updates positions of existing items, creates new ones if needed,
+        and removes deleted ones.
+        """
+        # Step 1: Update or create node items
+        created_nodes = set()
+        for node in self._traverse_tree(self.root_node):
+            if node.id in self.node_items:
+                # Existing node - just update position
+                item = self.node_items[node.id]
+                item.setPos(node.position[0], node.position[1])
+                created_nodes.add(node.id)
+            else:
+                # New node - need to create it
+                # For simplicity in this phase, fall back to full rebuild if new nodes detected
+                # TODO: Implement incremental node creation
+                print("[WARN] New node detected during incremental update, falling back to full rebuild")
+                return False
+
+        # Step 2: Check for deleted nodes
+        deleted_nodes = set(self.node_items.keys()) - created_nodes
+        if deleted_nodes:
+            # For simplicity, fall back to full rebuild if nodes deleted
+            print("[WARN] Deleted nodes detected during incremental update, falling back to full rebuild")
+            return False
+
+        # Step 3: Update all edges
+        self._update_all_edges()
+
+        # Step 4: Update side flags for decorative lines
+        root_item = self.node_items.get(self.root_node.id)
+        if root_item:
+            root_x = root_item.scenePos().x()
+            for item in self.node_items.values():
+                item.is_right_side = item.scenePos().x() >= root_x
+
+        return True
+
+    def _traverse_tree(self, root: Node):
+        """Traverse tree in breadth-first order."""
+        queue = [root]
+        while queue:
+            node = queue.pop(0)
+            yield node
+            queue.extend(node.children)
+
+    def _update_all_edges(self):
+        """Update all edge curves after position changes."""
+        for edge_item in self.edge_items:
+            edge_item.update_curve()
 
     def _create_ui_items(self, root: Node):
         """Create UI items from node tree."""
@@ -1157,8 +1259,36 @@ class MindMapView(QGraphicsView):
                 # Update depths recursively
                 self._update_node_depths_recursive(dragged_node)
 
+                # Find the top-level ancestor of the dragged node and mark it as locked
+                def get_top_level_ancestor(node):
+                    """Get the direct child of root for this node."""
+                    current = node
+                    while current.parent and not current.parent.is_root:
+                        current = current.parent
+                    return current
+
+                top_level_node = get_top_level_ancestor(dragged_node)
+                if top_level_node:
+                    top_level_node.is_locked_position = True
+
+                    # CRITICAL: Update the top-level node's position[0] to the new side
+                    # This ensures the layout algorithm assigns it to the correct side
+                    # Use is_currently_right instead of new_parent's is_right_side
+                    # (new_parent might be root with default is_right_side=True)
+                    root_item = self.node_items.get("root")
+                    root_x = root_item.scenePos().x() if root_item else 600.0
+                    dragged_item = self.node_items.get(dragged_id)
+                    dragged_center_x = dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2 if dragged_item else 800.0
+                    is_currently_right = dragged_center_x >= root_x
+
+                    if is_currently_right:
+                        top_level_node.position = (800.0, top_level_node.position[1])
+                    else:
+                        top_level_node.position = (400.0, top_level_node.position[1])
+
+                # OPTIMIZATION: Drag doesn't change node dimensions, skip measurement
                 # Refresh layout to reposition everything
-                self._refresh_layout(skip_measurement=False)
+                self._refresh_layout(skip_measurement=True)
 
         # Clean up temp edge
         if self._temp_drag_edge:
@@ -1690,9 +1820,16 @@ class MindMapView(QGraphicsView):
 
         # Get the new node ID (it's the last child)
         new_node_id = parent_node.children[-1].id
+        new_node = parent_node.children[-1]
 
-        # Refresh UI
-        self._refresh_layout()
+        # Mark new node as locked for rebalancing
+        new_node.is_locked_position = True
+
+        # OPTIMIZATION: Only measure the new node, not the entire tree
+        self._measure_single_node(new_node)
+
+        # Refresh UI with skip_measurement=True since we just measured
+        self._refresh_layout(skip_measurement=True)
 
         # Select the new node
         self._select_node_by_id(new_node_id)
@@ -1734,8 +1871,9 @@ class MindMapView(QGraphicsView):
         # Select the determined node after deletion
         self.selected_node_id = next_selected_id
 
+        # OPTIMIZATION: Deletion doesn't change node dimensions, skip measurement
         # Refresh UI
-        self._refresh_layout()
+        self._refresh_layout(skip_measurement=True)
         print(f"Deleted {node_to_delete.id}")
 
     def _edit_selected_node(self, cursor_position: int = -1):
@@ -1762,12 +1900,13 @@ class MindMapView(QGraphicsView):
                 cmd = EditTextCommand(node, new_text)
                 cmd.execute()
                 self.command_history.push(cmd)
-                # Sync UI dimensions back to domain entity (width/height changed due to word wrap)
-                node.width = node_item.node_width
-                node.height = node_item.node_height
-                # Re-layout: DO NOT skip measurement - re-measure to ensure sizes are accurate
-                # This prevents issues where domain sizes don't match actual UI rendering
-                self._refresh_layout(skip_measurement=False)
+
+                # OPTIMIZATION: Only measure the edited node, not the entire tree
+                # This reduces layout time from O(n) to O(1) for text edits
+                self._measure_single_node(node)
+
+                # Re-layout with skip_measurement=True since we just measured
+                self._refresh_layout(skip_measurement=True)
 
                 # Check if we need to add a child node after editing (e.g., Tab was pressed)
                 if (
@@ -1822,9 +1961,16 @@ class MindMapView(QGraphicsView):
 
         # Get the new node ID (it's the last child)
         new_node_id = parent_node.children[-1].id
+        new_node = parent_node.children[-1]
 
-        # Refresh UI
-        self._refresh_layout()
+        # Mark new node as locked for rebalancing
+        new_node.is_locked_position = True
+
+        # OPTIMIZATION: Only measure the new node, not the entire tree
+        self._measure_single_node(new_node)
+
+        # Refresh UI with skip_measurement=True since we just measured
+        self._refresh_layout(skip_measurement=True)
 
         # Select the new node
         self._select_node_by_id(new_node_id)
@@ -1874,11 +2020,6 @@ class MindMapView(QGraphicsView):
         if saved_selection_id is None:
             saved_selection_id = self.selected_node_id
 
-        # Clear scene
-        self.scene.clear()
-        self.node_items.clear()
-        self.edge_items.clear()
-
         # Step 1: Re-measure actual sizes (unless skipped - e.g., after editing)
         if not skip_measurement:
             self._measure_actual_sizes(self.root_node)
@@ -1907,8 +2048,21 @@ class MindMapView(QGraphicsView):
             context=context,
         )
 
-        # Step 3: Recreate UI items
-        self._create_ui_items(self.root_node)
+        # Clear locked position flags after layout
+        for child in self.root_node.children:
+            child.is_locked_position = False
+
+        # Step 3: OPTIMIZATION - Try incremental UI update first
+        # This is much faster than clearing and recreating all items
+        success = self._update_ui_positions_incremental()
+
+        if not success:
+            # Fallback to full rebuild if incremental update failed
+            # (e.g., new nodes added or nodes deleted)
+            self.scene.clear()
+            self.node_items.clear()
+            self.edge_items.clear()
+            self._create_ui_items(self.root_node)
 
         # Restore selection state and focus
         if saved_selection_id:
@@ -2085,8 +2239,9 @@ class MindMapView(QGraphicsView):
             # Update current file path
             self.current_file_path = file_path
 
+            # OPTIMIZATION: Dimensions are already serialized, no need to re-measure
             # Refresh UI
-            self._refresh_layout()
+            self._refresh_layout(skip_measurement=True)
 
             # Select root node
             self._select_node_by_id(self.root_node.id)
@@ -2349,19 +2504,16 @@ class MindMapView(QGraphicsView):
         self._flip_subtree_recursive(node, root_x, new_is_right)
 
     def _flip_subtree_recursive(self, node: Node, root_x: float, new_is_right: bool):
-        """Mirror X position across root for node and all descendants."""
+        """Update is_right_side flag for entire subtree (position already updated during drag)."""
         item = self.node_items.get(node.id)
         if item:
-            # Mirror X coordinate across root
-            current_x = item.scenePos().x()
-            distance_from_root = current_x - root_x
-            mirrored_x = root_x - distance_from_root
-
-            # Update position (keep Y unchanged during drag)
-            item.setPos(mirrored_x, item.scenePos().y())
+            # CRITICAL FIX: Only update the is_right_side flag
+            # Position was already updated during drag by _apply_subtree_positions
+            # and mouseReleaseEvent position update
+            # DO NOT mirror position again to avoid double-flipping
             item.is_right_side = new_is_right
 
-        # Recursively flip children
+        # Recursively update children
         for child in node.children:
             self._flip_subtree_recursive(child, root_x, new_is_right)
 
