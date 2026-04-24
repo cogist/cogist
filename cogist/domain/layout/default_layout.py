@@ -643,6 +643,7 @@ class DefaultLayout(BaseLayout):
                 node_x = aligned_edge_x - node_half_width
             else:  # Right side - align left edge
                 node_x = aligned_edge_x + node_half_width
+
             node.position = (node_x, current_y)
             current_y += node.height + sibling_spacing
 
