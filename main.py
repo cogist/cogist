@@ -1150,10 +1150,9 @@ class MindMapView(QGraphicsView):
 
                     # Only flip if sides are different
                     if is_currently_right != recorded_side:
-                        # Determine if we need to mirror based on target side
-                        # If moving to right side, don't mirror (normal)
-                        # If moving to left side, mirror
-                        should_mirror = not is_currently_right
+                        # CRITICAL: Always mirror when crossing sides, regardless of direction
+                        # Both left-to-right and right-to-left drags need mirroring
+                        should_mirror = True
 
                         print(f"[DEBUG] FLIPPING! should_mirror={should_mirror}")
 
