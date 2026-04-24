@@ -28,7 +28,7 @@ class VisualListPopup(QDialog):
             ],
             parent=parent_widget
         )
-        popup.item_selected.connect(lambda value: print(f"Selected: {value}"))
+        popup.item_selected.connect(on_item_selected_handler)
         popup.exec()
     """
 

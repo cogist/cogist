@@ -449,7 +449,6 @@ class MainWindow(QMainWindow):
                 parent_id_before_undo = node_before.parent.id
 
         if self.mindmap_view.command_history.undo():
-            print("Undo successful")
             # OPTIMIZATION: Undo restores old dimensions, no need to re-measure
             self.mindmap_view._refresh_layout(
                 skip_measurement=True,
@@ -472,7 +471,6 @@ class MainWindow(QMainWindow):
                 parent_id_before_redo = node_before.parent.id
 
         if self.mindmap_view.command_history.redo():
-            print("Redo successful")
             # OPTIMIZATION: Redo may need measurement for text changes
             # For now, use skip_measurement=True (commands should restore dimensions)
             self.mindmap_view._refresh_layout(
@@ -811,14 +809,12 @@ class MindMapView(QGraphicsView):
                 # New node - need to create it
                 # For simplicity in this phase, fall back to full rebuild if new nodes detected
                 # TODO: Implement incremental node creation
-                print("[WARN] New node detected during incremental update, falling back to full rebuild")
                 return False
 
         # Step 2: Check for deleted nodes
         deleted_nodes = set(self.node_items.keys()) - created_nodes
         if deleted_nodes:
             # For simplicity, fall back to full rebuild if nodes deleted
-            print("[WARN] Deleted nodes detected during incremental update, falling back to full rebuild")
             return False
 
         # Step 3: Update all edges
@@ -1896,7 +1892,6 @@ class MindMapView(QGraphicsView):
         # OPTIMIZATION: Deletion doesn't change node dimensions, skip measurement
         # Refresh UI
         self._refresh_layout(skip_measurement=True)
-        print(f"Deleted {node_to_delete.id}")
 
     def _edit_selected_node(self, cursor_position: int = -1):
         """Edit the selected node text with inline editing.
@@ -1905,7 +1900,6 @@ class MindMapView(QGraphicsView):
             cursor_position: Cursor position in text (-1 for select all)
         """
         if not self.selected_node_id or self.selected_node_id not in self.node_items:
-            print("No node selected")
             return
 
         node_item = self.node_items[self.selected_node_id]
@@ -1961,7 +1955,6 @@ class MindMapView(QGraphicsView):
     def _add_sibling_node(self):
         """Add a sibling node to the selected node."""
         if not self.selected_node_id or self.selected_node_id == "root":
-            print("Cannot add sibling to root or no selection")
             return  # Can't add sibling to root
 
         # Find parent and current node
@@ -1970,7 +1963,6 @@ class MindMapView(QGraphicsView):
         )
 
         if not parent_node or not current_node:
-            print("Parent or current node not found")
             return
 
         # Generate unique name (same as child naming)
@@ -2235,15 +2227,12 @@ class MindMapView(QGraphicsView):
             # Update current file path
             self.current_file_path = file_path
 
-            print(f"✓ Saved to: {file_path}")
-
         except Exception as e:
             QMessageBox.critical(
                 self,
                 "Error",
                 f"Failed to save:\n{e}",
             )
-            print(f"✗ Save failed: {e}")
 
     def _open_file(self):
         """Load mind map from file."""
@@ -2277,15 +2266,12 @@ class MindMapView(QGraphicsView):
             # Select root node
             self._select_node_by_id(self.root_node.id)
 
-            print(f"✓ Loaded from: {file_path}")
-
         except Exception as e:
             QMessageBox.critical(
                 self,
                 "Error",
                 f"Failed to open:\n{e}",
             )
-            print(f"✗ Open failed: {e}")
 
     def _hide_parent_edge(self, node: Node):
         """Hide the edge from parent to this node during drag."""
@@ -2458,8 +2444,6 @@ class MindMapView(QGraphicsView):
 
         # Recursively save children
         self._save_children_relative_positions(node, dragged_scene_pos)
-
-        print(f"Saved {len(self._subtree_initial_positions)} nodes in subtree")
 
     def _save_children_relative_positions(self, node: Node, root_scene_pos: QPointF):
         """Recursively save children's positions relative to subtree root."""
