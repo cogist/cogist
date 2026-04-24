@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4] - 2026-04-24
+
+### Fixed
+- **Text editing dimension restore**: Node dimensions now correctly restore to original size when canceling edit with Esc key
+- **Linter configuration**: Centralized Ruff ignore rules in pyproject.toml, removed 27 inline noqa comments for cleaner code
+
+### Technical Details
+- Added dimension caching mechanism in NodeItem.start_editing() for cancel support
+- Restored node rect, triggered repaint, and updated edges in cancel_editing()
+- Configured N802 and ARG002 rules globally to support Qt event methods and interface consistency
+
 ## [0.3.3] - 2026-04-24
 
 ### Fixed
