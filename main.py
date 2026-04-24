@@ -1141,13 +1141,24 @@ class MindMapView(QGraphicsView):
                 is_currently_right = dragged_center_x >= root_x
 
                 # Apply subtree positions based on current side
-                # CRITICAL: Don't compare with recorded_side, just use current position!
-                # If on right side: don't mirror (children on right)
-                # If on left side: mirror (children on left)
+                # CRITICAL: Same logic for both sides!
+                # The saved offsets are from the original position.
+                # We need to mirror when the current side doesn't match the original side.
+                # - Original left (negative offset) + dragged to right: mirror
+                # - Original right (positive offset) + dragged to left: mirror
                 dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
                 if dragged_node and root_item:
-                    # Mirror when on left side, don't mirror when on right side
-                    should_mirror = not is_currently_right
+                    # Check if we need to mirror based on offset signs
+                    # Get first child offset to determine original side
+                    offsets = [off for off in self._subtree_initial_positions.values() if off.x() != 0]
+                    if offsets:
+                        # Original side: negative = left, positive = right
+                        original_is_right = offsets[0].x() > 0
+                        # Mirror if current side doesn't match original side
+                        should_mirror = (is_currently_right != original_is_right)
+                    else:
+                        # No children, no mirroring needed
+                        should_mirror = False
 
                     # Apply subtree positions
                     self._apply_subtree_positions(new_pos, should_mirror)
