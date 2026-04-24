@@ -1318,7 +1318,10 @@ class MindMapView(QGraphicsView):
 
                 # CRITICAL: Node relationships have changed, must rebuild edges completely
                 # Incremental update won't work because parent-child connections changed
-                # OPTIMIZATION: Skip measurement since node dimensions haven't changed
+                # FIX: Re-measure dragged node and all its descendants since depth may have changed
+                self._measure_actual_sizes(dragged_node)
+
+                # Now refresh layout with skip_measurement=True since we just measured
                 self._refresh_layout(skip_measurement=True, force_rebuild_edges=True)
 
         # Clean up temp edge

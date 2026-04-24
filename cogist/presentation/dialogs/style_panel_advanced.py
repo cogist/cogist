@@ -820,6 +820,11 @@ class AdvancedStyleTab(QWidget):
             if style.resolved_color_scheme:
                 style.resolved_color_scheme.canvas_bg_color = canvas_color
 
+            # CRITICAL: Update the scene background immediately
+            from PySide6.QtGui import QBrush, QColor
+            if hasattr(mindmap_view, 'scene'):
+                mindmap_view.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
+
         # Update all existing node items with new style
         if hasattr(mindmap_view, "node_items"):
             for _node_id, node_item in mindmap_view.node_items.items():
