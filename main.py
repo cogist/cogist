@@ -778,6 +778,60 @@ class MindMapView(QGraphicsView):
 
         measure_recursive(root)
 
+    def _update_ui_positions_incremental(self):
+        """Update UI item positions without recreating them (incremental update).
+
+        This is much faster than clearing and recreating all items.
+        Only updates positions of existing items, creates new ones if needed,
+        and removes deleted ones.
+        """
+        # Step 1: Update or create node items
+        created_nodes = set()
+        for node in self._traverse_tree(self.root_node):
+            if node.id in self.node_items:
+                # Existing node - just update position
+                item = self.node_items[node.id]
+                item.setPos(node.position[0], node.position[1])
+                created_nodes.add(node.id)
+            else:
+                # New node - need to create it
+                # For simplicity in this phase, fall back to full rebuild if new nodes detected
+                # TODO: Implement incremental node creation
+                print("[WARN] New node detected during incremental update, falling back to full rebuild")
+                return False
+
+        # Step 2: Check for deleted nodes
+        deleted_nodes = set(self.node_items.keys()) - created_nodes
+        if deleted_nodes:
+            # For simplicity, fall back to full rebuild if nodes deleted
+            print("[WARN] Deleted nodes detected during incremental update, falling back to full rebuild")
+            return False
+
+        # Step 3: Update all edges
+        self._update_all_edges()
+
+        # Step 4: Update side flags for decorative lines
+        root_item = self.node_items.get(self.root_node.id)
+        if root_item:
+            root_x = root_item.scenePos().x()
+            for item in self.node_items.values():
+                item.is_right_side = item.scenePos().x() >= root_x
+
+        return True
+
+    def _traverse_tree(self, root: Node):
+        """Traverse tree in breadth-first order."""
+        queue = [root]
+        while queue:
+            node = queue.pop(0)
+            yield node
+            queue.extend(node.children)
+
+    def _update_all_edges(self):
+        """Update all edge curves after position changes."""
+        for edge_item in self.edge_items:
+            edge_item.update_curve()
+
     def _create_ui_items(self, root: Node):
         """Create UI items from node tree."""
 
@@ -1933,11 +1987,6 @@ class MindMapView(QGraphicsView):
         if saved_selection_id is None:
             saved_selection_id = self.selected_node_id
 
-        # Clear scene
-        self.scene.clear()
-        self.node_items.clear()
-        self.edge_items.clear()
-
         # Step 1: Re-measure actual sizes (unless skipped - e.g., after editing)
         if not skip_measurement:
             self._measure_actual_sizes(self.root_node)
@@ -1966,8 +2015,17 @@ class MindMapView(QGraphicsView):
             context=context,
         )
 
-        # Step 3: Recreate UI items
-        self._create_ui_items(self.root_node)
+        # Step 3: OPTIMIZATION - Try incremental UI update first
+        # This is much faster than clearing and recreating all items
+        success = self._update_ui_positions_incremental()
+
+        if not success:
+            # Fallback to full rebuild if incremental update failed
+            # (e.g., new nodes added or nodes deleted)
+            self.scene.clear()
+            self.node_items.clear()
+            self.edge_items.clear()
+            self._create_ui_items(self.root_node)
 
         # Restore selection state and focus
         if saved_selection_id:
