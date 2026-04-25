@@ -15,7 +15,7 @@ from .extended_styles import (
     SpacingLevel,
     Template,
 )
-from .style_config import LegacyEdgeConfig, MindMapStyle
+from .style_config import MindMapStyle
 
 
 def create_default_template() -> MindMapStyle:
@@ -205,15 +205,6 @@ def create_default_template() -> MindMapStyle:
             2: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666", "gradient_ratio": 0.33},  # Level 2 → Level 3
             3: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666", "gradient_ratio": 0.33},  # Level 3+ (all deeper)
         },
-        # === Legacy edge configuration (backward compatibility) ===
-        # Note: enable_gradient and gradient_ratio are now in connector_config_by_depth
-        edge=LegacyEdgeConfig(
-            connector_shape="bezier",
-            connector_style="solid",
-            start_width=6.0,
-            end_width=2.0,
-            color="#666666",
-        ),
     )
 
     # Store resolved references (in production, these would come from registries)

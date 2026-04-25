@@ -13,21 +13,6 @@ from .extended_styles import ColorScheme, Template
 
 
 @dataclass
-class LegacyEdgeConfig:
-    """Legacy edge style configuration (used for backward compatibility with main.py).
-
-    Note: enable_gradient is automatically determined by connector_shape.
-    gradient_ratio should be stored in connector_config_by_depth, not here.
-    """
-
-    connector_shape: str = "bezier"  # bezier, straight, orthogonal
-    connector_style: str = "solid"  # solid, dashed, dotted, dash_dot
-    start_width: float = 6.0  # Width at source node
-    end_width: float = 2.0    # Width at target node
-    color: str = "#666666"
-
-
-@dataclass
 class MindMapStyle:
     """Complete mind map style configuration (new architecture).
 
@@ -61,9 +46,6 @@ class MindMapStyle:
     # === Runtime resolved styles (computed by resolve_style()) ===
     resolved_template: Template | None = None
     resolved_color_scheme: ColorScheme | None = None
-
-    # === Edge configuration (legacy - TODO: migrate to EdgeConfig) ===
-    edge: LegacyEdgeConfig = field(default_factory=LegacyEdgeConfig)
 
     # === Canvas background (synced from color_scheme) ===
     canvas_bg_color: str = "#FFFFFF"
