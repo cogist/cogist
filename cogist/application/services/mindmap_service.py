@@ -84,8 +84,9 @@ class MindMapService:
         Returns:
             The root node of the loaded mind map
         """
-        self.root_node = self.repository.load(file_path)
-        self.current_file = self.repository.get_current_file()
+        root_node, style_config = self.repository.load(file_path)
+        self.root_node = root_node
+        self.current_file = self.repository.current_file
         self._is_modified = False  # Loaded file is not modified
         assert self.root_node is not None
         return self.root_node
