@@ -670,12 +670,13 @@ class MainWindow(QMainWindow):
 
         # Use MindMapService to redo (Application Layer)
         if self.mindmap_service.redo():
-            # OPTIMIZATION: Redo may need measurement for text changes
-            # For now, use skip_measurement=True (commands should restore dimensions)
+            # FIX: Redo must measure sizes because nodes are re-added to tree
+            # and their dimensions may not be correct (e.g., AddNodeCommand)
             self.mindmap_view._refresh_layout(
-                skip_measurement=True,
+                skip_measurement=False,  # Changed from True to False
                 saved_selection_id=node_id_before_redo,
                 parent_id=parent_id_before_redo,
+                force_rebuild_edges=is_add_node_command,  # Rebuild edges for add node
             )
 
             # Scroll to appropriate node based on command type
