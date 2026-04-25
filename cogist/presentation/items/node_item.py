@@ -548,7 +548,7 @@ class NodeItem(QGraphicsRectItem):
         """Custom paint using border strategy pattern."""
         from PySide6.QtGui import QPainter
 
-        from cogist.domain.borders.registry import BorderStrategyRegistry
+        from cogist.presentation.borders.registry import BorderStrategyRegistry
 
         painter.setRenderHint(QPainter.Antialiasing, True)
 
