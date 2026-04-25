@@ -622,10 +622,9 @@ class MindMapView(QGraphicsView):
                 # Get root position for side detection
                 root_item = self.node_items.get(self.root_node.id)
                 root_x = root_item.scenePos().x() if root_item else 0.0
-                dragged_center_x = dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2
 
                 # Current side based on position (needed for cross-side detection)
-                is_currently_right = dragged_center_x >= root_x
+                is_currently_right = self._is_node_on_right_side(self._dragged_node_id)
 
                 # Apply subtree positions based on current side
                 # CRITICAL: Same logic for both sides!
@@ -783,11 +782,7 @@ class MindMapView(QGraphicsView):
                     # This ensures the layout algorithm assigns it to the correct side
                     # Use is_currently_right instead of new_parent's is_right_side
                     # (new_parent might be root with default is_right_side=True)
-                    root_item = self.node_items.get("root")
-                    root_x = root_item.scenePos().x() if root_item else 600.0
-                    dragged_item = self.node_items.get(dragged_id)
-                    dragged_center_x = dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2 if dragged_item else 800.0
-                    is_currently_right = dragged_center_x >= root_x
+                    is_currently_right = self._is_node_on_right_side(dragged_id)
 
                     if is_currently_right:
                         top_level_node.position = (800.0, top_level_node.position[1])
@@ -851,47 +846,40 @@ class MindMapView(QGraphicsView):
             self.node_items[self.selected_node_id].setSelected(False)
         self.selected_node_id = None
 
-    def _navigate_to_previous_sibling(self):
-        """Navigate to the previous sibling node (Up arrow).
+    def _navigate_to_sibling(self, direction: str):
+        """Navigate to previous/next sibling node.
+
+        Args:
+            direction: 'previous' for up arrow, 'next' for down arrow
 
         Behavior:
-        - Find the visually closest node above on the same side
-        - Priority: previous sibling > cousin on same side > cycle within same side
+        - Find the visually closest node on the same side
+        - Priority: sibling > cousin on same side > cycle within same side
         """
         if not self.selected_node_id or self.selected_node_id not in self.node_items:
             return
 
         current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
         if not current_node or not current_node.parent:
-            # No parent means this is root - can't navigate up
+            # No parent means this is root - can't navigate to sibling
             return
 
-        # Use visual-based navigation: find closest node above on same side
-        target = self._find_visually_adjacent_node(direction="up")
+        # Map direction to arrow key
+        arrow_direction = "up" if direction == "previous" else "down"
+
+        # Use visual-based navigation: find closest node on same side
+        target = self._find_visually_adjacent_node(direction=arrow_direction)
         if target:
             self._select_node_by_id(target.id)
             self._ensure_node_visible(target.id)
+
+    def _navigate_to_previous_sibling(self):
+        """Navigate to the previous sibling node (Up arrow)."""
+        self._navigate_to_sibling("previous")
 
     def _navigate_to_next_sibling(self):
-        """Navigate to the next sibling node (Down arrow).
-
-        Behavior:
-        - Find the visually closest node below on the same side
-        - Priority: next sibling > cousin on same side > cycle within same side
-        """
-        if not self.selected_node_id or self.selected_node_id not in self.node_items:
-            return
-
-        current_node = self._find_node_by_id(self.root_node, self.selected_node_id)
-        if not current_node or not current_node.parent:
-            # No parent means this is root - can't navigate down
-            return
-
-        # Use visual-based navigation: find closest node below on same side
-        target = self._find_visually_adjacent_node(direction="down")
-        if target:
-            self._select_node_by_id(target.id)
-            self._ensure_node_visible(target.id)
+        """Navigate to the next sibling node (Down arrow)."""
+        self._navigate_to_sibling("next")
 
     def _navigate_to_parent(self):
         """Navigate to the parent node (Left arrow).
@@ -981,55 +969,46 @@ class MindMapView(QGraphicsView):
             self._select_node_by_id(first_child.id)
             self._ensure_node_visible(first_child.id)
 
-    def _navigate_to_left_side_child(self):
-        """Navigate from root to the first left-side child."""
+    def _navigate_to_side_child(self, side: str):
+        """Navigate from root to the first child on specified side.
+
+        Args:
+            side: 'left' for left-side children (x < root_x),
+                  'right' for right-side children (x >= root_x)
+        """
         if not self.root_node.children:
             return
 
-        # Find the first child on the left side (x < root_x)
         root_item = self.node_items.get(self.root_node.id)
         if not root_item:
             return
 
         root_x = root_item.scenePos().x()
 
-        # Find left-side children (those with x < root_x)
-        left_children = []
+        # Find children on the specified side
+        target_children = []
         for child in self.root_node.children:
             if child.id in self.node_items:
                 child_item = self.node_items[child.id]
-                if child_item.scenePos().x() < root_x:
-                    left_children.append(child)
+                if side == "left":
+                    if child_item.scenePos().x() < root_x:
+                        target_children.append(child)
+                else:  # right
+                    if child_item.scenePos().x() >= root_x:
+                        target_children.append(child)
 
-        if left_children:
-            # Select the first left-side child (topmost one)
-            self._select_node_by_id(left_children[0].id)
-            self._ensure_node_visible(left_children[0].id)
+        if target_children:
+            # Select the first child on that side (topmost one)
+            self._select_node_by_id(target_children[0].id)
+            self._ensure_node_visible(target_children[0].id)
+
+    def _navigate_to_left_side_child(self):
+        """Navigate from root to the first left-side child."""
+        self._navigate_to_side_child("left")
 
     def _navigate_to_right_side_child(self):
         """Navigate from root to the first right-side child."""
-        if not self.root_node.children:
-            return
-
-        # Find the first child on the right side (x >= root_x)
-        root_item = self.node_items.get(self.root_node.id)
-        if not root_item:
-            return
-
-        root_x = root_item.scenePos().x()
-
-        # Find right-side children (those with x >= root_x)
-        right_children = []
-        for child in self.root_node.children:
-            if child.id in self.node_items:
-                child_item = self.node_items[child.id]
-                if child_item.scenePos().x() >= root_x:
-                    right_children.append(child)
-
-        if right_children:
-            # Select the first right-side child (topmost one)
-            self._select_node_by_id(right_children[0].id)
-            self._ensure_node_visible(right_children[0].id)
+        self._navigate_to_side_child("right")
 
     def _cycle_to_last_sibling_on_same_side(self, direction: str):
         """Cycle to the last sibling on the same side (for top-level nodes).
@@ -1285,6 +1264,25 @@ class MindMapView(QGraphicsView):
         item2 = self.node_items[node2.id]
 
         return item1.is_right_side == item2.is_right_side
+
+    def _is_node_on_right_side(self, node_id: str) -> bool:
+        """Check if a node is on the right side of root.
+
+        Args:
+            node_id: The ID of the node to check
+
+        Returns:
+            True if node's x position >= root's x position, False otherwise
+        """
+        item = self.node_items.get(node_id)
+        if not item:
+            return True  # Default to right if not found
+
+        root_item = self.node_items.get(self.root_node.id)
+        if not root_item:
+            return True
+
+        return item.scenePos().x() >= root_item.scenePos().x()
 
     def _generate_node_name(self, parent_node: Node) -> str:
         """Generate unique node name based on hierarchy.
@@ -1866,13 +1864,13 @@ class MindMapView(QGraphicsView):
             return None
 
         # Determine current side based on actual position, not is_right_side property
+        is_currently_right = self._is_node_on_right_side(self._dragged_node_id)
+
+        # Calculate dragged node center for distance comparison
         root_item = self.node_items.get(self.root_node.id)
         if not root_item:
             return None
-
-        root_x = root_item.scenePos().x()
         dragged_center_x = dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2
-        is_currently_right = dragged_center_x >= root_x
 
         best_candidate = None
         best_distance = float('inf')
