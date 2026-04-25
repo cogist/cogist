@@ -595,3 +595,28 @@ class MainWindow(QMainWindow):
         self.activity_bar.activate_panel("advanced")
 
 
+def main():
+    """Main entry point for the application."""
+    from PySide6.QtWidgets import QApplication
+
+    # Set application name for macOS menu bar
+    app = QApplication(sys.argv)
+    app.setApplicationName("Cogist")
+    app.setApplicationDisplayName("Cogist")
+
+    # Use macOS native style for proper scrollbar appearance
+    app.setStyle("macos")
+
+    # Create and show main window
+    window = MainWindow()
+    window.setWindowTitle("Cogist")
+    window.setGeometry(100, 100, 1400, 900)
+    window.show()
+
+    sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()
+
+
