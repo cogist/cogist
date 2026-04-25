@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-04-25
+
+### Fixed
+- **Drag interaction**: Fixed parent node detection anchor points and filtering logic
+  - Right-side nodes now use left edge anchor, left-side nodes use right edge anchor
+  - Filtering logic compares anchor coordinates instead of center coordinates
+  - Distance calculation measures between two anchor points for accurate visual connection
+  - Fixes issue where right-side dragged nodes couldn't find parent or had invisible connections
+- **Redo operation**: Restored correct node spacing by measuring sizes after redo
+- **Layout cousin spacing**: Fixed to use child depth for subtree overlap detection
+
+### Added
+- **Font selector optimization**: Pre-load fonts asynchronously on initialization
+  - Background thread loads and caches all available fonts
+  - Instant dialog display on first click (no blocking)
+  - Dialog instance reuse for subsequent clicks
+  - Auto-scroll to current font at top of list for easy viewing
+
+### Removed
+- **sort_weight field**: Removed unused sort_weight from Node entity and layout algorithm
+  - Node ordering preserved by children list order (Python's stable sort)
+  - Simplified codebase by removing 137 lines of redundant code
+  - Updated documentation to reflect current implementation
+
 ## [0.4.0] - 2026-04-25
 
 ### Added

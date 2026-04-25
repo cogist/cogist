@@ -597,9 +597,8 @@ class MindMapView(QGraphicsView):
                 self._drag_offset = pos - node_center
                 self._current_potential_parent = None
                 self._is_dragging_cross_side = False
-
-                # Hide edge to old parent during drag
-                self._hide_parent_edge(current_node)
+                self._drag_start_pos = pos  # Save drag start position
+                self._old_parent_edge_hidden = False  # Track if old parent edge is hidden
 
                 # Save initial relative positions of entire subtree
                 self._save_subtree_relative_positions(current_node)
@@ -613,6 +612,12 @@ class MindMapView(QGraphicsView):
         if self._dragged_node_id and self._drag_offset:
             # Get current mouse position
             current_pos = self.mapToScene(event.position().toPoint())
+
+            # FIX: Only start drag detection after moving beyond threshold
+            drag_distance = (current_pos - self._drag_start_pos).manhattanLength()
+            if drag_distance < 10.0:  # Minimum drag distance in pixels
+                super().mouseMoveEvent(event)
+                return
 
             # Move the dragged node
             dragged_item = self.node_items.get(self._dragged_node_id)
@@ -661,6 +666,17 @@ class MindMapView(QGraphicsView):
                     dragged_node_id=self._dragged_node_id,
                     mouse_pos=Position(current_pos.x(), current_pos.y())
                 )
+
+                # FIX: Only hide old parent edge when potential parent changes
+                if potential_parent and dragged_node and potential_parent != dragged_node.parent:
+                    if not self._old_parent_edge_hidden:
+                        self._hide_parent_edge(dragged_node)
+                        self._old_parent_edge_hidden = True
+                else:
+                    # Restore old parent edge if no valid potential parent
+                    if self._old_parent_edge_hidden and dragged_node:
+                        self._restore_parent_edge(dragged_node)
+                        self._old_parent_edge_hidden = False
 
                 # Update temporary edge
                 self._update_temp_drag_edge(dragged_node, potential_parent)
@@ -735,6 +751,7 @@ class MindMapView(QGraphicsView):
         self._drag_offset = None
         self._current_potential_parent = None
         self._is_dragging_cross_side = False
+        self._old_parent_edge_hidden = False  # Reset edge hidden state
 
         if dragged_id and potential_parent:
             dragged_node = self._find_node_by_id(self.root_node, dragged_id)
@@ -757,10 +774,6 @@ class MindMapView(QGraphicsView):
                     key=lambda child: self.node_items[child.id].scenePos().y()
                     if child.id in self.node_items else 0
                 )
-
-                # Update sort_weight for all children based on their new order
-                for index, child in enumerate(new_parent.children):
-                    child.sort_weight = float(index)
 
                 # If crossed sides, flip entire subtree's is_right_side
                 if is_cross_side:
@@ -1359,8 +1372,18 @@ class MindMapView(QGraphicsView):
             text=new_name
         )
 
-        if new_node is None:
+        if new_node is None or parent_node is None:
             return
+
+        # FIX: Insert new node right after current node in children list
+        # Find the index of current node
+        current_index = parent_node.children.index(current_node)
+
+        # Remove new_node from end (it was appended by add_child)
+        parent_node.children.remove(new_node)
+
+        # Insert it right after current node
+        parent_node.children.insert(current_index + 1, new_node)
 
         # Common post-add logic
         self._finalize_node_addition(new_node)

@@ -42,14 +42,7 @@ class CGSSerializer:
                   viewport_state: dict[str, float] | None = None) -> bytes:
         """Serialize mind map to .cgs format (ZIP bytes).
 
-        IMPORTANT: When adding new layout types, update the serialization strategy!
-        See docs/zh-CN/CGS_FILE_FORMAT.md section "节点顺序持久化策略"
-
-        Current implementation assumes tree layout with sort_weight.
-        Future layouts may require:
-        - Free form: save full coordinates
-        - Timeline: save timestamps
-        - Fishbone: save branch_side information
+        Node order is preserved by the order of children list in the serialized data.
 
         Args:
             root_node_data: Serialized node tree dictionary

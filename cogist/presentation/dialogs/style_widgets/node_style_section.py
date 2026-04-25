@@ -25,6 +25,7 @@ from cogist.presentation.widgets.node_shape_previews import (
 )
 
 from .collapsible_panel import CollapsiblePanel
+from .menu_button import MenuButton
 
 
 class NodeStyleSection(CollapsiblePanel):
@@ -49,6 +50,10 @@ class NodeStyleSection(CollapsiblePanel):
         # State
         self._initialized = False
         self.current_style = self._get_default_style()
+        self._font_data_cache: tuple[list[tuple[str, str, str]], dict[str, str]] | None = None
+        self._font_dialog = None
+        self._font_loader = None
+        self._load_fonts()  # Pre-load fonts on initialization
 
         # Connect toggle signal for lazy initialization
         self.toggled.connect(self._on_toggled)
@@ -71,6 +76,66 @@ class NodeStyleSection(CollapsiblePanel):
             "font_strikeout": False,
             "shadow_enabled": False,
         }
+
+    def _load_fonts(self):
+        """Pre-load all available fonts in background thread on initialization."""
+        from PySide6.QtCore import QThread, Signal
+        from PySide6.QtGui import QFontDatabase
+
+        class FontLoaderThread(QThread):
+            """Background thread for loading fonts."""
+            fonts_loaded = Signal(object)
+
+            def run(self):
+                """Load and process fonts."""
+                font_db = QFontDatabase()
+                families = font_db.families()
+
+                # Filter out bitmap/system fonts
+                filtered_families = []
+                for family in families:
+                    if family.startswith('.'):
+                        continue
+                    if any(keyword in family.lower() for keyword in ['bitmap', 'dingbats', 'symbol', 'icon']):
+                        continue
+                    if not font_db.styles(family):
+                        continue
+                    filtered_families.append(family)
+
+                # Return raw family names (localization done in main thread)
+                self.fonts_loaded.emit(filtered_families)
+
+        def on_fonts_loaded(filtered_families):
+            """Cache the loaded font data."""
+            # Process fonts in main thread (for localization)
+            font_name_map = {}
+            seen_base_names = set()
+            items_data = []
+
+            for family in filtered_families:
+                # Get localized name
+                localized_name = self._get_localized_font_name(family)
+
+                # Normalize for deduplication
+                base_name = family.split('(')[0].strip().lower()
+
+                is_duplicate = False
+                for seen_base in seen_base_names:
+                    if base_name in seen_base or seen_base in base_name:
+                        is_duplicate = True
+                        break
+
+                if not is_duplicate:
+                    seen_base_names.add(base_name)
+                    font_name_map[localized_name] = family
+                    items_data.append((localized_name, family, family))
+
+            self._font_data_cache = (items_data, font_name_map)
+
+        # Start background loader
+        self._font_loader = FontLoaderThread()
+        self._font_loader.fonts_loaded.connect(on_fonts_loaded)
+        self._font_loader.start()
 
     def _on_toggled(self, checked: bool):
         """Handle expand/collapse events."""
@@ -235,10 +300,6 @@ class NodeStyleSection(CollapsiblePanel):
         font_weight_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(font_weight_label, row, 0)
 
-        self.font_weight_combo = QPushButton(self.current_style["font_weight"])
-        self.font_weight_combo.setFixedHeight(self.WIDGET_HEIGHT)
-        self.font_weight_combo.setStyleSheet(self._button_style())
-
         self.font_weight_menu = QMenu()
         self.font_weight_menu.aboutToShow.connect(
             lambda: self._update_font_weight_options()
@@ -250,7 +311,10 @@ class NodeStyleSection(CollapsiblePanel):
             action = self.font_weight_menu.addAction(option)
             action.triggered.connect(lambda _, opt=option: self._set_font_weight(opt))
 
-        self.font_weight_combo.setMenu(self.font_weight_menu)
+        # Use reusable MenuButton instead of QPushButton
+        self.font_weight_combo = MenuButton(self.current_style["font_weight"], self.WIDGET_HEIGHT)
+        self.font_weight_combo.setStyleSheet(self._button_style())
+        self.font_weight_combo.set_menu(self.font_weight_menu)
         layout.addWidget(self.font_weight_combo, row, 1)
         row += 1
 
@@ -308,6 +372,11 @@ class NodeStyleSection(CollapsiblePanel):
             QPushButton:hover {
                 background-color: #F0F0F0;
                 border-color: #A0A0A0;
+            }
+            QPushButton::menu-indicator {
+                image: none;
+                width: 0;
+                height: 0;
             }
         """
 
@@ -384,10 +453,11 @@ class NodeStyleSection(CollapsiblePanel):
         - Linux: fontconfig
         Falls back to English name if localized name not available.
         """
-        from cogist.infrastructure.utils import PLATFORM
+        import platform
+        system = platform.system()
 
         try:
-            if PLATFORM == "Darwin":  # macOS
+            if system == "Darwin":  # macOS
                 # Try to use Core Text via PyObjC
                 try:
                     from CoreText import (  # type: ignore
@@ -405,7 +475,7 @@ class NodeStyleSection(CollapsiblePanel):
                 except Exception:
                     pass  # Fall through to default
 
-            elif PLATFORM == "Windows":
+            elif system == "Windows":
                 # Try to use ctypes with GDI (simplified)
                 try:
                     import ctypes
@@ -444,7 +514,7 @@ class NodeStyleSection(CollapsiblePanel):
                 except Exception:
                     pass
 
-            elif PLATFORM == "Linux":
+            elif system == "Linux":
                 # Try to use fontconfig
                 try:
                     import subprocess
@@ -466,108 +536,226 @@ class NodeStyleSection(CollapsiblePanel):
         return font_family
 
     def _show_font_menu(self):
-        """Show font family selection dialog with localized names."""
-        from PySide6.QtGui import QFont, QFontDatabase
-        from PySide6.QtWidgets import QDialog, QListWidget, QVBoxLayout
+        """Show font family selection popup with localized names.
 
-        # Create dialog
+        Uses a frameless dialog with single-click selection for better UX.
+        Uses pre-loaded font cache for instant display.
+        """
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QFont
+        from PySide6.QtWidgets import (
+            QDialog,
+            QListWidget,
+            QVBoxLayout,
+        )
+
+        # Reuse existing dialog if available
+        if hasattr(self, '_font_dialog') and self._font_dialog is not None:
+            # Dialog already created, just show it
+            self._font_dialog.show()
+            self._font_dialog.raise_()
+            self._font_dialog.activateWindow()
+            self._font_dialog.setFocus()
+            return
+
+        # Store default button style to restore later
+        self._default_font_button_style = self.font_family_combo.styleSheet()
+
+        # Set button background to match dialog while open
+        self.font_family_combo.setStyleSheet("""
+            QPushButton {
+                background-color: rgb(236, 236, 236);
+                border: 1px solid #C8C8C8;
+                border-radius: 6px;
+                padding: 4px 24px 4px 12px;
+                font-size: 13px;
+                text-align: left;
+            }
+        """)
+
+        # Create frameless dialog with rounded corners
         dialog = QDialog(self)
-        dialog.setWindowTitle("Select Font")
-        dialog.setFixedSize(350, 450)
+        dialog.setWindowFlags(
+            Qt.Dialog | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
+        )
+        dialog.setAttribute(Qt.WA_DeleteOnClose)
+        dialog.setFixedSize(300, 400)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: rgb(236, 236, 236);
+                border: 1px solid #C8C8C8;
+                border-radius: 8px;
+            }
+        """)
+
+        # Store reference to prevent multiple dialogs
+        self._font_dialog = dialog
 
         # Layout
         layout = QVBoxLayout(dialog)
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Font list
+        # Font list with custom styling
         font_list = QListWidget()
-        font_list.setFont(QFont("Arial", 15))
+        font_list.setFont(QFont("Arial", 14))
+        font_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        font_list.setFrameShape(QListWidget.NoFrame)
+        font_list.setStyleSheet("""
+            QListWidget {
+                background-color: transparent;
+                border: none;
+                outline: none;
+            }
+            QListWidget::item {
+                background-color: transparent;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            QListWidget::item:hover {
+                background-color: rgb(84, 143, 255);
+                color: white;
+            }
+            QListWidget::item:selected {
+                background-color: rgb(84, 143, 255);
+                color: white;
+            }
+        """)
         layout.addWidget(font_list)
 
-        # Get all available fonts
-        font_db = QFontDatabase()
-        families = font_db.families()
+        # Show dialog immediately
+        button_pos = self.font_family_combo.mapToGlobal(
+            self.font_family_combo.rect().bottomLeft()
+        )
+        dialog_x = button_pos.x()
+        dialog_y = button_pos.y() + 2  # 2px gap below button
 
-        # Filter out bitmap/system fonts that cause warnings
-        filtered_families = []
-        for family in families:
-            # Skip system internal fonts (start with '.')
-            if family.startswith('.'):
-                continue
-            # Skip bitmap fonts and system fonts
-            if any(keyword in family.lower() for keyword in ['bitmap', 'dingbats', 'symbol', 'icon']):
-                continue
-            # Skip if font has no styles
-            if not font_db.styles(family):
-                continue
-            filtered_families.append(family)
-
-        families = filtered_families
-
-        current_family = self.current_style.get("font_family", "Arial")
-
-        # Build font list with localized names and deduplication
-        font_name_map = {}  # Maps display name -> actual font family
-        seen_base_names = set()  # Track base font names for deduplication
-
-        for family in families:
-            # Get localized name first
-            localized_name = self._get_localized_font_name(family)
-
-            # Normalize for deduplication: remove common suffixes to get base font name
-            base_name = family.split('(')[0].strip().lower()
-
-            # Check if we've seen this base font name before
-            is_duplicate = False
-            for seen_base in seen_base_names:
-                # If one contains the other, they're likely variants of the same font
-                if base_name in seen_base or seen_base in base_name:
-                    is_duplicate = True
-                    break
-
-            if not is_duplicate:
-                seen_base_names.add(base_name)
-                font_name_map[localized_name] = family
-
-                from PySide6.QtWidgets import QListWidgetItem
-                item = QListWidgetItem(localized_name)
-                item.setFont(QFont(family))  # Use actual font for rendering
-                font_list.addItem(item)
-
-                if family == current_family:
-                    font_list.setCurrentItem(item)
-
-        # Double-click to select
-        def on_item_double_clicked(item):
-            display_name = item.text()
-            actual_family = font_name_map.get(display_name, display_name)
-            self._set_font_family(actual_family)
-            dialog.accept()
-
-        font_list.itemDoubleClicked.connect(on_item_double_clicked)
-
-        # Position dialog to the right of the font button
-        button_pos = self.font_family_combo.mapToGlobal(self.font_family_combo.rect().topLeft())
-        button_width = self.font_family_combo.width()
-        dialog_x = button_pos.x() + button_width + 4  # 4px gap to the right
-        dialog_y = button_pos.y()  # Align top edges
-
-        # Show dialog first, then move it (to avoid Qt's automatic positioning)
         dialog.show()
         dialog.move(dialog_x, dialog_y)
         dialog.raise_()
         dialog.activateWindow()
+        dialog.setFocus()
 
-        # Click outside to close
-        dialog.setMouseTracking(True)
-        def on_mouse_press(event):
-            if event.button() == Qt.LeftButton:
-                dialog.reject()
-        dialog.mousePressEvent = on_mouse_press
+        # Populate fonts from cache (instant!)
+        self._populate_fonts_from_cache(font_list, dialog)
+
+    def _populate_fonts_from_cache(self, font_list, dialog):
+        """Populate font list from pre-loaded cache."""
+        from PySide6.QtGui import QFont
+        from PySide6.QtWidgets import QListWidget, QListWidgetItem
+
+        # Check if cache is ready
+        if self._font_data_cache is None:
+            # Cache not ready yet, wait for it
+            return
+
+        items_data, font_name_map = self._font_data_cache
+        current_family = self.current_style.get("font_family", "Arial")
+
+        # Track last hovered item to avoid redundant updates
+        last_hovered_item = [None]
+
+        # Hover to set focus (with deduplication)
+        def on_item_entered(item):
+            if item != last_hovered_item[0]:
+                font_list.setCurrentItem(item)
+                last_hovered_item[0] = item
+
+        font_list.itemEntered.connect(on_item_entered)
+        font_list.setMouseTracking(True)
+
+        # Single-click to select
+        def on_item_clicked(item):
+            display_name = item.text()
+            actual_family = font_name_map.get(display_name, display_name)
+            self._set_font_family(actual_family)
+            # Restore button style immediately before closing
+            self.font_family_combo.setStyleSheet(self._button_style())
+            self._font_dialog = None
+            dialog.accept()
+
+        font_list.itemClicked.connect(on_item_clicked)
 
         # ESC to close
-        dialog.keyPressEvent = lambda event: dialog.reject() if event.key() == Qt.Key_Escape else QDialog.keyPressEvent(dialog, event)
+        def on_key_press(event):
+            if event.key() == Qt.Key_Escape:
+                # Restore button style
+                self.font_family_combo.setStyleSheet(self._button_style())
+                self._font_dialog = None
+                dialog.reject()
+            else:
+                # Call base class implementation
+                type(dialog).keyPressEvent(dialog, event)
+
+        dialog.keyPressEvent = on_key_press
+
+        # Close dialog when clicking outside
+        def on_mouse_press_outside(event):
+            if event.button() == Qt.LeftButton:
+                # Restore button style
+                self.font_family_combo.setStyleSheet(self._button_style())
+                self._font_dialog = None
+                dialog.reject()
+
+        dialog.mousePressEvent = on_mouse_press_outside
+
+        # Cleanup when dialog closes
+        def cleanup_on_close():
+            self.font_family_combo.setStyleSheet(self._button_style())
+            self._font_dialog = None
+
+        dialog.finished.connect(cleanup_on_close)
+
+        # Populate the list from cache
+        font_list.clear()
+        current_item = None
+        for display_name, actual_family, render_family in items_data:
+            item = QListWidgetItem(display_name)
+            item.setFont(QFont(render_family))
+            font_list.addItem(item)
+
+            if actual_family == current_family:
+                font_list.setCurrentItem(item)
+                current_item = item
+
+        # Scroll to current font at the top of the view
+        if current_item:
+            font_list.scrollToItem(current_item, QListWidget.PositionAtTop)
+
+        dialog.keyPressEvent = on_key_press
+
+        # Close dialog when clicking outside
+        def on_mouse_press(event):
+            if event.button() == Qt.LeftButton:
+                # Restore button style
+                self.font_family_combo.setStyleSheet(self._button_style())
+                self._font_dialog = None
+                dialog.reject()
+
+        dialog.mousePressEvent = on_mouse_press
+
+        # Cleanup when dialog closes (handles ESC, focus loss, and click)
+        def cleanup_and_restore():
+            # Restore button style using the original method
+            self.font_family_combo.setStyleSheet(self._button_style())
+            self._font_dialog = None
+
+        # Connect to both accepted and rejected to handle all close scenarios
+        dialog.finished.connect(cleanup_and_restore)
+
+        # Position dialog below the font button (like QMenu)
+        button_pos = self.font_family_combo.mapToGlobal(
+            self.font_family_combo.rect().bottomLeft()
+        )
+        dialog_x = button_pos.x()
+        dialog_y = button_pos.y() + 2  # 2px gap below button
+
+        # Show dialog first, then move it
+        dialog.show()
+        dialog.move(dialog_x, dialog_y)
+        dialog.raise_()
+        dialog.activateWindow()
+        dialog.setFocus()
 
         # Show dialog
         dialog.exec()

@@ -117,9 +117,8 @@ class DefaultLayout(BaseLayout):
                 root_node, focused_node_id
             )
 
-        # Sort children by sort_weight (user-defined order) before balancing
-        # This ensures user's manual adjustments are preserved
-        children = sorted(root_node.children, key=lambda n: n.sort_weight)
+        # Children order is preserved from the children list
+        children = root_node.children
 
         # Balance distribution: intelligently assign nodes to left/right for height balance
         left_children, right_children = self._balance_branches(
@@ -531,9 +530,7 @@ class DefaultLayout(BaseLayout):
 
             # Layout children if any
             if node.children:
-                # Sort children by sort_weight before layout
-                sorted_children = sorted(node.children, key=lambda n: n.sort_weight)
-                self._layout_side(sorted_children, node, canvas_height, direction)
+                self._layout_side(node.children, node, canvas_height, direction)
 
             return
 
@@ -581,9 +578,7 @@ class DefaultLayout(BaseLayout):
             if node.children:
                 # Recursively layout children using _layout_side (checks for complex branches)
                 # The parent of node.children is 'node', so we pass 'node' directly
-                # Sort children by sort_weight before layout
-                sorted_children = sorted(node.children, key=lambda n: n.sort_weight)
-                self._layout_side(sorted_children, node, canvas_height, direction)
+                self._layout_side(node.children, node, canvas_height, direction)
 
             current_y += node.height + sibling_spacing
 
@@ -663,9 +658,7 @@ class DefaultLayout(BaseLayout):
             # Layout all children using _layout_side (which checks for complex branches)
             for node in nodes:
                 if node.children:
-                    # Sort children by sort_weight before layout
-                    sorted_children = sorted(node.children, key=lambda n: n.sort_weight)
-                    self._layout_side(sorted_children, node, canvas_height, direction)
+                    self._layout_side(node.children, node, canvas_height, direction)
 
             # Check for overlaps between all pairs of sibling subtrees
             for i in range(len(nodes)):
@@ -676,10 +669,10 @@ class DefaultLayout(BaseLayout):
                     # Get bounds of subtree j
                     top_j, bottom_j = self._get_branch_bounds([nodes[j]])
 
-                    # Get spacing for this depth level
-                    sibling_spacing = self._get_sibling_spacing_for_depth(
-                        nodes[0].depth
-                    )
+                    # FIX: Use child depth (nodes[i].depth + 1) for sibling spacing
+                    # because we're checking spacing between children of these nodes
+                    child_depth = nodes[i].depth + 1
+                    sibling_spacing = self._get_sibling_spacing_for_depth(child_depth)
 
                     # Check if subtree i overlaps with subtree j
                     if bottom_i + sibling_spacing > top_j:
