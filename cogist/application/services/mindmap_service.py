@@ -92,12 +92,13 @@ class MindMapService:
         assert self.root_node is not None
         return self.root_node, style_config
 
-    def save_mindmap(self, file_path: str | None = None) -> Path:
+    def save_mindmap(self, file_path: str | None = None, style_config: Any = None) -> Path:
         """
         Save the current mind map to file.
 
         Args:
             file_path: Optional path to save to. If None, uses current file.
+            style_config: Optional style configuration to save
 
         Returns:
             Path to the saved file
@@ -114,11 +115,6 @@ class MindMapService:
             if self.current_file is None:
                 raise ValueError("No file path specified and no current file")
             file_path = str(self.current_file)
-
-        # Get style config from mindmap view if available
-        style_config = None
-        if hasattr(self, '_mindmap_view') and self._mindmap_view:
-            style_config = getattr(self._mindmap_view, 'style_config', None)
 
         saved_path = self.repository.save(self.root_node, file_path, style_config)
         self.current_file = saved_path

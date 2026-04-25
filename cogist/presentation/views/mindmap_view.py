@@ -1791,7 +1791,7 @@ class MindMapView(QGraphicsView):
                     return
 
             # Use MindMapService to save (Application Layer)
-            saved_path = self.mindmap_service.save_mindmap(file_path)
+            saved_path = self.mindmap_service.save_mindmap(file_path, style_config=self.style_config)
 
             # Update current file path
             self.current_file_path = str(saved_path)
