@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-04-25
+
+### Added
+- **Built-in default template system**: Implemented complete template loading with fallback strategy
+  - Created `assets/templates/default.json` for built-in default template
+  - Added `cogist/infrastructure/utils/resources/template_loader.py` for resource loading
+  - Added `cogist/infrastructure/utils/resources/template_deserializer.py` for template deserialization
+  - Three-level fallback: user directory → built-in assets → hardcoded default
+- **Template save feature**: Save current style as reusable template
+  - Added "Save as Template" menu item in File menu
+  - Saves complete style data (node styles, colors, spacing, connectors) as single JSON file
+  - Templates stored in platform-specific directory (`~/Library/Application Support/cogist/templates/` on macOS)
+- **Configuration management**: Cross-platform config manager
+  - Added `cogist/infrastructure/utils/config_manager.py` for unified config handling
+  - Platform-aware paths: macOS (Application Support), Windows (AppData), Linux (XDG)
+  - Automatic directory creation on first use
+
+### Changed
+- **Architecture compliance**: Moved resources to Infrastructure Layer
+  - Resource loading code in `cogist/infrastructure/utils/resources/`
+  - Data files separated to project-level `assets/` directory
+  - Follows four-layer architecture design principles
+- **Serialization improvements**: Enhanced template serialization
+  - Unified serialize/deserialize functions for complete template data
+  - Reuses CGS serializer logic for consistency
+  - Supports per-depth configuration (spacing, connectors, text width)
+
+### Technical Details
+- All tests passing (96 unit tests)
+- Code quality checks passed (ruff + pyright)
+- No breaking changes, backward compatible
+
 ## [0.3.9] - 2026-04-25
 
 ### Refactored
