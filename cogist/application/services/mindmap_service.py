@@ -6,6 +6,7 @@ Coordinates between NodeService and Repository.
 """
 
 from pathlib import Path
+from typing import Any
 
 from cogist.application.commands.command_history import CommandHistory
 from cogist.application.services.node_service import NodeService
@@ -74,7 +75,7 @@ class MindMapService:
         self._is_modified = False  # New file is not modified
         return self.root_node
 
-    def load_mindmap(self, file_path: str) -> Node:
+    def load_mindmap(self, file_path: str) -> tuple[Node, Any | None]:
         """
         Load a mind map from file.
 
@@ -82,14 +83,14 @@ class MindMapService:
             file_path: Path to the .cgs file
 
         Returns:
-            The root node of the loaded mind map
+            Tuple of (root_node, style_config). style_config may be None.
         """
         root_node, style_config = self.repository.load(file_path)
         self.root_node = root_node
         self.current_file = self.repository.current_file
         self._is_modified = False  # Loaded file is not modified
         assert self.root_node is not None
-        return self.root_node
+        return self.root_node, style_config
 
     def save_mindmap(self, file_path: str | None = None) -> Path:
         """

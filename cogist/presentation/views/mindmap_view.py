@@ -1818,14 +1818,34 @@ class MindMapView(QGraphicsView):
                 return
 
             # Use MindMapService to load (Application Layer)
-            self.root_node = self.mindmap_service.load_mindmap(file_path)
+            self.root_node, loaded_style_config = self.mindmap_service.load_mindmap(file_path)
+
+            # CRITICAL: Update style_config if file contains style data
+            if loaded_style_config is not None:
+                self.style_config = loaded_style_config
 
             # Update current file path
             self.current_file_path = str(self.mindmap_service.get_current_file())
 
-            # OPTIMIZATION: Dimensions are already serialized, no need to re-measure
-            # Refresh UI
+            # CRITICAL: Re-initialize Application Layer services with new root node
+            from cogist.application.services import DragHandler
+            from cogist.presentation.adapters import QtNodeProvider
+
+            self.node_provider = QtNodeProvider(self.node_items)
+            self.drag_handler = DragHandler(self.root_node, self.node_provider)
+
+            # Clear scene and rebuild UI
+            self.scene.clear()
+            self.node_items.clear()
+            self.edge_items.clear()
+            self._create_ui_items(self.root_node)
+
+            # CRITICAL: Re-run layout algorithm to calculate correct positions
+            # This ensures proper spacing even if saved positions are outdated
             self._refresh_layout(skip_measurement=True)
+
+            # Update scene rect based on new content
+            self.scene_manager.update_from_content()
 
             # Select root node
             self._select_node_by_id(self.root_node.id)
