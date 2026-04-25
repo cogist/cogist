@@ -718,9 +718,9 @@ class NodeStyleSection(CollapsiblePanel):
                 font_list.setCurrentItem(item)
                 current_item = item
 
-        # Scroll to current font and center it in the view
+        # Scroll to current font at the top of the view
         if current_item:
-            font_list.scrollToItem(current_item, QListWidget.PositionAtCenter)
+            font_list.scrollToItem(current_item, QListWidget.PositionAtTop)
 
         dialog.keyPressEvent = on_key_press
 
