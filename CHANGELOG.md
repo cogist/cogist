@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.9] - 2026-04-25
+
+### Refactored
+- **Code simplification**: Reduced duplicate code in MindMapView through parameterization
+  - Merged `_navigate_to_left_side_child` and `_navigate_to_right_side_child` into parameterized `_navigate_to_side_child(side: str)`
+  - Simplified `_navigate_to_previous_sibling` and `_navigate_to_next_sibling` by extracting common logic to `_navigate_to_sibling(direction: str)`
+  - Extracted `_is_node_on_right_side(node_id: str)` helper method to eliminate 4 repeated position comparisons
+- **Improved maintainability**: Better adherence to DRY principle while maintaining backward compatibility
+  - Wrapper methods preserved for API stability
+  - No functional changes, pure refactoring
+  - Code reduced by ~70 lines of duplication
+
 ## [0.3.8] - 2026-04-25
 
 ### Refactored
