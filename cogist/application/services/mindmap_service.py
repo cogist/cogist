@@ -173,11 +173,12 @@ class MindMapService:
             True if undo was successful, False if nothing to undo
         """
         result = self.node_service.undo()
-        if (
-            result
-            and self.command_history.get_command_count() < self._command_count_at_save
-        ):
-            self._is_modified = False
+        if result:
+            # Check if we've returned to or before the save point
+            if self.command_history.get_command_count() <= self._command_count_at_save:
+                self._is_modified = False  # Back to saved state or before
+            else:
+                self._is_modified = True  # Still beyond save point
         return result
 
     def redo(self) -> bool:
