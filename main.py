@@ -458,42 +458,52 @@ class MainWindow(QMainWindow):
             # Get template directory
             template_dir = config_manager.get_template_directory()
 
-            # Serialize current template and color scheme
-            from cogist.domain.styles import serialize_color_scheme, serialize_template
+            # Serialize all style data into a single file
+            import json
 
-            template_data = None
-            color_scheme_data = None
+            from cogist.domain.styles import (
+                serialize_color_scheme,
+                serialize_style,
+                serialize_template,
+            )
 
+            # Build complete template data structure (same as CGS format)
+            template_data = {
+                "name": template_name,
+                "description": f"Custom template: {template_name}",
+            }
+
+            # Add MindMapStyle config (spacing, connectors, etc.)
+            if self.current_style:
+                style_config_data = serialize_style(self.current_style)
+                template_data["style_config"] = style_config_data
+
+            # Add Template (node styles)
             if self.current_style.resolved_template:
-                template_data = serialize_template(self.current_style.resolved_template)
-                template_data["name"] = template_name  # Update name
+                template_obj_data = serialize_template(self.current_style.resolved_template)
+                template_data["template"] = template_obj_data
 
+            # Add ColorScheme (colors)
             if self.current_style.resolved_color_scheme:
                 color_scheme_data = serialize_color_scheme(self.current_style.resolved_color_scheme)
-                color_scheme_data["name"] = template_name  # Update name
+                template_data["color_scheme"] = color_scheme_data
 
-            # Save template file
-            import json
-            if template_data:
-                template_file = template_dir / f"{template_name}.template.json"
-                template_file.write_text(json.dumps(template_data, indent=2, ensure_ascii=False))
-                print(f"Template saved to: {template_file}")
-
-            # Save color scheme file
-            if color_scheme_data:
-                color_file = template_dir / f"{template_name}.color.json"
-                color_file.write_text(json.dumps(color_scheme_data, indent=2, ensure_ascii=False))
-                print(f"Color scheme saved to: {color_file}")
+            # Save as single JSON file
+            template_file = template_dir / f"{template_name}.json"
+            template_file.write_text(json.dumps(template_data, indent=2, ensure_ascii=False))
+            print(f"Template saved to: {template_file}")
 
             # Show success message
             QMessageBox.information(
                 self,
                 "Success",
-                f"Template '{template_name}' saved successfully!\n\nLocation: {template_dir}"
+                f"Template '{template_name}' saved successfully!\n\nLocation: {template_dir}\nFile: {template_name}.json"
             )
 
         except Exception as e:
             print(f"Error saving template: {e}")
+            import traceback
+            traceback.print_exc()
             QMessageBox.critical(
                 self,
                 "Error",
