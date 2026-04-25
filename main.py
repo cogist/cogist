@@ -13,7 +13,9 @@ import os
 import sys
 
 # Suppress Qt/macOS warnings at the environment level
-os.environ['QT_LOGGING_RULES'] = '*.debug=false;qt.scenegraph=false;qt.qpa.keymapper=false;qt.qpa.input=false'
+os.environ["QT_LOGGING_RULES"] = (
+    "*.debug=false;qt.scenegraph=false;qt.qpa.keymapper=false;qt.qpa.input=false"
+)
 
 from PySide6.QtCore import Qt, qInstallMessageHandler
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
@@ -33,13 +35,18 @@ def qt_message_handler(_msg_type, _context, message):
     """Suppress Qt/macOS warning messages."""
     msg_str = str(message)
     # Suppress keyboard mapping warnings
-    if 'qt.qpa.keymapper' in msg_str.lower() or 'Cocoa' in msg_str or 'Carbon' in msg_str:
+    if (
+        "qt.qpa.keymapper" in msg_str.lower()
+        or "Cocoa" in msg_str
+        or "Carbon" in msg_str
+    ):
         return
     # Suppress macOS IMKC warnings
-    if 'IMKC' in msg_str or 'mach port' in msg_str.lower():
+    if "IMKC" in msg_str or "mach port" in msg_str.lower():
         return
     # Print other messages to stderr
-    sys.stderr.write(f'{msg_str}\n')
+    sys.stderr.write(f"{msg_str}\n")
+
 
 # Install the message handler
 qInstallMessageHandler(qt_message_handler)
@@ -53,11 +60,13 @@ class MainWindow(QMainWindow):
 
         # Register this window in the global application context
         from cogist.application.services import get_app_context
+
         app_context = get_app_context()
         app_context.set_main_window(self)
 
         # Initialize Application Layer service
         from cogist.application.services import MindMapService
+
         self.mindmap_service = MindMapService()
 
         # Initialize style system
@@ -70,8 +79,7 @@ class MainWindow(QMainWindow):
 
         # Create mind map view with style configuration and service
         self.mindmap_view = MindMapView(
-            style_config=self.current_style,
-            mindmap_service=self.mindmap_service
+            style_config=self.current_style, mindmap_service=self.mindmap_service
         )
 
         # Create Activity Bar (left sidebar)
@@ -430,8 +438,12 @@ class MainWindow(QMainWindow):
     def _undo(self):
         """Undo the last operation."""
         # Check what type of command we're undoing
-        last_command = self.mindmap_service.node_service.command_history.peek_last_undo_command()
-        is_add_node_command = last_command and type(last_command).__name__ == "AddNodeCommand"
+        last_command = (
+            self.mindmap_service.node_service.command_history.peek_last_undo_command()
+        )
+        is_add_node_command = (
+            last_command and type(last_command).__name__ == "AddNodeCommand"
+        )
 
         # Save selection state BEFORE undo
         node_id_before_undo = self.mindmap_view.selected_node_id
@@ -448,14 +460,22 @@ class MainWindow(QMainWindow):
 
         # If undoing an add command, save focus info BEFORE undo
         undo_delete_focus_id = None
-        if is_add_node_command and last_command is not None and \
-           hasattr(last_command, 'new_node') and last_command.new_node:
+        if (
+            is_add_node_command
+            and last_command is not None
+            and hasattr(last_command, "new_node")
+            and last_command.new_node
+        ):
             node_to_delete = last_command.new_node
             parent_node = node_to_delete.parent
 
             if parent_node:
                 # Calculate which sibling to focus on after deletion (before undo removes the node)
-                undo_delete_focus_id = self.mindmap_view._calculate_next_focus_after_deletion(node_to_delete, parent_node)
+                undo_delete_focus_id = (
+                    self.mindmap_view._calculate_next_focus_after_deletion(
+                        node_to_delete, parent_node
+                    )
+                )
 
         # Use MindMapService to undo (Application Layer)
         if self.mindmap_service.undo():
@@ -463,7 +483,7 @@ class MainWindow(QMainWindow):
             self.mindmap_view._refresh_layout(
                 skip_measurement=True,
                 saved_selection_id=node_id_before_undo,
-                parent_id=parent_id_before_undo
+                parent_id=parent_id_before_undo,
             )
 
             # Scroll to appropriate node based on command type
@@ -479,17 +499,25 @@ class MainWindow(QMainWindow):
                     selected_item = self.mindmap_view.node_items[undo_delete_focus_id]
                     selected_item.setSelected(True)
                     self.mindmap_view.centerOn(selected_item)
-            elif self.mindmap_view.selected_node_id and \
-                 self.mindmap_view.selected_node_id in self.mindmap_view.node_items:
+            elif (
+                self.mindmap_view.selected_node_id
+                and self.mindmap_view.selected_node_id in self.mindmap_view.node_items
+            ):
                 # Normal undo (e.g., undoing a delete), focus stays on current selection
-                selected_item = self.mindmap_view.node_items[self.mindmap_view.selected_node_id]
+                selected_item = self.mindmap_view.node_items[
+                    self.mindmap_view.selected_node_id
+                ]
                 self.mindmap_view.centerOn(selected_item)
 
     def _redo(self):
         """Redo the last undone operation."""
         # Check what type of command we're redoing
-        last_command = self.mindmap_service.node_service.command_history.peek_last_redo_command()
-        is_add_node_command = last_command and type(last_command).__name__ == "AddNodeCommand"
+        last_command = (
+            self.mindmap_service.node_service.command_history.peek_last_redo_command()
+        )
+        is_add_node_command = (
+            last_command and type(last_command).__name__ == "AddNodeCommand"
+        )
 
         # Save selection state BEFORE redo
         node_id_before_redo = self.mindmap_view.selected_node_id
@@ -510,18 +538,28 @@ class MainWindow(QMainWindow):
             self.mindmap_view._refresh_layout(
                 skip_measurement=True,
                 saved_selection_id=node_id_before_redo,
-                parent_id=parent_id_before_redo
+                parent_id=parent_id_before_redo,
             )
 
             # Scroll to appropriate node based on command type
-            if is_add_node_command and last_command is not None and \
-               hasattr(last_command, 'new_node') and last_command.new_node:
+            if (
+                is_add_node_command
+                and last_command is not None
+                and hasattr(last_command, "new_node")
+                and last_command.new_node
+            ):
                 # Redoing an add = adding a new node again, focus on the added node
-                self.mindmap_view._focus_on_node_after_addition(last_command.new_node.id)
-            elif self.mindmap_view.selected_node_id and \
-                 self.mindmap_view.selected_node_id in self.mindmap_view.node_items:
+                self.mindmap_view._focus_on_node_after_addition(
+                    last_command.new_node.id
+                )
+            elif (
+                self.mindmap_view.selected_node_id
+                and self.mindmap_view.selected_node_id in self.mindmap_view.node_items
+            ):
                 # Normal redo (e.g., redoing a delete), focus stays on current selection
-                selected_item = self.mindmap_view.node_items[self.mindmap_view.selected_node_id]
+                selected_item = self.mindmap_view.node_items[
+                    self.mindmap_view.selected_node_id
+                ]
                 self.mindmap_view.centerOn(selected_item)
 
     def _add_child(self):
@@ -618,5 +656,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

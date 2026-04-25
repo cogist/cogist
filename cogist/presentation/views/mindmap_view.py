@@ -756,6 +756,10 @@ class MindMapView(QGraphicsView):
                     if child.id in self.node_items else 0
                 )
 
+                # Update sort_weight for all children based on their new order
+                for index, child in enumerate(new_parent.children):
+                    child.sort_weight = float(index)
+
                 # If crossed sides, flip entire subtree's is_right_side
                 if is_cross_side:
                     # Get the side from the new parent's NodeItem
