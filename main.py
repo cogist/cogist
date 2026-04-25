@@ -69,10 +69,39 @@ class MainWindow(QMainWindow):
 
         self.mindmap_service = MindMapService()
 
-        # Initialize style system
+        # Initialize style system with fallback strategy
         from cogist.domain.styles import templates
 
-        self.current_style = templates.create_default_template()
+        # Strategy 1: Try user's saved default template
+        from cogist.infrastructure.utils import config_manager
+        from cogist.infrastructure.utils.resources import (
+            template_deserializer,
+            template_loader,
+        )
+        template_dir = config_manager.get_template_directory()
+        user_default = template_dir / "default.json"
+
+        if user_default.exists():
+            try:
+                import json
+                user_data = json.loads(user_default.read_text(encoding='utf-8'))
+                self.current_style = template_deserializer.deserialize_complete_template(user_data)
+                print(f"Loaded user default template from: {user_default}")
+            except Exception as e:
+                print(f"Failed to load user default template: {e}, falling back to built-in")
+                self.current_style = templates.create_default_template()
+        else:
+            # Strategy 2: Try built-in default template
+            builtin_data = template_loader.get_builtin_template("default")
+            if builtin_data:
+                self.current_style = template_deserializer.deserialize_complete_template(builtin_data)
+                # Save to user directory for future use
+                template_loader.save_template_to_user_dir(builtin_data, "default")
+                print("Loaded built-in default template and saved to user directory")
+            else:
+                # Strategy 3: Fallback to hardcoded default
+                self.current_style = templates.create_default_template()
+                print("Using hardcoded default template")
 
         # Apply global styles
         self._apply_global_styles()
