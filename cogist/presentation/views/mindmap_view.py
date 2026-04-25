@@ -120,8 +120,10 @@ class MindMapView(QGraphicsView):
         self.node_items.clear()
         self.edge_items.clear()
 
-        # Reset command history
-        self.command_history = CommandHistory()
+        # CRITICAL: Reset Application Layer service state
+        self.mindmap_service.command_history.clear()
+        self.mindmap_service._command_count_at_save = 0
+        # Note: is_modified will be reset by create_new_mindmap()
 
         # Create sample data (this will also select the root node)
         self.root_node = self._create_sample_data()
@@ -755,6 +757,10 @@ class MindMapView(QGraphicsView):
                     key=lambda child: self.node_items[child.id].scenePos().y()
                     if child.id in self.node_items else 0
                 )
+
+                # Update sort_weight for all children based on their new order
+                for index, child in enumerate(new_parent.children):
+                    child.sort_weight = float(index)
 
                 # If crossed sides, flip entire subtree's is_right_side
                 if is_cross_side:
@@ -1787,7 +1793,7 @@ class MindMapView(QGraphicsView):
                     return
 
             # Use MindMapService to save (Application Layer)
-            saved_path = self.mindmap_service.save_mindmap(file_path)
+            saved_path = self.mindmap_service.save_mindmap(file_path, style_config=self.style_config)
 
             # Update current file path
             self.current_file_path = str(saved_path)
@@ -1801,6 +1807,29 @@ class MindMapView(QGraphicsView):
 
     def _open_file(self):
         """Load mind map from file."""
+        # CRITICAL: Check for unsaved changes before opening new file
+        if self.mindmap_service.is_modified():
+            reply = QMessageBox.warning(
+                self,
+                "Unsaved Changes",
+                "The current mind map has unsaved changes.\n\nDo you want to save before opening?",
+                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                QMessageBox.Save,
+            )
+
+            if reply == QMessageBox.Save:
+                # Save current file first
+                self._save_file()
+                # If user cancelled the save dialog, abort opening
+                if not self.mindmap_service.is_modified():
+                    pass  # Save succeeded, continue
+                else:
+                    return  # Save was cancelled
+            elif reply == QMessageBox.Discard:
+                pass  # Discard changes, continue
+            else:
+                return  # Cancelled, abort opening
+
         try:
             # Get file path from user
             file_path, _ = QFileDialog.getOpenFileName(
@@ -1814,14 +1843,34 @@ class MindMapView(QGraphicsView):
                 return
 
             # Use MindMapService to load (Application Layer)
-            self.root_node = self.mindmap_service.load_mindmap(file_path)
+            self.root_node, loaded_style_config = self.mindmap_service.load_mindmap(file_path)
+
+            # CRITICAL: Update style_config if file contains style data
+            if loaded_style_config is not None:
+                self.style_config = loaded_style_config
 
             # Update current file path
             self.current_file_path = str(self.mindmap_service.get_current_file())
 
-            # OPTIMIZATION: Dimensions are already serialized, no need to re-measure
-            # Refresh UI
+            # CRITICAL: Re-initialize Application Layer services with new root node
+            from cogist.application.services import DragHandler
+            from cogist.presentation.adapters import QtNodeProvider
+
+            self.node_provider = QtNodeProvider(self.node_items)
+            self.drag_handler = DragHandler(self.root_node, self.node_provider)
+
+            # Clear scene and rebuild UI
+            self.scene.clear()
+            self.node_items.clear()
+            self.edge_items.clear()
+            self._create_ui_items(self.root_node)
+
+            # CRITICAL: Re-run layout algorithm to calculate correct positions
+            # This ensures proper spacing even if saved positions are outdated
             self._refresh_layout(skip_measurement=True)
+
+            # Update scene rect based on new content
+            self.scene_manager.update_from_content()
 
             # Select root node
             self._select_node_by_id(self.root_node.id)

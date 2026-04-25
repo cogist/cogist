@@ -117,6 +117,10 @@ class DefaultLayout(BaseLayout):
                 root_node, focused_node_id
             )
 
+        # Sort children by sort_weight (user-defined order) before balancing
+        # This ensures user's manual adjustments are preserved
+        children = sorted(root_node.children, key=lambda n: n.sort_weight)
+
         # Balance distribution: intelligently assign nodes to left/right for height balance
         left_children, right_children = self._balance_branches(
             children, locked_side_child, parent_node=root_node
@@ -527,7 +531,9 @@ class DefaultLayout(BaseLayout):
 
             # Layout children if any
             if node.children:
-                self._layout_side(node.children, node, canvas_height, direction)
+                # Sort children by sort_weight before layout
+                sorted_children = sorted(node.children, key=lambda n: n.sort_weight)
+                self._layout_side(sorted_children, node, canvas_height, direction)
 
             return
 
@@ -575,7 +581,9 @@ class DefaultLayout(BaseLayout):
             if node.children:
                 # Recursively layout children using _layout_side (checks for complex branches)
                 # The parent of node.children is 'node', so we pass 'node' directly
-                self._layout_side(node.children, node, canvas_height, direction)
+                # Sort children by sort_weight before layout
+                sorted_children = sorted(node.children, key=lambda n: n.sort_weight)
+                self._layout_side(sorted_children, node, canvas_height, direction)
 
             current_y += node.height + sibling_spacing
 
@@ -655,7 +663,9 @@ class DefaultLayout(BaseLayout):
             # Layout all children using _layout_side (which checks for complex branches)
             for node in nodes:
                 if node.children:
-                    self._layout_side(node.children, node, canvas_height, direction)
+                    # Sort children by sort_weight before layout
+                    sorted_children = sorted(node.children, key=lambda n: n.sort_weight)
+                    self._layout_side(sorted_children, node, canvas_height, direction)
 
             # Check for overlaps between all pairs of sibling subtrees
             for i in range(len(nodes)):

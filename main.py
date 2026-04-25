@@ -13,7 +13,9 @@ import os
 import sys
 
 # Suppress Qt/macOS warnings at the environment level
-os.environ['QT_LOGGING_RULES'] = '*.debug=false;qt.scenegraph=false;qt.qpa.keymapper=false;qt.qpa.input=false'
+os.environ["QT_LOGGING_RULES"] = (
+    "*.debug=false;qt.scenegraph=false;qt.qpa.keymapper=false;qt.qpa.input=false"
+)
 
 from PySide6.QtCore import Qt, qInstallMessageHandler
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
@@ -33,13 +35,18 @@ def qt_message_handler(_msg_type, _context, message):
     """Suppress Qt/macOS warning messages."""
     msg_str = str(message)
     # Suppress keyboard mapping warnings
-    if 'qt.qpa.keymapper' in msg_str.lower() or 'Cocoa' in msg_str or 'Carbon' in msg_str:
+    if (
+        "qt.qpa.keymapper" in msg_str.lower()
+        or "Cocoa" in msg_str
+        or "Carbon" in msg_str
+    ):
         return
     # Suppress macOS IMKC warnings
-    if 'IMKC' in msg_str or 'mach port' in msg_str.lower():
+    if "IMKC" in msg_str or "mach port" in msg_str.lower():
         return
     # Print other messages to stderr
-    sys.stderr.write(f'{msg_str}\n')
+    sys.stderr.write(f"{msg_str}\n")
+
 
 # Install the message handler
 qInstallMessageHandler(qt_message_handler)
@@ -53,35 +60,69 @@ class MainWindow(QMainWindow):
 
         # Register this window in the global application context
         from cogist.application.services import get_app_context
+
         app_context = get_app_context()
         app_context.set_main_window(self)
 
         # Initialize Application Layer service
         from cogist.application.services import MindMapService
+
         self.mindmap_service = MindMapService()
 
-        # Initialize style system
+        # Initialize style system with fallback strategy
         from cogist.domain.styles import templates
 
-        self.current_style = templates.create_default_template()
+        # Strategy 1: Try user's saved default template
+        from cogist.infrastructure.utils import config_manager
+        from cogist.infrastructure.utils.resources import (
+            template_deserializer,
+            template_loader,
+        )
+        template_dir = config_manager.get_template_directory()
+        user_default = template_dir / "default.json"
+
+        if user_default.exists():
+            try:
+                import json
+                user_data = json.loads(user_default.read_text(encoding='utf-8'))
+                self.current_style = template_deserializer.deserialize_complete_template(user_data)
+                print(f"Loaded user default template from: {user_default}")
+            except Exception as e:
+                print(f"Failed to load user default template: {e}, falling back to built-in")
+                self.current_style = templates.create_default_template()
+        else:
+            # Strategy 2: Try built-in default template
+            builtin_data = template_loader.get_builtin_template("default")
+            if builtin_data:
+                self.current_style = template_deserializer.deserialize_complete_template(builtin_data)
+                # Save to user directory for future use
+                template_loader.save_template_to_user_dir(builtin_data, "default")
+                print("Loaded built-in default template and saved to user directory")
+            else:
+                # Strategy 3: Fallback to hardcoded default
+                self.current_style = templates.create_default_template()
+                print("Using hardcoded default template")
 
         # Apply global styles
         self._apply_global_styles()
 
         # Create mind map view with style configuration and service
         self.mindmap_view = MindMapView(
-            style_config=self.current_style,
-            mindmap_service=self.mindmap_service
+            style_config=self.current_style, mindmap_service=self.mindmap_service
         )
 
         # Create Activity Bar (left sidebar)
 
+        from cogist.infrastructure.utils import config_manager
         from cogist.presentation.dialogs.activity_bar import ActivityBar
         from cogist.presentation.dialogs.style_panel import StylePanel
 
         self.activity_bar = ActivityBar()
         self.activity_bar.setVisible(False)  # Hidden by default
-        self.style_panel = StylePanel(style_config=self.current_style)
+        self.style_panel = StylePanel(
+            style_config=self.current_style,
+            config_manager=config_manager
+        )
         self.style_panel.setVisible(False)  # Hidden by default
 
         # Create horizontal layout: ActivityBar | StylePanel | MindMapView
@@ -321,6 +362,13 @@ class MainWindow(QMainWindow):
 
         file_menu.addSeparator()
 
+        # Save as Template
+        save_template_action = QAction("Save as &Template...", self)
+        save_template_action.triggered.connect(self._save_as_template)
+        file_menu.addAction(save_template_action)
+
+        file_menu.addSeparator()
+
         # Exit
         exit_action = QAction("E&xit", self)
         exit_action.setShortcut("Ctrl+Q")
@@ -412,26 +460,127 @@ class MainWindow(QMainWindow):
         # This will also handle the confirmation dialog
         self._new_file()
 
-    def _new_file(self):
-        """Create a new mind map."""
-        # Ask user to confirm (in a full implementation, check for unsaved changes)
-        reply = QMessageBox.question(
+    def _save_as_template(self):
+        """Save current style as a template."""
+        from cogist.infrastructure.utils import config_manager
+
+        if not config_manager:
+            print("Warning: config_manager not available, cannot save template")
+            return
+
+        # Show dialog to get template name
+        from PySide6.QtWidgets import QInputDialog
+
+        template_name, ok = QInputDialog.getText(
             self,
-            "New Mind Map",
-            "Create a new mind map? Any unsaved changes will be lost.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            "Save as Template",
+            "Enter template name:",
+            text="My Custom Template"
         )
 
-        if reply == QMessageBox.Yes:
-            # Reinitialize the mind map view (same as __init__)
-            self.mindmap_view._initialize_new_mindmap()
+        if not ok or not template_name.strip():
+            return
+
+        template_name = template_name.strip()
+
+        try:
+            # Get template directory
+            template_dir = config_manager.get_template_directory()
+
+            # Serialize all style data into a single file
+            import json
+
+            from cogist.domain.styles import (
+                serialize_color_scheme,
+                serialize_style,
+                serialize_template,
+            )
+
+            # Build complete template data structure (same as CGS format)
+            template_data = {
+                "name": template_name,
+                "description": f"Custom template: {template_name}",
+            }
+
+            # Add MindMapStyle config (spacing, connectors, etc.)
+            if self.current_style:
+                style_config_data = serialize_style(self.current_style)
+                template_data["style_config"] = style_config_data
+
+            # Add Template (node styles)
+            if self.current_style.resolved_template:
+                template_obj_data = serialize_template(self.current_style.resolved_template)
+                template_data["template"] = template_obj_data
+
+            # Add ColorScheme (colors)
+            if self.current_style.resolved_color_scheme:
+                color_scheme_data = serialize_color_scheme(self.current_style.resolved_color_scheme)
+                template_data["color_scheme"] = color_scheme_data
+
+            # Save as single JSON file
+            template_file = template_dir / f"{template_name}.json"
+            template_file.write_text(json.dumps(template_data, indent=2, ensure_ascii=False))
+            print(f"Template saved to: {template_file}")
+
+            # Show success message
+            QMessageBox.information(
+                self,
+                "Success",
+                f"Template '{template_name}' saved successfully!\n\nLocation: {template_dir}\nFile: {template_name}.json"
+            )
+
+        except Exception as e:
+            print(f"Error saving template: {e}")
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to save template:\n{str(e)}"
+            )
+
+    def _new_file(self):
+        """Create a new mind map."""
+        # CRITICAL: Check for unsaved changes
+        if self.mindmap_service.is_modified():
+            # Check if current mind map has any content (not just root node)
+            has_content = (
+                self.mindmap_view.root_node and
+                len(self.mindmap_view.root_node.children) > 0
+            )
+
+            if has_content:
+                reply = QMessageBox.warning(
+                    self,
+                    "Unsaved Changes",
+                    "The current mind map has unsaved changes.\n\nDo you want to save before creating a new mind map?",
+                    QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                    QMessageBox.Save,
+                )
+
+                if reply == QMessageBox.Save:
+                    # Save current file first
+                    self.mindmap_view._save_file()
+                    # If save was cancelled, abort
+                    if self.mindmap_service.is_modified():
+                        return
+                elif reply == QMessageBox.Discard:
+                    pass  # Discard changes, continue
+                else:
+                    return  # Cancelled, abort
+
+        # Reinitialize the mind map view (same as __init__)
+        self.mindmap_view._initialize_new_mindmap()
 
     def _undo(self):
         """Undo the last operation."""
         # Check what type of command we're undoing
-        last_command = self.mindmap_service.node_service.command_history.peek_last_undo_command()
-        is_add_node_command = last_command and type(last_command).__name__ == "AddNodeCommand"
+        last_command = (
+            self.mindmap_service.node_service.command_history.peek_last_undo_command()
+        )
+        is_add_node_command = (
+            last_command and type(last_command).__name__ == "AddNodeCommand"
+        )
 
         # Save selection state BEFORE undo
         node_id_before_undo = self.mindmap_view.selected_node_id
@@ -448,14 +597,22 @@ class MainWindow(QMainWindow):
 
         # If undoing an add command, save focus info BEFORE undo
         undo_delete_focus_id = None
-        if is_add_node_command and last_command is not None and \
-           hasattr(last_command, 'new_node') and last_command.new_node:
+        if (
+            is_add_node_command
+            and last_command is not None
+            and hasattr(last_command, "new_node")
+            and last_command.new_node
+        ):
             node_to_delete = last_command.new_node
             parent_node = node_to_delete.parent
 
             if parent_node:
                 # Calculate which sibling to focus on after deletion (before undo removes the node)
-                undo_delete_focus_id = self.mindmap_view._calculate_next_focus_after_deletion(node_to_delete, parent_node)
+                undo_delete_focus_id = (
+                    self.mindmap_view._calculate_next_focus_after_deletion(
+                        node_to_delete, parent_node
+                    )
+                )
 
         # Use MindMapService to undo (Application Layer)
         if self.mindmap_service.undo():
@@ -463,7 +620,7 @@ class MainWindow(QMainWindow):
             self.mindmap_view._refresh_layout(
                 skip_measurement=True,
                 saved_selection_id=node_id_before_undo,
-                parent_id=parent_id_before_undo
+                parent_id=parent_id_before_undo,
             )
 
             # Scroll to appropriate node based on command type
@@ -479,17 +636,25 @@ class MainWindow(QMainWindow):
                     selected_item = self.mindmap_view.node_items[undo_delete_focus_id]
                     selected_item.setSelected(True)
                     self.mindmap_view.centerOn(selected_item)
-            elif self.mindmap_view.selected_node_id and \
-                 self.mindmap_view.selected_node_id in self.mindmap_view.node_items:
+            elif (
+                self.mindmap_view.selected_node_id
+                and self.mindmap_view.selected_node_id in self.mindmap_view.node_items
+            ):
                 # Normal undo (e.g., undoing a delete), focus stays on current selection
-                selected_item = self.mindmap_view.node_items[self.mindmap_view.selected_node_id]
+                selected_item = self.mindmap_view.node_items[
+                    self.mindmap_view.selected_node_id
+                ]
                 self.mindmap_view.centerOn(selected_item)
 
     def _redo(self):
         """Redo the last undone operation."""
         # Check what type of command we're redoing
-        last_command = self.mindmap_service.node_service.command_history.peek_last_redo_command()
-        is_add_node_command = last_command and type(last_command).__name__ == "AddNodeCommand"
+        last_command = (
+            self.mindmap_service.node_service.command_history.peek_last_redo_command()
+        )
+        is_add_node_command = (
+            last_command and type(last_command).__name__ == "AddNodeCommand"
+        )
 
         # Save selection state BEFORE redo
         node_id_before_redo = self.mindmap_view.selected_node_id
@@ -510,18 +675,28 @@ class MainWindow(QMainWindow):
             self.mindmap_view._refresh_layout(
                 skip_measurement=True,
                 saved_selection_id=node_id_before_redo,
-                parent_id=parent_id_before_redo
+                parent_id=parent_id_before_redo,
             )
 
             # Scroll to appropriate node based on command type
-            if is_add_node_command and last_command is not None and \
-               hasattr(last_command, 'new_node') and last_command.new_node:
+            if (
+                is_add_node_command
+                and last_command is not None
+                and hasattr(last_command, "new_node")
+                and last_command.new_node
+            ):
                 # Redoing an add = adding a new node again, focus on the added node
-                self.mindmap_view._focus_on_node_after_addition(last_command.new_node.id)
-            elif self.mindmap_view.selected_node_id and \
-                 self.mindmap_view.selected_node_id in self.mindmap_view.node_items:
+                self.mindmap_view._focus_on_node_after_addition(
+                    last_command.new_node.id
+                )
+            elif (
+                self.mindmap_view.selected_node_id
+                and self.mindmap_view.selected_node_id in self.mindmap_view.node_items
+            ):
                 # Normal redo (e.g., redoing a delete), focus stays on current selection
-                selected_item = self.mindmap_view.node_items[self.mindmap_view.selected_node_id]
+                selected_item = self.mindmap_view.node_items[
+                    self.mindmap_view.selected_node_id
+                ]
                 self.mindmap_view.centerOn(selected_item)
 
     def _add_child(self):
@@ -618,5 +793,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

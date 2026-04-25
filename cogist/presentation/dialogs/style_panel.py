@@ -23,9 +23,10 @@ class StylePanel(QWidget):
 
     PANEL_WIDTH = 260
 
-    def __init__(self, style_config=None, parent=None):
+    def __init__(self, style_config=None, config_manager=None, parent=None):
         super().__init__(parent)
         self.style_config = style_config
+        self.config_manager = config_manager
 
         # Set fixed width
         self.setMinimumWidth(self.PANEL_WIDTH)
@@ -41,7 +42,10 @@ class StylePanel(QWidget):
 
         # Create simple tab (default)
         self.simple_tab = SimpleStyleTab()
-        self.advanced_tab = AdvancedStyleTab(self.style_config)
+        self.advanced_tab = AdvancedStyleTab(
+            style_config=self.style_config,
+            config_manager=self.config_manager
+        )
 
         # Initially show advanced tab
         main_layout.addWidget(self.simple_tab)

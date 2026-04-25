@@ -6,6 +6,7 @@ Coordinates between NodeService and Repository.
 """
 
 from pathlib import Path
+from typing import Any
 
 from cogist.application.commands.command_history import CommandHistory
 from cogist.application.services.node_service import NodeService
@@ -74,7 +75,7 @@ class MindMapService:
         self._is_modified = False  # New file is not modified
         return self.root_node
 
-    def load_mindmap(self, file_path: str) -> Node:
+    def load_mindmap(self, file_path: str) -> tuple[Node, Any | None]:
         """
         Load a mind map from file.
 
@@ -82,20 +83,22 @@ class MindMapService:
             file_path: Path to the .cgs file
 
         Returns:
-            The root node of the loaded mind map
+            Tuple of (root_node, style_config). style_config may be None.
         """
-        self.root_node = self.repository.load(file_path)
-        self.current_file = self.repository.get_current_file()
+        root_node, style_config = self.repository.load(file_path)
+        self.root_node = root_node
+        self.current_file = self.repository.current_file
         self._is_modified = False  # Loaded file is not modified
         assert self.root_node is not None
-        return self.root_node
+        return self.root_node, style_config
 
-    def save_mindmap(self, file_path: str | None = None) -> Path:
+    def save_mindmap(self, file_path: str | None = None, style_config: Any = None) -> Path:
         """
         Save the current mind map to file.
 
         Args:
             file_path: Optional path to save to. If None, uses current file.
+            style_config: Optional style configuration to save
 
         Returns:
             Path to the saved file
@@ -112,11 +115,6 @@ class MindMapService:
             if self.current_file is None:
                 raise ValueError("No file path specified and no current file")
             file_path = str(self.current_file)
-
-        # Get style config from mindmap view if available
-        style_config = None
-        if hasattr(self, '_mindmap_view') and self._mindmap_view:
-            style_config = getattr(self._mindmap_view, 'style_config', None)
 
         saved_path = self.repository.save(self.root_node, file_path, style_config)
         self.current_file = saved_path
@@ -175,11 +173,12 @@ class MindMapService:
             True if undo was successful, False if nothing to undo
         """
         result = self.node_service.undo()
-        if (
-            result
-            and self.command_history.get_command_count() < self._command_count_at_save
-        ):
-            self._is_modified = False
+        if result:
+            # Check if we've returned to or before the save point
+            if self.command_history.get_command_count() <= self._command_count_at_save:
+                self._is_modified = False  # Back to saved state or before
+            else:
+                self._is_modified = True  # Still beyond save point
         return result
 
     def redo(self) -> bool:
@@ -190,11 +189,12 @@ class MindMapService:
             True if redo was successful, False if nothing to redo
         """
         result = self.node_service.redo()
-        if (
-            result
-            and self.command_history.get_command_count() > self._command_count_at_save
-        ):
-            self._is_modified = True
+        if result:
+            # Check if we've returned to the save point
+            if self.command_history.get_command_count() == self._command_count_at_save:
+                self._is_modified = False  # Back to saved state
+            elif self.command_history.get_command_count() > self._command_count_at_save:
+                self._is_modified = True  # Beyond save point, has unsaved changes
         return result
 
     def can_undo(self) -> bool:

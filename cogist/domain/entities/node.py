@@ -15,6 +15,13 @@ class Node:
     """
     Node entity in the domain model.
 
+    Note: For persistence, different layout algorithms may require
+    different serialization strategies. See docs/zh-CN/CGS_FILE_FORMAT.md
+    section "节点顺序持久化策略" for details.
+
+    Current strategy (v0.3.x): sort_weight for tree layout.
+    Future layouts may need: coordinates, timestamps, or custom constraints.
+
     Attributes:
         id: Unique identifier (UUID)
         text: Node content text
@@ -26,6 +33,7 @@ class Node:
         color: Node color
         is_root: Whether this is the root node
         depth: Depth in the tree (0 for root)
+        sort_weight: Sorting weight for user-defined order (tree/radial/org_chart layouts)
     """
 
     id: str
@@ -43,6 +51,10 @@ class Node:
     priority_level: PriorityLevel = PriorityLevel.LEVEL_1  # Default: Normal
     custom_style: dict | None = None  # Reserved for future node-level override
     is_locked_position: bool = False  # Lock for rebalancing (prevents moving to other side)
+
+    # Sorting weight for user-defined order (tree/radial/org_chart layouts)
+    # For other layouts, this field may be ignored or used differently
+    sort_weight: float = 0.0
 
     # Runtime attributes (not part of equality)
     _ui_item: Any = field(default=None, repr=False, init=False)

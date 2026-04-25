@@ -38,13 +38,24 @@ class CGSSerializer:
     @classmethod
     def serialize(cls, root_node_data: dict[str, Any],
                   style_config: MindMapStyle | None = None,
-                  assets: dict[str, bytes] | None = None) -> bytes:
+                  assets: dict[str, bytes] | None = None,
+                  viewport_state: dict[str, float] | None = None) -> bytes:
         """Serialize mind map to .cgs format (ZIP bytes).
+
+        IMPORTANT: When adding new layout types, update the serialization strategy!
+        See docs/zh-CN/CGS_FILE_FORMAT.md section "节点顺序持久化策略"
+
+        Current implementation assumes tree layout with sort_weight.
+        Future layouts may require:
+        - Free form: save full coordinates
+        - Timeline: save timestamps
+        - Fishbone: save branch_side information
 
         Args:
             root_node_data: Serialized node tree dictionary
             style_config: Optional MindMapStyle configuration
             assets: Optional dictionary of asset files {path: content}
+            viewport_state: Optional viewport state {center_x, center_y, zoom_level}
 
         Returns:
             ZIP file content as bytes
@@ -67,7 +78,7 @@ class CGSSerializer:
                     zf.writestr(f'assets/{asset_path}', content)
 
             # 4. Generate and write manifest
-            manifest = cls._create_manifest(root_node_data, style_config, assets)
+            manifest = cls._create_manifest(root_node_data, style_config, assets, viewport_state)
             zf.writestr('manifest.json', json.dumps(manifest, indent=2, ensure_ascii=False))
 
         return buffer.getvalue()
@@ -110,11 +121,15 @@ class CGSSerializer:
                 # 4. Read assets
                 assets = cls._read_assets(zf)
 
+                # 5. Extract viewport state from manifest (if present)
+                viewport_state = manifest_data.get('viewport')
+
                 return {
                     'nodes': nodes_data,
                     'style': style_config,
                     'assets': assets,
                     'manifest': manifest_data,
+                    'viewport': viewport_state,  # May be None
                 }
 
         except KeyError as e:
@@ -126,7 +141,8 @@ class CGSSerializer:
     def save_to_file(cls, file_path: str | Path,
                      root_node_data: dict[str, Any],
                      style_config: MindMapStyle | None = None,
-                     assets: dict[str, bytes] | None = None) -> Path:
+                     assets: dict[str, bytes] | None = None,
+                     viewport_state: dict[str, float] | None = None) -> Path:
         """Serialize and save mind map to .cgs file.
 
         Args:
@@ -134,6 +150,7 @@ class CGSSerializer:
             root_node_data: Serialized node tree dictionary
             style_config: Optional MindMapStyle configuration
             assets: Optional dictionary of asset files
+            viewport_state: Optional viewport state {center_x, center_y, zoom_level}
 
         Returns:
             Path to the saved file
@@ -145,7 +162,7 @@ class CGSSerializer:
             path = path.with_suffix('.cgs')
 
         # Serialize
-        cgs_bytes = cls.serialize(root_node_data, style_config, assets)
+        cgs_bytes = cls.serialize(root_node_data, style_config, assets, viewport_state)
 
         # Write to file
         path.write_bytes(cgs_bytes)
@@ -235,7 +252,8 @@ class CGSSerializer:
     @classmethod
     def _create_manifest(cls, root_node_data: dict[str, Any],
                          style_config: MindMapStyle | None,
-                         assets: dict[str, bytes] | None) -> dict[str, Any]:
+                         assets: dict[str, bytes] | None,
+                         viewport_state: dict[str, float] | None = None) -> dict[str, Any]:
         """Create manifest.json content."""
         now = datetime.now(UTC).isoformat()
 
@@ -259,6 +277,10 @@ class CGSSerializer:
                 'max_depth': max_depth,
             },
         }
+
+        # Add viewport state if present
+        if viewport_state:
+            manifest['viewport'] = viewport_state
 
         # Add style files if present
         if style_config:

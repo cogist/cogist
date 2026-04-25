@@ -1,5 +1,6 @@
 """Style resolver - merges templates and color schemes into final styles."""
 
+from typing import Any
 
 from .enums import NodeRole
 from .extended_styles import (
@@ -118,6 +119,9 @@ def _deep_copy_role_style(style: RoleBasedStyle) -> RoleBasedStyle:
 def serialize_style(style_config: MindMapStyle) -> dict:
     """Serialize MindMapStyle to JSON-compatible dict.
 
+    Note: Template and ColorScheme are saved separately in style/template.json
+    and style/color_scheme.json. This function only saves MindMapStyle config.
+
     Args:
         style_config: The style configuration to serialize
 
@@ -126,15 +130,44 @@ def serialize_style(style_config: MindMapStyle) -> dict:
     """
     return {
         "name": style_config.name,
-        "template_name": style_config.template_name,
-        "color_scheme_name": style_config.color_scheme_name,
+
+        # === Global spacing configuration ===
+        "parent_child_spacing": style_config.parent_child_spacing,
+        "sibling_spacing": style_config.sibling_spacing,
+
+        # === Per-depth spacing configuration ===
+        "level_spacing_by_depth": {
+            str(depth): spacing
+            for depth, spacing in style_config.level_spacing_by_depth.items()
+        },
+        "sibling_spacing_by_depth": {
+            str(depth): spacing
+            for depth, spacing in style_config.sibling_spacing_by_depth.items()
+        },
+
+        # === Per-depth connector configuration ===
+        "connector_config_by_depth": {
+            str(depth): config
+            for depth, config in style_config.connector_config_by_depth.items()
+        },
+
+        # === Per-depth text width constraints ===
+        "max_text_width_by_depth": {
+            str(depth): width
+            for depth, width in style_config.max_text_width_by_depth.items()
+        },
+
+        # === Canvas background ===
         "canvas_bg_color": style_config.canvas_bg_color,
-        "edge": serialize_edge_config(style_config.edge),
     }
 
 
 def deserialize_style(data: dict) -> MindMapStyle:
     """Deserialize MindMapStyle from JSON-compatible dict.
+
+    Note: Template and ColorScheme should be loaded separately from
+    style/template.json and style/color_scheme.json, then assigned to
+    style_config.resolved_template and style_config.resolved_color_scheme.
 
     Args:
         data: Dictionary representation from JSON
@@ -142,17 +175,30 @@ def deserialize_style(data: dict) -> MindMapStyle:
     Returns:
         MindMapStyle instance
     """
+    # Convert string keys back to int for depth-based configs
+    def convert_depth_keys(d: dict) -> dict[int, Any]:
+        return {int(k): v for k, v in d.items()}
 
     style = MindMapStyle(
         name=data.get("name", "Default"),
-        template_name=data.get("template_name", "default"),
-        color_scheme_name=data.get("color_scheme_name", "default"),
+
+        # === Global spacing configuration ===
+        parent_child_spacing=data.get("parent_child_spacing", 80.0),
+        sibling_spacing=data.get("sibling_spacing", 60.0),
+
+        # === Per-depth spacing configuration ===
+        level_spacing_by_depth=convert_depth_keys(data.get("level_spacing_by_depth", {})),
+        sibling_spacing_by_depth=convert_depth_keys(data.get("sibling_spacing_by_depth", {})),
+
+        # === Per-depth connector configuration ===
+        connector_config_by_depth=convert_depth_keys(data.get("connector_config_by_depth", {})),
+
+        # === Per-depth text width constraints ===
+        max_text_width_by_depth=convert_depth_keys(data.get("max_text_width_by_depth", {})),
+
+        # === Canvas background ===
         canvas_bg_color=data.get("canvas_bg_color", "#FFFFFF"),
     )
-
-    # Deserialize edge config
-    if "edge" in data:
-        style.edge = deserialize_edge_config(data["edge"])
 
     return style
 

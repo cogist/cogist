@@ -38,7 +38,7 @@ class AdvancedStyleTab(QWidget):
     # Panel dimensions
     PANEL_WIDTH = 260  # Original carefully designed width
 
-    def __init__(self, style_config=None, parent=None):
+    def __init__(self, style_config=None, config_manager=None, parent=None):
         super().__init__(parent)
 
         # Set initial width (fixed, non-resizable)
@@ -49,6 +49,9 @@ class AdvancedStyleTab(QWidget):
         self.style_config = style_config
         if not self.style_config:
             raise ValueError("style_config is required - panel must have access to global style data")
+
+        # Store reference to config manager
+        self.config_manager = config_manager
 
         self.current_layer = "canvas"
 

@@ -58,11 +58,6 @@ def create_test_node_data() -> dict:
 
 def create_test_style_config() -> MindMapStyle:
     """Create sample style configuration for testing."""
-    style = MindMapStyle(
-        template_name="test",
-        color_scheme_name="test",
-    )
-
     # Create template
     template = Template(
         name="test",
@@ -94,7 +89,8 @@ def create_test_style_config() -> MindMapStyle:
         },
     )
 
-    # Set resolved references
+    # Create style config with resolved references
+    style = MindMapStyle(name="Test Style")
     style.resolved_template = template
     style.resolved_color_scheme = color_scheme
 
@@ -132,7 +128,7 @@ def test_serialize_with_style():
     assert 'nodes' in result
     assert 'style' in result
     assert result['nodes']['root']['id'] == 'node_001'
-    assert result['style'].template_name == 'test'
+    assert result['style'].resolved_template.name == 'test'
 
     print("✅ Serialize with style test passed")
 
@@ -187,7 +183,7 @@ def test_save_and_load_file():
 
         # Verify
         assert result['nodes']['root']['id'] == 'node_001'
-        assert result['style'].template_name == 'test'
+        assert result['style'].resolved_template.name == 'test'
         assert result['manifest']['metadata']['node_count'] == 3
 
         print("✅ Save and load file test passed")
@@ -286,8 +282,6 @@ def test_round_trip_preserves_data():
     assert loaded_root['position'] == original_root['position']
 
     # Verify style preserved
-    assert result['style'].template_name == style_config.template_name
-    assert result['style'].color_scheme_name == style_config.color_scheme_name
     assert result['style'].resolved_template.name == "test"
     assert result['style'].resolved_color_scheme.name == "test"
 
