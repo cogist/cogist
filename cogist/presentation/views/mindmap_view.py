@@ -1807,26 +1807,33 @@ class MindMapView(QGraphicsView):
         """Load mind map from file."""
         # CRITICAL: Check for unsaved changes before opening new file
         if self.mindmap_service.is_modified:
-            reply = QMessageBox.warning(
-                self,
-                "Unsaved Changes",
-                "The current mind map has unsaved changes.\n\nDo you want to save before opening?",
-                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
-                QMessageBox.Save,
+            # Check if current mind map has any content (not just root node)
+            has_content = (
+                self.root_node and
+                len(self.root_node.children) > 0
             )
 
-            if reply == QMessageBox.Save:
-                # Save current file first
-                self._save_file()
-                # If user cancelled the save dialog, abort opening
-                if not self.mindmap_service.is_modified:
-                    pass  # Save succeeded, continue
+            if has_content:
+                reply = QMessageBox.warning(
+                    self,
+                    "Unsaved Changes",
+                    "The current mind map has unsaved changes.\n\nDo you want to save before opening?",
+                    QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                    QMessageBox.Save,
+                )
+
+                if reply == QMessageBox.Save:
+                    # Save current file first
+                    self._save_file()
+                    # If user cancelled the save dialog, abort opening
+                    if not self.mindmap_service.is_modified:
+                        pass  # Save succeeded, continue
+                    else:
+                        return  # Save was cancelled
+                elif reply == QMessageBox.Discard:
+                    pass  # Discard changes, continue
                 else:
-                    return  # Save was cancelled
-            elif reply == QMessageBox.Discard:
-                pass  # Discard changes, continue
-            else:
-                return  # Cancelled, abort opening
+                    return  # Cancelled, abort opening
 
         try:
             # Get file path from user
