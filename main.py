@@ -423,7 +423,7 @@ class MainWindow(QMainWindow):
     def _new_file(self):
         """Create a new mind map."""
         # CRITICAL: Check for unsaved changes
-        if self.mindmap_service.is_modified:
+        if self.mindmap_service.is_modified():
             # Check if current mind map has any content (not just root node)
             has_content = (
                 self.mindmap_view.root_node and
@@ -443,7 +443,7 @@ class MainWindow(QMainWindow):
                     # Save current file first
                     self.mindmap_view._save_file()
                     # If save was cancelled, abort
-                    if self.mindmap_service.is_modified:
+                    if self.mindmap_service.is_modified():
                         return
                 elif reply == QMessageBox.Discard:
                     pass  # Discard changes, continue

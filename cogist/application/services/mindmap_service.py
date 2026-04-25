@@ -272,6 +272,11 @@ class MindMapService:
 
     def mark_modified(self) -> None:
         """Mark the mind map as modified (has unsaved changes)."""
+        import traceback
+        print("[DEBUG] mark_modified() called!")
+        print("Stack trace:")
+        for line in traceback.format_stack():
+            print(line.strip())
         self._is_modified = True
 
     def is_modified(self) -> bool:

@@ -120,8 +120,10 @@ class MindMapView(QGraphicsView):
         self.node_items.clear()
         self.edge_items.clear()
 
-        # Reset command history
-        self.command_history = CommandHistory()
+        # CRITICAL: Reset Application Layer service state
+        self.mindmap_service.command_history.clear()
+        self.mindmap_service._command_count_at_save = 0
+        # Note: is_modified will be reset by create_new_mindmap()
 
         # Create sample data (this will also select the root node)
         self.root_node = self._create_sample_data()
@@ -1806,34 +1808,27 @@ class MindMapView(QGraphicsView):
     def _open_file(self):
         """Load mind map from file."""
         # CRITICAL: Check for unsaved changes before opening new file
-        if self.mindmap_service.is_modified:
-            # Check if current mind map has any content (not just root node)
-            has_content = (
-                self.root_node and
-                len(self.root_node.children) > 0
+        if self.mindmap_service.is_modified():
+            reply = QMessageBox.warning(
+                self,
+                "Unsaved Changes",
+                "The current mind map has unsaved changes.\n\nDo you want to save before opening?",
+                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                QMessageBox.Save,
             )
 
-            if has_content:
-                reply = QMessageBox.warning(
-                    self,
-                    "Unsaved Changes",
-                    "The current mind map has unsaved changes.\n\nDo you want to save before opening?",
-                    QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
-                    QMessageBox.Save,
-                )
-
-                if reply == QMessageBox.Save:
-                    # Save current file first
-                    self._save_file()
-                    # If user cancelled the save dialog, abort opening
-                    if not self.mindmap_service.is_modified:
-                        pass  # Save succeeded, continue
-                    else:
-                        return  # Save was cancelled
-                elif reply == QMessageBox.Discard:
-                    pass  # Discard changes, continue
+            if reply == QMessageBox.Save:
+                # Save current file first
+                self._save_file()
+                # If user cancelled the save dialog, abort opening
+                if not self.mindmap_service.is_modified():
+                    pass  # Save succeeded, continue
                 else:
-                    return  # Cancelled, abort opening
+                    return  # Save was cancelled
+            elif reply == QMessageBox.Discard:
+                pass  # Discard changes, continue
+            else:
+                return  # Cancelled, abort opening
 
         try:
             # Get file path from user
