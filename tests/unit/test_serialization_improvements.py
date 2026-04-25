@@ -1,6 +1,5 @@
 """Unit tests for serialization improvements."""
 
-from cogist.domain.entities.node import Node
 from cogist.domain.styles.style_resolver import deserialize_style, serialize_style
 from cogist.domain.styles.templates import create_default_template
 from cogist.infrastructure.io.cgs_serializer import CGSSerializer

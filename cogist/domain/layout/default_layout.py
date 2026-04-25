@@ -530,9 +530,7 @@ class DefaultLayout(BaseLayout):
 
             # Layout children if any
             if node.children:
-                # Sort children by sort_weight before layout
-                sorted_children = sorted(node.children, key=lambda n: n.sort_weight)
-                self._layout_side(sorted_children, node, canvas_height, direction)
+                self._layout_side(node.children, node, canvas_height, direction)
 
             return
 

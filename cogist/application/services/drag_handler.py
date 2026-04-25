@@ -71,14 +71,23 @@ class DragHandler:
         dragged_pos = self.node_provider.get_node_position(dragged_node_id)
         dragged_bounds = self.node_provider.get_node_bounds(dragged_node_id)
 
-        # Calculate dragged node center
+        # Calculate dragged node center X for side detection
         dragged_center_x = dragged_pos[0] + dragged_bounds[2] / 2
-        dragged_center_y = dragged_pos[1] + dragged_bounds[3] / 2
 
         # Determine current side based on root position
         root_pos = self.node_provider.get_node_position(self.root_node.id)
         root_x = root_pos[0]
         is_currently_right = dragged_center_x >= root_x
+
+        # FIX: Use correct anchor point for dragged node based on current side
+        # Right side: use LEFT edge (to connect to parent's right edge)
+        # Left side: use RIGHT edge (to connect to parent's left edge)
+        if is_currently_right:
+            dragged_anchor_x = dragged_pos[0]  # Left edge
+            dragged_anchor_y = dragged_pos[1] + dragged_bounds[3] / 2
+        else:
+            dragged_anchor_x = dragged_pos[0] + dragged_bounds[2]  # Right edge
+            dragged_anchor_y = dragged_pos[1] + dragged_bounds[3] / 2
 
         best_candidate = None
         best_distance = float('inf')
@@ -100,15 +109,17 @@ class DragHandler:
             target_pos = self.node_provider.get_node_position(node_id)
             target_bounds = self.node_provider.get_node_bounds(node_id)
 
-            # For right-side dragged node, look for nodes on the left (smaller x)
-            # For left-side dragged node, look for nodes on the right (larger x)
-            # Compare using target's top-left x coordinate (not center)
+            # FIX: Compare using anchor points, not center coordinates
+            # For right-side dragged node: find candidates whose right edge anchor is to the left of dragged node's left edge anchor
+            # For left-side dragged node: find candidates whose left edge anchor is to the right of dragged node's right edge anchor
             if is_currently_right:
-                if target_pos[0] >= dragged_center_x:
-                    continue  # Skip nodes on the right or same x
+                candidate_anchor_x = target_pos[0] + target_bounds[2]  # Candidate's right edge
+                if candidate_anchor_x >= dragged_anchor_x:
+                    continue  # Skip candidates on the right or same x
             else:
-                if target_pos[0] <= dragged_center_x:
-                    continue  # Skip nodes on the left or same x
+                candidate_anchor_x = target_pos[0]  # Candidate's left edge
+                if candidate_anchor_x <= dragged_anchor_x:
+                    continue  # Skip candidates on the left or same x
 
             # Calculate anchor point for candidate node
             # Right side: use right edge center; Left side: use left edge center
@@ -121,9 +132,9 @@ class DragHandler:
                 anchor_x = target_pos[0]
                 anchor_y = target_pos[1] + target_bounds[3] / 2
 
-            # Calculate Euclidean distance from dragged center to candidate anchor
-            dx = dragged_center_x - anchor_x
-            dy = dragged_center_y - anchor_y
+            # Calculate Euclidean distance between two anchor points
+            dx = dragged_anchor_x - anchor_x
+            dy = dragged_anchor_y - anchor_y
             distance = (dx * dx + dy * dy) ** 0.5
 
             if distance < best_distance:
