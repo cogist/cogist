@@ -642,7 +642,7 @@ class NodeStyleSection(CollapsiblePanel):
     def _populate_fonts_from_cache(self, font_list, dialog):
         """Populate font list from pre-loaded cache."""
         from PySide6.QtGui import QFont
-        from PySide6.QtWidgets import QListWidgetItem
+        from PySide6.QtWidgets import QListWidget, QListWidgetItem
 
         # Check if cache is ready
         if self._font_data_cache is None:
@@ -708,6 +708,7 @@ class NodeStyleSection(CollapsiblePanel):
 
         # Populate the list from cache
         font_list.clear()
+        current_item = None
         for display_name, actual_family, render_family in items_data:
             item = QListWidgetItem(display_name)
             item.setFont(QFont(render_family))
@@ -715,6 +716,11 @@ class NodeStyleSection(CollapsiblePanel):
 
             if actual_family == current_family:
                 font_list.setCurrentItem(item)
+                current_item = item
+
+        # Scroll to current font and center it in the view
+        if current_item:
+            font_list.scrollToItem(current_item, QListWidget.PositionAtCenter)
 
         dialog.keyPressEvent = on_key_press
 
