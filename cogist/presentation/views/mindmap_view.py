@@ -1805,6 +1805,29 @@ class MindMapView(QGraphicsView):
 
     def _open_file(self):
         """Load mind map from file."""
+        # CRITICAL: Check for unsaved changes before opening new file
+        if self.mindmap_service.is_modified:
+            reply = QMessageBox.warning(
+                self,
+                "Unsaved Changes",
+                "The current mind map has unsaved changes.\n\nDo you want to save before opening?",
+                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                QMessageBox.Save,
+            )
+
+            if reply == QMessageBox.Save:
+                # Save current file first
+                self._save_file()
+                # If user cancelled the save dialog, abort opening
+                if not self.mindmap_service.is_modified:
+                    pass  # Save succeeded, continue
+                else:
+                    return  # Save was cancelled
+            elif reply == QMessageBox.Discard:
+                pass  # Discard changes, continue
+            else:
+                return  # Cancelled, abort opening
+
         try:
             # Get file path from user
             file_path, _ = QFileDialog.getOpenFileName(

@@ -422,18 +422,36 @@ class MainWindow(QMainWindow):
 
     def _new_file(self):
         """Create a new mind map."""
-        # Ask user to confirm (in a full implementation, check for unsaved changes)
-        reply = QMessageBox.question(
-            self,
-            "New Mind Map",
-            "Create a new mind map? Any unsaved changes will be lost.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        )
+        # CRITICAL: Check for unsaved changes
+        if self.mindmap_service.is_modified:
+            # Check if current mind map has any content (not just root node)
+            has_content = (
+                self.mindmap_view.root_node and
+                len(self.mindmap_view.root_node.children) > 0
+            )
 
-        if reply == QMessageBox.Yes:
-            # Reinitialize the mind map view (same as __init__)
-            self.mindmap_view._initialize_new_mindmap()
+            if has_content:
+                reply = QMessageBox.warning(
+                    self,
+                    "Unsaved Changes",
+                    "The current mind map has unsaved changes.\n\nDo you want to save before creating a new mind map?",
+                    QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                    QMessageBox.Save,
+                )
+
+                if reply == QMessageBox.Save:
+                    # Save current file first
+                    self.mindmap_view._save_file()
+                    # If save was cancelled, abort
+                    if self.mindmap_service.is_modified:
+                        return
+                elif reply == QMessageBox.Discard:
+                    pass  # Discard changes, continue
+                else:
+                    return  # Cancelled, abort
+
+        # Reinitialize the mind map view (same as __init__)
+        self.mindmap_view._initialize_new_mindmap()
 
     def _undo(self):
         """Undo the last operation."""
