@@ -6,8 +6,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from cogist.infrastructure.utils import PLATFORM, ConfigManager
 
 
@@ -172,9 +170,11 @@ class TestConfigManager:
         manager = self._create_config_manager()
 
         # Use temp_dir to avoid path issues
-        with patch.dict(os.environ, {"APPDATA": str(self.temp_dir)}):
-            with patch.object(Path, "home", return_value=Path(self.temp_dir)):
-                template_dir = manager.get_template_directory()
+        with (
+            patch.dict(os.environ, {"APPDATA": str(self.temp_dir)}),
+            patch.object(Path, "home", return_value=Path(self.temp_dir)),
+        ):
+            template_dir = manager.get_template_directory()
 
         expected = Path(self.temp_dir) / "cogist" / "templates"
         assert template_dir == expected
@@ -208,9 +208,11 @@ class TestConfigManager:
         """Test that get_template_directory creates the folder if it doesn't exist"""
         manager = self._create_config_manager()
 
-        with patch.object(Path, "home", return_value=Path(self.temp_dir)):
-            with patch("cogist.infrastructure.utils.config_manager.PLATFORM", "Darwin"):
-                template_dir = manager.get_template_directory()
+        with (
+            patch.object(Path, "home", return_value=Path(self.temp_dir)),
+            patch("cogist.infrastructure.utils.config_manager.PLATFORM", "Darwin"),
+        ):
+            template_dir = manager.get_template_directory()
 
         assert template_dir.exists()
         assert template_dir.is_dir()

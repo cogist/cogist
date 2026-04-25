@@ -84,12 +84,16 @@ class MainWindow(QMainWindow):
 
         # Create Activity Bar (left sidebar)
 
+        from cogist.infrastructure.utils import config_manager
         from cogist.presentation.dialogs.activity_bar import ActivityBar
         from cogist.presentation.dialogs.style_panel import StylePanel
 
         self.activity_bar = ActivityBar()
         self.activity_bar.setVisible(False)  # Hidden by default
-        self.style_panel = StylePanel(style_config=self.current_style)
+        self.style_panel = StylePanel(
+            style_config=self.current_style,
+            config_manager=config_manager
+        )
         self.style_panel.setVisible(False)  # Hidden by default
 
         # Create horizontal layout: ActivityBar | StylePanel | MindMapView
