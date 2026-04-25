@@ -8,7 +8,7 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPen
 from PySide6.QtWidgets import QGraphicsPathItem
 
-from cogist.domain.connectors import (
+from cogist.presentation.connectors import (
     BezierConnector,
     ConnectorStrategy,
     OrthogonalConnector,
@@ -456,7 +456,7 @@ class EdgeItem(QGraphicsPathItem):
         """
         # Update connector shape (strategy pattern) - this is the only thing that needs updating
         if "connector_shape" in style_config:
-            from cogist.domain.connectors import SharpFirstRoundedConnector
+            from cogist.presentation.connectors import SharpFirstRoundedConnector
 
             shape_map = {
                 "bezier": BezierConnector(),

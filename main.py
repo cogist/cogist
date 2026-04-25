@@ -2538,7 +2538,7 @@ class MindMapView(QGraphicsView):
 
                 # Set the connector strategy based on config
                 connector_shape = connector_config.get('connector_shape', 'bezier')
-                from cogist.domain.connectors import (
+                from cogist.presentation.connectors import (
                     BezierConnector,
                     OrthogonalConnector,
                     RoundedOrthogonalConnector,

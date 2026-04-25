@@ -4,7 +4,7 @@ requires-python = ">=3.13"
 
 [[package]]
 name = "cogist"
-version = "0.3.6"
+version = "0.3.7"
 source = { editable = "." }
 dependencies = [
     { name = "pyobjc-framework-coretext", marker = "sys_platform == 'darwin'" },
