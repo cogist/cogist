@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.8] - 2026-04-25
+
+### Refactored
+- **Architecture refactoring**: Major architectural improvements for better maintainability
+  - Moved Connectors from `cogist/domain/connectors/` to `cogist/presentation/connectors/`
+  - Moved Borders from `cogist/domain/borders/` to `cogist/presentation/borders/`
+  - Extracted MindMapView from main.py to `cogist/presentation/views/mindmap_view.py`
+  - Domain Layer is now completely pure (no Qt dependencies)
+- **Code organization**: Improved code structure and separation of concerns
+  - main.py reduced from 2712 lines to 597 lines (78% reduction)
+  - MindMapView can now be reused in future MDI architecture
+  - Better alignment with Qt official Diagram Scene example patterns
+
+### Added
+- **Architecture compliance checking**: Automated script for architecture validation
+  - `scripts/check_architecture.sh` validates layer boundaries
+  - Checks Domain Layer purity (no Qt dependencies)
+  - Verifies correct file locations (connectors, borders, views)
+  - Validates import statements across layers
+- **AI assistant rules**: Enhanced architecture guidelines
+  - Updated `.lingma/rules/architecture.md` with latest constraints
+  - Added connectors/borders location requirements
+  - Added MindMapView extraction requirement
+  - Added layout algorithm interface specifications
+
+### Technical Details
+- All connector implementations (Bezier, Orthogonal, Straight, etc.) moved to Presentation Layer
+- All border strategies (Container, Decorative Lines) moved to Presentation Layer
+- MindMapView class (2105 lines) extracted to independent module
+- Updated all import statements in edge_item.py, node_item.py, and main.py
+- Architecture compliance: ✅ 100% PASS
+
 ## [0.3.7] - 2026-04-25
 
 ### Fixed
