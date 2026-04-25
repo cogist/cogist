@@ -111,6 +111,7 @@ class JSONSerializer:
             "position": {"x": node.position[0], "y": node.position[1]},
             "color": node.color,
             "is_root": node.is_root,
+            "depth": node.depth,  # Save depth for proper style resolution
             "children": [JSONSerializer.node_to_dict(child) for child in node.children],
         }
 
@@ -142,6 +143,7 @@ class JSONSerializer:
             ),
             color=data.get("color", "#2196F3"),
             is_root=data.get("is_root", False),
+            depth=data.get("depth", 0),  # Restore depth from saved data
         )
 
         # Set parent reference
