@@ -384,11 +384,10 @@ class NodeStyleSection(CollapsiblePanel):
         - Linux: fontconfig
         Falls back to English name if localized name not available.
         """
-        import platform
-        system = platform.system()
+        from cogist.infrastructure.utils import PLATFORM
 
         try:
-            if system == "Darwin":  # macOS
+            if PLATFORM == "Darwin":  # macOS
                 # Try to use Core Text via PyObjC
                 try:
                     from CoreText import (  # type: ignore
@@ -406,7 +405,7 @@ class NodeStyleSection(CollapsiblePanel):
                 except Exception:
                     pass  # Fall through to default
 
-            elif system == "Windows":
+            elif PLATFORM == "Windows":
                 # Try to use ctypes with GDI (simplified)
                 try:
                     import ctypes
@@ -445,7 +444,7 @@ class NodeStyleSection(CollapsiblePanel):
                 except Exception:
                     pass
 
-            elif system == "Linux":
+            elif PLATFORM == "Linux":
                 # Try to use fontconfig
                 try:
                     import subprocess
