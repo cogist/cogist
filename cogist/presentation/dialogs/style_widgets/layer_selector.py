@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,
+    QPushButton,
     QVBoxLayout,
 )
 
@@ -21,9 +22,11 @@ class LayerSelector(QFrame):
 
     Signals:
         layer_changed(str): Emitted when user selects a different layer
+        save_template_requested(): Emitted when user clicks save template button
     """
 
     layer_changed = Signal(str)
+    save_template_requested = Signal()
 
     # UI Constants
     LABEL_WIDTH = 75
@@ -126,6 +129,46 @@ class LayerSelector(QFrame):
         content_layout.addWidget(self.layer_combo, 0, 1)
 
         main_layout.addLayout(content_layout)
+
+        # Add save template button at the bottom
+        self._add_save_button(main_layout)
+
+    def _add_save_button(self, parent_layout: QVBoxLayout):
+        """Add save template button at the bottom of the selector."""
+        # Separator line
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        separator.setStyleSheet("QFrame { color: #E0E0E0; }")
+        parent_layout.addWidget(separator)
+
+        # Save template button
+        save_btn = QPushButton("💾 Save as Template")
+        save_btn.setFixedHeight(36)
+        save_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 6px 12px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3d8b40;
+            }
+        """)
+        save_btn.clicked.connect(self.save_template_requested.emit)
+
+        # Add button with margins
+        btn_layout = QVBoxLayout()
+        btn_layout.setContentsMargins(12, 8, 12, 12)
+        btn_layout.addWidget(save_btn)
+        parent_layout.addLayout(btn_layout)
 
     def _adjust_menu_width(self):
         """Adjust the menu width to match the button width."""
