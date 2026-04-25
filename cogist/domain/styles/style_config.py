@@ -16,15 +16,11 @@ from .extended_styles import ColorScheme, Template
 class MindMapStyle:
     """Complete mind map style configuration (new architecture).
 
-    Uses template and color scheme references instead of embedded styles.
+    Template and ColorScheme are saved separately in independent files.
     This is the ONLY authoritative style system - no legacy fields.
     """
 
     name: str = "Default"
-
-    # === Template and ColorScheme references (authoritative) ===
-    template_name: str = "default"
-    color_scheme_name: str = "default"
 
     # === Spacing configuration (pixel values) ===
     parent_child_spacing: float = field(default=0.0)  # Must be set in create_default_template()

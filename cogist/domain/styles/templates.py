@@ -179,8 +179,6 @@ def create_default_template() -> MindMapStyle:
     # Create MindMapStyle with all style data explicitly initialized
     style = MindMapStyle(
         name="Default",
-        template_name="default",
-        color_scheme_name="default",
         # === Global spacing configuration (fallback for non-per-depth scenarios) ===
         parent_child_spacing=80.0,  # Horizontal spacing between parent and child
         sibling_spacing=60.0,       # Vertical spacing between siblings
