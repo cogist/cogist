@@ -758,10 +758,6 @@ class MindMapView(QGraphicsView):
                     if child.id in self.node_items else 0
                 )
 
-                # Update sort_weight for all children based on their new order
-                for index, child in enumerate(new_parent.children):
-                    child.sort_weight = float(index)
-
                 # If crossed sides, flip entire subtree's is_right_side
                 if is_cross_side:
                     # Get the side from the new parent's NodeItem
@@ -1359,8 +1355,18 @@ class MindMapView(QGraphicsView):
             text=new_name
         )
 
-        if new_node is None:
+        if new_node is None or parent_node is None:
             return
+
+        # FIX: Insert new node right after current node in children list
+        # Find the index of current node
+        current_index = parent_node.children.index(current_node)
+
+        # Remove new_node from end (it was appended by add_child)
+        parent_node.children.remove(new_node)
+
+        # Insert it right after current node
+        parent_node.children.insert(current_index + 1, new_node)
 
         # Common post-add logic
         self._finalize_node_addition(new_node)
