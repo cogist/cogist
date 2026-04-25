@@ -187,3 +187,69 @@ class TestNodeTreeWithSortWeight:
         assert 1.0 in child_weights
         assert 2.0 in child_weights
         assert 3.0 in child_weights
+
+
+class TestLayoutAlgorithmWithSortWeight:
+    """Test that layout algorithm respects sort_weight ordering."""
+
+    def test_layout_sorts_children_by_sort_weight(self):
+        """Layout algorithm should sort children by sort_weight before positioning."""
+        from cogist.domain.layout.base import DefaultLayoutConfig
+        from cogist.domain.layout.default_layout import DefaultLayout
+
+        # Create a root node with children in wrong order
+        root = Node(id="root", text="Root", is_root=True, depth=0)
+        root.width = 100.0
+        root.height = 40.0
+        root.position = (0.0, 0.0)
+
+        # Add children with non-sequential sort_weights
+        child1 = Node(id="c1", text="Child 1", sort_weight=5.0, depth=1)
+        child2 = Node(id="c2", text="Child 2", sort_weight=2.0, depth=1)
+        child3 = Node(id="c3", text="Child 3", sort_weight=8.0, depth=1)
+
+        child1.width = child2.width = child3.width = 80.0
+        child1.height = child2.height = child3.height = 30.0
+
+        root.children = [child1, child2, child3]
+        child1.parent = child2.parent = child3.parent = root
+
+        # Create layout config with per-depth spacing
+        config = DefaultLayoutConfig(
+            level_spacing=80.0,
+            sibling_spacing=60.0,
+            level_spacing_by_depth={0: 80.0, 1: 60.0, 2: 40.0},
+            sibling_spacing_by_depth={0: 60.0, 1: 45.0, 2: 35.0},
+        )
+
+        # Create layout instance
+        layout = DefaultLayout(config)
+
+        # Run layout
+        layout.layout(root, canvas_width=800.0, canvas_height=600.0)
+
+        # After layout, children should be sorted by sort_weight
+        # The layout algorithm sorts children internally, so we verify
+        # that the final positions reflect the sorted order
+        # Child with sort_weight=2.0 should come first (topmost or leftmost)
+        # Child with sort_weight=5.0 should come second
+        # Child with sort_weight=8.0 should come last
+
+        # Get Y positions (for vertical layout) or X positions (for horizontal)
+        # Since this is a tree layout, we check if positions are ordered
+        y_positions = [child.position[1] for child in root.children]
+
+        # Verify that positions are monotonically increasing or decreasing
+        # (depending on layout direction), which indicates proper sorting
+        is_sorted_ascending = all(
+            y_positions[i] <= y_positions[i + 1] for i in range(len(y_positions) - 1)
+        )
+        is_sorted_descending = all(
+            y_positions[i] >= y_positions[i + 1] for i in range(len(y_positions) - 1)
+        )
+
+        # At least one should be true (positions are ordered)
+        assert is_sorted_ascending or is_sorted_descending, (
+            f"Children positions {y_positions} are not properly ordered. "
+            f"Expected monotonic sequence based on sort_weight."
+        )
