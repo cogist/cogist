@@ -413,7 +413,6 @@ class AdvancedStyleTab(QWidget):
         """Connect component signals to handlers."""
         # Layer selection
         self.layer_selector.layer_changed.connect(self._on_layer_changed)
-        self.layer_selector.save_template_requested.connect(self._on_save_template_requested)
 
         # Canvas background
         self.canvas_section.color_changed.connect(self._on_canvas_color_changed)
@@ -594,76 +593,6 @@ class AdvancedStyleTab(QWidget):
                 # No need to store it separately (bezier -> True, others -> False)
 
             self._apply_styles_to_mindmap()
-
-    def _on_save_template_requested(self):
-        """Handle save template request."""
-        if not self.config_manager:
-            print("Warning: config_manager not available, cannot save template")
-            return
-
-        # Show dialog to get template name
-        from PySide6.QtWidgets import QInputDialog
-
-        template_name, ok = QInputDialog.getText(
-            self,
-            "Save as Template",
-            "Enter template name:",
-            text="My Custom Template"
-        )
-
-        if not ok or not template_name.strip():
-            return
-
-        template_name = template_name.strip()
-
-        try:
-            # Get template directory
-            template_dir = self.config_manager.get_template_directory()
-
-            # Serialize current template and color scheme
-            assert self.style_config is not None
-            from cogist.domain.styles import serialize_color_scheme, serialize_template
-
-            template_data = None
-            color_scheme_data = None
-
-            if self.style_config.resolved_template:
-                template_data = serialize_template(self.style_config.resolved_template)
-                template_data["name"] = template_name  # Update name
-
-            if self.style_config.resolved_color_scheme:
-                color_scheme_data = serialize_color_scheme(self.style_config.resolved_color_scheme)
-                color_scheme_data["name"] = template_name  # Update name
-
-            # Save template file
-            import json
-            if template_data:
-                template_file = template_dir / f"{template_name}.template.json"
-                template_file.write_text(json.dumps(template_data, indent=2, ensure_ascii=False))
-                print(f"Template saved to: {template_file}")
-
-            # Save color scheme file
-            if color_scheme_data:
-                color_file = template_dir / f"{template_name}.color.json"
-                color_file.write_text(json.dumps(color_scheme_data, indent=2, ensure_ascii=False))
-                print(f"Color scheme saved to: {color_file}")
-
-            # Show success message
-            from PySide6.QtWidgets import QMessageBox
-            QMessageBox.information(
-                self,
-                "Success",
-                f"Template '{template_name}' saved successfully!\n\nLocation: {template_dir}"
-            )
-
-        except Exception as e:
-            print(f"Error saving template: {e}")
-            from PySide6.QtWidgets import QMessageBox
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Failed to save template:\n{str(e)}"
-            )
 
     @staticmethod
     def _auto_contrast(bg_color: str) -> str:

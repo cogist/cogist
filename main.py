@@ -333,6 +333,13 @@ class MainWindow(QMainWindow):
 
         file_menu.addSeparator()
 
+        # Save as Template
+        save_template_action = QAction("Save as &Template...", self)
+        save_template_action.triggered.connect(self._save_as_template)
+        file_menu.addAction(save_template_action)
+
+        file_menu.addSeparator()
+
         # Exit
         exit_action = QAction("E&xit", self)
         exit_action.setShortcut("Ctrl+Q")
@@ -423,6 +430,75 @@ class MainWindow(QMainWindow):
         # For SDI, Close = New (keep at least one blank document)
         # This will also handle the confirmation dialog
         self._new_file()
+
+    def _save_as_template(self):
+        """Save current style as a template."""
+        from cogist.infrastructure.utils import config_manager
+
+        if not config_manager:
+            print("Warning: config_manager not available, cannot save template")
+            return
+
+        # Show dialog to get template name
+        from PySide6.QtWidgets import QInputDialog
+
+        template_name, ok = QInputDialog.getText(
+            self,
+            "Save as Template",
+            "Enter template name:",
+            text="My Custom Template"
+        )
+
+        if not ok or not template_name.strip():
+            return
+
+        template_name = template_name.strip()
+
+        try:
+            # Get template directory
+            template_dir = config_manager.get_template_directory()
+
+            # Serialize current template and color scheme
+            from cogist.domain.styles import serialize_color_scheme, serialize_template
+
+            template_data = None
+            color_scheme_data = None
+
+            if self.current_style.resolved_template:
+                template_data = serialize_template(self.current_style.resolved_template)
+                template_data["name"] = template_name  # Update name
+
+            if self.current_style.resolved_color_scheme:
+                color_scheme_data = serialize_color_scheme(self.current_style.resolved_color_scheme)
+                color_scheme_data["name"] = template_name  # Update name
+
+            # Save template file
+            import json
+            if template_data:
+                template_file = template_dir / f"{template_name}.template.json"
+                template_file.write_text(json.dumps(template_data, indent=2, ensure_ascii=False))
+                print(f"Template saved to: {template_file}")
+
+            # Save color scheme file
+            if color_scheme_data:
+                color_file = template_dir / f"{template_name}.color.json"
+                color_file.write_text(json.dumps(color_scheme_data, indent=2, ensure_ascii=False))
+                print(f"Color scheme saved to: {color_file}")
+
+            # Show success message
+            QMessageBox.information(
+                self,
+                "Success",
+                f"Template '{template_name}' saved successfully!\n\nLocation: {template_dir}"
+            )
+
+        except Exception as e:
+            print(f"Error saving template: {e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to save template:\n{str(e)}"
+            )
 
     def _new_file(self):
         """Create a new mind map."""
