@@ -954,6 +954,11 @@ class AdvancedStyleTab(QWidget):
             f"layer_data missing 'padding_h' field: {layer_data}"
         )
 
+        # Max text width
+        assert "max_text_width" in layer_data, (
+            f"layer_data missing 'max_text_width' field: {layer_data}"
+        )
+
         # Shadow fields (complete configuration)
         assert "shadow_enabled" in layer_data, (
             f"layer_data missing 'shadow_enabled' field: {layer_data}"
@@ -988,6 +993,7 @@ class AdvancedStyleTab(QWidget):
             ),
             padding_w=layer_data["padding_w"],
             padding_h=layer_data["padding_h"],
+            max_text_width=layer_data["max_text_width"],
             font_size=layer_data["font_size"],
             font_weight=layer_data["font_weight"],
             font_style="Italic" if layer_data["font_italic"] else "Normal",
