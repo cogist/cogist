@@ -719,7 +719,9 @@ class MindMapView(QGraphicsView):
                         self._apply_subtree_positions(new_pos, should_mirror)
 
                         # Update is_right_side for entire subtree
-                        self._update_subtree_is_right_side(dragged_node, is_currently_right)
+                        self._update_subtree_is_right_side(
+                            dragged_node, is_currently_right
+                        )
 
                     # Detect potential parent using DragHandler (Application Layer)
                     from cogist.domain.value_objects.position import Position
@@ -1868,11 +1870,8 @@ class MindMapView(QGraphicsView):
 
     def resizeEvent(self, event):
         """Handle resize events to ensure sceneRect >= viewport size."""
-        print(f"[RESIZE] called: viewport={event.oldSize()} -> {event.size()}")
         super().resizeEvent(event)
-        print(f"[RESIZE] before ensure: sceneRect={self.sceneRect()}")
         self.scene_manager.ensure_minimum_size()
-        print(f"[RESIZE] after ensure: sceneRect={self.sceneRect()}")
 
     def _restore_selection_state_after_redo(self, node_id_before_redo):
         """Restore selection state after redo operation.
