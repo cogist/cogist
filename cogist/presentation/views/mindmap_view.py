@@ -321,6 +321,11 @@ class MindMapView(QGraphicsView):
                 item = self.node_items[node.id]
                 item.setPos(node.position[0], node.position[1])
 
+                # CRITICAL: Check if text content has changed (e.g., after undo/redo)
+                if item.text_content != node.text:
+                    # Text changed - need full rebuild to update text display
+                    return False
+
                 # CRITICAL: Sync domain node size to UI item
                 # Domain node width/height was updated by _measure_actual_sizes
                 if (
@@ -1713,6 +1718,7 @@ class MindMapView(QGraphicsView):
         saved_selection_id: str = None,
         parent_id: str = None,
         force_rebuild_edges: bool = False,
+        clear_locked_positions: bool = True,
     ):
         """Refresh the entire layout after changes.
 
@@ -1723,6 +1729,8 @@ class MindMapView(QGraphicsView):
             parent_id: Optional parent node ID for selection restoration
             force_rebuild_edges: If True, force complete edge rebuild instead of
                                 incremental update (needed when parent-child relationships change)
+            clear_locked_positions: If True, clear is_locked_position flags after layout.
+                                   Set to False for undo/redo of text edits.
         """
         # Save selected node ID before clearing (if not provided)
         if saved_selection_id is None:
@@ -1764,8 +1772,10 @@ class MindMapView(QGraphicsView):
             context=context,
         )
 
-        # Clear locked position flags after layout
-        if self.root_node:
+        # Clear locked position flags after layout (only when requested)
+        # This is typically done after drag operations or node additions
+        # For undo/redo of text edits, we should preserve locked states
+        if clear_locked_positions and self.root_node:
             for child in self.root_node.children:
                 child.is_locked_position = False
 

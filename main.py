@@ -652,9 +652,10 @@ class MainWindow(QMainWindow):
         last_command = (
             self.mindmap_service.node_service.command_history.peek_last_undo_command()
         )
-        is_add_node_command = (
-            last_command and type(last_command).__name__ == "AddNodeCommand"
-        )
+        command_type_name = last_command and type(last_command).__name__
+        is_add_node_command = command_type_name == "AddNodeCommand"
+        is_edit_text_command = command_type_name == "EditTextCommand"
+        is_delete_node_command = command_type_name == "DeleteNodeCommand"
 
         # Save selection state BEFORE undo
         node_id_before_undo = self.mindmap_view.selected_node_id
@@ -690,11 +691,21 @@ class MainWindow(QMainWindow):
 
         # Use MindMapService to undo (Application Layer)
         if self.mindmap_service.undo():
-            # OPTIMIZATION: Undo restores old dimensions, no need to re-measure
+            # Determine if we need to re-measure dimensions
+            # EditTextCommand: Text change affects node size -> must re-measure
+            # DeleteNodeCommand undo: Restoring nodes -> must re-measure
+            # AddNodeCommand undo: Removing nodes -> can skip (old sizes preserved)
+            needs_measurement = is_edit_text_command or is_delete_node_command
+
+            # For text edits, preserve locked position states
+            # For node structure changes (add/delete), clear locked positions
+            should_clear_locks = not is_edit_text_command
+
             self.mindmap_view._refresh_layout(
-                skip_measurement=True,
+                skip_measurement=not needs_measurement,
                 saved_selection_id=node_id_before_undo,
                 parent_id=parent_id_before_undo,
+                clear_locked_positions=should_clear_locks,
             )
 
             # Scroll to appropriate node based on command type
@@ -726,9 +737,9 @@ class MainWindow(QMainWindow):
         last_command = (
             self.mindmap_service.node_service.command_history.peek_last_redo_command()
         )
-        is_add_node_command = (
-            last_command and type(last_command).__name__ == "AddNodeCommand"
-        )
+        command_type_name = last_command and type(last_command).__name__
+        is_add_node_command = command_type_name == "AddNodeCommand"
+        is_edit_text_command = command_type_name == "EditTextCommand"
 
         # Save selection state BEFORE redo
         node_id_before_redo = self.mindmap_view.selected_node_id
@@ -744,13 +755,22 @@ class MainWindow(QMainWindow):
 
         # Use MindMapService to redo (Application Layer)
         if self.mindmap_service.redo():
-            # FIX: Redo must measure sizes because nodes are re-added to tree
-            # and their dimensions may not be correct (e.g., AddNodeCommand)
+            # Determine if we need to re-measure dimensions
+            # AddNodeCommand: New node needs measurement -> must re-measure
+            # EditTextCommand: Text change affects size -> must re-measure
+            # DeleteNodeCommand redo: Removing nodes -> can skip (sizes preserved)
+            needs_measurement = is_add_node_command or is_edit_text_command
+
+            # For text edits, preserve locked position states
+            # For node structure changes (add/delete), clear locked positions
+            should_clear_locks = not is_edit_text_command
+
             self.mindmap_view._refresh_layout(
-                skip_measurement=False,  # Changed from True to False
+                skip_measurement=not needs_measurement,
                 saved_selection_id=node_id_before_redo,
                 parent_id=parent_id_before_redo,
                 force_rebuild_edges=is_add_node_command,  # Rebuild edges for add node
+                clear_locked_positions=should_clear_locks,
             )
 
             # Scroll to appropriate node based on command type

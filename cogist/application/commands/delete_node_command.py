@@ -52,7 +52,25 @@ class DeleteNodeCommand(Command):
         Undo the command - restore the deleted node.
 
         This adds the node back to its original position in parent's children.
+        All descendants are also restored with their locked positions preserved.
         """
         if self.original_index is not None:
             # Insert back at original position
             self.parent_node.children.insert(self.original_index, self.node_to_delete)
+
+            # Restore locked position state for the node and all descendants
+            self._restore_locked_positions(self.node_to_delete)
+
+    def _restore_locked_positions(self, node: "Node") -> None:
+        """
+        Recursively restore locked position state for a node and all descendants.
+
+        Args:
+            node: The node to restore locked positions for
+        """
+        # Set locked position flag
+        node.is_locked_position = True
+
+        # Recursively process children
+        for child in node.children:
+            self._restore_locked_positions(child)
