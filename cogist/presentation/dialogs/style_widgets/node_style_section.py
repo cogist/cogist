@@ -68,6 +68,7 @@ class NodeStyleSection(CollapsiblePanel):
             "text_color": "#FFFFFF",
             "padding_w": 20,
             "padding_h": 16,
+            "max_text_width": 250,  # Default max text width
             "font_family": "Arial",
             "font_size": 14,
             "font_weight": "Normal",
@@ -266,6 +267,22 @@ class NodeStyleSection(CollapsiblePanel):
         layout.addWidget(self.padding_h_spin, row, 1)
         row += 1
 
+        # Max text width
+        max_text_width_label = QLabel("Max Width:")
+        max_text_width_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        max_text_width_label.setMinimumWidth(self.LABEL_WIDTH)
+        layout.addWidget(max_text_width_label, row, 0)
+
+        self.max_text_width_spin = QSpinBox()
+        self.max_text_width_spin.setFixedHeight(self.WIDGET_HEIGHT)
+        self.max_text_width_spin.setRange(0, 1000)  # 0 means unlimited (no wrapping)
+        self.max_text_width_spin.setValue(self.current_style.get("max_text_width", 250))
+        self.max_text_width_spin.setAlignment(Qt.AlignLeft)
+        self.max_text_width_spin.setSpecialValueText("Unlimited")  # Show "Unlimited" when value is 0
+        self.max_text_width_spin.valueChanged.connect(self._on_max_text_width_changed)
+        layout.addWidget(self.max_text_width_spin, row, 1)
+        row += 1
+
         # Font family
         font_family_label = QLabel("Font:")
         font_family_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -442,6 +459,11 @@ class NodeStyleSection(CollapsiblePanel):
         """Handle padding changes."""
         self.current_style["padding_w"] = self.padding_w_spin.value()
         self.current_style["padding_h"] = self.padding_h_spin.value()
+        self._emit_style_changed()
+
+    def _on_max_text_width_changed(self, value: int):
+        """Handle max text width change."""
+        self.current_style["max_text_width"] = value
         self._emit_style_changed()
 
     def _get_localized_font_name(self, font_family: str) -> str:
@@ -923,6 +945,7 @@ class NodeStyleSection(CollapsiblePanel):
             "text_color": self.current_style["text_color"],
             "padding_w": self.current_style["padding_w"],
             "padding_h": self.current_style["padding_h"],
+            "max_text_width": self.current_style.get("max_text_width", 250),
             "font_family": self.current_style["font_family"],
             "font_size": self.current_style["font_size"],
             "font_weight": self.current_style["font_weight"],
@@ -985,6 +1008,9 @@ class NodeStyleSection(CollapsiblePanel):
                 self.padding_w_spin.setValue(style["padding_w"])
             if "padding_h" in style:
                 self.padding_h_spin.setValue(style["padding_h"])
+
+            if "max_text_width" in style:
+                self.max_text_width_spin.setValue(style["max_text_width"])
 
             if "font_family" in style:
                 localized_name = self._get_localized_font_name(style["font_family"])
