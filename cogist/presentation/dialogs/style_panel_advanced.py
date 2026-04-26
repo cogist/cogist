@@ -532,7 +532,12 @@ class AdvancedStyleTab(QWidget):
         if self.current_layer != "canvas":
             # Update global style_config directly
             self._update_role_style_in_config(self.current_layer, style)
-            self._apply_styles_to_mindmap()
+
+            # Check if this change affects node dimensions (requires size recalculation)
+            dimension_keys = {"max_text_width", "padding_w", "padding_h", "font_size", "font_family", "font_weight", "font_italic", "font_underline", "font_strikeout"}
+            affects_dimensions = any(key in style for key in dimension_keys)
+
+            self._apply_styles_to_mindmap(force_rebuild=affects_dimensions)
 
     def _on_shadow_enabled_changed(self, enabled: bool):
         """Handle font shadow enabled state change."""
@@ -692,13 +697,18 @@ class AdvancedStyleTab(QWidget):
             }
             self.connector_section.set_style(connector_style)
 
-    def _apply_styles_to_mindmap(self):
+    def _apply_styles_to_mindmap(self, force_rebuild: bool = False):
         """Unified method to apply all styles to mindmap_view.
 
         This method:
         1. Gets mindmap_view from app_context
         2. Applies all styles (node, connector, spacing) to style_config
-        3. Refreshes the layout
+        3. Updates node items' template_style if needed
+        4. Refreshes the layout
+
+        Args:
+            force_rebuild: If True, update all node items' template_style and force full rebuild
+                          (needed when style changes affect node dimensions like max_text_width)
         """
         try:
             from cogist.application.services.app_context import get_app_context
@@ -744,9 +754,15 @@ class AdvancedStyleTab(QWidget):
                 if depth in self.style_config.sibling_spacing_by_depth:
                     mindmap_view.style_config.sibling_spacing_by_depth[depth] = self.style_config.sibling_spacing_by_depth[depth]
 
+            # CRITICAL: If style affects dimensions, update all node items' template_style first
+            if force_rebuild and hasattr(mindmap_view, 'node_items'):
+                for node_item in mindmap_view.node_items.values():
+                    if hasattr(node_item, 'update_style'):
+                        node_item.update_style(mindmap_view.style_config)
+
             # Refresh layout to apply all changes
             # CRITICAL: Set skip_measurement=False when style changes affect node dimensions
-            # (e.g., padding, font_size) so nodes recalculate sizes and layout updates
+            # (e.g., padding, font_size, max_text_width) so nodes recalculate sizes and layout updates
             if hasattr(mindmap_view, "_refresh_layout"):
                 mindmap_view._refresh_layout(skip_measurement=False)
 
