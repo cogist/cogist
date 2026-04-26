@@ -344,11 +344,12 @@ class MindMapView(QGraphicsView):
         self._update_all_edges()
 
         # Step 4: Update side flags for decorative lines
-        root_item = self.node_items.get(self.root_node.id)
-        if root_item:
-            root_x = root_item.scenePos().x()
-            for item in self.node_items.values():
-                item.is_right_side = item.scenePos().x() >= root_x
+        if self.root_node:
+            root_item = self.node_items.get(self.root_node.id)
+            if root_item:
+                root_x = root_item.scenePos().x()
+                for item in self.node_items.values():
+                    item.is_right_side = item.scenePos().x() >= root_x
 
         return True
 
@@ -674,8 +675,12 @@ class MindMapView(QGraphicsView):
                 dragged_item.setPos(new_pos)
 
                 # Get root position for side detection
-                root_item = self.node_items.get(self.root_node.id)
-                root_x = root_item.scenePos().x() if root_item else 0.0
+                root_item = None
+                if self.root_node:
+                    root_item = self.node_items.get(self.root_node.id)
+                    root_x = root_item.scenePos().x() if root_item else 0.0
+                else:
+                    root_x = 0.0
 
                 # Current side based on position (needed for cross-side detection)
                 is_currently_right = self._is_node_on_right_side(self._dragged_node_id)
@@ -686,42 +691,44 @@ class MindMapView(QGraphicsView):
                 # We need to mirror when the current side doesn't match the original side.
                 # - Original left (negative offset) + dragged to right: mirror
                 # - Original right (positive offset) + dragged to left: mirror
-                dragged_node = self._find_node_by_id(
-                    self.root_node, self._dragged_node_id
-                )
-                if dragged_node and root_item:
-                    # Check if we need to mirror based on offset signs
-                    # Get first child offset to determine original side
-                    offsets = [
-                        off
-                        for off in self._subtree_initial_positions.values()
-                        if off.x() != 0
-                    ]
-                    if offsets:
-                        # Original side: negative = left, positive = right
-                        original_is_right = offsets[0].x() > 0
-                        # Mirror if current side doesn't match original side
-                        should_mirror = is_currently_right != original_is_right
-                    else:
-                        # No children, no mirroring needed
-                        should_mirror = False
+                dragged_node = None
+                potential_parent = None
 
-                    # Apply subtree positions
-                    self._apply_subtree_positions(new_pos, should_mirror)
+                if self.root_node:
+                    dragged_node = self._find_node_by_id(
+                        self.root_node, self._dragged_node_id
+                    )
+                    if dragged_node and root_item:
+                        # Check if we need to mirror based on offset signs
+                        # Get first child offset to determine original side
+                        offsets = [
+                            off
+                            for off in self._subtree_initial_positions.values()
+                            if off.x() != 0
+                        ]
+                        if offsets:
+                            # Original side: negative = left, positive = right
+                            original_is_right = offsets[0].x() > 0
+                            # Mirror if current side doesn't match original side
+                            should_mirror = is_currently_right != original_is_right
+                        else:
+                            # No children, no mirroring needed
+                            should_mirror = False
 
-                    # Update is_right_side for entire subtree
-                    self._update_subtree_is_right_side(dragged_node, is_currently_right)
+                        # Apply subtree positions
+                        self._apply_subtree_positions(new_pos, should_mirror)
 
-                # Detect potential parent using DragHandler (Application Layer)
-                dragged_node = self._find_node_by_id(
-                    self.root_node, self._dragged_node_id
-                )
-                from cogist.domain.value_objects.position import Position
+                        # Update is_right_side for entire subtree
+                        self._update_subtree_is_right_side(dragged_node, is_currently_right)
 
-                potential_parent = self.drag_handler.detect_potential_parent(
-                    dragged_node_id=self._dragged_node_id,
-                    mouse_pos=Position(current_pos.x(), current_pos.y()),
-                )
+                    # Detect potential parent using DragHandler (Application Layer)
+                    from cogist.domain.value_objects.position import Position
+
+                    if self.drag_handler:
+                        potential_parent = self.drag_handler.detect_potential_parent(
+                            dragged_node_id=self._dragged_node_id,
+                            mouse_pos=Position(current_pos.x(), current_pos.y()),
+                        )
 
                 # FIX: Only hide old parent edge when potential parent changes
                 if (
@@ -1068,7 +1075,7 @@ class MindMapView(QGraphicsView):
             side: 'left' for left-side children (x < root_x),
                   'right' for right-side children (x >= root_x)
         """
-        if not self.root_node.children:
+        if not self.root_node or not self.root_node.children:
             return
 
         root_item = self.node_items.get(self.root_node.id)
@@ -1116,6 +1123,7 @@ class MindMapView(QGraphicsView):
             not current_node
             or not current_node.parent
             or not current_node.parent.is_root
+            or not self.root_node
         ):
             return
 
@@ -1373,6 +1381,9 @@ class MindMapView(QGraphicsView):
         item = self.node_items.get(node_id)
         if not item:
             return True  # Default to right if not found
+
+        if not self.root_node:
+            return True
 
         root_item = self.node_items.get(self.root_node.id)
         if not root_item:
@@ -1743,8 +1754,9 @@ class MindMapView(QGraphicsView):
         )
 
         # Clear locked position flags after layout
-        for child in self.root_node.children:
-            child.is_locked_position = False
+        if self.root_node:
+            for child in self.root_node.children:
+                child.is_locked_position = False
 
         # Step 3: OPTIMIZATION - Try incremental UI update first
         # This is much faster than clearing and recreating all items
@@ -1774,7 +1786,7 @@ class MindMapView(QGraphicsView):
             elif parent_id and parent_id in self.node_items:
                 # Original node was deleted, select its parent
                 self._select_node_by_id(parent_id)
-            else:
+            elif self.root_node:
                 # Fallback to root
                 self._select_node_by_id(self.root_node.id)
             # Ensure view has keyboard focus for keyboard shortcuts
@@ -2042,7 +2054,7 @@ class MindMapView(QGraphicsView):
         Distance is calculated from dragged node center to candidate's anchor point.
         """
         dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
-        if not dragged_node:
+        if not dragged_node or not self.root_node:
             return None
 
         # Determine current side based on actual position, not is_right_side property
@@ -2268,6 +2280,9 @@ class MindMapView(QGraphicsView):
 
     def _flip_subtree_side(self, node: Node, new_is_right: bool):
         """Recursively flip is_right_side and mirror X positions for entire subtree."""
+        if not self.root_node:
+            return
+
         root_item = self.node_items.get(self.root_node.id)
         if not root_item:
             return
