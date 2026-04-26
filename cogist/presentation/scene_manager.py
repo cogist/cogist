@@ -107,12 +107,24 @@ class SceneRectManager:
         vp_size = self._get_viewport_size()
         if vp_size is not None:
             vw, vh = vp_size
+
+            # Expand to fit viewport if needed
             if expanded_rect.width() < vw:
                 extra = vw - expanded_rect.width()
                 expanded_rect.adjust(-extra / 2, 0, extra / 2, 0)
             if expanded_rect.height() < vh:
                 extra = vh - expanded_rect.height()
                 expanded_rect.adjust(0, -extra / 2, 0, extra / 2)
+
+            # CRITICAL: Recenter sceneRect around content center to ensure
+            # symmetric scroll range (so compensation works in both directions)
+            content_center = expanded_rect.center()
+            final_width = max(expanded_rect.width(), vw)
+            final_height = max(expanded_rect.height(), vh)
+            expanded_rect.setLeft(content_center.x() - final_width / 2)
+            expanded_rect.setRight(content_center.x() + final_width / 2)
+            expanded_rect.setTop(content_center.y() - final_height / 2)
+            expanded_rect.setBottom(content_center.y() + final_height / 2)
 
         self.scene.setSceneRect(expanded_rect)
 
@@ -121,6 +133,9 @@ class SceneRectManager:
 
         Call this when the viewport grows (e.g., panel closes, window resizes)
         to ensure sceneRect >= viewport so scrollbars remain active.
+
+        CRITICAL: Also recenters sceneRect to keep scroll range symmetric,
+        so compensation works in both directions.
         """
         vp_size = self._get_viewport_size()
         if vp_size is None:
@@ -128,17 +143,21 @@ class SceneRectManager:
         vw, vh = vp_size
 
         current_rect = self.scene.sceneRect()
-        if current_rect.width() >= vw and current_rect.height() >= vh:
-            return
 
-        # Expand to fit viewport while keeping center position
-        new_rect = QRectF(current_rect)
-        if new_rect.width() < vw:
-            extra = vw - new_rect.width()
-            new_rect.adjust(-extra / 2, 0, extra / 2, 0)
-        if new_rect.height() < vh:
-            extra = vh - new_rect.height()
-            new_rect.adjust(0, -extra / 2, 0, extra / 2)
+        # CRITICAL: Always make sceneRect LARGER than viewport to ensure
+        # scrollbars are always active. Add extra margin for scroll range.
+        extra_margin = 500.0  # Extra space for scrolling
+        target_width = max(current_rect.width(), vw + extra_margin)
+        target_height = max(current_rect.height(), vh + extra_margin)
+
+        # Center around content
+        content_center = current_rect.center()
+        new_rect = QRectF(
+            content_center.x() - target_width / 2,
+            content_center.y() - target_height / 2,
+            target_width,
+            target_height,
+        )
 
         self.scene.setSceneRect(new_rect)
 

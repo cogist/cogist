@@ -78,23 +78,31 @@ class MainWindow(QMainWindow):
             template_deserializer,
             template_loader,
         )
+
         template_dir = config_manager.get_template_directory()
         user_default = template_dir / "default.json"
 
         if user_default.exists():
             try:
                 import json
-                user_data = json.loads(user_default.read_text(encoding='utf-8'))
-                self.current_style = template_deserializer.deserialize_complete_template(user_data)
+
+                user_data = json.loads(user_default.read_text(encoding="utf-8"))
+                self.current_style = (
+                    template_deserializer.deserialize_complete_template(user_data)
+                )
                 print(f"Loaded user default template from: {user_default}")
             except Exception as e:
-                print(f"Failed to load user default template: {e}, falling back to built-in")
+                print(
+                    f"Failed to load user default template: {e}, falling back to built-in"
+                )
                 self.current_style = templates.create_default_template()
         else:
             # Strategy 2: Try built-in default template
             builtin_data = template_loader.get_builtin_template("default")
             if builtin_data:
-                self.current_style = template_deserializer.deserialize_complete_template(builtin_data)
+                self.current_style = (
+                    template_deserializer.deserialize_complete_template(builtin_data)
+                )
                 # Save to user directory for future use
                 template_loader.save_template_to_user_dir(builtin_data, "default")
                 print("Loaded built-in default template and saved to user directory")
@@ -119,8 +127,7 @@ class MainWindow(QMainWindow):
         self.activity_bar = ActivityBar()
         self.activity_bar.setVisible(False)  # Hidden by default
         self.style_panel = StylePanel(
-            style_config=self.current_style,
-            config_manager=config_manager
+            style_config=self.current_style, config_manager=config_manager
         )
         self.style_panel.setVisible(False)  # Hidden by default
 
@@ -174,7 +181,7 @@ class MainWindow(QMainWindow):
     def _on_style_config_changed(self):
         """Handle style config change (e.g., after loading a file)."""
         # CRITICAL: Update style panel's style_config reference to match mindmap view
-        if hasattr(self, 'style_panel') and hasattr(self.style_panel, 'advanced_tab'):
+        if hasattr(self, "style_panel") and hasattr(self.style_panel, "advanced_tab"):
             self.style_panel.advanced_tab.style_config = self.mindmap_view.style_config
             # Refresh UI controls to match new style config
             self.style_panel.advanced_tab.refresh_current_layer()
@@ -350,20 +357,29 @@ class MainWindow(QMainWindow):
         if user_default.exists():
             try:
                 import json
-                user_data = json.loads(user_default.read_text(encoding='utf-8'))
-                self.current_style = template_deserializer.deserialize_complete_template(user_data)
+
+                user_data = json.loads(user_default.read_text(encoding="utf-8"))
+                self.current_style = (
+                    template_deserializer.deserialize_complete_template(user_data)
+                )
                 print(f"[New File] Loaded user default template from: {user_default}")
             except Exception as e:
-                print(f"[New File] Failed to load user default template: {e}, falling back to built-in")
+                print(
+                    f"[New File] Failed to load user default template: {e}, falling back to built-in"
+                )
                 self.current_style = templates.create_default_template()
         else:
             # Strategy 2: Try built-in default template
             builtin_data = template_loader.get_builtin_template("default")
             if builtin_data:
-                self.current_style = template_deserializer.deserialize_complete_template(builtin_data)
+                self.current_style = (
+                    template_deserializer.deserialize_complete_template(builtin_data)
+                )
                 # Save to user directory for future use
                 template_loader.save_template_to_user_dir(builtin_data, "default")
-                print("[New File] Loaded built-in default template and saved to user directory")
+                print(
+                    "[New File] Loaded built-in default template and saved to user directory"
+                )
             else:
                 # Strategy 3: Fallback to hardcoded default
                 self.current_style = templates.create_default_template()
@@ -526,10 +542,7 @@ class MainWindow(QMainWindow):
         from PySide6.QtWidgets import QInputDialog
 
         template_name, ok = QInputDialog.getText(
-            self,
-            "Save as Template",
-            "Enter template name:",
-            text="My Custom Template"
+            self, "Save as Template", "Enter template name:", text="My Custom Template"
         )
 
         if not ok or not template_name.strip():
@@ -563,35 +576,38 @@ class MainWindow(QMainWindow):
 
             # Add Template (node styles)
             if self.current_style.resolved_template:
-                template_obj_data = serialize_template(self.current_style.resolved_template)
+                template_obj_data = serialize_template(
+                    self.current_style.resolved_template
+                )
                 template_data["template"] = template_obj_data
 
             # Add ColorScheme (colors)
             if self.current_style.resolved_color_scheme:
-                color_scheme_data = serialize_color_scheme(self.current_style.resolved_color_scheme)
+                color_scheme_data = serialize_color_scheme(
+                    self.current_style.resolved_color_scheme
+                )
                 template_data["color_scheme"] = color_scheme_data
 
             # Save as single JSON file
             template_file = template_dir / f"{template_name}.json"
-            template_file.write_text(json.dumps(template_data, indent=2, ensure_ascii=False))
+            template_file.write_text(
+                json.dumps(template_data, indent=2, ensure_ascii=False)
+            )
             print(f"Template saved to: {template_file}")
 
             # Show success message
             QMessageBox.information(
                 self,
                 "Success",
-                f"Template '{template_name}' saved successfully!\n\nLocation: {template_dir}\nFile: {template_name}.json"
+                f"Template '{template_name}' saved successfully!\n\nLocation: {template_dir}\nFile: {template_name}.json",
             )
 
         except Exception as e:
             print(f"Error saving template: {e}")
             import traceback
+
             traceback.print_exc()
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Failed to save template:\n{str(e)}"
-            )
+            QMessageBox.critical(self, "Error", f"Failed to save template:\n{str(e)}")
 
     def _new_file(self):
         """Create a new mind map."""
@@ -599,8 +615,8 @@ class MainWindow(QMainWindow):
         if self.mindmap_service.is_modified():
             # Check if current mind map has any content (not just root node)
             has_content = (
-                self.mindmap_view.root_node and
-                len(self.mindmap_view.root_node.children) > 0
+                self.mindmap_view.root_node
+                and len(self.mindmap_view.root_node.children) > 0
             )
 
             if has_content:
@@ -809,28 +825,26 @@ class MainWindow(QMainWindow):
 
     def _toggle_style_panel(self):
         """Toggle style panel visibility."""
-        from PySide6.QtWidgets import QApplication
-
         is_visible = self.style_panel.isVisible()
         view = self.mindmap_view
 
-        # Record the scene point at the viewport center BEFORE the toggle.
-        # Since sceneRect >= viewport (guaranteed by SceneRectManager),
-        # scrollbars are always active and centerOn() works correctly.
-        center_scene_pos = view.mapToScene(view.viewport().rect().center())
+        # Use fixed compensation value based on actual panel width
+        COMPENSATION = 307  # Actual panel width in pixels
+
+        h_bar = view.horizontalScrollBar()
 
         if not is_visible:
+            # Opening panel: viewport shrinks
             self.style_panel.setVisible(True)
             self.activity_bar.setVisible(True)
+            # Content shifts right, scroll left to compensate
+            h_bar.setValue(h_bar.value() + COMPENSATION)
         else:
+            # Closing panel: viewport expands
             self.style_panel.setVisible(False)
             self.activity_bar.setVisible(False)
-
-        # Force Qt to process the splitter resize immediately
-        QApplication.processEvents()
-
-        # Restore the viewport center to the recorded scene position
-        view.centerOn(center_scene_pos)
+            # Content shifts left, scroll right to compensate
+            h_bar.setValue(h_bar.value() - COMPENSATION)
 
         # Update activity bar button state
         if not is_visible:
