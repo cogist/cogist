@@ -851,13 +851,28 @@ class MindMapView(QGraphicsView):
                 and dragged_node != new_parent
                 and new_parent not in dragged_node.get_all_descendants()
             ):
-                # Remove from old parent
+                # Save old parent and index BEFORE modifying
                 old_parent = dragged_node.parent
-                if old_parent:
-                    old_parent.remove_child(dragged_node)
+                old_index = (
+                    old_parent.children.index(dragged_node) if old_parent else 0
+                )
 
-                # Add to new parent
-                new_parent.add_child(dragged_node)
+                # Create and execute reparent command (Application Layer)
+                from cogist.application.commands.reparent_node_command import (
+                    ReparentNodeCommand,
+                )
+
+                command = ReparentNodeCommand(
+                    dragged_node=dragged_node,
+                    old_parent=old_parent,
+                    new_parent=new_parent,
+                    old_index=old_index,
+                    is_cross_side=is_cross_side,
+                )
+                command.execute()
+
+                # Push to command history for undo/redo
+                self.mindmap_service.node_service.command_history.push(command)
 
                 # Sort children by Y position to maintain visual order
                 new_parent.children.sort(
@@ -877,10 +892,8 @@ class MindMapView(QGraphicsView):
                             dragged_node, new_parent_item.is_right_side
                         )
 
-                # Update depths recursively
-                self._update_node_depths_recursive(dragged_node)
-
-                # Find the top-level ancestor of the dragged node and mark it as locked
+                # CRITICAL: Update the top-level node's position[0] to the new side
+                # This ensures the layout algorithm assigns it to the correct side
                 def get_top_level_ancestor(node):
                     """Get the direct child of root for this node."""
                     current = node
@@ -890,10 +903,6 @@ class MindMapView(QGraphicsView):
 
                 top_level_node = get_top_level_ancestor(dragged_node)
                 if top_level_node:
-                    top_level_node.is_locked_position = True
-
-                    # CRITICAL: Update the top-level node's position[0] to the new side
-                    # This ensures the layout algorithm assigns it to the correct side
                     # Use is_currently_right instead of new_parent's is_right_side
                     # (new_parent might be root with default is_right_side=True)
                     is_currently_right = self._is_node_on_right_side(dragged_id)
