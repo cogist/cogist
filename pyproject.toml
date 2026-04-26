@@ -1,6 +1,6 @@
 [project]
 name = "Cogist"
-version = "0.4.2"
+version = "0.4.3"
 description = "A Beautiful Mind Mapping Tool with Intelligent Layout Algorithms"
 readme = "README.md"
 requires-python = ">=3.13"

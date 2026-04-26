@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.3] - 2026-04-26
+
+### Fixed
+- **Zoom visual center**: Fixed viewport jumping during zoom in/out operations
+  - Implement smart anchor point selection (selected node > mouse position > viewport center)
+  - Apply coordinate compensation to keep anchor point stable in viewport
+  - Eliminates visual drift and jumping when zooming, especially at high magnification levels
+- **Type safety**: Added None checks for `root_node` access (12 locations)
+  - Fixes Pyright type checking errors
+  - Prevents potential AttributeError when root_node is not initialized
+
 ## [0.4.2] - 2026-04-26
 
 ### Fixed
