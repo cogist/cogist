@@ -63,6 +63,10 @@ class MindMapView(QGraphicsView):
         self.setRenderHint(QPainter.Antialiasing)
         self.setDragMode(QGraphicsView.ScrollHandDrag)
 
+        # Hide scrollbars - we handle scrolling programmatically for panel compensation
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
         # CRITICAL: Match original demo settings to prevent visual artifacts
         self.setOptimizationFlag(QGraphicsView.DontSavePainterState)
         self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
