@@ -48,10 +48,12 @@ class MindMapView(QGraphicsView):
         # Initialize scene rect manager for dynamic canvas sizing
         from cogist.presentation.scene_manager import SceneRectManager
         self.scene_manager = SceneRectManager(self.scene, default_margin=100.0)
+        self.scene_manager.set_view(self)
 
-        # Set a small initial scene rect (will be updated after layout)
-        # This prevents issues during initialization before viewport is ready
-        self.scene.setSceneRect(0, 0, 1, 1)
+        # Set initial scene rect to viewport size (will be updated after layout)
+        # This ensures scrollbars always work, which is required for panel compensation
+        # Defer until viewport is ready in showEvent
+        self._scene_initialized = False
 
         self.setScene(self.scene)
 
@@ -1763,16 +1765,27 @@ class MindMapView(QGraphicsView):
         self.ensureVisible(node_item, margin_px, margin_px)
 
     def showEvent(self, event):
-        """Handle show event to center on root node initially."""
+        """Handle show event to initialize scene and center on root node."""
         super().showEvent(event)
+
+        # Initialize scene rect from viewport on first show
+        if not self._scene_initialized:
+            self.scene_manager.initialize_from_viewport()
+            self._scene_initialized = True
 
         # Center on root node when first shown
         if hasattr(self, "root_node") and self.root_node.id in self.node_items:
-            # Temporarily use center alignment for initial positioning
-            original_alignment = self.alignment()
-            self.setAlignment(Qt.AlignCenter)
             self.centerOn(self.node_items[self.root_node.id])
-            self.setAlignment(original_alignment)
+
+    def resizeEvent(self, event):
+        """Handle resize events to ensure sceneRect >= viewport size.
+
+        When the viewport grows (e.g., window resize, panel closes),
+        we must expand sceneRect to match, otherwise scrollbars become
+        inactive and Qt's alignment offset interferes with positioning.
+        """
+        super().resizeEvent(event)
+        self.scene_manager.ensure_minimum_size()
 
     def _restore_selection_state_after_redo(self, node_id_before_redo):
         """Restore selection state after redo operation.
