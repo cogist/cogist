@@ -756,13 +756,9 @@ class AdvancedStyleTab(QWidget):
 
             # CRITICAL: If style affects dimensions, update all node items' template_style first
             if force_rebuild and hasattr(mindmap_view, 'node_items'):
-                print(f"[DEBUG] Updating {len(mindmap_view.node_items)} node items' template_style")
                 for node_item in mindmap_view.node_items.values():
                     if hasattr(node_item, 'update_style'):
-                        old_max_width = node_item.template_style.max_text_width if hasattr(node_item, 'template_style') else None
                         node_item.update_style(mindmap_view.style_config)
-                        new_max_width = node_item.template_style.max_text_width if hasattr(node_item, 'template_style') else None
-                        print(f"  Node '{node_item.text_content[:20]}': max_width {old_max_width} -> {new_max_width}")
 
             # Refresh layout to apply all changes
             # CRITICAL: Set skip_measurement=False when style changes affect node dimensions
@@ -799,8 +795,6 @@ class AdvancedStyleTab(QWidget):
                 name="Custom", description="", role_styles={}
             )
 
-        role_styles = style.resolved_template.role_styles or {}
-
         # Convert each layer to RoleBasedStyle + update ColorScheme
         for layer_name, role in layer_to_role.items():
             # Skip priority layers (critical/minor) - they use tertiary styles
@@ -810,12 +804,10 @@ class AdvancedStyleTab(QWidget):
             # Get layer data directly from global style_config
             layer_data = self._get_layer_data(layer_name)
 
-            # Build RoleBasedStyle
-            role_style = self._convert_layer_to_role_style(layer_data)
-            role_styles[role] = role_style
-
-            # Update template
-            style.resolved_template.role_styles = role_styles
+            # CRITICAL: Do NOT recreate RoleBasedStyle objects!
+            # Panel already updated the global config directly via _update_role_style_in_config.
+            # Recreating would overwrite the changes with old values.
+            # Only update color scheme here.
 
             # Update color scheme
             if not style.resolved_color_scheme:
