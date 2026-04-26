@@ -147,6 +147,8 @@ class AdvancedStyleTab(QWidget):
             # Padding
             "padding_w": role_style.padding_w,
             "padding_h": role_style.padding_h,
+            # Max text width
+            "max_text_width": role_style.max_text_width,
             # Connector - read from per-depth configuration
             "connector_type": self._get_connector_type_for_layer(layer_name),
             "connector_style": self._get_connector_style_for_layer(layer_name),
@@ -323,6 +325,10 @@ class AdvancedStyleTab(QWidget):
                 # Map boolean font_italic to string font_style
                 if hasattr(role_style, 'font_style'):
                     role_style.font_style = "Italic" if value else "Normal"
+            elif key == "max_text_width":
+                # Handle max text width update
+                if hasattr(role_style, 'max_text_width'):
+                    role_style.max_text_width = value
             elif hasattr(role_style, key):
                 setattr(role_style, key, value)
             elif key.startswith("shadow_"):
