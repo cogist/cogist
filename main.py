@@ -112,7 +112,6 @@ class MainWindow(QMainWindow):
         )
 
         # Create Activity Bar (left sidebar)
-
         from cogist.infrastructure.utils import config_manager
         from cogist.presentation.dialogs.activity_bar import ActivityBar
         from cogist.presentation.dialogs.style_panel import StylePanel
@@ -323,6 +322,47 @@ class MainWindow(QMainWindow):
                 border: none;
             }
         """)
+
+    def _reset_style_to_default(self):
+        """Reset style configuration to default using three-level fallback strategy."""
+        from cogist.domain.styles import templates
+        from cogist.infrastructure.utils import config_manager
+        from cogist.infrastructure.utils.resources import (
+            template_deserializer,
+            template_loader,
+        )
+
+        # Strategy 1: Try user's saved default template
+        template_dir = config_manager.get_template_directory()
+        user_default = template_dir / "default.json"
+
+        if user_default.exists():
+            try:
+                import json
+                user_data = json.loads(user_default.read_text(encoding='utf-8'))
+                self.current_style = template_deserializer.deserialize_complete_template(user_data)
+                print(f"[New File] Loaded user default template from: {user_default}")
+            except Exception as e:
+                print(f"[New File] Failed to load user default template: {e}, falling back to built-in")
+                self.current_style = templates.create_default_template()
+        else:
+            # Strategy 2: Try built-in default template
+            builtin_data = template_loader.get_builtin_template("default")
+            if builtin_data:
+                self.current_style = template_deserializer.deserialize_complete_template(builtin_data)
+                # Save to user directory for future use
+                template_loader.save_template_to_user_dir(builtin_data, "default")
+                print("[New File] Loaded built-in default template and saved to user directory")
+            else:
+                # Strategy 3: Fallback to hardcoded default
+                self.current_style = templates.create_default_template()
+                print("[New File] Using hardcoded default template")
+
+        # Apply global styles
+        self._apply_global_styles()
+
+        # Update mindmap view's style_config reference
+        self.mindmap_view.style_config = self.current_style
 
     def _create_menu_bar(self):
         """Create the menu bar with File and Edit menus."""
@@ -568,6 +608,9 @@ class MainWindow(QMainWindow):
                     pass  # Discard changes, continue
                 else:
                     return  # Cancelled, abort
+
+        # CRITICAL: Reset style configuration to default (three-level fallback)
+        self._reset_style_to_default()
 
         # Reinitialize the mind map view (same as __init__)
         self.mindmap_view._initialize_new_mindmap()
