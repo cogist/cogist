@@ -173,8 +173,10 @@ class MainWindow(QMainWindow):
 
     def _on_style_config_changed(self):
         """Handle style config change (e.g., after loading a file)."""
-        # Refresh style panel UI controls to match new style config
+        # CRITICAL: Update style panel's style_config reference to match mindmap view
         if hasattr(self, 'style_panel') and hasattr(self.style_panel, 'advanced_tab'):
+            self.style_panel.advanced_tab.style_config = self.mindmap_view.style_config
+            # Refresh UI controls to match new style config
             self.style_panel.advanced_tab.refresh_current_layer()
 
         # Enable document mode to reduce decorations
