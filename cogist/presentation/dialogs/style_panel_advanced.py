@@ -697,6 +697,13 @@ class AdvancedStyleTab(QWidget):
             }
             self.connector_section.set_style(connector_style)
 
+    def refresh_current_layer(self):
+        """Public method to refresh UI controls with current layer's style from global config.
+
+        This should be called when style_config is reset (e.g., when creating a new file).
+        """
+        self._load_current_layer_style()
+
     def _apply_styles_to_mindmap(self, force_rebuild: bool = False):
         """Unified method to apply all styles to mindmap_view.
 

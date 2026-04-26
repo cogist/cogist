@@ -364,6 +364,10 @@ class MainWindow(QMainWindow):
         # Update mindmap view's style_config reference
         self.mindmap_view.style_config = self.current_style
 
+        # CRITICAL: Refresh style panel UI controls to match new default config
+        if hasattr(self, 'style_panel') and hasattr(self.style_panel, 'advanced_tab'):
+            self.style_panel.advanced_tab.refresh_current_layer()
+
     def _create_menu_bar(self):
         """Create the menu bar with File and Edit menus."""
         menubar = self.menuBar()
