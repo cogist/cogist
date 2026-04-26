@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-04-26
+
+### Fixed
+- **Panel toggle visual jump**: Compensate viewport shift when toggling style panel
+  - Use scrollbar to offset content by 307px when panel opens/closes
+  - Content stays in place relative to screen coordinates
+  - No visual jump or flicker during panel toggle
+
+### Added
+- **Scene rect management**: Dynamic canvas sizing with SceneRectManager
+  - Initialize sceneRect to viewport size on first show
+  - Ensure sceneRect >= viewport at all times
+  - Expand sceneRect when viewport grows (resize, panel toggle)
+  - Extra margin (500px) ensures scrollbars always work
+- **Hidden scrollbars**: Hide scrollbars for cleaner UI
+  - Mouse drag (ScrollHandDrag) still works for manual panning
+  - Programmatic scrolling for panel compensation
+
+### Changed
+- **Sample data creation**: Defer to showEvent for correct centering
+  - Layout calculation now uses correct viewport dimensions
+  - Root node properly centered on startup
+
 ## [0.4.1] - 2026-04-25
 
 ### Fixed

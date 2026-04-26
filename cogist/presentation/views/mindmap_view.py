@@ -108,7 +108,7 @@ class MindMapView(QGraphicsView):
         self.setFocusPolicy(Qt.StrongFocus)
 
         # Defer sample data creation until viewport is ready (in showEvent)
-        self.root_node: MindMapNode | None = None
+        self.root_node: Node | None = None
 
         # Initialize Application Layer services
         from cogist.application.services import DragHandler

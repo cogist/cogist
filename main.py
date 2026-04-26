@@ -829,7 +829,7 @@ class MainWindow(QMainWindow):
         view = self.mindmap_view
 
         # Use fixed compensation value based on actual panel width
-        COMPENSATION = 307  # Actual panel width in pixels
+        compensation = 307  # Actual panel width in pixels
 
         h_bar = view.horizontalScrollBar()
 
@@ -838,13 +838,13 @@ class MainWindow(QMainWindow):
             self.style_panel.setVisible(True)
             self.activity_bar.setVisible(True)
             # Content shifts right, scroll left to compensate
-            h_bar.setValue(h_bar.value() + COMPENSATION)
+            h_bar.setValue(h_bar.value() + compensation)
         else:
             # Closing panel: viewport expands
             self.style_panel.setVisible(False)
             self.activity_bar.setVisible(False)
             # Content shifts left, scroll right to compensate
-            h_bar.setValue(h_bar.value() - COMPENSATION)
+            h_bar.setValue(h_bar.value() - compensation)
 
         # Update activity bar button state
         if not is_visible:

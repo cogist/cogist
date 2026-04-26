@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![PySide6 6.8+](https://img.shields.io/badge/PySide6-6.8+-green.svg)](https://doc.qt.io/qtforpython-6/)
-[![Version: 0.4.1](https://img.shields.io/badge/version-0.4.1-purple.svg)](https://github.com/cogist/cogist/releases/tag/v0.4.1)
+[![Version: 0.4.2](https://img.shields.io/badge/version-0.4.2-purple.svg)](https://github.com/cogist/cogist/releases/tag/v0.4.2)
 [![Changelog](https://img.shields.io/badge/changelog-latest-orange.svg)](CHANGELOG.md)
 
 ## ✨ Core Features
@@ -89,7 +89,7 @@ cogist/
 ├── pyproject.toml          # Project configuration
 ├── README.md               # Project documentation
 ├── LICENSE                 # License file
-├── CHANGELOG.md            # Version history (v0.4.1 latest)
+├── CHANGELOG.md            # Version history (v0.4.2 latest)
 ├── docs/                   # 📚 Documentation center
 │   ├── ARCHITECTURE.md             # Architecture design
 │   ├── DESIGN_PHILOSOPHY.md        # Design philosophy
