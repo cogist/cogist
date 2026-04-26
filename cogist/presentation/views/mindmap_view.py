@@ -7,7 +7,7 @@ This module contains the MindMapView class which handles:
 - Node selection and focus management
 """
 
-from PySide6.QtCore import QEvent, QPointF, Qt, QTimer
+from PySide6.QtCore import QEvent, QPointF, Qt, QTimer, Signal
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -25,6 +25,9 @@ from cogist.presentation.items.node_item import NodeItem
 
 class MindMapView(QGraphicsView):
     """Mind map view with Default layout and command pattern integration."""
+
+    # Signal emitted when style_config is updated (e.g., after loading a file)
+    style_config_changed = Signal()
 
     def __init__(self, style_config=None, mindmap_service=None):
         super().__init__()
@@ -1882,6 +1885,8 @@ class MindMapView(QGraphicsView):
             # CRITICAL: Update style_config if file contains style data
             if loaded_style_config is not None:
                 self.style_config = loaded_style_config
+                # Notify listeners that style config has changed
+                self.style_config_changed.emit()
 
             # Update current file path
             self.current_file_path = str(self.mindmap_service.get_current_file())

@@ -153,6 +153,9 @@ class MainWindow(QMainWindow):
         # Connect activity bar signals
         self.activity_bar.panel_activated.connect(self._on_panel_activated)
 
+        # CRITICAL: Connect style_config change signal to refresh style panel UI
+        self.mindmap_view.style_config_changed.connect(self._on_style_config_changed)
+
         # Create menu bar and shortcuts on initialization
         self._create_menu_bar()
         self._setup_shortcuts()
@@ -165,8 +168,14 @@ class MainWindow(QMainWindow):
             # Switch to the selected mode
             self.style_panel.switch_panel(panel_name)
         else:
-            # Hide style panel
+            # Hide style panel for other panels
             self.style_panel.setVisible(False)
+
+    def _on_style_config_changed(self):
+        """Handle style config change (e.g., after loading a file)."""
+        # Refresh style panel UI controls to match new style config
+        if hasattr(self, 'style_panel') and hasattr(self.style_panel, 'advanced_tab'):
+            self.style_panel.advanced_tab.refresh_current_layer()
 
         # Enable document mode to reduce decorations
         self.setDocumentMode(True)
