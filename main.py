@@ -794,12 +794,84 @@ class MainWindow(QMainWindow):
             self.mindmap_view._delete_selected_node()
 
     def _zoom_in(self):
-        """Zoom in the view."""
-        self.mindmap_view.scale(1.2, 1.2)
+        """Zoom in the view with smart anchor point."""
+        self._zoom_with_anchor(1.2)
 
     def _zoom_out(self):
-        """Zoom out the view."""
-        self.mindmap_view.scale(1 / 1.2, 1 / 1.2)
+        """Zoom out the view with smart anchor point."""
+        self._zoom_with_anchor(1 / 1.2)
+
+    def _zoom_with_anchor(self, factor: float):
+        """Zoom with smart anchor point selection.
+
+        Algorithm based on Qt documentation:
+        1. Record anchor's viewport position BEFORE scaling
+        2. Record anchor's scene position (unchanged by scaling)
+        3. Apply scale
+        4. After scaling, calculate where anchor is in viewport
+        5. Translate view to keep anchor at original viewport position
+
+        Priority:
+        1. Selected node center
+        2. Mouse cursor position (if over viewport)
+        3. Viewport center
+
+        Args:
+            factor: Zoom factor (>1 for zoom in, <1 for zoom out)
+        """
+
+        view = self.mindmap_view
+
+        # Determine anchor point in scene coordinates
+        anchor_scene_pos = None
+
+        # Priority 1: Selected node
+        if view.selected_node_id and view.selected_node_id in view.node_items:
+            selected_item = view.node_items[view.selected_node_id]
+            node_rect = selected_item.boundingRect()
+            anchor_scene_pos = selected_item.mapToScene(node_rect.center())
+
+        # Priority 2: Mouse position (if over viewport)
+        if anchor_scene_pos is None:
+            mouse_pos = view.mapFromGlobal(view.cursor().pos())
+            if view.viewport().rect().contains(mouse_pos):
+                anchor_scene_pos = view.mapToScene(mouse_pos)
+
+        # Priority 3: Viewport center
+        if anchor_scene_pos is None:
+            viewport_center = view.viewport().rect().center()
+            anchor_scene_pos = view.mapToScene(viewport_center)
+
+        # Record anchor's position in viewport coordinates BEFORE scaling
+        anchor_viewport_before = view.mapFromScene(anchor_scene_pos)
+
+        # Apply scale
+        view.scale(factor, factor)
+
+        # After scaling, get anchor's NEW position in viewport coordinates
+        anchor_viewport_after = view.mapFromScene(anchor_scene_pos)
+
+        # Calculate the offset: how much the anchor moved in viewport
+        offset = anchor_viewport_after - anchor_viewport_before
+
+        # To keep anchor at its original viewport position, we need to
+        # translate the view by the opposite of this offset
+        # Since translate() works in scene coordinates, we need to convert
+        # the viewport offset back to scene coordinates
+
+        # Get two points in viewport to establish the transformation
+        p1_viewport = anchor_viewport_before
+        p2_viewport = anchor_viewport_before + offset
+
+        # Map both to scene coordinates
+        p1_scene = view.mapToScene(p1_viewport)
+        p2_scene = view.mapToScene(p2_viewport)
+
+        # Calculate the scene-space offset
+        scene_offset = p2_scene - p1_scene
+
+        # Apply the inverse translation to compensate
+        view.translate(-scene_offset.x(), -scene_offset.y())
 
     def _fit_view(self):
         """Fit the view to show all content with margins."""
