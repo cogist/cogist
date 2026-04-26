@@ -809,9 +809,28 @@ class MainWindow(QMainWindow):
 
     def _toggle_style_panel(self):
         """Toggle style panel visibility."""
+        from PySide6.QtWidgets import QApplication
+
         is_visible = self.style_panel.isVisible()
-        self.style_panel.setVisible(not is_visible)
-        self.activity_bar.setVisible(not is_visible)
+        view = self.mindmap_view
+
+        # Record the scene point at the viewport center BEFORE the toggle.
+        # Since sceneRect >= viewport (guaranteed by SceneRectManager),
+        # scrollbars are always active and centerOn() works correctly.
+        center_scene_pos = view.mapToScene(view.viewport().rect().center())
+
+        if not is_visible:
+            self.style_panel.setVisible(True)
+            self.activity_bar.setVisible(True)
+        else:
+            self.style_panel.setVisible(False)
+            self.activity_bar.setVisible(False)
+
+        # Force Qt to process the splitter resize immediately
+        QApplication.processEvents()
+
+        # Restore the viewport center to the recorded scene position
+        view.centerOn(center_scene_pos)
 
         # Update activity bar button state
         if not is_visible:

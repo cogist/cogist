@@ -99,15 +99,15 @@ class MindMapView(QGraphicsView):
         # Enable focus for keyboard events
         self.setFocusPolicy(Qt.StrongFocus)
 
-        # Create sample data
-        self.root_node = self._create_sample_data()
+        # Defer sample data creation until viewport is ready (in showEvent)
+        self.root_node: MindMapNode | None = None
 
         # Initialize Application Layer services
         from cogist.application.services import DragHandler
         from cogist.presentation.adapters import QtNodeProvider
 
         self.node_provider = QtNodeProvider(self.node_items)
-        self.drag_handler = DragHandler(self.root_node, self.node_provider)
+        self.drag_handler: DragHandler | None = None
 
         # Install event filter for keyboard shortcuts
         self.installEventFilter(self)
@@ -1765,16 +1765,24 @@ class MindMapView(QGraphicsView):
         self.ensureVisible(node_item, margin_px, margin_px)
 
     def showEvent(self, event):
-        """Handle show event to initialize scene and center on root node."""
+        """Handle show event to initialize scene, create sample data, and center on root node."""
         super().showEvent(event)
 
-        # Initialize scene rect from viewport on first show
+        # Initialize scene rect and create sample data on first show
         if not self._scene_initialized:
             self.scene_manager.initialize_from_viewport()
+
+            # Create sample data now that viewport has correct dimensions
+            self.root_node = self._create_sample_data()
+
+            # Initialize drag handler with the created root node
+            from cogist.application.services import DragHandler
+            self.drag_handler = DragHandler(self.root_node, self.node_provider)
+
             self._scene_initialized = True
 
         # Center on root node when first shown
-        if hasattr(self, "root_node") and self.root_node.id in self.node_items:
+        if self.root_node and self.root_node.id in self.node_items:
             self.centerOn(self.node_items[self.root_node.id])
 
     def resizeEvent(self, event):
