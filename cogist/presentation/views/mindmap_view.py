@@ -8,7 +8,7 @@ This module contains the MindMapView class which handles:
 """
 
 from PySide6.QtCore import QEvent, QPointF, Qt, QTimer, Signal
-from PySide6.QtGui import QPainter
+from PySide6.QtGui import QPainter, QWheelEvent
 from PySide6.QtWidgets import (
     QFileDialog,
     QGraphicsScene,
@@ -28,6 +28,9 @@ class MindMapView(QGraphicsView):
 
     # Signal emitted when style_config is updated (e.g., after loading a file)
     style_config_changed = Signal()
+
+    # Signal emitted when zoom level changes (for UI updates)
+    zoom_changed = Signal(float)
 
     def __init__(self, style_config=None, mindmap_service=None):
         super().__init__()
@@ -79,6 +82,12 @@ class MindMapView(QGraphicsView):
         # CRITICAL: Set alignment to prevent auto-centering behavior
         # Default is AlignCenter which causes view to recenter when scene changes
         self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+
+        # Enable gesture support for trackpad pinch zoom
+        self.grabGesture(Qt.PinchGesture)
+
+        # Callback for zoom operations (set by MainWindow)
+        self._zoom_callback = None
 
         # Store UI items
         self.node_items = {}
@@ -1872,6 +1881,76 @@ class MindMapView(QGraphicsView):
         """Handle resize events to ensure sceneRect >= viewport size."""
         super().resizeEvent(event)
         self.scene_manager.ensure_minimum_size()
+
+    def event(self, event: QEvent) -> bool:
+        """Handle gestures for trackpad pinch zoom.
+
+        Args:
+            event: The event to handle
+
+        Returns:
+            True if event was handled, False otherwise
+        """
+        if event.type() == QEvent.Gesture:
+            return self.gestureEvent(event)
+        return super().event(event)
+
+    def gestureEvent(self, event: QEvent) -> bool:
+        """Handle pinch gesture for trackpad zoom.
+
+        Args:
+            event: The gesture event
+
+        Returns:
+            True if gesture was handled
+        """
+        gesture = event.gesture(Qt.PinchGesture)
+        if gesture:
+            # Get the scale factor from the pinch gesture
+            scale_factor = gesture.scaleFactor()
+
+            # Apply zoom with anchor point
+            if self._zoom_callback:
+                self._zoom_callback(scale_factor)
+            else:
+                # Fallback: direct scaling without anchor compensation
+                self.scale(scale_factor, scale_factor)
+
+            return True
+        return False
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        """Handle mouse wheel zoom with Ctrl modifier.
+
+        Ctrl + Wheel: Zoom in/out
+        Wheel only: Default behavior (scrolling, but scrollbars are hidden)
+
+        Args:
+            event: The wheel event
+        """
+        # Check if Ctrl key is pressed
+        if event.modifiers() & Qt.ControlModifier:
+            # Get the angle delta (positive = up/zoom in, negative = down/zoom out)
+            delta = event.angleDelta().y()
+
+            # Calculate zoom factor (1.1x per 120 degrees of rotation)
+            # Typical wheel delta is ±120 per notch
+            factor = 1.0 + (delta / 1200.0)  # 10% per notch
+
+            # Clamp factor to reasonable range
+            factor = max(0.5, min(2.0, factor))
+
+            # Apply zoom with anchor point
+            if self._zoom_callback:
+                self._zoom_callback(factor)
+            else:
+                # Fallback: direct scaling without anchor compensation
+                self.scale(factor, factor)
+
+            event.accept()
+        else:
+            # Default behavior: pass to parent for scrolling
+            super().wheelEvent(event)
 
     def _restore_selection_state_after_redo(self, node_id_before_redo):
         """Restore selection state after redo operation.

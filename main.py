@@ -90,7 +90,6 @@ class MainWindow(QMainWindow):
                 self.current_style = (
                     template_deserializer.deserialize_complete_template(user_data)
                 )
-                print(f"Loaded user default template from: {user_default}")
             except Exception as e:
                 print(
                     f"Failed to load user default template: {e}, falling back to built-in"
@@ -118,6 +117,9 @@ class MainWindow(QMainWindow):
         self.mindmap_view = MindMapView(
             style_config=self.current_style, mindmap_service=self.mindmap_service
         )
+
+        # Connect zoom callback for trackpad and mouse wheel support
+        self.mindmap_view._zoom_callback = self._zoom_with_anchor
 
         # Create Activity Bar (left sidebar)
         from cogist.infrastructure.utils import config_manager
@@ -362,7 +364,6 @@ class MainWindow(QMainWindow):
                 self.current_style = (
                     template_deserializer.deserialize_complete_template(user_data)
                 )
-                print(f"[New File] Loaded user default template from: {user_default}")
             except Exception as e:
                 print(
                     f"[New File] Failed to load user default template: {e}, falling back to built-in"
