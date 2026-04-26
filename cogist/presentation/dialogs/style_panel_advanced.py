@@ -756,9 +756,13 @@ class AdvancedStyleTab(QWidget):
 
             # CRITICAL: If style affects dimensions, update all node items' template_style first
             if force_rebuild and hasattr(mindmap_view, 'node_items'):
+                print(f"[DEBUG] Updating {len(mindmap_view.node_items)} node items' template_style")
                 for node_item in mindmap_view.node_items.values():
                     if hasattr(node_item, 'update_style'):
+                        old_max_width = node_item.template_style.max_text_width if hasattr(node_item, 'template_style') else None
                         node_item.update_style(mindmap_view.style_config)
+                        new_max_width = node_item.template_style.max_text_width if hasattr(node_item, 'template_style') else None
+                        print(f"  Node '{node_item.text_content[:20]}': max_width {old_max_width} -> {new_max_width}")
 
             # Refresh layout to apply all changes
             # CRITICAL: Set skip_measurement=False when style changes affect node dimensions

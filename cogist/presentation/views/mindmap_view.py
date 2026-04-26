@@ -295,9 +295,20 @@ class MindMapView(QGraphicsView):
         created_nodes = set()
         for node in self._traverse_tree(self.root_node):
             if node.id in self.node_items:
-                # Existing node - just update position
+                # Existing node - update position AND size
                 item = self.node_items[node.id]
                 item.setPos(node.position[0], node.position[1])
+
+                # CRITICAL: Sync domain node size to UI item
+                # Domain node width/height was updated by _measure_actual_sizes
+                if abs(item.node_width - node.width) > 0.1 or abs(item.node_height - node.height) > 0.1:
+                    item.node_width = node.width
+                    item.node_height = node.height
+                    item.setRect(-node.width / 2, -node.height / 2, node.width, node.height)
+
+                    # Recalculate text position with new dimensions
+                    item._update_node_geometry(item.text_content)
+
                 created_nodes.add(node.id)
             else:
                 # New node - need to create it
