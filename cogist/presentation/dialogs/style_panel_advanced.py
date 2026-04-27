@@ -155,108 +155,111 @@ class AdvancedStyleTab(QWidget):
             "padding_h": role_style.padding_h,
             # Max text width
             "max_text_width": role_style.max_text_width,
-            # Connector - read from per-depth configuration
+            # Connector - read from role-based configuration
             "connector_type": self._get_connector_type_for_layer(layer_name),
             "connector_style": self._get_connector_style_for_layer(layer_name),
             "connector_width": self._get_connector_width_for_layer(layer_name),
             "connector_color": self._get_connector_color_for_layer(layer_name),
-            # Spacing - read from per-depth configuration
+            # Spacing - read from role-based configuration
             "parent_child_spacing": self._get_level_spacing_for_layer(layer_name),
             "sibling_spacing": self._get_sibling_spacing_for_layer(layer_name),
         }
 
         return layer_data
 
-    def _get_level_spacing_for_layer(self, layer_name: str) -> float:
-        """Get parent-child spacing for a layer from per-depth configuration."""
-        assert self.style_config is not None
-        # Map layer names to depth; critical/minor use level_3_plus spacing (depth 3)
-        depth_map = {
-            "root": 0,
-            "level_1": 1,
-            "level_2": 2,
-            "level_3_plus": 3,
-            "critical": 3,  # Use same spacing as level_3_plus
-            "minor": 3,     # Use same spacing as level_3_plus
-        }
-        depth = depth_map[layer_name]
+    def _get_current_layer_role(self):
+        """Map current layer to node role for spacing configuration."""
+        from cogist.domain.styles.extended_styles import NodeRole
 
-        return self.style_config.level_spacing_by_depth[depth]
+        role_map = {
+            "canvas": None,  # Canvas is special
+            "root": NodeRole.ROOT,
+            "level_1": NodeRole.PRIMARY,
+            "level_2": NodeRole.SECONDARY,
+            "level_3_plus": NodeRole.TERTIARY,
+            "critical": NodeRole.TERTIARY,
+            "minor": NodeRole.TERTIARY,
+        }
+        return role_map.get(self.current_layer)
+
+    def _get_level_spacing_for_layer(self, layer_name: str) -> float:
+        """Get parent-child spacing for a layer from role-based configuration."""
+        assert self.style_config is not None
+
+        # Try role-based spacing first (new architecture)
+        role = self._get_current_layer_role()
+        if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+            return self.style_config.resolved_template.role_styles[role].parent_child_spacing
+
+        # Default value
+        return 80.0
 
     def _get_sibling_spacing_for_layer(self, layer_name: str) -> float:
-        """Get sibling spacing for a layer from per-depth configuration."""
+        """Get sibling spacing for a layer from role-based configuration."""
         assert self.style_config is not None
         if layer_name == "root":
             return 0
 
-        # Map layer to the depth of children (siblings are at child's depth)
-        # critical/minor use level_3_plus spacing (depth 3)
-        depth_map = {
-            "level_1": 1,
-            "level_2": 2,
-            "level_3_plus": 3,
-            "critical": 3,  # Use same spacing as level_3_plus
-            "minor": 3,     # Use same spacing as level_3_plus
-        }
-        depth = depth_map[layer_name]
+        # Try role-based spacing first (new architecture)
+        role = self._get_current_layer_role()
+        if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+            return self.style_config.resolved_template.role_styles[role].sibling_spacing
 
-        return self.style_config.sibling_spacing_by_depth[depth]
+        # Default value
+        return 60.0
 
     def _get_connector_type_for_layer(self, layer_name: str) -> str:
-        """Get connector type for a layer from per-depth configuration."""
+        """Get connector type for a layer from role-based configuration."""
         assert self.style_config is not None
-        # Layer controls the edge FROM that layer TO the next level
-        # critical/minor use level_3_plus connector config (depth 3)
-        depth_map = {
-            "root": 0,
-            "level_1": 1,
-            "level_2": 2,
-            "level_3_plus": 3,
-            "critical": 3,
-            "minor": 3,
-        }
-        depth = depth_map.get(layer_name, 2)
 
-        if hasattr(self.style_config, 'connector_config_by_depth'):
-            return self.style_config.connector_config_by_depth.get(depth, {}).get("connector_shape", "bezier")
+        # Get from role-based config
+        role = self._get_current_layer_role()
+        if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+            return self.style_config.resolved_template.role_styles[role].connector_shape
+
+        # Default value
         return "bezier"
 
     def _get_connector_style_for_layer(self, layer_name: str) -> str:
-        """Get connector style for a layer from per-depth configuration."""
+        """Get connector style for a layer from role-based configuration."""
         assert self.style_config is not None
-        # critical/minor use level_3_plus connector config (depth 3)
-        depth_map = {
-            "root": 0,
-            "level_1": 1,
-            "level_2": 2,
-            "level_3_plus": 3,
-            "critical": 3,
-            "minor": 3,
-        }
-        depth = depth_map.get(layer_name, 2)
 
-        if hasattr(self.style_config, 'connector_config_by_depth'):
-            return self.style_config.connector_config_by_depth.get(depth, {}).get("connector_style", "solid")
+        # Get from role-based config
+        role = self._get_current_layer_role()
+        if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+            return self.style_config.resolved_template.role_styles[role].connector_style
+
+        # Default value
         return "solid"
 
     def _get_connector_width_for_layer(self, layer_name: str) -> float:
-        """Get connector width for a layer from per-depth configuration."""
+        """Get connector width for a layer from role-based configuration."""
         assert self.style_config is not None
-        depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
-        depth = depth_map.get(layer_name, 2)
 
-        if hasattr(self.style_config, 'connector_config_by_depth'):
-            return self.style_config.connector_config_by_depth.get(depth, {}).get("line_width", 2.0)
+        # Get from role-based config
+        role = self._get_current_layer_role()
+        if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+            return self.style_config.resolved_template.role_styles[role].line_width
+
+        # Default value
         return 2.0
 
     def _get_connector_color_for_layer(self, layer_name: str) -> str:
-        """Get connector color for a layer from per-depth configuration."""
+        """Get connector color for a layer from role-based configuration."""
         assert self.style_config is not None
-        depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
-        depth = depth_map.get(layer_name, 2)
 
-        if hasattr(self.style_config, 'connector_config_by_depth'):
-            return self.style_config.connector_config_by_depth.get(depth, {}).get("color", "#666666")
+        # Get from role-based config
+        role = self._get_current_layer_role()
+        if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+            role_style = self.style_config.resolved_template.role_styles[role]
+            # Connector color comes from ColorScheme if not overridden
+            if role_style.connector_color:
+                return role_style.connector_color
+            # Fall back to edge color from color scheme
+            if self.style_config.resolved_color_scheme:
+                return self.style_config.resolved_color_scheme.edge_color
+
+        # Default value
         return "#666666"
 
     def _update_role_style_in_config(self, layer_name: str, updates: dict):
@@ -504,58 +507,27 @@ class AdvancedStyleTab(QWidget):
         """Handle spacing configuration change for the current layer."""
         assert self.style_config is not None
         if self.current_layer != "canvas":
-            # Map layers to depths for spacing application
-            # level_3_plus maps to depth 3 and affects all deeper levels (3, 4, 5, ...)
-            depth_map = {
-                "root": 0,
-                "level_1": 1,
-                "level_2": 2,
-                "level_3_plus": 3,
-            }
-            depth = depth_map[self.current_layer]
-
-            # Determine which depths to update (level_3_plus affects all depths >= 3)
-            is_level_3_plus = self.current_layer == "level_3_plus"
-            if is_level_3_plus:
-                # Collect all depths >= 3 from existing config
-                all_depths = set()
-                all_depths.update(self.style_config.level_spacing_by_depth.keys())
-                all_depths.update(self.style_config.sibling_spacing_by_depth.keys())
-                # Also include depths from connector config
-                if hasattr(self.style_config, 'connector_config_by_depth'):
-                    all_depths.update(self.style_config.connector_config_by_depth.keys())
-                depths_to_update = [d for d in all_depths if d >= 3]
-                # If no depths >= 3 exist yet, just use depth 3
-                if not depths_to_update:
-                    depths_to_update = [3]
-            else:
-                depths_to_update = [depth]
+            # Get role for current layer
+            role = self._get_current_layer_role()
+            if not role:
+                return
 
             # Prepare style updates for command
             style_updates = {}
             if "parent_child" in spacing:
-                # For command system, we'll store the spacing value
-                # The command will handle the depth mapping logic
                 style_updates["parent_child_spacing"] = spacing["parent_child"]
 
             if "sibling" in spacing:
                 style_updates["sibling_spacing"] = spacing["sibling"]
 
             # Skip command creation if we're updating from undo/redo
-            if self._updating_from_undo_redo and style_updates:
-                # Direct update without creating a command
-                if not hasattr(self.style_config, 'level_spacing_by_depth'):
-                    self.style_config.level_spacing_by_depth = {}
-                if not hasattr(self.style_config, 'sibling_spacing_by_depth'):
-                    self.style_config.sibling_spacing_by_depth = {}
-
-                # Update spacing for all target depths (true layer isolation)
+            if self._updating_from_undo_redo and style_updates and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+                # Direct update to role-based config
+                role_style = self.style_config.resolved_template.role_styles[role]
                 if "parent_child" in spacing:
-                    for d in depths_to_update:
-                        self.style_config.level_spacing_by_depth[d] = spacing["parent_child"]
+                    role_style.parent_child_spacing = spacing["parent_child"]
                 if "sibling" in spacing:
-                    for d in depths_to_update:
-                        self.style_config.sibling_spacing_by_depth[d] = spacing["sibling"]
+                    role_style.sibling_spacing = spacing["sibling"]
             elif self.command_history and style_updates:
                 from cogist.application.commands import ChangeStyleCommand
                 from cogist.application.commands.change_style_command import StyleChange
@@ -571,20 +543,13 @@ class AdvancedStyleTab(QWidget):
                 command.execute()
                 self.command_history.push(command)
             elif style_updates:
-                # Fallback: direct update without undo/redo
-                # Initialize dictionary if not exists
-                if not hasattr(self.style_config, 'level_spacing_by_depth'):
-                    self.style_config.level_spacing_by_depth = {}
-                if not hasattr(self.style_config, 'sibling_spacing_by_depth'):
-                    self.style_config.sibling_spacing_by_depth = {}
-
-                # Update spacing for all target depths (true layer isolation)
-                if "parent_child" in spacing:
-                    for d in depths_to_update:
-                        self.style_config.level_spacing_by_depth[d] = spacing["parent_child"]
-                if "sibling" in spacing:
-                    for d in depths_to_update:
-                        self.style_config.sibling_spacing_by_depth[d] = spacing["sibling"]
+                # Fallback: direct update to role-based config without undo/redo
+                if self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+                    role_style = self.style_config.resolved_template.role_styles[role]
+                    if "parent_child" in spacing:
+                        role_style.parent_child_spacing = spacing["parent_child"]
+                    if "sibling" in spacing:
+                        role_style.sibling_spacing = spacing["sibling"]
 
             # Trigger layout refresh through _apply_styles_to_mindmap
             self._apply_styles_to_mindmap()
@@ -708,25 +673,12 @@ class AdvancedStyleTab(QWidget):
         if self.current_layer != "canvas":
             assert self.style_config is not None
 
-            # Map layer to depth (layer controls edge FROM that layer)
-            # level_3_plus maps to depth 3 and affects all deeper levels (3, 4, 5, ...)
-            depth_map = {"root": 0, "level_1": 1, "level_2": 2, "level_3_plus": 3}
-            depth = depth_map.get(self.current_layer, 2)
-
-            # Determine which depths to update (level_3_plus affects all depths >= 3)
-            is_level_3_plus = self.current_layer == "level_3_plus"
-            if is_level_3_plus:
-                # Collect all depths >= 3 from existing config
-                all_depths = set(self.style_config.connector_config_by_depth.keys())
-                depths_to_update = [d for d in all_depths if d >= 3]
-                if not depths_to_update:
-                    depths_to_update = [3]
-            else:
-                depths_to_update = [depth]
+            # Get role for current layer
+            role = self._get_current_layer_role()
+            if not role:
+                return
 
             # Prepare style updates for command system
-            # Note: For connectors, we need to handle depth-specific configs
-            # The command will need to understand this complexity
             connector_updates = {}
             if "connector_shape" in style:
                 connector_updates["connector_shape"] = style["connector_shape"]
@@ -735,25 +687,21 @@ class AdvancedStyleTab(QWidget):
             if "line_width" in style:
                 connector_updates["line_width"] = style["line_width"]
             if "connector_color" in style:
-                connector_updates["color"] = style["connector_color"]
+                connector_updates["connector_color"] = style["connector_color"]
 
             # Use command system if available
-            if self._updating_from_undo_redo and connector_updates:
-                # Direct update without creating a command
-                # Update connector config for all target depths
-                for d in depths_to_update:
-                    connector_config = self.style_config.connector_config_by_depth.get(d, {})
-                    self.style_config.connector_config_by_depth[d] = connector_config
+            if self._updating_from_undo_redo and connector_updates and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+                # Direct update to role-based config without creating a command
+                role_style = self.style_config.resolved_template.role_styles[role]
 
-                    # Update connector config
-                    if "connector_shape" in style:
-                        connector_config["connector_shape"] = style["connector_shape"]
-                    if "connector_style" in style:
-                        connector_config["connector_style"] = style["connector_style"]
-                    if "line_width" in style:
-                        connector_config["line_width"] = style["line_width"]
-                    if "connector_color" in style:
-                        connector_config["color"] = style["connector_color"]
+                if "connector_shape" in style:
+                    role_style.connector_shape = style["connector_shape"]
+                if "connector_style" in style:
+                    role_style.connector_style = style["connector_style"]
+                if "line_width" in style:
+                    role_style.line_width = style["line_width"]
+                if "connector_color" in style:
+                    role_style.connector_color = style["connector_color"]
             elif self.command_history and connector_updates:
                 from cogist.application.commands import ChangeStyleCommand
                 from cogist.application.commands.change_style_command import StyleChange
@@ -769,24 +717,18 @@ class AdvancedStyleTab(QWidget):
                 command.execute()
                 self.command_history.push(command)
             elif connector_updates:
-                # Fallback: direct update without undo/redo
-                # Update connector config for all target depths
-                for d in depths_to_update:
-                    connector_config = self.style_config.connector_config_by_depth.get(d, {})
-                    self.style_config.connector_config_by_depth[d] = connector_config
+                # Fallback: direct update to role-based config without undo/redo
+                if self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+                    role_style = self.style_config.resolved_template.role_styles[role]
 
-                    # Update connector config
                     if "connector_shape" in style:
-                        connector_config["connector_shape"] = style["connector_shape"]
+                        role_style.connector_shape = style["connector_shape"]
                     if "connector_style" in style:
-                        connector_config["connector_style"] = style["connector_style"]
+                        role_style.connector_style = style["connector_style"]
                     if "line_width" in style:
-                        connector_config["line_width"] = style["line_width"]
+                        role_style.line_width = style["line_width"]
                     if "connector_color" in style:
-                        connector_config["color"] = style["connector_color"]
-
-                    # Note: enable_gradient is automatically determined by connector_shape
-                    # No need to store it separately (bezier -> True, others -> False)
+                        role_style.connector_color = style["connector_color"]
 
             self._apply_styles_to_mindmap()
 
@@ -921,31 +863,6 @@ class AdvancedStyleTab(QWidget):
 
             # Apply spacing configuration (per-layer, skip canvas)
             # Sync spacing from panel's style_config to mindmap_view's style_config
-            if hasattr(mindmap_view, "style_config") and self.current_layer != "canvas":
-                assert self.style_config is not None
-
-                # Map layers to depths
-                depth_map = {
-                    "root": 0,
-                    "level_1": 1,
-                    "level_2": 2,
-                    "level_3_plus": 3,
-                }
-                depth = depth_map[self.current_layer]
-
-                # Ensure dictionaries exist in mindmap_view.style_config
-                if not hasattr(mindmap_view.style_config, 'level_spacing_by_depth'):
-                    mindmap_view.style_config.level_spacing_by_depth = {}
-                if not hasattr(mindmap_view.style_config, 'sibling_spacing_by_depth'):
-                    mindmap_view.style_config.sibling_spacing_by_depth = {}
-
-                # Copy spacing values from panel's style_config to mindmap_view's style_config
-                if depth in self.style_config.level_spacing_by_depth:
-                    mindmap_view.style_config.level_spacing_by_depth[depth] = self.style_config.level_spacing_by_depth[depth]
-
-                if depth in self.style_config.sibling_spacing_by_depth:
-                    mindmap_view.style_config.sibling_spacing_by_depth[depth] = self.style_config.sibling_spacing_by_depth[depth]
-
             # CRITICAL: If style affects dimensions, update all node items' template_style first
             if force_rebuild and hasattr(mindmap_view, 'node_items'):
                 for node_item in mindmap_view.node_items.values():
@@ -1066,18 +983,22 @@ class AdvancedStyleTab(QWidget):
             if not hasattr(source_node, 'depth'):
                 continue
 
-            depth = source_node.depth
+            # Get connector config from role-based style
+            from cogist.domain.styles.extended_styles import NodeRole
 
-            # Get connector config for this depth, fallback to max configured depth
-            if depth in self.style_config.connector_config_by_depth:
-                connector_config = self.style_config.connector_config_by_depth[depth]
-            else:
-                max_depth = max(self.style_config.connector_config_by_depth.keys())
-                connector_config = self.style_config.connector_config_by_depth[max_depth]
+            source_depth = source_node.depth
+            role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
+            role = role_map.get(source_depth, NodeRole.TERTIARY)
+
+            connector_shape = "bezier"  # Default
+            if (self.style_config.resolved_template and
+                role in self.style_config.resolved_template.role_styles):
+                role_style = self.style_config.resolved_template.role_styles[role]
+                connector_shape = role_style.connector_shape
 
             # Build connector style dict (only shape is needed for update_style)
             connector_style = {
-                "connector_shape": connector_config["connector_shape"],
+                "connector_shape": connector_shape,
             }
 
             edge_item.update_style(connector_style)

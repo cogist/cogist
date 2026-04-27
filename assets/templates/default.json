@@ -225,49 +225,6 @@
     "name": "Default",
     "parent_child_spacing": 80.0,
     "sibling_spacing": 60.0,
-    "level_spacing_by_depth": {
-      "0": 80.0,
-      "1": 60.0,
-      "2": 40.0,
-      "3": 30.0
-    },
-    "sibling_spacing_by_depth": {
-      "0": 60.0,
-      "1": 45.0,
-      "2": 35.0,
-      "3": 28.0
-    },
-    "connector_config_by_depth": {
-      "0": {
-        "connector_shape": "bezier",
-        "connector_style": "solid",
-        "line_width": 2.0,
-        "color": "#666666",
-        "gradient_ratio": 0.33
-      },
-      "1": {
-        "connector_shape": "bezier",
-        "connector_style": "solid",
-        "line_width": 2.0,
-        "color": "#666666",
-        "gradient_ratio": 0.33
-      },
-      "2": {
-        "connector_shape": "bezier",
-        "connector_style": "solid",
-        "line_width": 2.0,
-        "color": "#666666",
-        "gradient_ratio": 0.33
-      },
-      "3": {
-        "connector_shape": "bezier",
-        "connector_style": "solid",
-        "line_width": 2.0,
-        "color": "#666666",
-        "gradient_ratio": 0.33
-      }
-    },
-    "max_text_width_by_depth": {},
     "canvas_bg_color": "#FFFFFFFF"
   }
 }

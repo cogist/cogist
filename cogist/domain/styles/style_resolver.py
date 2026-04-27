@@ -131,31 +131,9 @@ def serialize_style(style_config: MindMapStyle) -> dict:
     return {
         "name": style_config.name,
 
-        # === Global spacing configuration ===
+        # === Global spacing configuration (fallback for backward compatibility) ===
         "parent_child_spacing": style_config.parent_child_spacing,
         "sibling_spacing": style_config.sibling_spacing,
-
-        # === Per-depth spacing configuration ===
-        "level_spacing_by_depth": {
-            str(depth): spacing
-            for depth, spacing in style_config.level_spacing_by_depth.items()
-        },
-        "sibling_spacing_by_depth": {
-            str(depth): spacing
-            for depth, spacing in style_config.sibling_spacing_by_depth.items()
-        },
-
-        # === Per-depth connector configuration ===
-        "connector_config_by_depth": {
-            str(depth): config
-            for depth, config in style_config.connector_config_by_depth.items()
-        },
-
-        # === Per-depth text width constraints ===
-        "max_text_width_by_depth": {
-            str(depth): width
-            for depth, width in style_config.max_text_width_by_depth.items()
-        },
 
         # === Canvas background ===
         "canvas_bg_color": style_config.canvas_bg_color,
@@ -185,16 +163,6 @@ def deserialize_style(data: dict) -> MindMapStyle:
         # === Global spacing configuration ===
         parent_child_spacing=data.get("parent_child_spacing", 80.0),
         sibling_spacing=data.get("sibling_spacing", 60.0),
-
-        # === Per-depth spacing configuration ===
-        level_spacing_by_depth=convert_depth_keys(data.get("level_spacing_by_depth", {})),
-        sibling_spacing_by_depth=convert_depth_keys(data.get("sibling_spacing_by_depth", {})),
-
-        # === Per-depth connector configuration ===
-        connector_config_by_depth=convert_depth_keys(data.get("connector_config_by_depth", {})),
-
-        # === Per-depth text width constraints ===
-        max_text_width_by_depth=convert_depth_keys(data.get("max_text_width_by_depth", {})),
 
         # === Canvas background ===
         canvas_bg_color=data.get("canvas_bg_color", "#FFFFFF"),

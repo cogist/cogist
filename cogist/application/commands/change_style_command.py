@@ -22,9 +22,6 @@ NUMERIC_STYLE_FIELDS = {
     # Spacing
     "parent_child_spacing",
     "sibling_spacing",
-    # Per-depth spacing
-    "level_spacing_by_depth",
-    "sibling_spacing_by_depth",
     # Node style numeric fields
     "radius",
     "padding_w",
@@ -137,73 +134,44 @@ class ChangeStyleCommand(Command):
             connector_keys = {"connector_shape", "connector_style", "line_width", "color"}
 
             if keys & spacing_keys:
-                # Backup spacing configuration for the current layer's depth
-                # Map layer name to depth
-                layer_to_depth = {
-                    "root": 0,
-                    "level_1": 1,
-                    "level_2": 2,
-                    "level_3_plus": 3,
-                    "critical": 3,
-                    "minor": 3,
+                # Backup spacing configuration from role-based style
+                # Map layer name to role
+                from cogist.domain.styles.extended_styles import NodeRole
+
+                layer_to_role = {
+                    "root": NodeRole.ROOT,
+                    "level_1": NodeRole.PRIMARY,
+                    "level_2": NodeRole.SECONDARY,
+                    "level_3_plus": NodeRole.TERTIARY,
+                    "critical": NodeRole.TERTIARY,
+                    "minor": NodeRole.TERTIARY,
                 }
-                depth = layer_to_depth.get(layer, 2)
+                role = layer_to_role.get(layer)
 
-                # For level_3_plus, we need to backup all depths >= 3
-                if layer == "level_3_plus":
-                    all_depths = set()
-                    if hasattr(self.style_config, 'level_spacing_by_depth'):
-                        all_depths.update(self.style_config.level_spacing_by_depth.keys())
-                    if hasattr(self.style_config, 'sibling_spacing_by_depth'):
-                        all_depths.update(self.style_config.sibling_spacing_by_depth.keys())
-                    depths_to_backup = [d for d in all_depths if d >= 3]
-                    if not depths_to_backup:
-                        depths_to_backup = [3]
-                else:
-                    depths_to_backup = [depth]
-
-                # Backup spacing values for all target depths
-                backup["spacing_depths"] = {}
-                for d in depths_to_backup:
-                    parent_child_val = self.style_config.level_spacing_by_depth.get(d) if hasattr(self.style_config, 'level_spacing_by_depth') else None
-                    sibling_val = self.style_config.sibling_spacing_by_depth.get(d) if hasattr(self.style_config, 'sibling_spacing_by_depth') else None
-                    backup["spacing_depths"][d] = {
-                        "parent_child": parent_child_val,
-                        "sibling": sibling_val,
-                    }
+                if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+                    role_style = self.style_config.resolved_template.role_styles[role]
+                    backup["parent_child_spacing"] = role_style.parent_child_spacing
+                    backup["sibling_spacing"] = role_style.sibling_spacing
             elif keys & connector_keys:
-                # Backup connector configuration for the current depth
-                # Map layer name to depth
-                layer_to_depth = {
-                    "root": 0,
-                    "level_1": 1,
-                    "level_2": 2,
-                    "level_3_plus": 3,
-                    "critical": 3,
-                    "minor": 3,
+                # Backup connector configuration from role-based style
+                from cogist.domain.styles.extended_styles import NodeRole
+
+                layer_to_role = {
+                    "root": NodeRole.ROOT,
+                    "level_1": NodeRole.PRIMARY,
+                    "level_2": NodeRole.SECONDARY,
+                    "level_3_plus": NodeRole.TERTIARY,
+                    "critical": NodeRole.TERTIARY,
+                    "minor": NodeRole.TERTIARY,
                 }
-                depth = layer_to_depth.get(layer, 2)
+                role = layer_to_role.get(layer)
 
-                # For level_3_plus, we need to backup all depths >= 3
-                if layer == "level_3_plus":
-                    all_depths = set(self.style_config.connector_config_by_depth.keys())
-                    depths_to_backup = [d for d in all_depths if d >= 3]
-                    if not depths_to_backup:
-                        depths_to_backup = [3]
-                else:
-                    depths_to_backup = [depth]
-
-                backup["connector_depths"] = {}
-                for d in depths_to_backup:
-                    connector_config = self.style_config.connector_config_by_depth.get(d, {})
-                    backup["connector_depths"][d] = dict(connector_config)  # Deep copy
-
-                    # Backup specific fields that are being changed
-                    for key in keys & connector_keys:
-                        if key == "color":
-                            backup[f"connector_{d}_color"] = connector_config.get("color")
-                        else:
-                            backup[f"connector_{d}_{key}"] = connector_config.get(key)
+                if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+                    role_style = self.style_config.resolved_template.role_styles[role]
+                    backup["connector_shape"] = role_style.connector_shape
+                    backup["connector_style"] = role_style.connector_style
+                    backup["line_width"] = role_style.line_width
+                    backup["connector_color"] = role_style.connector_color
             else:
                 # For node layers, access the resolved template
                 if self.style_config.resolved_template:
@@ -278,88 +246,51 @@ class ChangeStyleCommand(Command):
             connector_keys = {"connector_shape", "connector_style", "line_width", "color"}
 
             if style_updates.keys() & spacing_keys:
-                # Apply spacing configuration for the current layer's depth
-                # Map layer name to depth
-                layer_to_depth = {
-                    "root": 0,
-                    "level_1": 1,
-                    "level_2": 2,
-                    "level_3_plus": 3,
-                    "critical": 3,
-                    "minor": 3,
+                # Apply spacing configuration to role-based style
+                from cogist.domain.styles.extended_styles import NodeRole
+
+                layer_to_role = {
+                    "root": NodeRole.ROOT,
+                    "level_1": NodeRole.PRIMARY,
+                    "level_2": NodeRole.SECONDARY,
+                    "level_3_plus": NodeRole.TERTIARY,
+                    "critical": NodeRole.TERTIARY,
+                    "minor": NodeRole.TERTIARY,
                 }
-                depth = layer_to_depth.get(layer, 2)
+                role = layer_to_role.get(layer)
 
-                # For level_3_plus, we need to update all depths >= 3
-                if layer == "level_3_plus":
-                    all_depths = set()
-                    if hasattr(self.style_config, 'level_spacing_by_depth'):
-                        all_depths.update(self.style_config.level_spacing_by_depth.keys())
-                    if hasattr(self.style_config, 'sibling_spacing_by_depth'):
-                        all_depths.update(self.style_config.sibling_spacing_by_depth.keys())
-                    depths_to_update = [d for d in all_depths if d >= 3]
-                    if not depths_to_update:
-                        depths_to_update = [3]
-                else:
-                    depths_to_update = [depth]
+                if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+                    role_style = self.style_config.resolved_template.role_styles[role]
 
-                # Ensure dictionaries exist
-                if not hasattr(self.style_config, 'level_spacing_by_depth'):
-                    self.style_config.level_spacing_by_depth = {}
-                if not hasattr(self.style_config, 'sibling_spacing_by_depth'):
-                    self.style_config.sibling_spacing_by_depth = {}
-
-                # Update spacing for all target depths
-                if "parent_child_spacing" in style_updates:
-                    for d in depths_to_update:
-                        self.style_config.level_spacing_by_depth[d] = style_updates["parent_child_spacing"]
-                if "sibling_spacing" in style_updates:
-                    for d in depths_to_update:
-                        self.style_config.sibling_spacing_by_depth[d] = style_updates["sibling_spacing"]
-
-                # Handle backup format (spacing_depths)
-                if "spacing_depths" in style_updates:
-                    for d, values in style_updates["spacing_depths"].items():
-                        if values["parent_child"] is not None:
-                            self.style_config.level_spacing_by_depth[d] = values["parent_child"]
-                        if values["sibling"] is not None:
-                            self.style_config.sibling_spacing_by_depth[d] = values["sibling"]
+                    if "parent_child_spacing" in style_updates:
+                        role_style.parent_child_spacing = style_updates["parent_child_spacing"]
+                    if "sibling_spacing" in style_updates:
+                        role_style.sibling_spacing = style_updates["sibling_spacing"]
             elif style_updates.keys() & connector_keys:
-                # Apply connector configuration for the current depth
-                # Map layer name to depth
-                layer_to_depth = {
-                    "root": 0,
-                    "level_1": 1,
-                    "level_2": 2,
-                    "level_3_plus": 3,
-                    "critical": 3,
-                    "minor": 3,
+                # Apply connector configuration to role-based style
+                from cogist.domain.styles.extended_styles import NodeRole
+
+                layer_to_role = {
+                    "root": NodeRole.ROOT,
+                    "level_1": NodeRole.PRIMARY,
+                    "level_2": NodeRole.SECONDARY,
+                    "level_3_plus": NodeRole.TERTIARY,
+                    "critical": NodeRole.TERTIARY,
+                    "minor": NodeRole.TERTIARY,
                 }
-                depth = layer_to_depth.get(layer, 2)
+                role = layer_to_role.get(layer)
 
-                # For level_3_plus, we need to update all depths >= 3
-                if layer == "level_3_plus":
-                    all_depths = set(self.style_config.connector_config_by_depth.keys())
-                    depths_to_update = [d for d in all_depths if d >= 3]
-                    if not depths_to_update:
-                        depths_to_update = [3]
-                else:
-                    depths_to_update = [depth]
+                if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+                    role_style = self.style_config.resolved_template.role_styles[role]
 
-                # Update connector config for all target depths
-                for d in depths_to_update:
-                    connector_config = self.style_config.connector_config_by_depth.get(d, {})
-                    self.style_config.connector_config_by_depth[d] = connector_config
-
-                    # Update connector config
                     if "connector_shape" in style_updates:
-                        connector_config["connector_shape"] = style_updates["connector_shape"]
+                        role_style.connector_shape = style_updates["connector_shape"]
                     if "connector_style" in style_updates:
-                        connector_config["connector_style"] = style_updates["connector_style"]
+                        role_style.connector_style = style_updates["connector_style"]
                     if "line_width" in style_updates:
-                        connector_config["line_width"] = style_updates["line_width"]
-                    if "color" in style_updates:
-                        connector_config["color"] = style_updates["color"]
+                        role_style.line_width = style_updates["line_width"]
+                    if "connector_color" in style_updates:
+                        role_style.connector_color = style_updates["connector_color"]
             else:
                 # For node layers, access the resolved template
                 if self.style_config.resolved_template:

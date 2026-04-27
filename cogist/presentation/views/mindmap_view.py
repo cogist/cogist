@@ -173,15 +173,11 @@ class MindMapView(QGraphicsView):
         from cogist.domain.layout import DefaultLayoutConfig
 
         # Create layout config from style_config spacing values
-        # All spacing values are initialized in create_default_template()
-        level_spacing_by_depth = self.style_config.level_spacing_by_depth.copy()
-        sibling_spacing_by_depth = self.style_config.sibling_spacing_by_depth.copy()
-
+        # LayoutConfig will read spacing from role_styles via resolved_template reference
         layout_config = DefaultLayoutConfig(
             level_spacing=self.style_config.parent_child_spacing,
             sibling_spacing=self.style_config.sibling_spacing,
-            level_spacing_by_depth=level_spacing_by_depth,
-            sibling_spacing_by_depth=sibling_spacing_by_depth,
+            resolved_template=self.style_config.resolved_template,  # For role-based spacing
         )
 
         # Update service layout config
@@ -443,37 +439,42 @@ class MindMapView(QGraphicsView):
                     parent_item, item, color=edge_color, style_config=self.style_config
                 )
 
-                # Apply edge style from style_config (per-depth configuration)
+                # Apply edge style from style_config (role-based configuration)
                 if hasattr(self, "style_config") and self.style_config:
                     # Get source node depth to determine which connector config to use
                     source_depth = (
                         parent_item.depth if hasattr(parent_item, "depth") else 0
                     )
 
-                    # Get per-depth connector config
-                    # For depths beyond configured range, use the max configured depth (level 3+)
-                    if source_depth in self.style_config.connector_config_by_depth:
-                        connector_config = self.style_config.connector_config_by_depth[
-                            source_depth
-                        ]
-                    else:
-                        # Use the deepest configured level for deeper nodes
-                        max_depth = max(
-                            self.style_config.connector_config_by_depth.keys()
-                        )
-                        connector_config = self.style_config.connector_config_by_depth[
-                            max_depth
-                        ]
+                    # Get connector config from role-based style
+                    from cogist.domain.styles.extended_styles import NodeRole
 
-                    # Build edge style config from per-depth values
-                    edge_style_config = {
-                        "connector_color": connector_config["color"],
-                        "line_width": connector_config["line_width"],
-                        "connector_style": connector_config["connector_style"],
-                        "connector_shape": connector_config.get(
-                            "connector_shape", "bezier"
-                        ),
+                    role_map = {
+                        0: NodeRole.ROOT,
+                        1: NodeRole.PRIMARY,
+                        2: NodeRole.SECONDARY,
                     }
+                    role = role_map.get(source_depth, NodeRole.TERTIARY)
+
+                    if (self.style_config.resolved_template and
+                        role in self.style_config.resolved_template.role_styles):
+                        role_style = self.style_config.resolved_template.role_styles[role]
+
+                        # Build edge style config from role-based values
+                        edge_style_config = {
+                            "connector_color": role_style.connector_color or (self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666"),
+                            "line_width": role_style.line_width,
+                            "connector_style": role_style.connector_style,
+                            "connector_shape": role_style.connector_shape,
+                        }
+                    else:
+                        # Fallback to default values
+                        edge_style_config = {
+                            "connector_color": self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666",
+                            "line_width": 2.0,
+                            "connector_style": "solid",
+                            "connector_shape": "bezier",
+                        }
                     edge.update_style(edge_style_config)
 
                 self.scene.addItem(edge)
@@ -1768,15 +1769,11 @@ class MindMapView(QGraphicsView):
         # Step 2: Re-apply layout, passing selected node to preserve its side
         from cogist.domain.layout import DefaultLayoutConfig
 
-        # Create layout config using per-depth spacing values (true isolation)
-        level_spacing_by_depth = self.style_config.level_spacing_by_depth.copy()
-        sibling_spacing_by_depth = self.style_config.sibling_spacing_by_depth.copy()
-
+        # Create layout config using role-based spacing (via resolved_template)
         layout_config = DefaultLayoutConfig(
             level_spacing=self.style_config.parent_child_spacing,
             sibling_spacing=self.style_config.sibling_spacing,
-            level_spacing_by_depth=level_spacing_by_depth,
-            sibling_spacing_by_depth=sibling_spacing_by_depth,
+            resolved_template=self.style_config.resolved_template,  # For role-based spacing
         )
 
         # Use LayoutRegistry to create layout instance (demonstrates proper architecture)
@@ -2252,16 +2249,30 @@ class MindMapView(QGraphicsView):
             dragged_item = self.node_items.get(dragged_node.id)
 
             if parent_item and dragged_item:
-                # Get connector config for potential parent's depth
+                # Get connector config from role-based style
+                from cogist.domain.styles.extended_styles import NodeRole
+
                 parent_depth = potential_parent.depth
-                connector_config = self.style_config.connector_config_by_depth.get(
-                    parent_depth, {}
-                )
+                role_map = {
+                    0: NodeRole.ROOT,
+                    1: NodeRole.PRIMARY,
+                    2: NodeRole.SECONDARY,
+                }
+                role = role_map.get(parent_depth, NodeRole.TERTIARY)
+
+                # Default values
+                color = "#999999"
+                connector_shape = "bezier"
+
+                if (self.style_config.resolved_template and
+                    role in self.style_config.resolved_template.role_styles):
+                    role_style = self.style_config.resolved_template.role_styles[role]
+                    color = role_style.connector_color or "#999999"
+                    connector_shape = role_style.connector_shape
 
                 # Create a temporary EdgeItem with proper styling
                 from cogist.presentation.items.edge_item import EdgeItem
 
-                color = connector_config.get("color", "#999999")
                 temp_edge = EdgeItem(
                     parent_item,
                     dragged_item,
@@ -2269,8 +2280,7 @@ class MindMapView(QGraphicsView):
                     style_config=self.style_config,
                 )
 
-                # Set the connector strategy based on config
-                connector_shape = connector_config.get("connector_shape", "bezier")
+                # Set the connector strategy based on config (already set above)
                 from cogist.presentation.connectors import (
                     BezierConnector,
                     OrthogonalConnector,

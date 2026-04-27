@@ -54,6 +54,14 @@ def create_default_template() -> MindMapStyle:
             shadow_offset_y=2,
             shadow_blur=4,
             shadow_color=None,
+            # Spacing configuration (per-role)
+            parent_child_spacing=80.0,  # Root to Primary
+            sibling_spacing=60.0,       # Root's children spacing
+            # Connector configuration (per-role)
+            connector_shape="bezier",
+            connector_style="solid",
+            line_width=2.0,
+            connector_color=None,
         ),
         NodeRole.PRIMARY: RoleBasedStyle(
             role=NodeRole.PRIMARY,
@@ -83,6 +91,14 @@ def create_default_template() -> MindMapStyle:
             shadow_offset_y=2,
             shadow_blur=4,
             shadow_color=None,
+            # Spacing configuration (per-role)
+            parent_child_spacing=80.0,  # Root to Primary
+            sibling_spacing=60.0,       # Root's children spacing
+            # Connector configuration (per-role)
+            connector_shape="bezier",
+            connector_style="solid",
+            line_width=2.0,
+            connector_color=None,
         ),
         NodeRole.SECONDARY: RoleBasedStyle(
             role=NodeRole.SECONDARY,
@@ -112,6 +128,14 @@ def create_default_template() -> MindMapStyle:
             shadow_offset_y=2,
             shadow_blur=4,
             shadow_color=None,
+            # Spacing configuration (per-role)
+            parent_child_spacing=60.0,  # Primary to Secondary
+            sibling_spacing=45.0,       # Primary's children spacing
+            # Connector configuration (per-role)
+            connector_shape="bezier",
+            connector_style="solid",
+            line_width=2.0,
+            connector_color=None,
         ),
         NodeRole.TERTIARY: RoleBasedStyle(
             role=NodeRole.TERTIARY,
@@ -141,6 +165,14 @@ def create_default_template() -> MindMapStyle:
             shadow_offset_y=2,
             shadow_blur=4,
             shadow_color=None,
+            # Spacing configuration (per-role)
+            parent_child_spacing=40.0,  # Secondary to Tertiary
+            sibling_spacing=35.0,       # Secondary's children spacing
+            # Connector configuration (per-role)
+            connector_shape="bezier",
+            connector_style="solid",
+            line_width=2.0,
+            connector_color=None,
         ),
     }
 
@@ -179,30 +211,9 @@ def create_default_template() -> MindMapStyle:
     # Create MindMapStyle with all style data explicitly initialized
     style = MindMapStyle(
         name="Default",
-        # === Global spacing configuration (fallback for non-per-depth scenarios) ===
+        # === Global spacing configuration ===
         parent_child_spacing=80.0,  # Horizontal spacing between parent and child
         sibling_spacing=60.0,       # Vertical spacing between siblings
-        # === Per-depth spacing configuration (4 levels: root, level1, level2, level3+) ===
-        level_spacing_by_depth={
-            0: 80.0,   # Root → Level 1
-            1: 60.0,   # Level 1 → Level 2
-            2: 40.0,   # Level 2 → Level 3
-            3: 30.0,   # Level 3+ → Level 4+ (all deeper levels)
-        },
-        sibling_spacing_by_depth={
-            0: 60.0,   # Level 1 siblings
-            1: 45.0,   # Level 2 siblings
-            2: 35.0,   # Level 3 siblings
-            3: 28.0,   # Level 3+ siblings (all deeper levels)
-        },
-        # === Per-depth connector configuration (4 levels: root, level1, level2, level3+) ===
-        # Note: enable_gradient is automatically determined by connector_shape
-        connector_config_by_depth={
-            0: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666", "gradient_ratio": 0.33},  # Root → Level 1
-            1: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666", "gradient_ratio": 0.33},  # Level 1 → Level 2
-            2: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666", "gradient_ratio": 0.33},  # Level 2 → Level 3
-            3: {"connector_shape": "bezier", "connector_style": "solid", "line_width": 2.0, "color": "#666666", "gradient_ratio": 0.33},  # Level 3+ (all deeper)
-        },
     )
 
     # Store resolved references (in production, these would come from registries)

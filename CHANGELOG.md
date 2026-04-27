@@ -88,7 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Serialization improvements**: Enhanced template serialization
   - Unified serialize/deserialize functions for complete template data
   - Reuses CGS serializer logic for consistency
-  - Supports per-depth configuration (spacing, connectors, text width)
+  - Supports role-based configuration (spacing, connectors, text width by node role)
 
 ### Technical Details
 - All tests passing (96 unit tests)
