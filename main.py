@@ -884,6 +884,8 @@ class MainWindow(QMainWindow):
         4. After scaling, calculate where anchor is in viewport
         5. Translate view to keep anchor at original viewport position
 
+        CRITICAL: Enforce minimum zoom level to prevent scene from becoming smaller than viewport.
+
         Priority:
         1. Selected node center
         2. Mouse cursor position (if over viewport)
@@ -894,6 +896,38 @@ class MainWindow(QMainWindow):
         """
 
         view = self.mindmap_view
+
+        # CRITICAL: Calculate minimum allowed scale factor
+        # Prevent zooming out beyond: scene + padding fits viewport exactly
+        current_transform = view.transform()
+        current_scale = current_transform.m11()  # Get current scale (m11 = m22 for uniform scale)
+
+        # Calculate the minimum scale needed for scene to fit viewport
+        scene_rect = view.sceneRect()
+        viewport_size = view.viewport().size()
+
+        # Add padding (e.g., 50px on each side = 100px total)
+        padding = 100.0
+        scene_with_padding_width = scene_rect.width() + padding
+        scene_with_padding_height = scene_rect.height() + padding
+
+        # Calculate scale factors needed to fit scene+padding in viewport
+        scale_x = viewport_size.width() / scene_with_padding_width
+        scale_y = viewport_size.height() / scene_with_padding_height
+
+        # Use the smaller scale factor to ensure both dimensions fit
+        min_scale_factor = min(scale_x, scale_y)
+
+        # Calculate the resulting scale if we apply the zoom
+        new_scale = current_scale * factor
+
+        # Clamp to minimum scale
+        if new_scale < min_scale_factor:
+            # Adjust factor to achieve minimum scale
+            factor = min_scale_factor / current_scale
+
+        # Clamp factor to reasonable range (prevent excessive zoom in)
+        factor = max(0.1, min(5.0, factor))
 
         # Determine anchor point in scene coordinates
         anchor_scene_pos = None
