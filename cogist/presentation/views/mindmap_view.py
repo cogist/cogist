@@ -2240,14 +2240,10 @@ class MindMapView(QGraphicsView):
             if is_currently_right:
                 # R node: parent anchor X must be SMALLER than dragged anchor X
                 if candidate_anchor_x >= dragged_anchor_x:
-                    # DEBUG: Log why candidate is rejected
-                    print(f"  SKIP {target_node.text}: candidate_anchor={candidate_anchor_x:.1f} >= dragged_anchor={dragged_anchor_x:.1f}")
                     continue  # Parent is on wrong side (right of dragged node)
             else:
                 # L node: parent anchor X must be LARGER than dragged anchor X
                 if candidate_anchor_x <= dragged_anchor_x:
-                    # DEBUG: Log why candidate is rejected
-                    print(f"  SKIP {target_node.text}: candidate_anchor={candidate_anchor_x:.1f} <= dragged_anchor={dragged_anchor_x:.1f}")
                     continue  # Parent is on wrong side (left of dragged node)
 
             # Calculate anchor point for candidate node
