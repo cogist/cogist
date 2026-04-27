@@ -216,14 +216,14 @@ class MindMapView(QGraphicsView):
         Optimized for text editing scenarios where only one node changes.
         """
         branch_colors = [
-            "#FF6B6B",
-            "#4ECDC4",
-            "#45B7D1",
-            "#FFA07A",
-            "#98D8C8",
-            "#F7DC6F",
-            "#BB8FCE",
-            "#85C1E9",
+            "#FFFF6B6B",
+            "#FF4ECDC4",
+            "#FF45B7D1",
+            "#FFFFA07A",
+            "#FF98D8C8",
+            "#FFF7DC6F",
+            "#FFBB8FCE",
+            "#FF85C1E9",
         ]
 
         # Determine branch color
@@ -240,10 +240,10 @@ class MindMapView(QGraphicsView):
 
         # Create temporary item to measure
         temp_item = NodeItem(
+            color=branch_color,
             text=node.text,
             width=node.width,
             height=node.height,
-            color=branch_color,
             is_root=node.is_root,
             depth=node.depth,
             style_config=self.style_config,
@@ -259,14 +259,14 @@ class MindMapView(QGraphicsView):
         then sync back to domain nodes.
         """
         branch_colors = [
-            "#FF6B6B",
-            "#4ECDC4",
-            "#45B7D1",
-            "#FFA07A",
-            "#98D8C8",
-            "#F7DC6F",
-            "#BB8FCE",
-            "#85C1E9",
+            "#FFFF6B6B",
+            "#FF4ECDC4",
+            "#FF45B7D1",
+            "#FFFFA07A",
+            "#FF98D8C8",
+            "#FFF7DC6F",
+            "#FFBB8FCE",
+            "#FF85C1E9",
         ]
 
         def measure_recursive(node: Node, branch_color: str | None = None):
@@ -274,10 +274,10 @@ class MindMapView(QGraphicsView):
 
             # Create temporary item (not added to scene)
             temp_item = NodeItem(
+                color=current_color,
                 text=node.text,
                 width=node.width,
                 height=node.height,
-                color=current_color,
                 is_root=node.is_root,
                 depth=node.depth,
                 style_config=self.style_config,  # Pass style configuration
@@ -416,10 +416,10 @@ class MindMapView(QGraphicsView):
 
             # Create node item
             item = NodeItem(
+                color=current_color,
                 text=node.text,
                 width=node.width,
                 height=node.height,
-                color=current_color,
                 is_root=node.is_root,
                 depth=node.depth,
                 use_domain_size=True,  # Use domain layer's pre-measured size

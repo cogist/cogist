@@ -89,10 +89,10 @@ class NodeItem(QGraphicsRectItem):
 
     def __init__(
         self,
+        color: str,  # CRITICAL: Must be provided - no fallback allowed
         text: str = "",
         width: float = None,  # Must be provided - no default
         height: float = None,  # Must be provided - no default
-        color: str = "#2196F3",
         is_root: bool = False,
         depth: int = 0,
         use_domain_size: bool = False,
@@ -182,9 +182,10 @@ class NodeItem(QGraphicsRectItem):
             else:
                 border_color = None
         else:
-            bg_color = "#FFFFFF"
-            text_color = "#000000"
-            border_color = None
+            # CRITICAL: color_scheme must be available - no fallback allowed
+            raise RuntimeError(
+                f"color_scheme is required but got None for node {self.node_id} at depth {self.depth}"
+            )
 
         # Store for rendering
         self.template_style = template_style
@@ -347,14 +348,19 @@ class NodeItem(QGraphicsRectItem):
         """Automatically choose text color based on background brightness.
 
         Args:
-            bg_color: Background color in hex format (#RRGGBB)
+            bg_color: Background color in hex format (#RRGGBB or #AARRGGBB)
 
         Returns:
             '#FFFFFF' for dark backgrounds, '#000000' for light backgrounds
         """
         # Parse hex color
         bg_color = bg_color.lstrip("#")
-        if len(bg_color) != 6:
+
+        # Support both 6-digit (#RRGGBB) and 8-digit (#AARRGGBB) formats
+        if len(bg_color) == 8:
+            # 8-digit format: skip alpha channel, use RGB
+            bg_color = bg_color[2:]  # Remove AA prefix
+        elif len(bg_color) != 6:
             return "#000000"
 
         try:
@@ -448,9 +454,10 @@ class NodeItem(QGraphicsRectItem):
                     else:
                         border_color = None
                 else:
-                    bg_color = "#FFFFFF"
-                    text_color = "#000000"
-                    border_color = None
+                    # CRITICAL: color_scheme must be available - no fallback allowed
+                    raise RuntimeError(
+                        f"color_scheme is required but got None for node {self.node_id} at depth {self.depth}"
+                    )
 
                 # Store for rendering
                 self.template_style = template_style
@@ -493,12 +500,15 @@ class NodeItem(QGraphicsRectItem):
                 font.setWeight(font_weight)
 
                 # Apply font decorations
-                is_italic_style = (
-                    "italic" in font_weight_str.lower() if font_weight_str else False
-                )
-
-                if template_style.font_style == "Italic" and not is_italic_style:
+                # CRITICAL: Always apply font_style from template, regardless of font weight name
+                if template_style.font_style == "Italic":
                     font.setItalic(True)
+
+                # CRITICAL: Apply underline and strikeout
+                if hasattr(template_style, "font_underline") and template_style.font_underline:
+                    font.setUnderline(True)
+                if hasattr(template_style, "font_strikeout") and template_style.font_strikeout:
+                    font.setStrikeOut(True)
 
                 self.text_item.setFont(font)
 
@@ -511,15 +521,15 @@ class NodeItem(QGraphicsRectItem):
                 # Apply font shadow effect
                 self._apply_font_shadow()
             else:
-                # Fallback to default font
-                font = QFont("Arial", 14)
-                self.text_item.setFont(font)
-                self.text_item.setDefaultTextColor(QColor("#000000"))
+                # CRITICAL: template_style must exist for all roles - no fallback allowed
+                raise RuntimeError(
+                    f"template_style is required for role '{role}' but got None for node {self.node_id}"
+                )
         else:
-            # Fallback when no resolved template
-            font = QFont("Arial", 14)
-            self.text_item.setFont(font)
-            self.text_item.setDefaultTextColor(QColor("#000000"))
+            # CRITICAL: resolved_template must be available - no fallback allowed
+            raise RuntimeError(
+                f"resolved_template is required but got None for node {self.node_id}"
+            )
 
         # CRITICAL: Recalculate node geometry when style changes (padding, font size, etc.)
         # This ensures node size is updated to match new padding values

@@ -737,13 +737,20 @@ class AdvancedStyleTab(QWidget):
         """Auto-select text color based on background brightness.
 
         Args:
-            bg_color: Background color in hex format
+            bg_color: Background color in hex format (#RRGGBB or #AARRGGBB)
 
         Returns:
             White (#FFFFFF) for dark backgrounds, black (#000000) for light
         """
         # Remove '#' if present
         bg_color = bg_color.lstrip("#")
+
+        # Support both 6-digit (#RRGGBB) and 8-digit (#AARRGGBB) formats
+        if len(bg_color) == 8:
+            # 8-digit format: skip alpha channel, use RGB
+            bg_color = bg_color[2:]  # Remove AA prefix
+        elif len(bg_color) != 6:
+            return "#000000"
 
         # Convert to RGB
         r = int(bg_color[0:2], 16)
