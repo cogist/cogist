@@ -167,7 +167,7 @@ class RoleBasedStyle:
     # === Font properties (without colors) ===
     font_size: int = 14
     font_weight: str = "Normal"  # Normal / Bold / Light
-    font_style: str = "Normal"  # Normal / Italic
+    font_italic: bool = False  # Italic style
     font_family: str = "Arial"
     font_underline: bool = False
     font_strikeout: bool = False

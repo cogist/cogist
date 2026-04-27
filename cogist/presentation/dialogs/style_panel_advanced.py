@@ -138,7 +138,7 @@ class AdvancedStyleTab(QWidget):
             "font_family": role_style.font_family,
             "font_size": role_style.font_size,
             "font_weight": role_style.font_weight,
-            "font_italic": role_style.font_style == "Italic",
+            "font_italic": role_style.font_italic,
             "font_underline": role_style.font_underline,
             "font_strikeout": role_style.font_strikeout,
             # Shadow
@@ -331,9 +331,9 @@ class AdvancedStyleTab(QWidget):
                         color_scheme.border_colors = {}
                     color_scheme.border_colors[role] = value
             elif key == "font_italic":
-                # Map boolean font_italic to string font_style
-                if hasattr(role_style, 'font_style'):
-                    role_style.font_style = "Italic" if value else "Normal"
+                # Direct boolean assignment
+                if hasattr(role_style, 'font_italic'):
+                    role_style.font_italic = value
             elif key == "max_text_width":
                 # Handle max text width update
                 if hasattr(role_style, 'max_text_width'):

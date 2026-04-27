@@ -226,10 +226,7 @@ class NodeItem(QGraphicsRectItem):
         font.setWeight(font_weight)  # Use setWeight for better compatibility
 
         # Apply font decorations from template_style
-        if (
-            hasattr(template_style, "font_style")
-            and template_style.font_style == "Italic"
-        ):
+        if hasattr(template_style, "font_italic") and template_style.font_italic:
             font.setItalic(True)
         if hasattr(template_style, "font_underline") and template_style.font_underline:
             font.setUnderline(True)
@@ -500,8 +497,8 @@ class NodeItem(QGraphicsRectItem):
                 font.setWeight(font_weight)
 
                 # Apply font decorations
-                # CRITICAL: Always apply font_style from template, regardless of font weight name
-                if template_style.font_style == "Italic":
+                # CRITICAL: Always apply font_italic from template
+                if template_style.font_italic:
                     font.setItalic(True)
 
                 # CRITICAL: Apply underline and strikeout

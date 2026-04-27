@@ -45,7 +45,7 @@ def create_default_template() -> MindMapStyle:
             max_text_width=300,  # ROOT nodes: widest (300px)
             font_size=22,
             font_weight="Bold",
-            font_style="Normal",
+            font_italic=False,
             font_family="Arial",
             font_underline=False,
             font_strikeout=False,
@@ -82,7 +82,7 @@ def create_default_template() -> MindMapStyle:
             max_text_width=250,  # PRIMARY nodes: wide (250px)
             font_size=18,
             font_weight="Normal",
-            font_style="Normal",
+            font_italic=False,
             font_family="Arial",
             font_underline=False,
             font_strikeout=False,
@@ -119,7 +119,7 @@ def create_default_template() -> MindMapStyle:
             max_text_width=200,  # SECONDARY nodes: medium (200px)
             font_size=16,
             font_weight="Normal",
-            font_style="Normal",
+            font_italic=False,
             font_family="Arial",
             font_underline=False,
             font_strikeout=False,
@@ -156,7 +156,7 @@ def create_default_template() -> MindMapStyle:
             max_text_width=0,  # TERTIARY nodes: unlimited width (no wrap)
             font_size=14,
             font_weight="Normal",
-            font_style="Normal",
+            font_italic=False,
             font_family="Arial",
             font_underline=False,
             font_strikeout=False,

@@ -214,6 +214,15 @@ class ChangeStyleCommand(Command):
                                     # Border color from color_scheme
                                     if self.style_config.resolved_color_scheme and self.style_config.resolved_color_scheme.border_colors:
                                         backup[key] = self.style_config.resolved_color_scheme.border_colors.get(role)
+                                elif key == "font_italic":
+                                    # Direct boolean backup
+                                    if hasattr(role_style, 'font_italic'):
+                                        backup[key] = role_style.font_italic
+                                elif key.startswith("border_") and hasattr(role_style, 'border'):
+                                    # Backup border attributes from border object
+                                    border_attr = key
+                                    if hasattr(role_style.border, border_attr):
+                                        backup[key] = getattr(role_style.border, border_attr)
                                 elif hasattr(role_style, key):
                                     backup[key] = getattr(role_style, key)
 
@@ -337,6 +346,15 @@ class ChangeStyleCommand(Command):
                                         if not self.style_config.resolved_color_scheme.border_colors:
                                             self.style_config.resolved_color_scheme.border_colors = {}
                                         self.style_config.resolved_color_scheme.border_colors[role] = value
+                                elif key == "font_italic":
+                                    # Direct boolean assignment
+                                    if hasattr(role_style, 'font_italic'):
+                                        role_style.font_italic = value
+                                elif key.startswith("border_") and hasattr(role_style, 'border'):
+                                    # Apply border attributes to border object
+                                    border_attr = key
+                                    if hasattr(role_style.border, border_attr):
+                                        setattr(role_style.border, border_attr, value)
                                 elif hasattr(role_style, key):
                                     # Direct attribute update (includes shadow_enabled, shadow_offset_x, etc.)
                                     setattr(role_style, key, value)
@@ -375,9 +393,17 @@ class ChangeStyleCommand(Command):
         if self.changes[0].layer != other.changes[0].layer:
             return False
 
+        # CRITICAL: Only coalesce if both commands have EXACTLY the same keys
+        # This ensures that adjusting a slider (same field repeatedly) gets coalesced,
+        # but changing different properties (bg_color, then text_color) creates separate undo steps
+        self_keys = set(self.changes[0].style_updates.keys())
+        other_keys = set(other.changes[0].style_updates.keys())
+        if self_keys != other_keys:
+            return False
+
         # Check if there's at least one common numeric field
-        self_numeric_fields = set(self.changes[0].style_updates.keys()) & NUMERIC_STYLE_FIELDS
-        other_numeric_fields = set(other.changes[0].style_updates.keys()) & NUMERIC_STYLE_FIELDS
+        self_numeric_fields = self_keys & NUMERIC_STYLE_FIELDS
+        other_numeric_fields = other_keys & NUMERIC_STYLE_FIELDS
 
         # If both have numeric fields and they overlap, allow coalescing
         return bool(self_numeric_fields & other_numeric_fields)
