@@ -94,7 +94,7 @@ class SceneRectManager:
         if content_rect.isEmpty():
             return
 
-        # Expand content rect by margin on all sides
+        # Calculate sceneRect: content bounds + margin, with minimum viewport size
         expanded_rect = content_rect.adjusted(
             -effective_margin,
             -effective_margin,
@@ -102,18 +102,24 @@ class SceneRectManager:
             effective_margin,
         )
 
-        # CRITICAL: Expand sceneRect to fit viewport if needed, but preserve center
+        # CRITICAL: Update sceneRect while preserving viewport position
         # to avoid triggering Qt's automatic viewport adjustment.
-        # Only recenter when absolutely necessary (first initialization).
+        view = self.scene.views()[0] if self.scene.views() else None
+        viewport_center_view = None
+        viewport_center_scene = None
+
+        if view:
+            # Save current viewport center in scene coordinates
+            viewport_center_view = view.viewport().rect().center()
+            viewport_center_scene = view.mapToScene(viewport_center_view)
+
         vp_size = self._get_viewport_size()
         if vp_size is not None:
             vw, vh = vp_size
 
-            # Get current sceneRect to preserve its center
-            current_rect = self.scene.sceneRect()
-
             # Calculate the union of current rect and expanded content rect
-            # This ensures we only expand, never shrink or recenter unnecessarily
+            # This ensures we only expand, never shrink
+            current_rect = self.scene.sceneRect()
             final_rect = current_rect.united(expanded_rect)
 
             # Ensure minimum size matches viewport
@@ -127,6 +133,19 @@ class SceneRectManager:
             expanded_rect = final_rect
 
         self.scene.setSceneRect(expanded_rect)
+
+        # Restore viewport position after sceneRect change
+        if view and viewport_center_view and viewport_center_scene:
+            # Calculate the offset needed to restore viewport center
+            new_viewport_center_scene = view.mapToScene(viewport_center_view)
+            offset_x = viewport_center_scene.x() - new_viewport_center_scene.x()
+            offset_y = viewport_center_scene.y() - new_viewport_center_scene.y()
+
+            # Scroll to restore original viewport position
+            h_bar = view.horizontalScrollBar()
+            v_bar = view.verticalScrollBar()
+            h_bar.setValue(h_bar.value() + int(offset_x))
+            v_bar.setValue(v_bar.value() + int(offset_y))
 
     def ensure_minimum_size(self) -> None:
         """Expand sceneRect to at least match the current viewport size.
