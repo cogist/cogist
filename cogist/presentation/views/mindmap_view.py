@@ -357,14 +357,6 @@ class MindMapView(QGraphicsView):
         # Step 3: Update all edges
         self._update_all_edges()
 
-        # Step 4: Update side flags for decorative lines
-        if self.root_node:
-            root_item = self.node_items.get(self.root_node.id)
-            if root_item:
-                root_x = root_item.scenePos().x()
-                for item in self.node_items.values():
-                    item.is_right_side = item.scenePos().x() >= root_x
-
         return True
 
     def _traverse_tree(self, root: Node):
@@ -496,14 +488,6 @@ class MindMapView(QGraphicsView):
                 )
 
         create_items_recursive(root)
-
-        # Mark each node's side (left/right of root) for decorative line rendering
-        # This is done after all items are created and positioned in the scene
-        root_item = self.node_items.get(root.id)
-        if root_item:
-            root_x = root_item.scenePos().x()
-            for item in self.node_items.values():
-                item.is_right_side = item.scenePos().x() >= root_x
 
     def _get_main_window(self):
         """Get the main window reference using AppContext.
@@ -662,6 +646,17 @@ class MindMapView(QGraphicsView):
                     False  # Track if old parent edge is hidden
                 )
 
+                # Rule 7: Save complete state before drag for rollback
+                self._drag_original_state = {
+                    "position": tuple(current_node.position),  # Create tuple copy
+                    "is_right_side": node_item.is_right_side,
+                    "parent": current_node.parent,
+                    "children": list(current_node.children),  # Create list copy
+                    "depth": current_node.depth,
+                    # Cache node width for stable center calculation during drag
+                    "width": node_item.boundingRect().width(),
+                }
+
                 # Save initial relative positions of entire subtree
                 self._save_subtree_relative_positions(current_node)
         else:
@@ -692,12 +687,8 @@ class MindMapView(QGraphicsView):
                 root_item = None
                 if self.root_node:
                     root_item = self.node_items.get(self.root_node.id)
-                    root_x = root_item.scenePos().x() if root_item else 0.0
                 else:
-                    root_x = 0.0
-
-                # Current side based on position (needed for cross-side detection)
-                is_currently_right = self._is_node_on_right_side(self._dragged_node_id)
+                    root_item = None
 
                 # Apply subtree positions based on current side
                 # CRITICAL: Same logic for both sides!
@@ -708,31 +699,44 @@ class MindMapView(QGraphicsView):
                 dragged_node = None
                 potential_parent = None
 
-                if self.root_node:
+                if self.root_node and root_item:
                     dragged_node = self._find_node_by_id(
                         self.root_node, self._dragged_node_id
                     )
-                    if dragged_node and root_item:
-                        # Check if we need to mirror based on offset signs
-                        # Get first child offset to determine original side
-                        offsets = [
-                            off
-                            for off in self._subtree_initial_positions.values()
-                            if off.x() != 0
-                        ]
-                        if offsets:
-                            # Original side: negative = left, positive = right
-                            original_is_right = offsets[0].x() > 0
-                            # Mirror if current side doesn't match original side
-                            should_mirror = is_currently_right != original_is_right
-                        else:
-                            # No children, no mirroring needed
-                            should_mirror = False
+                    if dragged_node:
+                        # Rule 2: Compare dragged node's CENTER with root's CENTER
+                        # CRITICAL: NodeItem uses center as origin, so scenePos() IS the center!
+                        # Do NOT add width/2 - that gives the right edge, not the center!
+                        dragged_center_x = dragged_item.scenePos().x()
+                        root_center_x = root_item.scenePos().x()
 
-                        # Apply subtree positions
-                        self._apply_subtree_positions(new_pos, should_mirror)
+                        is_currently_right = dragged_center_x >= root_center_x
 
-                        # Update is_right_side for entire subtree
+                        # CRITICAL FIX: Update Domain layer position to match visual position
+                        # This ensures _balance_branches uses the correct position during drag
+                        dragged_node.position = (
+                            dragged_center_x,
+                            dragged_node.position[1],
+                        )
+
+                        # Rule 4: Use cached L/R state from drag start or last flip
+                        cached_is_right = self._drag_original_state["is_right_side"]
+
+                        # Flip subtree when L/R state changes
+                        should_mirror = is_currently_right != cached_is_right
+
+                        if should_mirror:
+                            # Update cached L/R state after flip
+                            self._drag_original_state["is_right_side"] = (
+                                is_currently_right
+                            )
+                            print(
+                                f"  >>> FLIP! cached_is_right={cached_is_right} -> {is_currently_right}"
+                            )
+                            # Only apply subtree positions when flip occurs
+                            self._apply_subtree_positions(new_pos, should_mirror)
+
+                        # Update is_right_side for dragged node
                         self._update_subtree_is_right_side(
                             dragged_node, is_currently_right
                         )
@@ -774,7 +778,8 @@ class MindMapView(QGraphicsView):
                         )
 
                         # Check if dragged node and potential parent are on different sides
-                        parent_is_right = parent_center_x >= root_x
+                        # Use root_center_x that was calculated above
+                        parent_is_right = parent_center_x >= root_center_x
                         self._is_dragging_cross_side = (
                             is_currently_right != parent_is_right
                         )
@@ -841,84 +846,117 @@ class MindMapView(QGraphicsView):
         self._is_dragging_cross_side = False
         self._old_parent_edge_hidden = False  # Reset edge hidden state
 
-        if dragged_id and potential_parent:
+        # Rule 7: Clear original state after use (will be set again on next drag start)
+        original_state = getattr(self, "_drag_original_state", None)
+        if hasattr(self, "_drag_original_state"):
+            delattr(self, "_drag_original_state")
+
+        if dragged_id:
             dragged_node = self._find_node_by_id(self.root_node, dragged_id)
-            new_parent = potential_parent
 
-            if (
-                dragged_node
-                and new_parent
-                and dragged_node != new_parent
-                and new_parent not in dragged_node.get_all_descendants()
-            ):
-                # Save old parent and index BEFORE modifying
-                old_parent = dragged_node.parent
-                old_index = (
-                    old_parent.children.index(dragged_node) if old_parent else 0
-                )
+            if dragged_node and potential_parent:
+                new_parent = potential_parent
 
-                # Create and execute reparent command (Application Layer)
-                from cogist.application.commands.reparent_node_command import (
-                    ReparentNodeCommand,
-                )
-
-                command = ReparentNodeCommand(
-                    dragged_node=dragged_node,
-                    old_parent=old_parent,
-                    new_parent=new_parent,
-                    old_index=old_index,
-                    is_cross_side=is_cross_side,
-                )
-                command.execute()
-
-                # Push to command history for undo/redo
-                self.mindmap_service.node_service.command_history.push(command)
-
-                # Sort children by Y position to maintain visual order
-                new_parent.children.sort(
-                    key=lambda child: (
-                        self.node_items[child.id].scenePos().y()
-                        if child.id in self.node_items
-                        else 0
+                if (
+                    dragged_node != new_parent
+                    and new_parent not in dragged_node.get_all_descendants()
+                ):
+                    # Save old parent and index BEFORE modifying
+                    old_parent = dragged_node.parent
+                    old_index = (
+                        old_parent.children.index(dragged_node) if old_parent else 0
                     )
-                )
 
-                # If crossed sides, flip entire subtree's is_right_side
-                if is_cross_side:
-                    # Get the side from the new parent's NodeItem
-                    new_parent_item = self.node_items.get(new_parent.id)
-                    if new_parent_item:
-                        self._flip_subtree_side(
-                            dragged_node, new_parent_item.is_right_side
+                    # Create and execute reparent command (Application Layer)
+                    from cogist.application.commands.reparent_node_command import (
+                        ReparentNodeCommand,
+                    )
+
+                    command = ReparentNodeCommand(
+                        dragged_node=dragged_node,
+                        old_parent=old_parent,
+                        new_parent=new_parent,
+                        old_index=old_index,
+                        is_cross_side=is_cross_side,
+                    )
+                    command.execute()
+
+                    # Push to command history for undo/redo
+                    self.mindmap_service.node_service.command_history.push(command)
+
+                    # Sort children by Y position to maintain visual order
+                    new_parent.children.sort(
+                        key=lambda child: (
+                            self.node_items[child.id].scenePos().y()
+                            if child.id in self.node_items
+                            else 0
                         )
+                    )
 
-                # CRITICAL: Update the top-level node's position[0] to the new side
-                # This ensures the layout algorithm assigns it to the correct side
-                def get_top_level_ancestor(node):
-                    """Get the direct child of root for this node."""
-                    current = node
-                    while current.parent and not current.parent.is_root:
-                        current = current.parent
-                    return current
+                    # If crossed sides, flip entire subtree's is_right_side
+                    if is_cross_side:
+                        # Get the side from the new parent's NodeItem
+                        new_parent_item = self.node_items.get(new_parent.id)
+                        if new_parent_item:
+                            self._flip_subtree_side(
+                                dragged_node, new_parent_item.is_right_side
+                            )
 
-                top_level_node = get_top_level_ancestor(dragged_node)
-                if top_level_node:
-                    # Use is_currently_right instead of new_parent's is_right_side
-                    # (new_parent might be root with default is_right_side=True)
-                    is_currently_right = self._is_node_on_right_side(dragged_id)
+                    # CRITICAL: Update the top-level node's position[0] to the new side
+                    # This ensures the layout algorithm assigns it to the correct side
+                    def get_top_level_ancestor(node):
+                        """Get the direct child of root for this node."""
+                        current = node
+                        while current.parent and not current.parent.is_root:
+                            current = current.parent
+                        return current
 
-                    if is_currently_right:
-                        top_level_node.position = (800.0, top_level_node.position[1])
-                    else:
-                        top_level_node.position = (400.0, top_level_node.position[1])
+                    top_level_node = get_top_level_ancestor(dragged_node)
+                    if top_level_node:
+                        # Use is_currently_right instead of new_parent's is_right_side
+                        # (new_parent might be root with default is_right_side=True)
+                        is_currently_right = self._is_node_on_right_side(dragged_id)
 
-                # CRITICAL: Node relationships have changed, must rebuild edges completely
-                # Incremental update won't work because parent-child connections changed
-                # FIX: Re-measure dragged node and all its descendants since depth may have changed
+                        if is_currently_right:
+                            top_level_node.position = (
+                                800.0,
+                                top_level_node.position[1],
+                            )
+                        else:
+                            top_level_node.position = (
+                                400.0,
+                                top_level_node.position[1],
+                            )
+
+                    # CRITICAL: Node relationships have changed, must rebuild edges completely
+                    # Incremental update won't work because parent-child connections changed
+                    # FIX: Re-measure dragged node and all its descendants since depth may have changed
+                    self._measure_actual_sizes(dragged_node)
+
+                    # Now refresh layout with skip_measurement=True since we just measured
+                    self._refresh_layout(
+                        skip_measurement=True, force_rebuild_edges=True
+                    )
+                else:
+                    # Parent didn't change, but still need to refresh layout to snap node back
+                    self._measure_actual_sizes(dragged_node)
+                    self._refresh_layout(
+                        skip_measurement=True, force_rebuild_edges=False
+                    )
+            elif dragged_node:
+                # Rule 7: No potential parent detected, restore original state and refresh layout
+                if hasattr(self, "_drag_original_state"):
+                    original_state = self._drag_original_state
+                    # Restore all saved state
+                    dragged_node.position = original_state["position"]
+                    dragged_item = self.node_items.get(dragged_id)
+                    if dragged_item:
+                        dragged_item.is_right_side = original_state["is_right_side"]
+                    # Note: parent and children are restored by NOT executing ReparentNodeCommand
+
+                # Refresh layout to snap node back to original position
                 self._measure_actual_sizes(dragged_node)
-
-                # Now refresh layout with skip_measurement=True since we just measured
-                self._refresh_layout(skip_measurement=True, force_rebuild_edges=True)
+                self._refresh_layout(skip_measurement=True, force_rebuild_edges=False)
 
         # Clean up temp edge
         if self._temp_drag_edge:
@@ -1397,11 +1435,13 @@ class MindMapView(QGraphicsView):
     def _is_node_on_right_side(self, node_id: str) -> bool:
         """Check if a node is on the right side of root.
 
+        Rule 2: Compare center X coordinates, not left edge positions.
+
         Args:
             node_id: The ID of the node to check
 
         Returns:
-            True if node's x position >= root's x position, False otherwise
+            True if node's center X >= root's center X, False otherwise
         """
         item = self.node_items.get(node_id)
         if not item:
@@ -1414,7 +1454,11 @@ class MindMapView(QGraphicsView):
         if not root_item:
             return True
 
-        return item.scenePos().x() >= root_item.scenePos().x()
+        # Rule 2: Compare center points, not left edges
+        node_center_x = item.scenePos().x() + item.boundingRect().width() / 2
+        root_center_x = root_item.scenePos().x() + root_item.boundingRect().width() / 2
+
+        return node_center_x >= root_center_x
 
     def _generate_node_name(self, parent_node: Node) -> str:
         """Generate unique node name based on hierarchy.
@@ -1805,6 +1849,19 @@ class MindMapView(QGraphicsView):
             self.edge_items.clear()
             self._create_ui_items(self.root_node)
 
+        # Update is_right_side for all nodes based on their final positions
+        # Rule 2: Use center point comparison, not left edge
+        if self.root_node:
+            root_item = self.node_items.get(self.root_node.id)
+            if root_item:
+                # CRITICAL: NodeItem uses center as origin, so scenePos() IS the center!
+                root_center_x = root_item.scenePos().x()
+
+                for item in self.node_items.values():
+                    # CRITICAL: NodeItem uses center as origin, so scenePos() IS the center!
+                    node_center_x = item.scenePos().x()
+                    item.is_right_side = node_center_x >= root_center_x
+
         # Update scene rect based on new content
         self.scene_manager.update_from_content()
 
@@ -2141,85 +2198,6 @@ class MindMapView(QGraphicsView):
                     edge.setVisible(True)
                     break
 
-    def _detect_potential_parent(
-        self, dragged_item: NodeItem, mouse_pos: QPointF
-    ) -> Node | None:
-        """
-        Detect the best potential parent based on anchor point distance.
-
-        Uses current position (not is_right_side) to determine which side the node is on.
-        Distance is calculated from dragged node center to candidate's anchor point.
-        """
-        dragged_node = self._find_node_by_id(self.root_node, self._dragged_node_id)
-        if not dragged_node or not self.root_node:
-            return None
-
-        # Determine current side based on actual position, not is_right_side property
-        is_currently_right = self._is_node_on_right_side(self._dragged_node_id)
-
-        # Calculate dragged node center for distance comparison
-        root_item = self.node_items.get(self.root_node.id)
-        if not root_item:
-            return None
-        dragged_center_x = (
-            dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2
-        )
-
-        best_candidate = None
-        best_distance = float("inf")
-
-        # Calculate dragged node center
-        dragged_center = dragged_item.scenePos() + dragged_item.boundingRect().center()
-
-        for node_id, item in self.node_items.items():
-            if node_id == self._dragged_node_id:
-                continue  # Skip self
-
-            target_node = self._find_node_by_id(self.root_node, node_id)
-            if not target_node:
-                continue
-
-            # Cannot be descendant (would create cycle)
-            if target_node in dragged_node.get_all_descendants():
-                continue
-
-            # Get positions
-            target_pos = item.scenePos()
-
-            # For right-side dragged node, look for nodes on the left (smaller x)
-            # For left-side dragged node, look for nodes on the right (larger x)
-            if is_currently_right:
-                if target_pos.x() >= dragged_center_x:
-                    continue  # Skip nodes on the right or same x
-            else:
-                if target_pos.x() <= dragged_center_x:
-                    continue  # Skip nodes on the left or same x
-
-            # Calculate anchor point for candidate node
-            # Right side: use right edge center; Left side: use left edge center
-            rect = item.boundingRect()
-            if is_currently_right:
-                # Candidate is on left, use its right edge as anchor
-                anchor_x = target_pos.x() + rect.width()
-                anchor_y = target_pos.y() + rect.height() / 2
-            else:
-                # Candidate is on right, use its left edge as anchor
-                anchor_x = target_pos.x()
-                anchor_y = target_pos.y() + rect.height() / 2
-
-            anchor_point = QPointF(anchor_x, anchor_y)
-
-            # Calculate Euclidean distance from dragged center to candidate anchor
-            dx = dragged_center.x() - anchor_point.x()
-            dy = dragged_center.y() - anchor_point.y()
-            distance = (dx * dx + dy * dy) ** 0.5
-
-            if distance < best_distance:
-                best_distance = distance
-                best_candidate = target_node
-
-        return best_candidate
-
     def _update_temp_drag_edge(
         self, dragged_node: Node | None, potential_parent: Node | None
     ):
@@ -2284,13 +2262,17 @@ class MindMapView(QGraphicsView):
                 self._temp_drag_edge = temp_edge
 
     def _update_subtree_is_right_side(self, node: Node, is_right: bool):
-        """Recursively update is_right_side for entire subtree."""
+        """Recursively update is_right_side for entire subtree.
+
+        Only updates the current node, children will be updated based on their
+        own positions during layout refresh.
+        """
         item = self.node_items.get(node.id)
         if item:
             item.is_right_side = is_right
-
-        for child in node.children:
-            self._update_subtree_is_right_side(child, is_right)
+        # Note: We don't recursively update children here because their
+        # is_right_side should be determined by their own position relative to root,
+        # not inherited from parent. Children will be updated during _refresh_layout.
 
     def _save_subtree_relative_positions(self, node: Node):
         """Save relative positions of all nodes in subtree relative to dragged node."""

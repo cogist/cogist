@@ -46,9 +46,7 @@ class DragHandler:
         self.node_provider = node_provider
 
     def detect_potential_parent(
-        self,
-        dragged_node_id: str,
-        mouse_pos: Position
+        self, dragged_node_id: str, mouse_pos: Position
     ) -> Node | None:
         """Detect the best potential parent based on anchor point distance.
 
@@ -67,17 +65,20 @@ class DragHandler:
         if not dragged_node:
             return None
 
-        # Get dragged node position
+        # Get dragged node position and bounds
         dragged_pos = self.node_provider.get_node_position(dragged_node_id)
         dragged_bounds = self.node_provider.get_node_bounds(dragged_node_id)
 
-        # Calculate dragged node center X for side detection
-        dragged_center_x = dragged_pos[0] + dragged_bounds[2] / 2
-
-        # Determine current side based on root position
+        # Get root node position and bounds
         root_pos = self.node_provider.get_node_position(self.root_node.id)
-        root_x = root_pos[0]
-        is_currently_right = dragged_center_x >= root_x
+        root_bounds = self.node_provider.get_node_bounds(self.root_node.id)
+
+        # Rule 1 & 2: Determine L/R node based on CURRENT visual position (center point)
+        # L node: dragged_center_x < root_center_x
+        # R node: dragged_center_x >= root_center_x
+        dragged_center_x = dragged_pos[0] + dragged_bounds[2] / 2
+        root_center_x = root_pos[0] + root_bounds[2] / 2
+        is_currently_right = dragged_center_x >= root_center_x
 
         # FIX: Use correct anchor point for dragged node based on current side
         # Right side: use LEFT edge (to connect to parent's right edge)
@@ -90,7 +91,7 @@ class DragHandler:
             dragged_anchor_y = dragged_pos[1] + dragged_bounds[3] / 2
 
         best_candidate = None
-        best_distance = float('inf')
+        best_distance = float("inf")
 
         # Iterate through all nodes to find potential parents
         for node_id in self.node_provider.get_all_node_ids():
@@ -109,11 +110,23 @@ class DragHandler:
             target_pos = self.node_provider.get_node_position(node_id)
             target_bounds = self.node_provider.get_node_bounds(node_id)
 
+            # Rule 1 & 2: Check if candidate is on the SAME side using CURRENT visual position
+            # Calculate candidate's center X coordinate
+            target_center_x = target_pos[0] + target_bounds[2] / 2
+            target_is_right = target_center_x >= root_center_x
+
+            # Skip candidates on DIFFERENT sides (but allow root node)
+            # Right nodes need right-side parents, left nodes need left-side parents
+            if not target_node.is_root and target_is_right != is_currently_right:
+                continue
+
             # FIX: Compare using anchor points, not center coordinates
             # For right-side dragged node: find candidates whose right edge anchor is to the left of dragged node's left edge anchor
             # For left-side dragged node: find candidates whose left edge anchor is to the right of dragged node's right edge anchor
             if is_currently_right:
-                candidate_anchor_x = target_pos[0] + target_bounds[2]  # Candidate's right edge
+                candidate_anchor_x = (
+                    target_pos[0] + target_bounds[2]
+                )  # Candidate's right edge
                 if candidate_anchor_x >= dragged_anchor_x:
                     continue  # Skip candidates on the right or same x
             else:
