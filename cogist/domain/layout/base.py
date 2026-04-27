@@ -7,7 +7,7 @@ the layout configuration data structures.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from cogist.domain.entities.node import Node
@@ -29,8 +29,9 @@ class DefaultLayoutConfig(BaseLayoutConfig):
     """
     level_spacing: float = 0.0
     sibling_spacing: float = 0.0
-    level_spacing_by_depth: dict[int, float] = field(default_factory=dict)
-    sibling_spacing_by_depth: dict[int, float] = field(default_factory=dict)
+
+    # Reference to resolved template for role-based spacing
+    resolved_template: Any = None  # Will be set from MindMapStyle
 
     def get_level_spacing(self, depth: int) -> float:
         """Get level spacing for a specific depth.
@@ -40,13 +41,24 @@ class DefaultLayoutConfig(BaseLayoutConfig):
 
         Returns:
             Horizontal spacing for this parent-child relationship
-            Falls back to the maximum configured depth if depth exceeds config.
         """
-        if depth in self.level_spacing_by_depth:
-            return self.level_spacing_by_depth[depth]
-        # Use the spacing of the deepest configured level for deeper nodes
-        max_depth = max(self.level_spacing_by_depth.keys())
-        return self.level_spacing_by_depth[max_depth]
+        # Get from role-based config
+        if self.resolved_template and hasattr(self.resolved_template, 'role_styles'):
+            from ..styles.extended_styles import NodeRole
+
+            # Map depth to role
+            role_map = {
+                0: NodeRole.ROOT,
+                1: NodeRole.PRIMARY,
+                2: NodeRole.SECONDARY,
+            }
+            role = role_map.get(depth, NodeRole.TERTIARY)
+
+            if role in self.resolved_template.role_styles:
+                return self.resolved_template.role_styles[role].parent_child_spacing
+
+        # Final fallback
+        return 80.0
 
     def get_sibling_spacing(self, depth: int) -> float:
         """Get sibling spacing for a specific depth.
@@ -56,13 +68,24 @@ class DefaultLayoutConfig(BaseLayoutConfig):
 
         Returns:
             Sibling spacing for this depth
-            Falls back to the maximum configured depth if depth exceeds config.
         """
-        if depth in self.sibling_spacing_by_depth:
-            return self.sibling_spacing_by_depth[depth]
-        # Use the spacing of the deepest configured level for deeper nodes
-        max_depth = max(self.sibling_spacing_by_depth.keys())
-        return self.sibling_spacing_by_depth[max_depth]
+        # Get from role-based config
+        if self.resolved_template and hasattr(self.resolved_template, 'role_styles'):
+            from ..styles.extended_styles import NodeRole
+
+            # Map depth to role
+            role_map = {
+                0: NodeRole.ROOT,
+                1: NodeRole.PRIMARY,
+                2: NodeRole.SECONDARY,
+            }
+            role = role_map.get(depth, NodeRole.TERTIARY)
+
+            if role in self.resolved_template.role_styles:
+                return self.resolved_template.role_styles[role].sibling_spacing
+
+        # Final fallback
+        return 60.0
 
 
 # === Type Union for all layout configs ===

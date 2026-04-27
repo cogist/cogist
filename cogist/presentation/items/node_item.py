@@ -89,10 +89,10 @@ class NodeItem(QGraphicsRectItem):
 
     def __init__(
         self,
+        color: str,  # CRITICAL: Must be provided - no fallback allowed
         text: str = "",
         width: float = None,  # Must be provided - no default
         height: float = None,  # Must be provided - no default
-        color: str = "#2196F3",
         is_root: bool = False,
         depth: int = 0,
         use_domain_size: bool = False,
@@ -109,7 +109,9 @@ class NodeItem(QGraphicsRectItem):
         self.is_root = is_root
         self.depth = depth
         self.style_config = style_config  # Store style configuration
-        self.is_right_side = True  # Default: right side of root (will be set by main.py)
+        self.is_right_side = (
+            True  # Default: right side of root (will be set by main.py)
+        )
 
         # Connected edges (will be updated by layout)
         self.connected_edges = []
@@ -150,7 +152,6 @@ class NodeItem(QGraphicsRectItem):
         # style_config is always set (from create_default_template or update_style)
         assert self.style_config is not None, "style_config must be set"
 
-
         # Map depth to role
         role = self._depth_to_role(depth)
 
@@ -181,9 +182,10 @@ class NodeItem(QGraphicsRectItem):
             else:
                 border_color = None
         else:
-            bg_color = "#FFFFFF"
-            text_color = "#000000"
-            border_color = None
+            # CRITICAL: color_scheme must be available - no fallback allowed
+            raise RuntimeError(
+                f"color_scheme is required but got None for node {self.node_id} at depth {self.depth}"
+            )
 
         # Store for rendering
         self.template_style = template_style
@@ -224,10 +226,7 @@ class NodeItem(QGraphicsRectItem):
         font.setWeight(font_weight)  # Use setWeight for better compatibility
 
         # Apply font decorations from template_style
-        if (
-            hasattr(template_style, "font_style")
-            and template_style.font_style == "Italic"
-        ):
+        if hasattr(template_style, "font_italic") and template_style.font_italic:
             font.setItalic(True)
         if hasattr(template_style, "font_underline") and template_style.font_underline:
             font.setUnderline(True)
@@ -346,14 +345,19 @@ class NodeItem(QGraphicsRectItem):
         """Automatically choose text color based on background brightness.
 
         Args:
-            bg_color: Background color in hex format (#RRGGBB)
+            bg_color: Background color in hex format (#RRGGBB or #AARRGGBB)
 
         Returns:
             '#FFFFFF' for dark backgrounds, '#000000' for light backgrounds
         """
         # Parse hex color
         bg_color = bg_color.lstrip("#")
-        if len(bg_color) != 6:
+
+        # Support both 6-digit (#RRGGBB) and 8-digit (#AARRGGBB) formats
+        if len(bg_color) == 8:
+            # 8-digit format: skip alpha channel, use RGB
+            bg_color = bg_color[2:]  # Remove AA prefix
+        elif len(bg_color) != 6:
             return "#000000"
 
         try:
@@ -418,7 +422,6 @@ class NodeItem(QGraphicsRectItem):
 
         # Recalculate style based on new config using role-based system
         if self.style_config and self.style_config.resolved_template:
-
             # Map depth to role
             role = self._depth_to_role(self.depth)
 
@@ -440,14 +443,18 @@ class NodeItem(QGraphicsRectItem):
                         text_color = self._auto_contrast(bg_color)
 
                     # border_colors is optional - None if not provided
-                    if color_scheme.border_colors and role in color_scheme.border_colors:
+                    if (
+                        color_scheme.border_colors
+                        and role in color_scheme.border_colors
+                    ):
                         border_color = color_scheme.border_colors[role]
                     else:
                         border_color = None
                 else:
-                    bg_color = "#FFFFFF"
-                    text_color = "#000000"
-                    border_color = None
+                    # CRITICAL: color_scheme must be available - no fallback allowed
+                    raise RuntimeError(
+                        f"color_scheme is required but got None for node {self.node_id} at depth {self.depth}"
+                    )
 
                 # Store for rendering
                 self.template_style = template_style
@@ -490,12 +497,15 @@ class NodeItem(QGraphicsRectItem):
                 font.setWeight(font_weight)
 
                 # Apply font decorations
-                is_italic_style = (
-                    "italic" in font_weight_str.lower() if font_weight_str else False
-                )
-
-                if template_style.font_style == "Italic" and not is_italic_style:
+                # CRITICAL: Always apply font_italic from template
+                if template_style.font_italic:
                     font.setItalic(True)
+
+                # CRITICAL: Apply underline and strikeout
+                if hasattr(template_style, "font_underline") and template_style.font_underline:
+                    font.setUnderline(True)
+                if hasattr(template_style, "font_strikeout") and template_style.font_strikeout:
+                    font.setStrikeOut(True)
 
                 self.text_item.setFont(font)
 
@@ -508,15 +518,15 @@ class NodeItem(QGraphicsRectItem):
                 # Apply font shadow effect
                 self._apply_font_shadow()
             else:
-                # Fallback to default font
-                font = QFont("Arial", 14)
-                self.text_item.setFont(font)
-                self.text_item.setDefaultTextColor(QColor("#000000"))
+                # CRITICAL: template_style must exist for all roles - no fallback allowed
+                raise RuntimeError(
+                    f"template_style is required for role '{role}' but got None for node {self.node_id}"
+                )
         else:
-            # Fallback when no resolved template
-            font = QFont("Arial", 14)
-            self.text_item.setFont(font)
-            self.text_item.setDefaultTextColor(QColor("#000000"))
+            # CRITICAL: resolved_template must be available - no fallback allowed
+            raise RuntimeError(
+                f"resolved_template is required but got None for node {self.node_id}"
+            )
 
         # CRITICAL: Recalculate node geometry when style changes (padding, font size, etc.)
         # This ensures node size is updated to match new padding values
@@ -533,7 +543,7 @@ class NodeItem(QGraphicsRectItem):
 
             # Move all children with same offset (they are being dragged along)
             for child_item in self.child_items:
-                child_item.setPos(child_item.pos() + offset)
+                child_item.setPos(child_item.scenePos() + offset)
 
             # Update last position
             self._last_pos = new_pos
@@ -604,7 +614,9 @@ class NodeItem(QGraphicsRectItem):
         """Get node text."""
         return self.text_content
 
-    def _calculate_node_size(self, text: str, style=None) -> tuple[float, float, object]:
+    def _calculate_node_size(
+        self, text: str, style=None
+    ) -> tuple[float, float, object]:
         """
         Unified method to calculate node size based on text content and style.
 
@@ -838,7 +850,7 @@ class NodeItem(QGraphicsRectItem):
             new_node_height = doc_size.height() + padding_height
 
             # Determine expansion direction based on node position
-            current_x = self.pos().x()
+            current_x = self.scenePos().x()
             is_right_branch = current_x >= 0  # Right side of parent (or root)
 
             # CRITICAL: Capture current rect dimensions BEFORE any updates
@@ -864,7 +876,7 @@ class NodeItem(QGraphicsRectItem):
                 )
             else:
                 # Determine expansion direction based on node position
-                current_x = self.pos().x()
+                current_x = self.scenePos().x()
                 is_right_branch = current_x >= 0  # Right side of parent (or root)
 
                 if is_right_branch:
@@ -972,9 +984,9 @@ class NodeItem(QGraphicsRectItem):
                 callback(new_text)
 
         # Clear cached original dimensions (editing finished successfully)
-        if hasattr(self, '_original_node_width'):
+        if hasattr(self, "_original_node_width"):
             del self._original_node_width
-        if hasattr(self, '_original_node_height'):
+        if hasattr(self, "_original_node_height"):
             del self._original_node_height
 
     def cancel_editing(self):
@@ -1000,7 +1012,9 @@ class NodeItem(QGraphicsRectItem):
         self.edit_widget = None
 
         # Restore original dimensions
-        if hasattr(self, '_original_node_width') and hasattr(self, '_original_node_height'):
+        if hasattr(self, "_original_node_width") and hasattr(
+            self, "_original_node_height"
+        ):
             self.node_width = self._original_node_width
             self.node_height = self._original_node_height
 

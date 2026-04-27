@@ -17,22 +17,20 @@ class TestStyleSerialization:
         assert "color_scheme_name" not in data
 
     def test_serialize_style_includes_spacing_config(self):
-        """serialize_style should include all spacing configurations."""
+        """serialize_style should include spacing configurations."""
         style = create_default_template()
         data = serialize_style(style)
 
         assert "parent_child_spacing" in data
         assert "sibling_spacing" in data
-        assert "level_spacing_by_depth" in data
-        assert "sibling_spacing_by_depth" in data
 
-    def test_serialize_style_includes_connector_config(self):
-        """serialize_style should include connector configuration."""
+    def test_serialize_style_no_connector_config(self):
+        """serialize_style should NOT include per-depth connector config (uses role-based)."""
         style = create_default_template()
         data = serialize_style(style)
 
-        assert "connector_config_by_depth" in data
-        assert "max_text_width_by_depth" in data
+        assert "connector_config_by_depth" not in data
+        assert "max_text_width_by_depth" not in data
 
     def test_deserialize_style_no_template_name(self):
         """deserialize_style should work without template_name."""
@@ -40,10 +38,6 @@ class TestStyleSerialization:
             "name": "Test Style",
             "parent_child_spacing": 80.0,
             "sibling_spacing": 60.0,
-            "level_spacing_by_depth": {"0": 80.0, "1": 60.0},
-            "sibling_spacing_by_depth": {"0": 60.0, "1": 45.0},
-            "connector_config_by_depth": {},
-            "max_text_width_by_depth": {},
             "canvas_bg_color": "#FFFFFF",
         }
 

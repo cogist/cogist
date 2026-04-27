@@ -46,8 +46,13 @@ class AddNodeCommand(Command):
 
         from cogist.domain.entities.node import Node
 
-        # Create new node with unique ID
-        self.new_node = Node(id=str(uuid.uuid4()), text=self.node_text)
+        # Create new node only if it doesn't exist (for redo, reuse existing node)
+        if self.new_node is None:
+            # Create new node with unique ID
+            self.new_node = Node(id=str(uuid.uuid4()), text=self.node_text)
+
+            # Lock the new node's position to prevent layout rebalancing from moving it
+            self.new_node.is_locked_position = True
 
         # Add to parent
         self.parent_node.add_child(self.new_node)

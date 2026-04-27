@@ -31,9 +31,26 @@ class CommandHistory:
         """
         Push a command onto the undo stack.
 
+        Supports coalescing for ChangeStyleCommand:
+        - If the new command is a ChangeStyleCommand and can be coalesced with the last command,
+          they will be merged into a single command (only keeping the last value for numeric fields).
+
         Args:
             command: Command to push
         """
+        # Check if we should coalesce with the last command
+        if (
+            self.undo_stack
+            and hasattr(command, 'should_coalesce_with')
+            and hasattr(command, 'merge_with')
+        ):
+            last_command = self.undo_stack[-1]
+            if command.should_coalesce_with(last_command):
+                # Merge the new command into the last command
+                last_command.merge_with(command)
+                # Don't add the new command to the stack
+                return
+
         self.undo_stack.append(command)
 
         # Clear redo stack when new command is executed
@@ -109,6 +126,10 @@ class CommandHistory:
     def __len__(self) -> int:
         """Return the number of commands in the undo stack."""
         return len(self.undo_stack)
+
+    def __bool__(self) -> bool:
+        """Return True if this CommandHistory object exists (regardless of stack size)."""
+        return True
 
     def get_command_count(self) -> int:
         """Return the total number of commands in undo stack."""

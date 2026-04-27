@@ -52,7 +52,7 @@ class DragHandler:
     ) -> Node | None:
         """Detect the best potential parent based on anchor point distance.
 
-        Uses current position to determine which side the node is on.
+        Uses current VISUAL position to determine which side the node is on.
         Distance is calculated from dragged node center to candidate's anchor point.
 
         Args:
@@ -71,23 +71,22 @@ class DragHandler:
         dragged_pos = self.node_provider.get_node_position(dragged_node_id)
         dragged_bounds = self.node_provider.get_node_bounds(dragged_node_id)
 
-        # Calculate dragged node center X for side detection
-        dragged_center_x = dragged_pos[0] + dragged_bounds[2] / 2
-
-        # Determine current side based on root position
+        # CRITICAL: Determine current side based on VISUAL position (dragged_pos[0])
+        # NOT logical position (dragged_node.position[0]), because during drag the node
+        # may have crossed sides visually but its logical position hasn't been updated yet.
+        # This ensures parent detection works correctly during cross-side drags.
         root_pos = self.node_provider.get_node_position(self.root_node.id)
         root_x = root_pos[0]
-        is_currently_right = dragged_center_x >= root_x
+        is_currently_right = dragged_pos[0] >= root_x
 
-        # FIX: Use correct anchor point for dragged node based on current side
-        # Right side: use LEFT edge (to connect to parent's right edge)
-        # Left side: use RIGHT edge (to connect to parent's left edge)
+        # CRITICAL: NodeItem's rect is centered, so scenePos() returns center point.
+        # To get edges, we need: left = center_x - width/2, right = center_x + width/2
         if is_currently_right:
-            dragged_anchor_x = dragged_pos[0]  # Left edge
-            dragged_anchor_y = dragged_pos[1] + dragged_bounds[3] / 2
+            dragged_anchor_x = dragged_pos[0] - dragged_bounds[2] / 2  # Left edge = center - half_width
+            dragged_anchor_y = dragged_pos[1]
         else:
-            dragged_anchor_x = dragged_pos[0] + dragged_bounds[2]  # Right edge
-            dragged_anchor_y = dragged_pos[1] + dragged_bounds[3] / 2
+            dragged_anchor_x = dragged_pos[0] + dragged_bounds[2] / 2  # Right edge = center + half_width
+            dragged_anchor_y = dragged_pos[1]
 
         best_candidate = None
         best_distance = float('inf')
@@ -109,28 +108,46 @@ class DragHandler:
             target_pos = self.node_provider.get_node_position(node_id)
             target_bounds = self.node_provider.get_node_bounds(node_id)
 
+            # CRITICAL: Check if candidate is on the SAME side as the dragged node
+            # Right nodes should only find right-side parents (including root)
+            # Left nodes should only find left-side parents (including root)
+            # IMPORTANT: Use candidate's VISUAL position (target_pos[0]), not logical position
+            # because during drag, candidates may have been moved visually and we need to
+            # match their current visual position with the dragged node's visual position.
+            target_is_right = target_pos[0] >= root_x
+
+            # Skip candidates on DIFFERENT sides (but allow root node)
+            # Right nodes need right-side parents, left nodes need left-side parents
+            if not target_node.is_root and target_is_right != is_currently_right:
+                continue
+
             # FIX: Compare using anchor points, not center coordinates
+            # CRITICAL: NodeItem's rect is centered, so:
+            #   left_edge = center_x - width/2
+            #   right_edge = center_x + width/2
             # For right-side dragged node: find candidates whose right edge anchor is to the left of dragged node's left edge anchor
             # For left-side dragged node: find candidates whose left edge anchor is to the right of dragged node's right edge anchor
             if is_currently_right:
-                candidate_anchor_x = target_pos[0] + target_bounds[2]  # Candidate's right edge
+                candidate_anchor_x = target_pos[0] + target_bounds[2] / 2  # Candidate's right edge = center + half_width
                 if candidate_anchor_x >= dragged_anchor_x:
                     continue  # Skip candidates on the right or same x
             else:
-                candidate_anchor_x = target_pos[0]  # Candidate's left edge
+                candidate_anchor_x = target_pos[0] - target_bounds[2] / 2  # Candidate's left edge = center - half_width
                 if candidate_anchor_x <= dragged_anchor_x:
                     continue  # Skip candidates on the left or same x
 
             # Calculate anchor point for candidate node
-            # Right side: use right edge center; Left side: use left edge center
+            # CRITICAL: NodeItem's rect is centered, so:
+            #   Right side: right edge = center_x + width/2
+            #   Left side: left edge = center_x - width/2
             if is_currently_right:
                 # Candidate is on left, use its right edge as anchor
-                anchor_x = target_pos[0] + target_bounds[2]
-                anchor_y = target_pos[1] + target_bounds[3] / 2
+                anchor_x = target_pos[0] + target_bounds[2] / 2
+                anchor_y = target_pos[1]
             else:
                 # Candidate is on right, use its left edge as anchor
-                anchor_x = target_pos[0]
-                anchor_y = target_pos[1] + target_bounds[3] / 2
+                anchor_x = target_pos[0] - target_bounds[2] / 2
+                anchor_y = target_pos[1]
 
             # Calculate Euclidean distance between two anchor points
             dx = dragged_anchor_x - anchor_x

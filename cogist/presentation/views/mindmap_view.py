@@ -173,15 +173,11 @@ class MindMapView(QGraphicsView):
         from cogist.domain.layout import DefaultLayoutConfig
 
         # Create layout config from style_config spacing values
-        # All spacing values are initialized in create_default_template()
-        level_spacing_by_depth = self.style_config.level_spacing_by_depth.copy()
-        sibling_spacing_by_depth = self.style_config.sibling_spacing_by_depth.copy()
-
+        # LayoutConfig will read spacing from role_styles via resolved_template reference
         layout_config = DefaultLayoutConfig(
             level_spacing=self.style_config.parent_child_spacing,
             sibling_spacing=self.style_config.sibling_spacing,
-            level_spacing_by_depth=level_spacing_by_depth,
-            sibling_spacing_by_depth=sibling_spacing_by_depth,
+            resolved_template=self.style_config.resolved_template,  # For role-based spacing
         )
 
         # Update service layout config
@@ -220,14 +216,14 @@ class MindMapView(QGraphicsView):
         Optimized for text editing scenarios where only one node changes.
         """
         branch_colors = [
-            "#FF6B6B",
-            "#4ECDC4",
-            "#45B7D1",
-            "#FFA07A",
-            "#98D8C8",
-            "#F7DC6F",
-            "#BB8FCE",
-            "#85C1E9",
+            "#FFFF6B6B",
+            "#FF4ECDC4",
+            "#FF45B7D1",
+            "#FFFFA07A",
+            "#FF98D8C8",
+            "#FFF7DC6F",
+            "#FFBB8FCE",
+            "#FF85C1E9",
         ]
 
         # Determine branch color
@@ -244,10 +240,10 @@ class MindMapView(QGraphicsView):
 
         # Create temporary item to measure
         temp_item = NodeItem(
+            color=branch_color,
             text=node.text,
             width=node.width,
             height=node.height,
-            color=branch_color,
             is_root=node.is_root,
             depth=node.depth,
             style_config=self.style_config,
@@ -263,14 +259,14 @@ class MindMapView(QGraphicsView):
         then sync back to domain nodes.
         """
         branch_colors = [
-            "#FF6B6B",
-            "#4ECDC4",
-            "#45B7D1",
-            "#FFA07A",
-            "#98D8C8",
-            "#F7DC6F",
-            "#BB8FCE",
-            "#85C1E9",
+            "#FFFF6B6B",
+            "#FF4ECDC4",
+            "#FF45B7D1",
+            "#FFFFA07A",
+            "#FF98D8C8",
+            "#FFF7DC6F",
+            "#FFBB8FCE",
+            "#FF85C1E9",
         ]
 
         def measure_recursive(node: Node, branch_color: str | None = None):
@@ -278,10 +274,10 @@ class MindMapView(QGraphicsView):
 
             # Create temporary item (not added to scene)
             temp_item = NodeItem(
+                color=current_color,
                 text=node.text,
                 width=node.width,
                 height=node.height,
-                color=current_color,
                 is_root=node.is_root,
                 depth=node.depth,
                 style_config=self.style_config,  # Pass style configuration
@@ -320,6 +316,11 @@ class MindMapView(QGraphicsView):
                 # Existing node - update position AND size
                 item = self.node_items[node.id]
                 item.setPos(node.position[0], node.position[1])
+
+                # CRITICAL: Check if text content has changed (e.g., after undo/redo)
+                if item.text_content != node.text:
+                    # Text changed - need full rebuild to update text display
+                    return False
 
                 # CRITICAL: Sync domain node size to UI item
                 # Domain node width/height was updated by _measure_actual_sizes
@@ -375,6 +376,14 @@ class MindMapView(QGraphicsView):
         for edge_item in self.edge_items:
             edge_item.update_curve()
 
+    def _update_canvas_background(self):
+        """Update canvas background color from style config."""
+        if hasattr(self, "style_config") and self.style_config:
+            from PySide6.QtGui import QBrush, QColor
+
+            canvas_color = self.style_config.canvas_bg_color or "#FFFFFF"
+            self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
+
     def _create_ui_items(self, root: Node):
         """Create UI items from node tree."""
 
@@ -407,10 +416,10 @@ class MindMapView(QGraphicsView):
 
             # Create node item
             item = NodeItem(
+                color=current_color,
                 text=node.text,
                 width=node.width,
                 height=node.height,
-                color=current_color,
                 is_root=node.is_root,
                 depth=node.depth,
                 use_domain_size=True,  # Use domain layer's pre-measured size
@@ -430,37 +439,42 @@ class MindMapView(QGraphicsView):
                     parent_item, item, color=edge_color, style_config=self.style_config
                 )
 
-                # Apply edge style from style_config (per-depth configuration)
+                # Apply edge style from style_config (role-based configuration)
                 if hasattr(self, "style_config") and self.style_config:
                     # Get source node depth to determine which connector config to use
                     source_depth = (
                         parent_item.depth if hasattr(parent_item, "depth") else 0
                     )
 
-                    # Get per-depth connector config
-                    # For depths beyond configured range, use the max configured depth (level 3+)
-                    if source_depth in self.style_config.connector_config_by_depth:
-                        connector_config = self.style_config.connector_config_by_depth[
-                            source_depth
-                        ]
-                    else:
-                        # Use the deepest configured level for deeper nodes
-                        max_depth = max(
-                            self.style_config.connector_config_by_depth.keys()
-                        )
-                        connector_config = self.style_config.connector_config_by_depth[
-                            max_depth
-                        ]
+                    # Get connector config from role-based style
+                    from cogist.domain.styles.extended_styles import NodeRole
 
-                    # Build edge style config from per-depth values
-                    edge_style_config = {
-                        "connector_color": connector_config["color"],
-                        "line_width": connector_config["line_width"],
-                        "connector_style": connector_config["connector_style"],
-                        "connector_shape": connector_config.get(
-                            "connector_shape", "bezier"
-                        ),
+                    role_map = {
+                        0: NodeRole.ROOT,
+                        1: NodeRole.PRIMARY,
+                        2: NodeRole.SECONDARY,
                     }
+                    role = role_map.get(source_depth, NodeRole.TERTIARY)
+
+                    if (self.style_config.resolved_template and
+                        role in self.style_config.resolved_template.role_styles):
+                        role_style = self.style_config.resolved_template.role_styles[role]
+
+                        # Build edge style config from role-based values
+                        edge_style_config = {
+                            "connector_color": role_style.connector_color or (self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666"),
+                            "line_width": role_style.line_width,
+                            "connector_style": role_style.connector_style,
+                            "connector_shape": role_style.connector_shape,
+                        }
+                    else:
+                        # Fallback to default values
+                        edge_style_config = {
+                            "connector_color": self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666",
+                            "line_width": 2.0,
+                            "connector_style": "solid",
+                            "connector_shape": "bezier",
+                        }
                     edge.update_style(edge_style_config)
 
                 self.scene.addItem(edge)
@@ -741,20 +755,24 @@ class MindMapView(QGraphicsView):
                             mouse_pos=Position(current_pos.x(), current_pos.y()),
                         )
 
-                # FIX: Only hide old parent edge when potential parent changes
-                if (
-                    potential_parent
-                    and dragged_node
-                    and potential_parent != dragged_node.parent
-                ):
-                    if not self._old_parent_edge_hidden:
-                        self._hide_parent_edge(dragged_node)
-                        self._old_parent_edge_hidden = True
-                else:
-                    # Restore old parent edge if no valid potential parent
-                    if self._old_parent_edge_hidden and dragged_node:
-                        self._restore_parent_edge(dragged_node)
-                        self._old_parent_edge_hidden = False
+                # FIX: Handle parent edge visibility based on potential_parent
+                if potential_parent and dragged_node:
+                    # Has a valid potential parent
+                    if potential_parent != dragged_node.parent:
+                        # Different parent - hide old edge, show temp edge
+                        if not self._old_parent_edge_hidden:
+                            self._hide_parent_edge(dragged_node)
+                            self._old_parent_edge_hidden = True
+                    else:
+                        # Same parent - show old edge
+                        if self._old_parent_edge_hidden:
+                            self._restore_parent_edge(dragged_node)
+                            self._old_parent_edge_hidden = False
+                elif dragged_node and not self._old_parent_edge_hidden:
+                    # No valid potential parent - hide old edge, don't draw temp edge
+                    # This creates a "floating" visual state
+                    self._hide_parent_edge(dragged_node)
+                    self._old_parent_edge_hidden = True
 
                 # Update temporary edge
                 self._update_temp_drag_edge(dragged_node, potential_parent)
@@ -836,75 +854,98 @@ class MindMapView(QGraphicsView):
         self._is_dragging_cross_side = False
         self._old_parent_edge_hidden = False  # Reset edge hidden state
 
-        if dragged_id and potential_parent:
+        if dragged_id:
             dragged_node = self._find_node_by_id(self.root_node, dragged_id)
-            new_parent = potential_parent
 
-            if (
-                dragged_node
-                and new_parent
-                and dragged_node != new_parent
-                and new_parent not in dragged_node.get_all_descendants()
-            ):
-                # Remove from old parent
-                old_parent = dragged_node.parent
-                if old_parent:
-                    old_parent.remove_child(dragged_node)
+            if dragged_node and potential_parent:
+                new_parent = potential_parent
 
-                # Add to new parent
-                new_parent.add_child(dragged_node)
-
-                # Sort children by Y position to maintain visual order
-                new_parent.children.sort(
-                    key=lambda child: (
-                        self.node_items[child.id].scenePos().y()
-                        if child.id in self.node_items
-                        else 0
+                if (
+                    dragged_node != new_parent
+                    and new_parent not in dragged_node.get_all_descendants()
+                ):
+                    # Save old parent and index BEFORE modifying
+                    old_parent = dragged_node.parent
+                    old_index = (
+                        old_parent.children.index(dragged_node) if old_parent else 0
                     )
-                )
 
-                # If crossed sides, flip entire subtree's is_right_side
-                if is_cross_side:
-                    # Get the side from the new parent's NodeItem
-                    new_parent_item = self.node_items.get(new_parent.id)
-                    if new_parent_item:
-                        self._flip_subtree_side(
-                            dragged_node, new_parent_item.is_right_side
+                    # Create and execute reparent command (Application Layer)
+                    from cogist.application.commands.reparent_node_command import (
+                        ReparentNodeCommand,
+                    )
+
+                    command = ReparentNodeCommand(
+                        dragged_node=dragged_node,
+                        old_parent=old_parent,
+                        new_parent=new_parent,
+                        old_index=old_index,
+                        is_cross_side=is_cross_side,
+                    )
+                    command.execute()
+
+                    # Push to command history for undo/redo
+                    self.mindmap_service.node_service.command_history.push(command)
+
+                    # Sort children by Y position to maintain visual order
+                    new_parent.children.sort(
+                        key=lambda child: (
+                            self.node_items[child.id].scenePos().y()
+                            if child.id in self.node_items
+                            else 0
                         )
+                    )
 
-                # Update depths recursively
-                self._update_node_depths_recursive(dragged_node)
-
-                # Find the top-level ancestor of the dragged node and mark it as locked
-                def get_top_level_ancestor(node):
-                    """Get the direct child of root for this node."""
-                    current = node
-                    while current.parent and not current.parent.is_root:
-                        current = current.parent
-                    return current
-
-                top_level_node = get_top_level_ancestor(dragged_node)
-                if top_level_node:
-                    top_level_node.is_locked_position = True
+                    # If crossed sides, flip entire subtree's is_right_side
+                    if is_cross_side:
+                        # Get the side from the new parent's NodeItem
+                        new_parent_item = self.node_items.get(new_parent.id)
+                        if new_parent_item:
+                            self._flip_subtree_side(
+                                dragged_node, new_parent_item.is_right_side
+                            )
 
                     # CRITICAL: Update the top-level node's position[0] to the new side
                     # This ensures the layout algorithm assigns it to the correct side
-                    # Use is_currently_right instead of new_parent's is_right_side
-                    # (new_parent might be root with default is_right_side=True)
-                    is_currently_right = self._is_node_on_right_side(dragged_id)
+                    def get_top_level_ancestor(node):
+                        """Get the direct child of root for this node."""
+                        current = node
+                        while current.parent and not current.parent.is_root:
+                            current = current.parent
+                        return current
 
-                    if is_currently_right:
-                        top_level_node.position = (800.0, top_level_node.position[1])
-                    else:
-                        top_level_node.position = (400.0, top_level_node.position[1])
+                    top_level_node = get_top_level_ancestor(dragged_node)
+                    if top_level_node:
+                        # Use is_currently_right to determine the target side
+                        is_currently_right = self._is_node_on_right_side(dragged_id)
 
-                # CRITICAL: Node relationships have changed, must rebuild edges completely
-                # Incremental update won't work because parent-child connections changed
-                # FIX: Re-measure dragged node and all its descendants since depth may have changed
+                        # Update position[0] to a clear side indicator
+                        # This is CRITICAL for the layout algorithm to correctly assign the node
+                        if is_currently_right:
+                            # R node: position far to the right
+                            top_level_node.position = (800.0, top_level_node.position[1])
+                        else:
+                            # L node: position far to the left
+                            top_level_node.position = (400.0, top_level_node.position[1])
+
+                        # Mark as locked so layout won't move it during rebalancing
+                        top_level_node.is_locked_position = True
+
+                    # CRITICAL: Node relationships have changed, must rebuild edges completely
+                    # Incremental update won't work because parent-child connections changed
+                    # FIX: Re-measure dragged node and all its descendants since depth may have changed
+                    self._measure_actual_sizes(dragged_node)
+
+                    # Now refresh layout with skip_measurement=True since we just measured
+                    self._refresh_layout(skip_measurement=True, force_rebuild_edges=True)
+                else:
+                    # Parent didn't change, but still need to refresh layout to snap node back
+                    self._measure_actual_sizes(dragged_node)
+                    self._refresh_layout(skip_measurement=True, force_rebuild_edges=False)
+            elif dragged_node:
+                # No potential parent detected, refresh layout to snap node back to original position
                 self._measure_actual_sizes(dragged_node)
-
-                # Now refresh layout with skip_measurement=True since we just measured
-                self._refresh_layout(skip_measurement=True, force_rebuild_edges=True)
+                self._refresh_layout(skip_measurement=True, force_rebuild_edges=False)
 
         # Clean up temp edge
         if self._temp_drag_edge:
@@ -1562,7 +1603,9 @@ class MindMapView(QGraphicsView):
             self.selected_node_id = next_selected_id
             selected_item = self.node_items[next_selected_id]
             selected_item.setSelected(True)
-            self.centerOn(selected_item)
+            # Only scroll if node is not fully visible
+            margin_px = 50
+            self.ensureVisible(selected_item, margin_px, margin_px)
 
     def _focus_on_node_after_addition(self, added_node_id):
         """Set focus after adding a node.
@@ -1581,7 +1624,9 @@ class MindMapView(QGraphicsView):
         self.selected_node_id = added_node_id
         added_item = self.node_items[added_node_id]
         added_item.setSelected(True)
-        self.centerOn(added_item)
+        # Only scroll if node is not fully visible
+        margin_px = 50
+        self.ensureVisible(added_item, margin_px, margin_px)
 
     def _delete_selected_node(self):
         """Delete the selected node."""
@@ -1621,7 +1666,9 @@ class MindMapView(QGraphicsView):
 
             selected_item = self.node_items[self.selected_node_id]
             selected_item.setSelected(True)
-            self.centerOn(selected_item)
+            # Only scroll if node is not fully visible
+            margin_px = 50
+            self.ensureVisible(selected_item, margin_px, margin_px)
 
     def _edit_selected_node(self, cursor_position: int = -1):
         """Edit the selected node text with inline editing.
@@ -1713,6 +1760,8 @@ class MindMapView(QGraphicsView):
         saved_selection_id: str = None,
         parent_id: str = None,
         force_rebuild_edges: bool = False,
+        clear_locked_positions: bool = True,
+        update_scene_rect: bool = True,
     ):
         """Refresh the entire layout after changes.
 
@@ -1723,6 +1772,8 @@ class MindMapView(QGraphicsView):
             parent_id: Optional parent node ID for selection restoration
             force_rebuild_edges: If True, force complete edge rebuild instead of
                                 incremental update (needed when parent-child relationships change)
+            clear_locked_positions: If True, clear is_locked_position flags after layout.
+                                   Set to False for undo/redo of text edits.
         """
         # Save selected node ID before clearing (if not provided)
         if saved_selection_id is None:
@@ -1735,15 +1786,11 @@ class MindMapView(QGraphicsView):
         # Step 2: Re-apply layout, passing selected node to preserve its side
         from cogist.domain.layout import DefaultLayoutConfig
 
-        # Create layout config using per-depth spacing values (true isolation)
-        level_spacing_by_depth = self.style_config.level_spacing_by_depth.copy()
-        sibling_spacing_by_depth = self.style_config.sibling_spacing_by_depth.copy()
-
+        # Create layout config using role-based spacing (via resolved_template)
         layout_config = DefaultLayoutConfig(
             level_spacing=self.style_config.parent_child_spacing,
             sibling_spacing=self.style_config.sibling_spacing,
-            level_spacing_by_depth=level_spacing_by_depth,
-            sibling_spacing_by_depth=sibling_spacing_by_depth,
+            resolved_template=self.style_config.resolved_template,  # For role-based spacing
         )
 
         # Use LayoutRegistry to create layout instance (demonstrates proper architecture)
@@ -1764,8 +1811,10 @@ class MindMapView(QGraphicsView):
             context=context,
         )
 
-        # Clear locked position flags after layout
-        if self.root_node:
+        # Clear locked position flags after layout (only when requested)
+        # This is typically done after drag operations or node additions
+        # For undo/redo of text edits, we should preserve locked states
+        if clear_locked_positions and self.root_node:
             for child in self.root_node.children:
                 child.is_locked_position = False
 
@@ -1873,9 +1922,7 @@ class MindMapView(QGraphicsView):
 
             self._scene_initialized = True
 
-        # Center on root node when first shown
-        if self.root_node and self.root_node.id in self.node_items:
-            self.centerOn(self.node_items[self.root_node.id])
+        # Root node is already centered by layout algorithm, no need to scroll
 
     def resizeEvent(self, event):
         """Handle resize events to ensure sceneRect >= viewport size."""
@@ -1898,6 +1945,10 @@ class MindMapView(QGraphicsView):
     def gestureEvent(self, event: QEvent) -> bool:
         """Handle pinch gesture for trackpad zoom.
 
+        CRITICAL: Only handle scale (zoom), ignore rotation to prevent unwanted view rotation.
+        Qt's PinchGesture includes both scale and rotation by default.
+        By only processing scaleFactor() and returning True, we prevent Qt from applying rotation.
+
         Args:
             event: The gesture event
 
@@ -1906,7 +1957,9 @@ class MindMapView(QGraphicsView):
         """
         gesture = event.gesture(Qt.PinchGesture)
         if gesture:
-            # Get the scale factor from the pinch gesture
+            # CRITICAL: Only handle scale factor, explicitly ignore rotation
+            # Qt's default pinch gesture includes rotation, which we don't want
+            # By only calling scaleFactor() and returning True, rotation is ignored
             scale_factor = gesture.scaleFactor()
 
             # Apply zoom with anchor point
@@ -1916,6 +1969,7 @@ class MindMapView(QGraphicsView):
                 # Fallback: direct scaling without anchor compensation
                 self.scale(scale_factor, scale_factor)
 
+            # Return True to indicate we handled the gesture (prevents default rotation)
             return True
         return False
 
@@ -2142,9 +2196,6 @@ class MindMapView(QGraphicsView):
         root_item = self.node_items.get(self.root_node.id)
         if not root_item:
             return None
-        dragged_center_x = (
-            dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2
-        )
 
         best_candidate = None
         best_distance = float("inf")
@@ -2167,14 +2218,37 @@ class MindMapView(QGraphicsView):
             # Get positions
             target_pos = item.scenePos()
 
-            # For right-side dragged node, look for nodes on the left (smaller x)
-            # For left-side dragged node, look for nodes on the right (larger x)
+            # Rule 6: L node looks for parent with larger anchor X; R node looks for smaller anchor X
+            # Calculate anchor points based on DRAGGED node's side (not candidate's side)
+            dragged_rect = dragged_item.boundingRect()
             if is_currently_right:
-                if target_pos.x() >= dragged_center_x:
-                    continue  # Skip nodes on the right or same x
+                # R node: its anchor is on left edge (closer to root center)
+                dragged_anchor_x = dragged_item.scenePos().x()
             else:
-                if target_pos.x() <= dragged_center_x:
-                    continue  # Skip nodes on the left or same x
+                # L node: its anchor is on right edge (closer to root center)
+                dragged_anchor_x = dragged_item.scenePos().x() + dragged_rect.width()
+
+            candidate_rect = item.boundingRect()
+            if is_currently_right:
+                # For R node, parent must be on left side, parent's anchor is on right edge (away from root)
+                candidate_anchor_x = target_pos.x() + candidate_rect.width()
+            else:
+                # For L node, parent must be on right side, parent's anchor is on left edge (away from root)
+                candidate_anchor_x = target_pos.x()
+
+            # Rule 6: Check anchor point relationship (CRITICAL FILTER)
+            if is_currently_right:
+                # R node: parent anchor X must be SMALLER than dragged anchor X
+                if candidate_anchor_x >= dragged_anchor_x:
+                    # DEBUG: Log why candidate is rejected
+                    print(f"  SKIP {target_node.text}: candidate_anchor={candidate_anchor_x:.1f} >= dragged_anchor={dragged_anchor_x:.1f}")
+                    continue  # Parent is on wrong side (right of dragged node)
+            else:
+                # L node: parent anchor X must be LARGER than dragged anchor X
+                if candidate_anchor_x <= dragged_anchor_x:
+                    # DEBUG: Log why candidate is rejected
+                    print(f"  SKIP {target_node.text}: candidate_anchor={candidate_anchor_x:.1f} <= dragged_anchor={dragged_anchor_x:.1f}")
+                    continue  # Parent is on wrong side (left of dragged node)
 
             # Calculate anchor point for candidate node
             # Right side: use right edge center; Left side: use left edge center
@@ -2217,16 +2291,30 @@ class MindMapView(QGraphicsView):
             dragged_item = self.node_items.get(dragged_node.id)
 
             if parent_item and dragged_item:
-                # Get connector config for potential parent's depth
+                # Get connector config from role-based style
+                from cogist.domain.styles.extended_styles import NodeRole
+
                 parent_depth = potential_parent.depth
-                connector_config = self.style_config.connector_config_by_depth.get(
-                    parent_depth, {}
-                )
+                role_map = {
+                    0: NodeRole.ROOT,
+                    1: NodeRole.PRIMARY,
+                    2: NodeRole.SECONDARY,
+                }
+                role = role_map.get(parent_depth, NodeRole.TERTIARY)
+
+                # Default values
+                color = "#999999"
+                connector_shape = "bezier"
+
+                if (self.style_config.resolved_template and
+                    role in self.style_config.resolved_template.role_styles):
+                    role_style = self.style_config.resolved_template.role_styles[role]
+                    color = role_style.connector_color or "#999999"
+                    connector_shape = role_style.connector_shape
 
                 # Create a temporary EdgeItem with proper styling
                 from cogist.presentation.items.edge_item import EdgeItem
 
-                color = connector_config.get("color", "#999999")
                 temp_edge = EdgeItem(
                     parent_item,
                     dragged_item,
@@ -2234,8 +2322,7 @@ class MindMapView(QGraphicsView):
                     style_config=self.style_config,
                 )
 
-                # Set the connector strategy based on config
-                connector_shape = connector_config.get("connector_shape", "bezier")
+                # Set the connector strategy based on config (already set above)
                 from cogist.presentation.connectors import (
                     BezierConnector,
                     OrthogonalConnector,

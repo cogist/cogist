@@ -98,13 +98,15 @@ class DefaultLayout(BaseLayout):
         # Node sizes are already set from UI layer measurement
         # No need to estimate - we use actual rendered sizes
 
-        # Root node centered on canvas
+        # Root node position: place at scene center (0, 0) on first layout
+        # This prevents unnecessary view jumping during style changes
         # Note: NodeItem uses center as origin, so position is the center
-        # To make root center at canvas center, just use canvas center directly
-        root_node.position = (
-            canvas_width / 2.0,
-            canvas_height / 2.0,
-        )
+        # CRITICAL: Scene coordinate system has origin at (0, 0), which is the center of sceneRect
+        # Only set position if root hasn't been positioned yet (default is (0.0, 0.0))
+        if root_node.is_root and root_node.position == (0.0, 0.0):
+            # First layout - explicitly place root at scene center
+            # This makes it clear that we're intentionally positioning it
+            root_node.position = (0.0, 0.0)
 
         children = root_node.children
         if not children:
@@ -218,7 +220,12 @@ class DefaultLayout(BaseLayout):
             # Single node: determine side based on current position relative to parent
             if locked_side_child and nodes[0] == locked_side_child:
                 # Locked node: keep on its current side
-                if nodes[0].position[0] < parent_x:
+                # Rule 2: Compare center points, not left edge positions
+                node_center_x = nodes[0].position[0] + nodes[0].width / 2
+                parent_center_x = (
+                    parent_x + parent_node.width / 2 if parent_node else parent_x
+                )
+                if node_center_x < parent_center_x:
                     return (nodes, [])
                 else:
                     return ([], nodes)
@@ -237,10 +244,18 @@ class DefaultLayout(BaseLayout):
             if node.position[0] == 0.0 and not node.is_root:
                 # New node: default to right side
                 right_original.append(node)
-            elif node.position[0] < parent_x_estimate:
-                left_original.append(node)
             else:
-                right_original.append(node)
+                # Rule 2: Compare center points, not left edge positions
+                node_center_x = node.position[0] + node.width / 2
+                parent_center_x = (
+                    parent_x_estimate + parent_node.width / 2
+                    if parent_node
+                    else parent_x_estimate
+                )
+                if node_center_x < parent_center_x:
+                    left_original.append(node)
+                else:
+                    right_original.append(node)
 
         # Step 2: If we have a locked child, ensure it stays on its original side
         # Only lock if the locked_child is directly in our nodes list AND has children
@@ -331,7 +346,7 @@ class DefaultLayout(BaseLayout):
         candidates = [
             (node, self._calculate_subtree_height(node))
             for node in from_side
-            if node != locked_node and not getattr(node, 'is_locked_position', False)
+            if node != locked_node and not getattr(node, "is_locked_position", False)
         ]
 
         for node, height in candidates:
@@ -370,6 +385,22 @@ class DefaultLayout(BaseLayout):
             if node.children and self._has_complex_branch(node.children):
                 return True
         return False
+
+    def _get_root_node(self, node):
+        """Get the root node by traversing up the parent chain.
+
+        Args:
+            node: Any node in the tree
+
+        Returns:
+            The root node, or None if not found
+        """
+        current = node
+        while current and not current.is_root:
+            if not current.parent:
+                return current
+            current = current.parent
+        return current
 
     def _move_branch(self, nodes: list, offset: float) -> None:
         """
@@ -578,7 +609,24 @@ class DefaultLayout(BaseLayout):
             if node.children:
                 # Recursively layout children using _layout_side (checks for complex branches)
                 # The parent of node.children is 'node', so we pass 'node' directly
-                self._layout_side(node.children, node, canvas_height, direction)
+                # Rule 4: Left node's children on left, right node's children on right
+                # CRITICAL: Compare node's center with ROOT's center, not parent's center!
+                # Find root by traversing up the parent chain
+                root_node = self._get_root_node(node)
+                if root_node:
+                    root_center_x = root_node.position[0] + root_node.width / 2
+                    node_center_x = node.position[0] + node.width / 2
+                    child_direction = 1 if node_center_x >= root_center_x else -1
+                else:
+                    # Fallback: use parent as reference
+                    parent_center_x = (
+                        parent_node.position[0] + parent_node.width / 2
+                        if parent_node
+                        else 0.0
+                    )
+                    node_center_x = node.position[0] + node.width / 2
+                    child_direction = 1 if node_center_x >= parent_center_x else -1
+                self._layout_side(node.children, node, canvas_height, child_direction)
 
             current_y += node.height + sibling_spacing
 
@@ -658,7 +706,25 @@ class DefaultLayout(BaseLayout):
             # Layout all children using _layout_side (which checks for complex branches)
             for node in nodes:
                 if node.children:
-                    self._layout_side(node.children, node, canvas_height, direction)
+                    # Rule 4: Left node's children on left, right node's children on right
+                    # CRITICAL: Compare node's center with ROOT's center, not parent's center!
+                    root_node = self._get_root_node(node)
+                    if root_node:
+                        root_center_x = root_node.position[0] + root_node.width / 2
+                        node_center_x = node.position[0] + node.width / 2
+                        child_direction = 1 if node_center_x >= root_center_x else -1
+                    else:
+                        # Fallback: use parent as reference
+                        parent_center_x = (
+                            parent_node.position[0] + parent_node.width / 2
+                            if parent_node
+                            else 0.0
+                        )
+                        node_center_x = node.position[0] + node.width / 2
+                        child_direction = 1 if node_center_x >= parent_center_x else -1
+                    self._layout_side(
+                        node.children, node, canvas_height, child_direction
+                    )
 
             # Check for overlaps between all pairs of sibling subtrees
             for i in range(len(nodes)):

@@ -167,7 +167,7 @@ class RoleBasedStyle:
     # === Font properties (without colors) ===
     font_size: int = 14
     font_weight: str = "Normal"  # Normal / Bold / Light
-    font_style: str = "Normal"  # Normal / Italic
+    font_italic: bool = False  # Italic style
     font_family: str = "Arial"
     font_underline: bool = False
     font_strikeout: bool = False
@@ -178,6 +178,16 @@ class RoleBasedStyle:
     shadow_offset_y: int = 2
     shadow_blur: int = 4
     shadow_color: str | None = None  # Optional, default black semi-transparent
+
+    # === Spacing configuration (per-role) ===
+    parent_child_spacing: float = 80.0  # Spacing to child nodes
+    sibling_spacing: float = 60.0       # Spacing between sibling nodes
+
+    # === Connector configuration (per-role) ===
+    connector_shape: str = "bezier"     # bezier / straight / orthogonal / rounded_orthogonal
+    connector_style: str = "solid"      # solid / dashed / dotted
+    line_width: float = 2.0
+    connector_color: str | None = None  # From ColorScheme, optional override
 
     # ❌ Does NOT contain any colors (colors come from ColorScheme)
 

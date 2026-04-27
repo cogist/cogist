@@ -129,7 +129,9 @@ class MainWindow(QMainWindow):
         self.activity_bar = ActivityBar()
         self.activity_bar.setVisible(False)  # Hidden by default
         self.style_panel = StylePanel(
-            style_config=self.current_style, config_manager=config_manager
+            style_config=self.current_style,
+            config_manager=config_manager,
+            command_history=self.mindmap_service.node_service.command_history,
         )
         self.style_panel.setVisible(False)  # Hidden by default
 
@@ -652,9 +654,12 @@ class MainWindow(QMainWindow):
         last_command = (
             self.mindmap_service.node_service.command_history.peek_last_undo_command()
         )
-        is_add_node_command = (
-            last_command and type(last_command).__name__ == "AddNodeCommand"
-        )
+        command_type_name = last_command and type(last_command).__name__
+        is_add_node_command = command_type_name == "AddNodeCommand"
+        is_edit_text_command = command_type_name == "EditTextCommand"
+        is_delete_node_command = command_type_name == "DeleteNodeCommand"
+        is_reparent_command = command_type_name == "ReparentNodeCommand"
+        is_change_style_command = command_type_name == "ChangeStyleCommand"
 
         # Save selection state BEFORE undo
         node_id_before_undo = self.mindmap_view.selected_node_id
@@ -690,11 +695,44 @@ class MainWindow(QMainWindow):
 
         # Use MindMapService to undo (Application Layer)
         if self.mindmap_service.undo():
-            # OPTIMIZATION: Undo restores old dimensions, no need to re-measure
+            # For style changes, just refresh the UI without layout recalculation
+            if is_change_style_command:
+                self.mindmap_view._update_canvas_background()
+                # Update style panel controls to reflect the undone state
+                if hasattr(self, 'style_panel') and self.style_panel.isVisible():
+                    # Prevent command creation during undo/redo refresh
+                    self.style_panel.advanced_tab._updating_from_undo_redo = True
+                    self.style_panel.advanced_tab.refresh_current_layer()
+                    self.style_panel.advanced_tab._updating_from_undo_redo = False
+                # Re-apply styles to all nodes
+                if hasattr(self.mindmap_view, 'node_items'):
+                    for node_item in self.mindmap_view.node_items.values():
+                        if hasattr(node_item, 'update_style'):
+                            node_item.update_style(self.mindmap_view.style_config)
+                # Apply spacing configuration to mindmap_view and refresh layout
+                if hasattr(self, 'style_panel') and self.style_panel.isVisible():
+                    self.style_panel.advanced_tab._apply_styles_to_mindmap()
+                return
+
+            # Determine if we need to re-measure dimensions
+            # EditTextCommand: Text change affects node size -> must re-measure
+            # DeleteNodeCommand undo: Restoring nodes -> must re-measure
+            # ReparentNodeCommand undo: Depth changes may affect styles -> must re-measure
+            # AddNodeCommand undo: Removing nodes -> can skip (old sizes preserved)
+            needs_measurement = (
+                is_edit_text_command or is_delete_node_command or is_reparent_command
+            )
+
+            # For text edits, preserve locked position states
+            # For node structure changes (add/delete/reparent), clear locked positions
+            should_clear_locks = not is_edit_text_command
+
             self.mindmap_view._refresh_layout(
-                skip_measurement=True,
+                skip_measurement=not needs_measurement,
                 saved_selection_id=node_id_before_undo,
                 parent_id=parent_id_before_undo,
+                force_rebuild_edges=is_reparent_command,  # Rebuild edges for reparent
+                clear_locked_positions=should_clear_locks,
             )
 
             # Scroll to appropriate node based on command type
@@ -726,9 +764,12 @@ class MainWindow(QMainWindow):
         last_command = (
             self.mindmap_service.node_service.command_history.peek_last_redo_command()
         )
-        is_add_node_command = (
-            last_command and type(last_command).__name__ == "AddNodeCommand"
-        )
+        command_type_name = last_command and type(last_command).__name__
+        print(f"DEBUG _redo: command_type={command_type_name}")
+        is_add_node_command = command_type_name == "AddNodeCommand"
+        is_edit_text_command = command_type_name == "EditTextCommand"
+        is_reparent_command = command_type_name == "ReparentNodeCommand"
+        is_change_style_command = command_type_name == "ChangeStyleCommand"
 
         # Save selection state BEFORE redo
         node_id_before_redo = self.mindmap_view.selected_node_id
@@ -744,13 +785,44 @@ class MainWindow(QMainWindow):
 
         # Use MindMapService to redo (Application Layer)
         if self.mindmap_service.redo():
-            # FIX: Redo must measure sizes because nodes are re-added to tree
-            # and their dimensions may not be correct (e.g., AddNodeCommand)
+            # For style changes, just refresh the UI without layout recalculation
+            if is_change_style_command:
+                self.mindmap_view._update_canvas_background()
+                # Update style panel controls to reflect the redone state
+                if hasattr(self, 'style_panel') and self.style_panel.isVisible():
+                    # Prevent command creation during undo/redo refresh
+                    self.style_panel.advanced_tab._updating_from_undo_redo = True
+                    self.style_panel.advanced_tab.refresh_current_layer()
+                    self.style_panel.advanced_tab._updating_from_undo_redo = False
+                # Re-apply styles to all nodes
+                if hasattr(self.mindmap_view, 'node_items'):
+                    for node_item in self.mindmap_view.node_items.values():
+                        if hasattr(node_item, 'update_style'):
+                            node_item.update_style(self.mindmap_view.style_config)
+                # Apply spacing configuration to mindmap_view and refresh layout
+                if hasattr(self, 'style_panel') and self.style_panel.isVisible():
+                    self.style_panel.advanced_tab._apply_styles_to_mindmap()
+                return
+
+            # Determine if we need to re-measure dimensions
+            # AddNodeCommand: New node needs measurement -> must re-measure
+            # EditTextCommand: Text change affects size -> must re-measure
+            # ReparentNodeCommand: Depth changes may affect styles -> must re-measure
+            # DeleteNodeCommand redo: Removing nodes -> can skip (sizes preserved)
+            needs_measurement = (
+                is_add_node_command or is_edit_text_command or is_reparent_command
+            )
+
+            # For text edits, preserve locked position states
+            # For node structure changes (add/delete/reparent), clear locked positions
+            should_clear_locks = not is_edit_text_command
+
             self.mindmap_view._refresh_layout(
-                skip_measurement=False,  # Changed from True to False
+                skip_measurement=not needs_measurement,
                 saved_selection_id=node_id_before_redo,
                 parent_id=parent_id_before_redo,
-                force_rebuild_edges=is_add_node_command,  # Rebuild edges for add node
+                force_rebuild_edges=is_add_node_command or is_reparent_command,
+                clear_locked_positions=should_clear_locks,
             )
 
             # Scroll to appropriate node based on command type
@@ -812,6 +884,8 @@ class MainWindow(QMainWindow):
         4. After scaling, calculate where anchor is in viewport
         5. Translate view to keep anchor at original viewport position
 
+        CRITICAL: Enforce minimum zoom level to prevent scene from becoming smaller than viewport.
+
         Priority:
         1. Selected node center
         2. Mouse cursor position (if over viewport)
@@ -822,6 +896,38 @@ class MainWindow(QMainWindow):
         """
 
         view = self.mindmap_view
+
+        # CRITICAL: Calculate minimum allowed scale factor
+        # Prevent zooming out beyond: scene + padding fits viewport exactly
+        current_transform = view.transform()
+        current_scale = current_transform.m11()  # Get current scale (m11 = m22 for uniform scale)
+
+        # Calculate the minimum scale needed for scene to fit viewport
+        scene_rect = view.sceneRect()
+        viewport_size = view.viewport().size()
+
+        # Add padding (e.g., 50px on each side = 100px total)
+        padding = 100.0
+        scene_with_padding_width = scene_rect.width() + padding
+        scene_with_padding_height = scene_rect.height() + padding
+
+        # Calculate scale factors needed to fit scene+padding in viewport
+        scale_x = viewport_size.width() / scene_with_padding_width
+        scale_y = viewport_size.height() / scene_with_padding_height
+
+        # Use the smaller scale factor to ensure both dimensions fit
+        min_scale_factor = min(scale_x, scale_y)
+
+        # Calculate the resulting scale if we apply the zoom
+        new_scale = current_scale * factor
+
+        # Clamp to minimum scale
+        if new_scale < min_scale_factor:
+            # Adjust factor to achieve minimum scale
+            factor = min_scale_factor / current_scale
+
+        # Clamp factor to reasonable range (prevent excessive zoom in)
+        factor = max(0.1, min(5.0, factor))
 
         # Determine anchor point in scene coordinates
         anchor_scene_pos = None

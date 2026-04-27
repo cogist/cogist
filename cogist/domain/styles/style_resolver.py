@@ -106,7 +106,7 @@ def _deep_copy_role_style(style: RoleBasedStyle) -> RoleBasedStyle:
         padding_h=style.padding_h,
         font_size=style.font_size,
         font_weight=style.font_weight,
-        font_style=style.font_style,
+        font_italic=style.font_italic,
         font_family=style.font_family,
         shadow_enabled=style.shadow_enabled,
         shadow_offset_x=style.shadow_offset_x,
@@ -131,31 +131,9 @@ def serialize_style(style_config: MindMapStyle) -> dict:
     return {
         "name": style_config.name,
 
-        # === Global spacing configuration ===
+        # === Global spacing configuration (fallback for backward compatibility) ===
         "parent_child_spacing": style_config.parent_child_spacing,
         "sibling_spacing": style_config.sibling_spacing,
-
-        # === Per-depth spacing configuration ===
-        "level_spacing_by_depth": {
-            str(depth): spacing
-            for depth, spacing in style_config.level_spacing_by_depth.items()
-        },
-        "sibling_spacing_by_depth": {
-            str(depth): spacing
-            for depth, spacing in style_config.sibling_spacing_by_depth.items()
-        },
-
-        # === Per-depth connector configuration ===
-        "connector_config_by_depth": {
-            str(depth): config
-            for depth, config in style_config.connector_config_by_depth.items()
-        },
-
-        # === Per-depth text width constraints ===
-        "max_text_width_by_depth": {
-            str(depth): width
-            for depth, width in style_config.max_text_width_by_depth.items()
-        },
 
         # === Canvas background ===
         "canvas_bg_color": style_config.canvas_bg_color,
@@ -185,16 +163,6 @@ def deserialize_style(data: dict) -> MindMapStyle:
         # === Global spacing configuration ===
         parent_child_spacing=data.get("parent_child_spacing", 80.0),
         sibling_spacing=data.get("sibling_spacing", 60.0),
-
-        # === Per-depth spacing configuration ===
-        level_spacing_by_depth=convert_depth_keys(data.get("level_spacing_by_depth", {})),
-        sibling_spacing_by_depth=convert_depth_keys(data.get("sibling_spacing_by_depth", {})),
-
-        # === Per-depth connector configuration ===
-        connector_config_by_depth=convert_depth_keys(data.get("connector_config_by_depth", {})),
-
-        # === Per-depth text width constraints ===
-        max_text_width_by_depth=convert_depth_keys(data.get("max_text_width_by_depth", {})),
 
         # === Canvas background ===
         canvas_bg_color=data.get("canvas_bg_color", "#FFFFFF"),
@@ -336,7 +304,7 @@ def serialize_role_based_style(style: RoleBasedStyle) -> dict:
         "max_text_width": style.max_text_width,
         "font_size": style.font_size,
         "font_weight": style.font_weight,
-        "font_style": style.font_style,
+        "font_italic": style.font_italic,
         "font_family": style.font_family,
         "shadow_enabled": style.shadow_enabled,
         "shadow_offset_x": style.shadow_offset_x,
@@ -390,7 +358,7 @@ def deserialize_role_based_style(role: NodeRole, data: dict) -> RoleBasedStyle:
         max_text_width=data.get("max_text_width", 250),
         font_size=data.get("font_size", 14),
         font_weight=data.get("font_weight", "Normal"),
-        font_style=data.get("font_style", "Normal"),
+        font_italic=data.get("font_italic", False),
         font_family=data.get("font_family", "Arial"),
         shadow_enabled=data.get("shadow_enabled", False),
         shadow_offset_x=data.get("shadow_offset_x", 2),

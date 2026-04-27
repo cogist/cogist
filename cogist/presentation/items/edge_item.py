@@ -59,24 +59,36 @@ class EdgeItem(QGraphicsPathItem):
 
         # Read style from global config if available (real-time, no caching)
         if self.style_config and hasattr(self.source_item, 'depth'):
+            from cogist.domain.styles.extended_styles import NodeRole
+
             source_depth = self.source_item.depth
 
-            # Get connector config for this depth
-            if source_depth in self.style_config.connector_config_by_depth:
-                connector_config = self.style_config.connector_config_by_depth[source_depth]
-            else:
-                # Use the deepest configured level for deeper nodes
-                max_depth = max(self.style_config.connector_config_by_depth.keys())
-                connector_config = self.style_config.connector_config_by_depth[max_depth]
+            # Get connector config from role-based style
+            role_map = {
+                0: NodeRole.ROOT,
+                1: NodeRole.PRIMARY,
+                2: NodeRole.SECONDARY,
+            }
+            role = role_map.get(source_depth, NodeRole.TERTIARY)
+
+            # Default values
+            color_str = "#666666"
+            line_width = 2.0
+            connector_style_str = "solid"
+            connector_shape = "bezier"
+            enable_gradient = True
+
+            if (self.style_config.resolved_template and
+                role in self.style_config.resolved_template.role_styles):
+                role_style = self.style_config.resolved_template.role_styles[role]
+                color_str = role_style.connector_color or (self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666")
+                line_width = role_style.line_width
+                connector_style_str = role_style.connector_style
+                connector_shape = role_style.connector_shape
+                enable_gradient = (connector_shape == "bezier")
 
             # Extract style values directly from config
-            color = QColor(connector_config["color"])
-            line_width = connector_config["line_width"]
-            connector_style_str = connector_config["connector_style"]
-            connector_shape = connector_config.get("connector_shape", "bezier")
-
-            # Determine enable_gradient based on connector_shape (no need to store it)
-            enable_gradient = (connector_shape == "bezier")
+            color = QColor(color_str)
 
             # Map connector style string to Qt enum
             style_map = {
@@ -96,10 +108,9 @@ class EdgeItem(QGraphicsPathItem):
                 start_width = line_width
                 end_width = line_width
             elif is_bezier and enable_gradient:
-                # Regular bezier with gradient: apply gradient ratio
+                # Regular bezier with gradient: use default ratio
                 start_width = line_width
-                gradient_ratio = connector_config.get("gradient_ratio", 0.5)
-                end_width = line_width * max(0.3, min(1.0, gradient_ratio))
+                end_width = line_width * 0.5  # Default 50% gradient
             else:
                 # Non-bezier or bezier without gradient: use uniform width
                 start_width = line_width
@@ -218,19 +229,23 @@ class EdgeItem(QGraphicsPathItem):
         # If widths not provided, read from global config
         if start_width is None or end_width is None:
             if self.style_config and hasattr(self.source_item, 'depth'):
+                from cogist.domain.styles.extended_styles import NodeRole
+
                 source_depth = self.source_item.depth
+                role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
+                role = role_map.get(source_depth, NodeRole.TERTIARY)
 
-                if source_depth in self.style_config.connector_config_by_depth:
-                    connector_config = self.style_config.connector_config_by_depth[source_depth]
-                else:
-                    max_depth = max(self.style_config.connector_config_by_depth.keys())
-                    connector_config = self.style_config.connector_config_by_depth[max_depth]
+                # Default values
+                line_width = 2.0
+                connector_shape = "bezier"
+                enable_gradient = True
 
-                line_width = connector_config["line_width"]
-                connector_shape = connector_config.get("connector_shape", "bezier")
-
-                # Determine enable_gradient based on connector_shape (no need to store it)
-                enable_gradient = (connector_shape == "bezier")
+                if (self.style_config.resolved_template and
+                    role in self.style_config.resolved_template.role_styles):
+                    role_style = self.style_config.resolved_template.role_styles[role]
+                    line_width = role_style.line_width
+                    connector_shape = role_style.connector_shape
+                    enable_gradient = (connector_shape == "bezier")
 
                 is_uniform_bezier = connector_shape == "bezier_uniform"
                 is_bezier = isinstance(self.connector_strategy, BezierConnector)
@@ -242,8 +257,8 @@ class EdgeItem(QGraphicsPathItem):
                     if is_uniform_bezier:
                         end_width = line_width
                     elif is_bezier and enable_gradient:
-                        gradient_ratio = connector_config.get("gradient_ratio", 0.5)
-                        end_width = line_width * max(0.3, min(1.0, gradient_ratio))
+                        # Fixed gradient ratio for bezier connectors
+                        end_width = line_width * 0.5
                     else:
                         end_width = line_width
             else:
@@ -303,10 +318,16 @@ class EdgeItem(QGraphicsPathItem):
         # Get connector width from style config if available
         connector_width = 2.0  # Default value
         if self.style_config and hasattr(self.source_item, 'depth'):
+            from cogist.domain.styles.extended_styles import NodeRole
+
             source_depth = self.source_item.depth
-            if source_depth in self.style_config.connector_config_by_depth:
-                connector_config = self.style_config.connector_config_by_depth[source_depth]
-                connector_width = connector_config.get("line_width", 2.0)
+            role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
+            role = role_map.get(source_depth, NodeRole.TERTIARY)
+
+            if (self.style_config.resolved_template and
+                role in self.style_config.resolved_template.role_styles):
+                role_style = self.style_config.resolved_template.role_styles[role]
+                connector_width = role_style.line_width
 
         # For mind map: always use left/right edge based on horizontal direction
         # Parent (source) should connect from right edge (if child is on right)

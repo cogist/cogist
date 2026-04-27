@@ -50,6 +50,7 @@ class NodeStyleSection(CollapsiblePanel):
         # State
         self._initialized = False
         self.current_style = self._get_default_style()
+        self.last_emitted_style = None  # Track last emitted style to detect changes
         self._font_data_cache: tuple[list[tuple[str, str, str]], dict[str, str]] | None = None
         self._font_dialog = None
         self._font_loader = None
@@ -936,25 +937,25 @@ class NodeStyleSection(CollapsiblePanel):
         self._emit_style_changed()
 
     def _emit_style_changed(self):
-        """Emit style changed signal with only node-style fields."""
-        # Only emit fields managed by NodeStyleSection to avoid overwriting other sections' data
-        node_only_style = {
-            "shape": self.current_style["shape"],
-            "radius": self.current_style["radius"],
-            "bg_color": self.current_style["bg_color"],
-            "text_color": self.current_style["text_color"],
-            "padding_w": self.current_style["padding_w"],
-            "padding_h": self.current_style["padding_h"],
-            "max_text_width": self.current_style.get("max_text_width", 250),
-            "font_family": self.current_style["font_family"],
-            "font_size": self.current_style["font_size"],
-            "font_weight": self.current_style["font_weight"],
-            "font_italic": self.current_style["font_italic"],
-            "font_underline": self.current_style["font_underline"],
-            "font_strikeout": self.current_style["font_strikeout"],
-            "shadow_enabled": self.current_style["shadow_enabled"],
-        }
-        self.style_changed.emit(node_only_style)
+        """Emit style changed signal with only changed fields."""
+        # If last_emitted_style is None, this means we haven't emitted anything yet
+        # Initialize it with current state so future changes can be detected
+        if self.last_emitted_style is None:
+            self.last_emitted_style = dict(self.current_style)
+            return  # Don't emit on initialization
+
+        # Calculate which fields have changed
+        changed_fields = {}
+        for key, value in self.current_style.items():
+            if key not in self.last_emitted_style or self.last_emitted_style[key] != value:
+                changed_fields[key] = value
+
+        # Update last emitted style
+        self.last_emitted_style = dict(self.current_style)
+
+        # Only emit if there are changes
+        if changed_fields:
+            self.style_changed.emit(changed_fields)
 
     def get_style(self) -> dict:
         """Get current node style."""
@@ -967,6 +968,10 @@ class NodeStyleSection(CollapsiblePanel):
             style: Dictionary containing node style properties
         """
         self.current_style.update(style)
+
+        # Update last_emitted_style to match current state
+        # This ensures the next change will only emit the actually changed fields
+        self.last_emitted_style = dict(self.current_style)
 
         # Update UI if initialized
         if self._initialized:
