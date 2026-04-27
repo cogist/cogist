@@ -863,8 +863,23 @@ class MindMapView(QGraphicsView):
         if hasattr(self, "_drag_original_state"):
             delattr(self, "_drag_original_state")
 
+        # Initialize variables for DragNodeCommand
+        dragged_node = None
+        dragged_item = None
+        old_position = None
+        old_parent = None
+        old_is_right_side = None
+
         if dragged_id:
             dragged_node = self._find_node_by_id(self.root_node, dragged_id)
+            dragged_item = self.node_items.get(dragged_id)
+
+            # Save state BEFORE any modifications for DragNodeCommand
+            old_position = tuple(dragged_node.position) if dragged_node else None
+            old_parent = dragged_node.parent if dragged_node else None
+            old_is_right_side = (
+                dragged_item.is_right_side if dragged_item else None
+            )
 
             if dragged_node and potential_parent:
                 new_parent = potential_parent
@@ -874,7 +889,6 @@ class MindMapView(QGraphicsView):
                     and new_parent not in dragged_node.get_all_descendants()
                 ):
                     # Save old parent and index BEFORE modifying
-                    old_parent = dragged_node.parent
                     old_index = (
                         old_parent.children.index(dragged_node) if old_parent else 0
                     )
@@ -977,6 +991,35 @@ class MindMapView(QGraphicsView):
             with contextlib.suppress(RuntimeError):
                 self.scene.removeItem(self._temp_drag_edge)
             self._temp_drag_edge = None
+
+        # Create DragNodeCommand for undo/redo if position changed
+        if dragged_id and dragged_node and dragged_item:
+            new_position = tuple(dragged_node.position)
+            new_parent = dragged_node.parent
+            new_is_right_side = dragged_item.is_right_side
+
+            # Only create command if something actually changed
+            if (
+                old_position != new_position
+                or old_parent != new_parent
+                or old_is_right_side != new_is_right_side
+            ):
+                from cogist.application.commands.drag_node_command import (
+                    DragNodeCommand,
+                )
+
+                drag_command = DragNodeCommand(
+                    node=dragged_node,
+                    old_position=old_position,
+                    new_position=new_position,
+                    old_parent=old_parent,
+                    new_parent=new_parent,
+                    old_is_right_side=old_is_right_side,
+                    new_is_right_side=new_is_right_side,
+                )
+                # Don't execute - changes already applied during drag
+                # Just push to history for undo/redo
+                self.mindmap_service.node_service.command_history.push(drag_command)
 
         # Restore edge to old parent
         if dragged_id:
