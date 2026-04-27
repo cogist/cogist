@@ -134,6 +134,20 @@ class DragHandler:
                 if candidate_anchor_x <= dragged_anchor_x:
                     continue  # Skip candidates on the left or same x
 
+            # CRITICAL: Validate anchor point relationship
+            # dx = dragged_anchor_x - candidate_anchor_x
+            # L node (left side): dx must be < 0 (dragged anchor is left of candidate anchor)
+            # R node (right side): dx must be > 0 (dragged anchor is right of candidate anchor)
+            dx = dragged_anchor_x - candidate_anchor_x
+            if is_currently_right:
+                # R node: dx must be > 0
+                if dx <= 0:
+                    continue  # Invalid parent: candidate anchor is not on the correct side
+            else:
+                # L node: dx must be < 0
+                if dx >= 0:
+                    continue  # Invalid parent: candidate anchor is not on the correct side
+
             # Calculate anchor point for candidate node
             # Right side: use right edge center; Left side: use left edge center
             if is_currently_right:
