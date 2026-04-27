@@ -102,29 +102,29 @@ class SceneRectManager:
             effective_margin,
         )
 
-        # CRITICAL: Ensure sceneRect is at least as large as the viewport.
-        # This guarantees scrollbars are always active.
+        # CRITICAL: Expand sceneRect to fit viewport if needed, but preserve center
+        # to avoid triggering Qt's automatic viewport adjustment.
+        # Only recenter when absolutely necessary (first initialization).
         vp_size = self._get_viewport_size()
         if vp_size is not None:
             vw, vh = vp_size
 
-            # Expand to fit viewport if needed
-            if expanded_rect.width() < vw:
-                extra = vw - expanded_rect.width()
-                expanded_rect.adjust(-extra / 2, 0, extra / 2, 0)
-            if expanded_rect.height() < vh:
-                extra = vh - expanded_rect.height()
-                expanded_rect.adjust(0, -extra / 2, 0, extra / 2)
+            # Get current sceneRect to preserve its center
+            current_rect = self.scene.sceneRect()
 
-            # CRITICAL: Recenter sceneRect around content center to ensure
-            # symmetric scroll range (so compensation works in both directions)
-            content_center = expanded_rect.center()
-            final_width = max(expanded_rect.width(), vw)
-            final_height = max(expanded_rect.height(), vh)
-            expanded_rect.setLeft(content_center.x() - final_width / 2)
-            expanded_rect.setRight(content_center.x() + final_width / 2)
-            expanded_rect.setTop(content_center.y() - final_height / 2)
-            expanded_rect.setBottom(content_center.y() + final_height / 2)
+            # Calculate the union of current rect and expanded content rect
+            # This ensures we only expand, never shrink or recenter unnecessarily
+            final_rect = current_rect.united(expanded_rect)
+
+            # Ensure minimum size matches viewport
+            if final_rect.width() < vw:
+                extra = vw - final_rect.width()
+                final_rect.adjust(-extra / 2, 0, extra / 2, 0)
+            if final_rect.height() < vh:
+                extra = vh - final_rect.height()
+                final_rect.adjust(0, -extra / 2, 0, extra / 2)
+
+            expanded_rect = final_rect
 
         self.scene.setSceneRect(expanded_rect)
 

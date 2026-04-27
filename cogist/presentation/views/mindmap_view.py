@@ -1603,7 +1603,9 @@ class MindMapView(QGraphicsView):
             self.selected_node_id = next_selected_id
             selected_item = self.node_items[next_selected_id]
             selected_item.setSelected(True)
-            self.centerOn(selected_item)
+            # Only scroll if node is not fully visible
+            margin_px = 50
+            self.ensureVisible(selected_item, margin_px, margin_px)
 
     def _focus_on_node_after_addition(self, added_node_id):
         """Set focus after adding a node.
@@ -1622,7 +1624,9 @@ class MindMapView(QGraphicsView):
         self.selected_node_id = added_node_id
         added_item = self.node_items[added_node_id]
         added_item.setSelected(True)
-        self.centerOn(added_item)
+        # Only scroll if node is not fully visible
+        margin_px = 50
+        self.ensureVisible(added_item, margin_px, margin_px)
 
     def _delete_selected_node(self):
         """Delete the selected node."""
@@ -1662,7 +1666,9 @@ class MindMapView(QGraphicsView):
 
             selected_item = self.node_items[self.selected_node_id]
             selected_item.setSelected(True)
-            self.centerOn(selected_item)
+            # Only scroll if node is not fully visible
+            margin_px = 50
+            self.ensureVisible(selected_item, margin_px, margin_px)
 
     def _edit_selected_node(self, cursor_position: int = -1):
         """Edit the selected node text with inline editing.
@@ -1755,6 +1761,7 @@ class MindMapView(QGraphicsView):
         parent_id: str = None,
         force_rebuild_edges: bool = False,
         clear_locked_positions: bool = True,
+        update_scene_rect: bool = True,
     ):
         """Refresh the entire layout after changes.
 
@@ -1915,9 +1922,7 @@ class MindMapView(QGraphicsView):
 
             self._scene_initialized = True
 
-        # Center on root node when first shown
-        if self.root_node and self.root_node.id in self.node_items:
-            self.centerOn(self.node_items[self.root_node.id])
+        # Root node is already centered by layout algorithm, no need to scroll
 
     def resizeEvent(self, event):
         """Handle resize events to ensure sceneRect >= viewport size."""

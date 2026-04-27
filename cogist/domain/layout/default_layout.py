@@ -98,13 +98,15 @@ class DefaultLayout(BaseLayout):
         # Node sizes are already set from UI layer measurement
         # No need to estimate - we use actual rendered sizes
 
-        # Root node centered on canvas
+        # Root node position: place at scene center (0, 0) on first layout
+        # This prevents unnecessary view jumping during style changes
         # Note: NodeItem uses center as origin, so position is the center
-        # To make root center at canvas center, just use canvas center directly
-        root_node.position = (
-            canvas_width / 2.0,
-            canvas_height / 2.0,
-        )
+        # CRITICAL: Scene coordinate system has origin at (0, 0), which is the center of sceneRect
+        # Only set position if root hasn't been positioned yet (default is (0.0, 0.0))
+        if root_node.is_root and root_node.position == (0.0, 0.0):
+            # First layout - explicitly place root at scene center
+            # This makes it clear that we're intentionally positioning it
+            root_node.position = (0.0, 0.0)
 
         children = root_node.children
         if not children:
