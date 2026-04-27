@@ -755,20 +755,24 @@ class MindMapView(QGraphicsView):
                             mouse_pos=Position(current_pos.x(), current_pos.y()),
                         )
 
-                # FIX: Only hide old parent edge when potential parent changes
-                if (
-                    potential_parent
-                    and dragged_node
-                    and potential_parent != dragged_node.parent
-                ):
-                    if not self._old_parent_edge_hidden:
-                        self._hide_parent_edge(dragged_node)
-                        self._old_parent_edge_hidden = True
-                else:
-                    # Restore old parent edge if no valid potential parent
-                    if self._old_parent_edge_hidden and dragged_node:
-                        self._restore_parent_edge(dragged_node)
-                        self._old_parent_edge_hidden = False
+                # FIX: Handle parent edge visibility based on potential_parent
+                if potential_parent and dragged_node:
+                    # Has a valid potential parent
+                    if potential_parent != dragged_node.parent:
+                        # Different parent - hide old edge, show temp edge
+                        if not self._old_parent_edge_hidden:
+                            self._hide_parent_edge(dragged_node)
+                            self._old_parent_edge_hidden = True
+                    else:
+                        # Same parent - show old edge
+                        if self._old_parent_edge_hidden:
+                            self._restore_parent_edge(dragged_node)
+                            self._old_parent_edge_hidden = False
+                elif dragged_node and not self._old_parent_edge_hidden:
+                    # No valid potential parent - hide old edge, don't draw temp edge
+                    # This creates a "floating" visual state
+                    self._hide_parent_edge(dragged_node)
+                    self._old_parent_edge_hidden = True
 
                 # Update temporary edge
                 self._update_temp_drag_edge(dragged_node, potential_parent)
@@ -912,14 +916,20 @@ class MindMapView(QGraphicsView):
 
                     top_level_node = get_top_level_ancestor(dragged_node)
                     if top_level_node:
-                        # Use is_currently_right instead of new_parent's is_right_side
-                        # (new_parent might be root with default is_right_side=True)
+                        # Use is_currently_right to determine the target side
                         is_currently_right = self._is_node_on_right_side(dragged_id)
 
+                        # Update position[0] to a clear side indicator
+                        # This is CRITICAL for the layout algorithm to correctly assign the node
                         if is_currently_right:
+                            # R node: position far to the right
                             top_level_node.position = (800.0, top_level_node.position[1])
                         else:
+                            # L node: position far to the left
                             top_level_node.position = (400.0, top_level_node.position[1])
+
+                        # Mark as locked so layout won't move it during rebalancing
+                        top_level_node.is_locked_position = True
 
                     # CRITICAL: Node relationships have changed, must rebuild edges completely
                     # Incremental update won't work because parent-child connections changed
@@ -2174,9 +2184,6 @@ class MindMapView(QGraphicsView):
         root_item = self.node_items.get(self.root_node.id)
         if not root_item:
             return None
-        dragged_center_x = (
-            dragged_item.scenePos().x() + dragged_item.boundingRect().width() / 2
-        )
 
         best_candidate = None
         best_distance = float("inf")
@@ -2199,14 +2206,37 @@ class MindMapView(QGraphicsView):
             # Get positions
             target_pos = item.scenePos()
 
-            # For right-side dragged node, look for nodes on the left (smaller x)
-            # For left-side dragged node, look for nodes on the right (larger x)
+            # Rule 6: L node looks for parent with larger anchor X; R node looks for smaller anchor X
+            # Calculate anchor points based on DRAGGED node's side (not candidate's side)
+            dragged_rect = dragged_item.boundingRect()
             if is_currently_right:
-                if target_pos.x() >= dragged_center_x:
-                    continue  # Skip nodes on the right or same x
+                # R node: its anchor is on left edge (closer to root center)
+                dragged_anchor_x = dragged_item.scenePos().x()
             else:
-                if target_pos.x() <= dragged_center_x:
-                    continue  # Skip nodes on the left or same x
+                # L node: its anchor is on right edge (closer to root center)
+                dragged_anchor_x = dragged_item.scenePos().x() + dragged_rect.width()
+
+            candidate_rect = item.boundingRect()
+            if is_currently_right:
+                # For R node, parent must be on left side, parent's anchor is on right edge (away from root)
+                candidate_anchor_x = target_pos.x() + candidate_rect.width()
+            else:
+                # For L node, parent must be on right side, parent's anchor is on left edge (away from root)
+                candidate_anchor_x = target_pos.x()
+
+            # Rule 6: Check anchor point relationship (CRITICAL FILTER)
+            if is_currently_right:
+                # R node: parent anchor X must be SMALLER than dragged anchor X
+                if candidate_anchor_x >= dragged_anchor_x:
+                    # DEBUG: Log why candidate is rejected
+                    print(f"  SKIP {target_node.text}: candidate_anchor={candidate_anchor_x:.1f} >= dragged_anchor={dragged_anchor_x:.1f}")
+                    continue  # Parent is on wrong side (right of dragged node)
+            else:
+                # L node: parent anchor X must be LARGER than dragged anchor X
+                if candidate_anchor_x <= dragged_anchor_x:
+                    # DEBUG: Log why candidate is rejected
+                    print(f"  SKIP {target_node.text}: candidate_anchor={candidate_anchor_x:.1f} <= dragged_anchor={dragged_anchor_x:.1f}")
+                    continue  # Parent is on wrong side (left of dragged node)
 
             # Calculate anchor point for candidate node
             # Right side: use right edge center; Left side: use left edge center
