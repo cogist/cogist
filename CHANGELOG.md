@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-04-28
+
+### Fixed
+- **Viewport stability**: Eliminated unwanted viewport movement during scene updates
+  - Preserve viewport center position when sceneRect changes
+  - Use `united()` to ensure sceneRect only expands, never shrinks
+  - Prevent Qt auto-centering behavior when content changes
+- **Gesture rotation**: Fixed trackpad pinch causing 180° view rotation
+  - Only process scale factor from QPinchGesture
+  - Ignore rotation component to prevent unwanted view rotation
+  - Return True to prevent Qt default gesture handling
+- **Code quality**: Removed debug print statements from drag logic
+
+### Added
+- **Zoom limits**: Enforce minimum zoom level to prevent over-zooming out
+  - Calculate minimum scale based on scene + padding fitting viewport
+  - Prevent zooming out beyond scene+padding = viewport size
+  - Dynamic limit adjusts as content size changes
+  - Clamp zoom factor to reasonable range (0.1x to 5.0x)
+
+### Changed
+- **Architecture**: Migrate to role-based style system
+  - Complete removal of legacy style fallback values
+  - Unified color handling with 8-digit ARGB format support
+  - Improved style change tracking and undo/redo behavior
+
 ## [0.4.3] - 2026-04-26
 
 ### Fixed
