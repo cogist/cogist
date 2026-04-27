@@ -380,6 +380,14 @@ class MindMapView(QGraphicsView):
         for edge_item in self.edge_items:
             edge_item.update_curve()
 
+    def _update_canvas_background(self):
+        """Update canvas background color from style config."""
+        if hasattr(self, "style_config") and self.style_config:
+            from PySide6.QtGui import QBrush, QColor
+
+            canvas_color = self.style_config.canvas_bg_color or "#FFFFFF"
+            self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
+
     def _create_ui_items(self, root: Node):
         """Create UI items from node tree."""
 

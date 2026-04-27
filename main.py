@@ -129,7 +129,9 @@ class MainWindow(QMainWindow):
         self.activity_bar = ActivityBar()
         self.activity_bar.setVisible(False)  # Hidden by default
         self.style_panel = StylePanel(
-            style_config=self.current_style, config_manager=config_manager
+            style_config=self.current_style,
+            config_manager=config_manager,
+            command_history=self.mindmap_service.node_service.command_history,
         )
         self.style_panel.setVisible(False)  # Hidden by default
 
@@ -657,6 +659,7 @@ class MainWindow(QMainWindow):
         is_edit_text_command = command_type_name == "EditTextCommand"
         is_delete_node_command = command_type_name == "DeleteNodeCommand"
         is_reparent_command = command_type_name == "ReparentNodeCommand"
+        is_change_style_command = command_type_name == "ChangeStyleCommand"
 
         # Save selection state BEFORE undo
         node_id_before_undo = self.mindmap_view.selected_node_id
@@ -692,6 +695,25 @@ class MainWindow(QMainWindow):
 
         # Use MindMapService to undo (Application Layer)
         if self.mindmap_service.undo():
+            # For style changes, just refresh the UI without layout recalculation
+            if is_change_style_command:
+                self.mindmap_view._update_canvas_background()
+                # Update style panel controls to reflect the undone state
+                if hasattr(self, 'style_panel') and self.style_panel.isVisible():
+                    # Prevent command creation during undo/redo refresh
+                    self.style_panel.advanced_tab._updating_from_undo_redo = True
+                    self.style_panel.advanced_tab.refresh_current_layer()
+                    self.style_panel.advanced_tab._updating_from_undo_redo = False
+                # Re-apply styles to all nodes
+                if hasattr(self.mindmap_view, 'node_items'):
+                    for node_item in self.mindmap_view.node_items.values():
+                        if hasattr(node_item, 'update_style'):
+                            node_item.update_style(self.mindmap_view.style_config)
+                # Apply spacing configuration to mindmap_view and refresh layout
+                if hasattr(self, 'style_panel') and self.style_panel.isVisible():
+                    self.style_panel.advanced_tab._apply_styles_to_mindmap()
+                return
+
             # Determine if we need to re-measure dimensions
             # EditTextCommand: Text change affects node size -> must re-measure
             # DeleteNodeCommand undo: Restoring nodes -> must re-measure
@@ -743,9 +765,11 @@ class MainWindow(QMainWindow):
             self.mindmap_service.node_service.command_history.peek_last_redo_command()
         )
         command_type_name = last_command and type(last_command).__name__
+        print(f"DEBUG _redo: command_type={command_type_name}")
         is_add_node_command = command_type_name == "AddNodeCommand"
         is_edit_text_command = command_type_name == "EditTextCommand"
         is_reparent_command = command_type_name == "ReparentNodeCommand"
+        is_change_style_command = command_type_name == "ChangeStyleCommand"
 
         # Save selection state BEFORE redo
         node_id_before_redo = self.mindmap_view.selected_node_id
@@ -761,6 +785,25 @@ class MainWindow(QMainWindow):
 
         # Use MindMapService to redo (Application Layer)
         if self.mindmap_service.redo():
+            # For style changes, just refresh the UI without layout recalculation
+            if is_change_style_command:
+                self.mindmap_view._update_canvas_background()
+                # Update style panel controls to reflect the redone state
+                if hasattr(self, 'style_panel') and self.style_panel.isVisible():
+                    # Prevent command creation during undo/redo refresh
+                    self.style_panel.advanced_tab._updating_from_undo_redo = True
+                    self.style_panel.advanced_tab.refresh_current_layer()
+                    self.style_panel.advanced_tab._updating_from_undo_redo = False
+                # Re-apply styles to all nodes
+                if hasattr(self.mindmap_view, 'node_items'):
+                    for node_item in self.mindmap_view.node_items.values():
+                        if hasattr(node_item, 'update_style'):
+                            node_item.update_style(self.mindmap_view.style_config)
+                # Apply spacing configuration to mindmap_view and refresh layout
+                if hasattr(self, 'style_panel') and self.style_panel.isVisible():
+                    self.style_panel.advanced_tab._apply_styles_to_mindmap()
+                return
+
             # Determine if we need to re-measure dimensions
             # AddNodeCommand: New node needs measurement -> must re-measure
             # EditTextCommand: Text change affects size -> must re-measure

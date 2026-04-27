@@ -38,7 +38,7 @@ class AdvancedStyleTab(QWidget):
     # Panel dimensions
     PANEL_WIDTH = 260  # Original carefully designed width
 
-    def __init__(self, style_config=None, config_manager=None, parent=None):
+    def __init__(self, style_config=None, config_manager=None, command_history=None, parent=None):
         super().__init__(parent)
 
         # Set initial width (fixed, non-resizable)
@@ -52,6 +52,12 @@ class AdvancedStyleTab(QWidget):
 
         # Store reference to config manager
         self.config_manager = config_manager
+
+        # Store reference to command history for undo/redo
+        self.command_history = command_history
+
+        # Flag to prevent command creation during undo/redo
+        self._updating_from_undo_redo = False
 
         self.current_layer = "canvas"
 
@@ -470,17 +476,34 @@ class AdvancedStyleTab(QWidget):
     def _on_canvas_color_changed(self, color: str):
         """Handle canvas background color change."""
         assert self.style_config is not None
-        # Directly update global style_config
-        self.style_config.canvas_bg_color = color
-        if self.style_config.resolved_color_scheme:
-            self.style_config.resolved_color_scheme.canvas_bg_color = color
+
+        # Use command system if available
+        if self.command_history:
+            from cogist.application.commands import ChangeStyleCommand
+            from cogist.application.commands.change_style_command import StyleChange
+
+            change = StyleChange(
+                layer="canvas",
+                style_updates={"bg_color": color},
+            )
+            command = ChangeStyleCommand(
+                style_config=self.style_config,
+                changes=[change],
+            )
+            command.execute()
+            self.command_history.push(command)
+        else:
+            # Fallback: direct update without undo/redo
+            self.style_config.canvas_bg_color = color
+            if self.style_config.resolved_color_scheme:
+                self.style_config.resolved_color_scheme.canvas_bg_color = color
+
         self._apply_styles_to_mindmap()
 
     def _on_spacing_changed(self, spacing: dict):
         """Handle spacing configuration change for the current layer."""
         assert self.style_config is not None
         if self.current_layer != "canvas":
-            # Directly update our own style_config since we have direct access
             # Map layers to depths for spacing application
             # level_3_plus maps to depth 3 and affects all deeper levels (3, 4, 5, ...)
             depth_map = {
@@ -508,21 +531,60 @@ class AdvancedStyleTab(QWidget):
             else:
                 depths_to_update = [depth]
 
+            # Prepare style updates for command
+            style_updates = {}
             if "parent_child" in spacing:
+                # For command system, we'll store the spacing value
+                # The command will handle the depth mapping logic
+                style_updates["parent_child_spacing"] = spacing["parent_child"]
+
+            if "sibling" in spacing:
+                style_updates["sibling_spacing"] = spacing["sibling"]
+
+            # Skip command creation if we're updating from undo/redo
+            if self._updating_from_undo_redo and style_updates:
+                # Direct update without creating a command
+                if not hasattr(self.style_config, 'level_spacing_by_depth'):
+                    self.style_config.level_spacing_by_depth = {}
+                if not hasattr(self.style_config, 'sibling_spacing_by_depth'):
+                    self.style_config.sibling_spacing_by_depth = {}
+
+                # Update spacing for all target depths (true layer isolation)
+                if "parent_child" in spacing:
+                    for d in depths_to_update:
+                        self.style_config.level_spacing_by_depth[d] = spacing["parent_child"]
+                if "sibling" in spacing:
+                    for d in depths_to_update:
+                        self.style_config.sibling_spacing_by_depth[d] = spacing["sibling"]
+            elif self.command_history and style_updates:
+                from cogist.application.commands import ChangeStyleCommand
+                from cogist.application.commands.change_style_command import StyleChange
+
+                change = StyleChange(
+                    layer=self.current_layer,
+                    style_updates=style_updates,
+                )
+                command = ChangeStyleCommand(
+                    style_config=self.style_config,
+                    changes=[change],
+                )
+                command.execute()
+                self.command_history.push(command)
+            elif style_updates:
+                # Fallback: direct update without undo/redo
                 # Initialize dictionary if not exists
                 if not hasattr(self.style_config, 'level_spacing_by_depth'):
                     self.style_config.level_spacing_by_depth = {}
-                # Update spacing for all target depths (true layer isolation)
-                for d in depths_to_update:
-                    self.style_config.level_spacing_by_depth[d] = spacing["parent_child"]
-
-            if "sibling" in spacing:
-                # Initialize dictionary if not exists
                 if not hasattr(self.style_config, 'sibling_spacing_by_depth'):
                     self.style_config.sibling_spacing_by_depth = {}
+
                 # Update spacing for all target depths (true layer isolation)
-                for d in depths_to_update:
-                    self.style_config.sibling_spacing_by_depth[d] = spacing["sibling"]
+                if "parent_child" in spacing:
+                    for d in depths_to_update:
+                        self.style_config.level_spacing_by_depth[d] = spacing["parent_child"]
+                if "sibling" in spacing:
+                    for d in depths_to_update:
+                        self.style_config.sibling_spacing_by_depth[d] = spacing["sibling"]
 
             # Trigger layout refresh through _apply_styles_to_mindmap
             self._apply_styles_to_mindmap()
@@ -530,12 +592,32 @@ class AdvancedStyleTab(QWidget):
     def _on_node_style_changed(self, style: dict):
         """Handle node style changes."""
         if self.current_layer != "canvas":
-            # Update global style_config directly
-            self._update_role_style_in_config(self.current_layer, style)
-
             # Check if this change affects node dimensions (requires size recalculation)
             dimension_keys = {"max_text_width", "padding_w", "padding_h", "font_size", "font_family", "font_weight", "font_italic", "font_underline", "font_strikeout"}
             affects_dimensions = any(key in style for key in dimension_keys)
+
+            # Skip command creation if we're updating from undo/redo
+            if self._updating_from_undo_redo:
+                # Direct update without creating a command
+                self._update_role_style_in_config(self.current_layer, style)
+            elif self.command_history:
+                from cogist.application.commands import ChangeStyleCommand
+                from cogist.application.commands.change_style_command import StyleChange
+
+                # Create and execute style change command
+                change = StyleChange(
+                    layer=self.current_layer,
+                    style_updates=style,
+                )
+                command = ChangeStyleCommand(
+                    style_config=self.style_config,
+                    changes=[change],
+                )
+                command.execute()
+                self.command_history.push(command)
+            else:
+                # Fallback: direct update without undo/redo
+                self._update_role_style_in_config(self.current_layer, style)
 
             self._apply_styles_to_mindmap(force_rebuild=affects_dimensions)
 
@@ -545,23 +627,80 @@ class AdvancedStyleTab(QWidget):
         if enabled:
             self.shadow_section.setCollapsed(False)
 
-        # Update global style_config directly
+        # Update using command system if available
         if self.current_layer != "canvas":
-            self._update_role_style_in_config(self.current_layer, {"shadow_enabled": enabled})
+            if self.command_history:
+                from cogist.application.commands import ChangeStyleCommand
+                from cogist.application.commands.change_style_command import StyleChange
+
+                change = StyleChange(
+                    layer=self.current_layer,
+                    style_updates={"shadow_enabled": enabled},
+                )
+                command = ChangeStyleCommand(
+                    style_config=self.style_config,
+                    changes=[change],
+                )
+                command.execute()
+                self.command_history.push(command)
+            else:
+                # Fallback: direct update without undo/redo
+                self._update_role_style_in_config(self.current_layer, {"shadow_enabled": enabled})
+
             self._apply_styles_to_mindmap()
 
     def _on_shadow_changed(self, shadow: dict):
         """Handle shadow style changes."""
         if self.current_layer != "canvas":
-            # Update global style_config directly
-            self._update_role_style_in_config(self.current_layer, shadow)
+            # Skip command creation if we're updating from undo/redo
+            if self._updating_from_undo_redo:
+                # Direct update without creating a command
+                self._update_role_style_in_config(self.current_layer, shadow)
+            elif self.command_history:
+                from cogist.application.commands import ChangeStyleCommand
+                from cogist.application.commands.change_style_command import StyleChange
+
+                change = StyleChange(
+                    layer=self.current_layer,
+                    style_updates=shadow,
+                )
+                command = ChangeStyleCommand(
+                    style_config=self.style_config,
+                    changes=[change],
+                )
+                command.execute()
+                self.command_history.push(command)
+            else:
+                # Fallback: direct update without undo/redo
+                self._update_role_style_in_config(self.current_layer, shadow)
+
             self._apply_styles_to_mindmap()
 
     def _on_border_style_changed(self, style: dict):
         """Handle border style changes."""
         if self.current_layer != "canvas":
-            # Update global style_config directly
-            self._update_role_style_in_config(self.current_layer, style)
+            # Skip command creation if we're updating from undo/redo
+            if self._updating_from_undo_redo:
+                # Direct update without creating a command
+                self._update_role_style_in_config(self.current_layer, style)
+            elif self.command_history:
+                from cogist.application.commands import ChangeStyleCommand
+                from cogist.application.commands.change_style_command import StyleChange
+
+                change = StyleChange(
+                    layer=self.current_layer,
+                    style_updates=style,
+                )
+                command = ChangeStyleCommand(
+                    style_config=self.style_config,
+                    changes=[change],
+                )
+                command.execute()
+                self.command_history.push(command)
+            else:
+                # Fallback: direct update without undo/redo
+                self._update_role_style_in_config(self.current_layer, style)
+
             self._apply_styles_to_mindmap()
 
     def _on_connector_style_changed(self, style: dict):
@@ -585,23 +724,69 @@ class AdvancedStyleTab(QWidget):
             else:
                 depths_to_update = [depth]
 
-            # Update connector config for all target depths
-            for d in depths_to_update:
-                connector_config = self.style_config.connector_config_by_depth.get(d, {})
-                self.style_config.connector_config_by_depth[d] = connector_config
+            # Prepare style updates for command system
+            # Note: For connectors, we need to handle depth-specific configs
+            # The command will need to understand this complexity
+            connector_updates = {}
+            if "connector_shape" in style:
+                connector_updates["connector_shape"] = style["connector_shape"]
+            if "connector_style" in style:
+                connector_updates["connector_style"] = style["connector_style"]
+            if "line_width" in style:
+                connector_updates["line_width"] = style["line_width"]
+            if "connector_color" in style:
+                connector_updates["color"] = style["connector_color"]
 
-                # Update connector config
-                if "connector_shape" in style:
-                    connector_config["connector_shape"] = style["connector_shape"]
-                if "connector_style" in style:
-                    connector_config["connector_style"] = style["connector_style"]
-                if "line_width" in style:
-                    connector_config["line_width"] = style["line_width"]
-                if "connector_color" in style:
-                    connector_config["color"] = style["connector_color"]
+            # Use command system if available
+            if self._updating_from_undo_redo and connector_updates:
+                # Direct update without creating a command
+                # Update connector config for all target depths
+                for d in depths_to_update:
+                    connector_config = self.style_config.connector_config_by_depth.get(d, {})
+                    self.style_config.connector_config_by_depth[d] = connector_config
 
-                # Note: enable_gradient is automatically determined by connector_shape
-                # No need to store it separately (bezier -> True, others -> False)
+                    # Update connector config
+                    if "connector_shape" in style:
+                        connector_config["connector_shape"] = style["connector_shape"]
+                    if "connector_style" in style:
+                        connector_config["connector_style"] = style["connector_style"]
+                    if "line_width" in style:
+                        connector_config["line_width"] = style["line_width"]
+                    if "connector_color" in style:
+                        connector_config["color"] = style["connector_color"]
+            elif self.command_history and connector_updates:
+                from cogist.application.commands import ChangeStyleCommand
+                from cogist.application.commands.change_style_command import StyleChange
+
+                change = StyleChange(
+                    layer=self.current_layer,
+                    style_updates=connector_updates,
+                )
+                command = ChangeStyleCommand(
+                    style_config=self.style_config,
+                    changes=[change],
+                )
+                command.execute()
+                self.command_history.push(command)
+            elif connector_updates:
+                # Fallback: direct update without undo/redo
+                # Update connector config for all target depths
+                for d in depths_to_update:
+                    connector_config = self.style_config.connector_config_by_depth.get(d, {})
+                    self.style_config.connector_config_by_depth[d] = connector_config
+
+                    # Update connector config
+                    if "connector_shape" in style:
+                        connector_config["connector_shape"] = style["connector_shape"]
+                    if "connector_style" in style:
+                        connector_config["connector_style"] = style["connector_style"]
+                    if "line_width" in style:
+                        connector_config["line_width"] = style["line_width"]
+                    if "connector_color" in style:
+                        connector_config["color"] = style["connector_color"]
+
+                    # Note: enable_gradient is automatically determined by connector_shape
+                    # No need to store it separately (bezier -> True, others -> False)
 
             self._apply_styles_to_mindmap()
 
