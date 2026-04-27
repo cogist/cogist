@@ -1945,6 +1945,9 @@ class MindMapView(QGraphicsView):
     def gestureEvent(self, event: QEvent) -> bool:
         """Handle pinch gesture for trackpad zoom.
 
+        CRITICAL: Only handle scale (zoom), ignore rotation to prevent unwanted view rotation.
+        Qt's PinchGesture includes both scale and rotation by default.
+
         Args:
             event: The gesture event
 
@@ -1953,7 +1956,8 @@ class MindMapView(QGraphicsView):
         """
         gesture = event.gesture(Qt.PinchGesture)
         if gesture:
-            # Get the scale factor from the pinch gesture
+            # CRITICAL: Only handle scale factor, explicitly ignore rotation
+            # Qt's default pinch gesture includes rotation, which we don't want
             scale_factor = gesture.scaleFactor()
 
             # Apply zoom with anchor point
@@ -1963,6 +1967,8 @@ class MindMapView(QGraphicsView):
                 # Fallback: direct scaling without anchor compensation
                 self.scale(scale_factor, scale_factor)
 
+            # Accept the gesture to prevent Qt from applying default rotation
+            gesture.accept()
             return True
         return False
 
