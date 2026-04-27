@@ -647,9 +647,11 @@ class MindMapView(QGraphicsView):
                 )
 
                 # Rule 7: Save complete state before drag for rollback
+                initial_is_right = node_item.is_right_side
                 self._drag_original_state = {
                     "position": tuple(current_node.position),  # Create tuple copy
-                    "is_right_side": node_item.is_right_side,
+                    "is_right_side": initial_is_right,
+                    "initial_is_right_side": initial_is_right,  # Keep original for subtree mirroring
                     "parent": current_node.parent,
                     "children": list(current_node.children),  # Create list copy
                     "depth": current_node.depth,
@@ -723,18 +725,22 @@ class MindMapView(QGraphicsView):
                         cached_is_right = self._drag_original_state["is_right_side"]
 
                         # Flip subtree when L/R state changes
-                        should_mirror = is_currently_right != cached_is_right
+                        side_changed = is_currently_right != cached_is_right
 
-                        if should_mirror:
+                        if side_changed:
                             # Update cached L/R state after flip
                             self._drag_original_state["is_right_side"] = (
                                 is_currently_right
                             )
-                            print(
-                                f"  >>> FLIP! cached_is_right={cached_is_right} -> {is_currently_right}"
-                            )
-                            # Only apply subtree positions when flip occurs
-                            self._apply_subtree_positions(new_pos, should_mirror)
+
+                        # Apply subtree positions: mirror if current side differs from initial saved state
+                        # The saved offsets are from the initial state, so we need to mirror when
+                        # the current side is different from the initial side
+                        initial_is_right = self._drag_original_state.get(
+                            "initial_is_right_side", cached_is_right
+                        )
+                        should_mirror = is_currently_right != initial_is_right
+                        self._apply_subtree_positions(new_pos, should_mirror)
 
                         # Update is_right_side for dragged node
                         self._update_subtree_is_right_side(
@@ -769,7 +775,8 @@ class MindMapView(QGraphicsView):
                 self._update_temp_drag_edge(dragged_node, potential_parent)
 
                 # Detect cross-side drag by comparing center X positions
-                if potential_parent:
+                # Only if we have valid dragged node and root item
+                if potential_parent and dragged_node and root_item:
                     parent_item = self.node_items.get(potential_parent.id)
                     if parent_item:
                         parent_center_x = (
@@ -778,10 +785,15 @@ class MindMapView(QGraphicsView):
                         )
 
                         # Check if dragged node and potential parent are on different sides
-                        # Use root_center_x that was calculated above
-                        parent_is_right = parent_center_x >= root_center_x
+                        # Recalculate root_center_x and is_currently_right for this scope
+                        root_center_x_for_cross = root_item.scenePos().x()
+                        dragged_center_x_for_cross = dragged_item.scenePos().x()
+                        is_currently_right_for_cross = (
+                            dragged_center_x_for_cross >= root_center_x_for_cross
+                        )
+                        parent_is_right = parent_center_x >= root_center_x_for_cross
                         self._is_dragging_cross_side = (
-                            is_currently_right != parent_is_right
+                            is_currently_right_for_cross != parent_is_right
                         )
 
                 self._current_potential_parent = potential_parent
