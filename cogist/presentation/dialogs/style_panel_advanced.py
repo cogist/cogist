@@ -491,8 +491,11 @@ class AdvancedStyleTab(QWidget):
         role = self._get_current_layer_role()
         if not role:
             # Canvas layer - handle canvas_bg separately
-            if "canvas_bg" in colors and self.style_config.resolved_color_scheme:
-                self.style_config.resolved_color_scheme.canvas_bg_color = colors["canvas_bg"]
+            if "canvas_bg" in colors:
+                # Update both style_config and resolved_color_scheme
+                self.style_config.canvas_bg_color = colors["canvas_bg"]
+                if self.style_config.resolved_color_scheme:
+                    self.style_config.resolved_color_scheme.canvas_bg_color = colors["canvas_bg"]
                 self._apply_styles_to_mindmap()
             return
 
