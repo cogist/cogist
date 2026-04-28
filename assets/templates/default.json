@@ -218,6 +218,7 @@
       "#FF52B788"
     ],
     "use_rainbow_branches": false,
+    "auto_inherit_enabled": false,
     "canvas_bg_color": "#FFFFFFFF",
     "edge_color": "#FF666666"
   },

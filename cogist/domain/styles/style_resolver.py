@@ -313,6 +313,14 @@ def serialize_role_based_style(style: RoleBasedStyle) -> dict:
         "shadow_offset_y": style.shadow_offset_y,
         "shadow_blur": style.shadow_blur,
         "shadow_color": style.shadow_color,
+        # Spacing configuration (per-role)
+        "parent_child_spacing": style.parent_child_spacing,
+        "sibling_spacing": style.sibling_spacing,
+        # Connector configuration (per-role)
+        "connector_shape": style.connector_shape,
+        "connector_style": style.connector_style,
+        "line_width": style.line_width,
+        "connector_color": style.connector_color,
     }
 
 
@@ -367,6 +375,14 @@ def deserialize_role_based_style(role: NodeRole, data: dict) -> RoleBasedStyle:
         shadow_offset_y=data.get("shadow_offset_y", 2),
         shadow_blur=data.get("shadow_blur", 4),
         shadow_color=data.get("shadow_color"),
+        # Spacing configuration (per-role)
+        parent_child_spacing=data.get("parent_child_spacing", 80.0),
+        sibling_spacing=data.get("sibling_spacing", 60.0),
+        # Connector configuration (per-role)
+        connector_shape=data.get("connector_shape", "bezier"),
+        connector_style=data.get("connector_style", "solid"),
+        line_width=data.get("line_width", 2.0),
+        connector_color=data.get("connector_color"),
     )
 
 
