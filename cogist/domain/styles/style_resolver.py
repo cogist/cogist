@@ -224,6 +224,7 @@ def serialize_color_scheme(scheme: ColorScheme) -> dict:
         "text_colors": {role.value: color for role, color in scheme.text_colors.items()} if scheme.text_colors else None,
         "branch_colors": scheme.branch_colors,
         "use_rainbow_branches": scheme.use_rainbow_branches,
+        "auto_inherit_enabled": scheme.auto_inherit_enabled,
         "canvas_bg_color": scheme.canvas_bg_color,
         "edge_color": scheme.edge_color,
     }
@@ -258,6 +259,7 @@ def deserialize_color_scheme(data: dict) -> ColorScheme:
         text_colors=text_colors,
         branch_colors=data.get("branch_colors", []),
         use_rainbow_branches=data.get("use_rainbow_branches", False),
+        auto_inherit_enabled=data.get("auto_inherit_enabled", False),
         canvas_bg_color=data.get("canvas_bg_color", "#FFFFFF"),
         edge_color=data.get("edge_color", "#666666"),
     )

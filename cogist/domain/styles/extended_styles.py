@@ -222,6 +222,10 @@ class ColorScheme:
     # Enable rainbow branches
     use_rainbow_branches: bool = False
 
+    # Unified auto-inherit switch for derived levels (Level 2 & 3+)
+    # When True, Level 2/3+ colors are automatically calculated from parent levels
+    auto_inherit_enabled: bool = False
+
     # Base colors (using HexArgb format to support transparency)
     canvas_bg_color: str = "#FFFFFFFF"
     edge_color: str = "#FF666666"
