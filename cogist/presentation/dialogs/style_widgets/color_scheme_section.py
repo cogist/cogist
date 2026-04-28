@@ -236,6 +236,10 @@ class ColorSchemeSection(CollapsiblePanel):
 
         self.setLayout(layout)
 
+        # Apply current role visibility settings after content is created
+        if self.current_role:
+            self.set_role(self.current_role)
+
     def _emit_change(self, key: str, value):
         self.color_changed.emit({key: value})
 
@@ -265,6 +269,11 @@ class ColorSchemeSection(CollapsiblePanel):
     def set_role(self, role: str):
         """Set current role and update UI accordingly."""
         self.current_role = role
+
+        # If not initialized yet, just store the role and return
+        # The UI will be configured correctly when _init_content() is called
+        if not self._initialized:
+            return
 
         # Canvas: show only canvas picker
         if role == "canvas":
