@@ -72,12 +72,30 @@ class RainbowColorPool(QWidget):
             self.color_pool_changed.emit(self.colors)
 
     def set_colors(self, colors: list[str]):
-        self.colors = colors[:8]  # Ensure 8 colors
+        """Set rainbow colors.
+
+        Args:
+            colors: List of color strings (should have 8 colors)
+        """
+        if not colors or len(colors) == 0:
+            # If empty, keep existing colors but don't update buttons
+            return
+
+        self.colors = colors[:8]  # Ensure max 8 colors
+        # Pad with default colors if less than 8
+        while len(self.colors) < 8:
+            default_colors = [
+                "#FFFF6B6B", "#FF4ECDC4", "#FF45B7D1", "#FFFFA07A",
+                "#FF98D8C8", "#FFF7DC6F", "#FFBB8FCE", "#FF85C1E2",
+            ]
+            self.colors.append(default_colors[len(self.colors)])
+
         for i, btn in enumerate(self.buttons):
-            btn.setStyleSheet(
-                f"background-color: {self.colors[i]}; "
-                "border: 1px solid #CCCCCC; border-radius: 3px;"
-            )
+            if i < len(self.colors):
+                btn.setStyleSheet(
+                    f"background-color: {self.colors[i]}; "
+                    "border: 1px solid #CCCCCC; border-radius: 3px;"
+                )
 
     def get_colors(self) -> list[str]:
         return self.colors
