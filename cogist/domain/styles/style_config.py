@@ -31,4 +31,4 @@ class MindMapStyle:
     resolved_color_scheme: ColorScheme | None = None
 
     # === Canvas background (synced from color_scheme) ===
-    canvas_bg_color: str = "#FFFFFF"
+    canvas_bg_color: str = "#FFFFFFFF"

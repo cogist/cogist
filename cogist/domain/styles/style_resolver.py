@@ -165,7 +165,7 @@ def deserialize_style(data: dict) -> MindMapStyle:
         sibling_spacing=data.get("sibling_spacing", 60.0),
 
         # === Canvas background ===
-        canvas_bg_color=data.get("canvas_bg_color", "#FFFFFF"),
+        canvas_bg_color=data.get("canvas_bg_color", "#FFFFFFFF"),
     )
 
     return style
@@ -260,8 +260,8 @@ def deserialize_color_scheme(data: dict) -> ColorScheme:
         branch_colors=data.get("branch_colors", []),
         use_rainbow_branches=data.get("use_rainbow_branches", False),
         auto_inherit_enabled=data.get("auto_inherit_enabled", False),
-        canvas_bg_color=data.get("canvas_bg_color", "#FFFFFF"),
-        edge_color=data.get("edge_color", "#666666"),
+        canvas_bg_color=data.get("canvas_bg_color", "#FFFFFFFF"),
+        edge_color=data.get("edge_color", "#FF666666"),
     )
 
 
