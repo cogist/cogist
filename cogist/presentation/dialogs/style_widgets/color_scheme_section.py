@@ -461,6 +461,7 @@ class ColorSchemeSection(CollapsiblePanel):
 
     def set_colors(self, colors: dict):
         """Set colors programmatically."""
+        # Update UI only if initialized (lazy loading)
         if not self._initialized:
             return
 
