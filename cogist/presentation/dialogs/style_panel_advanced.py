@@ -163,6 +163,9 @@ class AdvancedStyleTab(QWidget):
             # Spacing - read from role-based configuration
             "parent_child_spacing": self._get_level_spacing_for_layer(layer_name),
             "sibling_spacing": self._get_sibling_spacing_for_layer(layer_name),
+            # Rainbow branch (only for level_1)
+            "use_rainbow": color_scheme.use_rainbow_branches if layer_name == "level_1" else False,
+            "rainbow_pool": color_scheme.branch_colors if layer_name == "level_1" else [],
         }
 
         return layer_data
@@ -855,6 +858,11 @@ class AdvancedStyleTab(QWidget):
                 color_data["border_color"] = layer_data["border_color"]
             if "connector_color" in layer_data:
                 color_data["connector_color"] = layer_data["connector_color"]
+            # Rainbow branch fields
+            if "use_rainbow" in layer_data:
+                color_data["use_rainbow"] = layer_data["use_rainbow"]
+            if "rainbow_pool" in layer_data:
+                color_data["rainbow_pool"] = layer_data["rainbow_pool"]
 
             if color_data:
                 self.color_scheme_section.set_colors(color_data)
