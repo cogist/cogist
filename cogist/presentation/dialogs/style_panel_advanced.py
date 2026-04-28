@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 from .style_widgets import (
     BorderSection,
     CanvasSection,
+    ColorSchemeSection,
     ConnectorSection,
     LayerSelector,
     NodeStyleSection,
@@ -375,6 +376,7 @@ class AdvancedStyleTab(QWidget):
         # Add modular components
         self.layer_selector = LayerSelector()
         self.canvas_section = CanvasSection()
+        self.color_scheme_section = ColorSchemeSection()
         self.spacing_section = SpacingSection()
         self.node_style_section = NodeStyleSection()
         self.shadow_section = ShadowSection()
@@ -383,6 +385,7 @@ class AdvancedStyleTab(QWidget):
 
         layout.addWidget(self.layer_selector)
         layout.addWidget(self.canvas_section)
+        layout.addWidget(self.color_scheme_section)
         layout.addWidget(self.spacing_section)
         layout.addWidget(self.node_style_section)
         layout.addWidget(self.shadow_section)
