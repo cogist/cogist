@@ -788,6 +788,9 @@ class AdvancedStyleTab(QWidget):
         # Get style data directly from global style_config
         layer_data = self._get_layer_data(self.current_layer)
 
+        # Notify color_scheme_section of current layer role for proper UI visibility
+        self.color_scheme_section.set_role(self.current_layer)
+
         if self.current_layer == "canvas":
             # Load canvas style
             if "bg_color" in layer_data:

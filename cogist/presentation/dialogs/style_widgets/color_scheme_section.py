@@ -157,8 +157,6 @@ class ColorSchemeSection(CollapsiblePanel):
         if checked and not self._initialized:
             self._init_content()
             self._initialized = True
-            # Initialize role visibility after content is created
-            self.set_role("level_2")  # Default to level_2 to show Auto checkboxes
 
     def _init_content(self):
         layout = QGridLayout()
