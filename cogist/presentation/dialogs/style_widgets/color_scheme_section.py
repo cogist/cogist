@@ -337,10 +337,6 @@ class ColorSchemeSection(CollapsiblePanel):
             self.updateGeometry()
             self.layout().update()
 
-        # Disable background color picker when rainbow is enabled
-        if self.bg_color_btn:
-            self.bg_color_btn.setEnabled(not enabled)
-
         self._emit_change("use_rainbow", enabled)
 
     def _edit_rainbow_color(self, index: int):
@@ -503,10 +499,6 @@ class ColorSchemeSection(CollapsiblePanel):
             visible = is_level_1 and rainbow_enabled
             for btn in self.rainbow_buttons:
                 btn.setVisible(visible)
-
-            # Update background color picker enabled state
-            if self.bg_color_btn:
-                self.bg_color_btn.setEnabled(not rainbow_enabled)
 
         # Set rainbow colors
         if "rainbow_pool" in colors and self.rainbow_buttons:
