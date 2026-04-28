@@ -216,9 +216,9 @@
     },
     "text_colors": {
       "root": "#ff000000",
-      "primary": "#000000",
-      "secondary": "#000000",
-      "tertiary": "#000000"
+      "primary": "#FF000000",
+      "secondary": "#FF000000",
+      "tertiary": "#FF000000"
     },
     "branch_colors": [
       "#FFFF6B6B",

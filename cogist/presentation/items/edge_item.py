@@ -27,7 +27,7 @@ class EdgeItem(QGraphicsPathItem):
     - Auto-update on node move
     """
 
-    def __init__(self, source_item, target_item, color: str = "#90CAF9", style_config=None):
+    def __init__(self, source_item, target_item, color: str = "#FF90CAF9", style_config=None):
         super().__init__()
         self.source_item = source_item
         self.target_item = target_item
@@ -75,7 +75,7 @@ class EdgeItem(QGraphicsPathItem):
             role = role_map.get(source_depth, NodeRole.TERTIARY)
 
             # Default values
-            color_str = "#666666"
+            color_str = "#FF666666"
             line_width = 2.0
             connector_style_str = "solid"
             connector_shape = "bezier"
@@ -93,8 +93,8 @@ class EdgeItem(QGraphicsPathItem):
             # Rainbow branch handling for Level 1 edges
             color_scheme = self.style_config.resolved_color_scheme
             if (color_scheme and color_scheme.use_rainbow_branches and source_depth == 1 and
-                    hasattr(self.source_item, 'parent') and self.source_item.parent):
-                branch_idx = self.source_item.parent.children.index(self.source_item) if hasattr(self.source_item.parent, 'children') else 0
+                    hasattr(self.source_item, 'domain_node') and self.source_item.domain_node and self.source_item.domain_node.parent):
+                branch_idx = self.source_item.domain_node.parent.children.index(self.source_item.domain_node) if hasattr(self.source_item.domain_node.parent, 'children') else 0
                 branch_color = get_rainbow_branch_color(
                     branch_idx,
                     color_scheme.branch_colors  # Fixed: use branch_colors instead of rainbow_branch_colors
