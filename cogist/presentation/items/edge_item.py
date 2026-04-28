@@ -59,7 +59,10 @@ class EdgeItem(QGraphicsPathItem):
 
         # Read style from global config if available (real-time, no caching)
         if self.style_config and hasattr(self.source_item, 'depth'):
-            from cogist.domain.styles.extended_styles import NodeRole
+            from cogist.domain.styles.extended_styles import (
+                NodeRole,
+                get_rainbow_branch_color,
+            )
 
             source_depth = self.source_item.depth
 
@@ -86,6 +89,17 @@ class EdgeItem(QGraphicsPathItem):
                 connector_style_str = role_style.connector_style
                 connector_shape = role_style.connector_shape
                 enable_gradient = (connector_shape == "bezier")
+
+            # Rainbow branch handling for Level 1 edges
+            color_scheme = self.style_config.resolved_color_scheme
+            if (color_scheme and color_scheme.use_rainbow_branches and source_depth == 1 and
+                    hasattr(self.source_item, 'parent') and self.source_item.parent):
+                branch_idx = self.source_item.parent.children.index(self.source_item) if hasattr(self.source_item.parent, 'children') else 0
+                branch_color = get_rainbow_branch_color(
+                    branch_idx,
+                    color_scheme.rainbow_branch_colors
+                )
+                color_str = branch_color
 
             # Extract style values directly from config
             color = QColor(color_str)
