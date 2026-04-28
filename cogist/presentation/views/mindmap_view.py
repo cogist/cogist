@@ -247,6 +247,7 @@ class MindMapView(QGraphicsView):
             is_root=node.is_root,
             depth=node.depth,
             style_config=self.style_config,
+            domain_node=node,  # Pass domain node reference
         )
 
         # Update node dimensions
@@ -281,6 +282,7 @@ class MindMapView(QGraphicsView):
                 is_root=node.is_root,
                 depth=node.depth,
                 style_config=self.style_config,  # Pass style configuration
+                domain_node=node,  # Pass domain node reference
                 # DO NOT use use_domain_size here - we need to measure actual size
             )
 
@@ -424,6 +426,7 @@ class MindMapView(QGraphicsView):
                 depth=node.depth,
                 use_domain_size=True,  # Use domain layer's pre-measured size
                 style_config=self.style_config,  # Pass style configuration
+                domain_node=node,  # Pass domain node reference for parent/children access
             )
             item.setPos(*node.position)
 

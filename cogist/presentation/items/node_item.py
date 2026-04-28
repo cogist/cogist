@@ -97,6 +97,7 @@ class NodeItem(QGraphicsRectItem):
         depth: int = 0,
         use_domain_size: bool = False,
         style_config=None,  # MindMapStyle instance for unified styling
+        domain_node=None,  # Domain Node entity reference (for accessing parent/children)
     ):
         # Initialize with placeholder rect, actual rect set after size calculation
         super().__init__()
@@ -109,6 +110,7 @@ class NodeItem(QGraphicsRectItem):
         self.is_root = is_root
         self.depth = depth
         self.style_config = style_config  # Store style configuration
+        self.domain_node = domain_node  # Store domain node reference
         self.is_right_side = (
             True  # Default: right side of root (will be set by main.py)
         )
@@ -168,10 +170,10 @@ class NodeItem(QGraphicsRectItem):
         color_scheme = self.style_config.resolved_color_scheme
         if color_scheme:
             # Check if rainbow branches are enabled and this is a Level 1 node
-            if color_scheme.use_rainbow_branches and depth == 1 and hasattr(self, 'parent') and self.parent:
+            if color_scheme.use_rainbow_branches and depth == 1 and self.domain_node and self.domain_node.parent:
                 # Get branch index from parent's children list
                 try:
-                    branch_idx = self.parent.children.index(self)
+                    branch_idx = self.domain_node.parent.children.index(self.domain_node)
                     from cogist.domain.styles.extended_styles import (
                         get_rainbow_branch_color,
                     )
@@ -197,8 +199,9 @@ class NodeItem(QGraphicsRectItem):
                 border_color = None
         else:
             # CRITICAL: color_scheme must be available - no fallback allowed
+            node_id = self.domain_node.id if self.domain_node else "unknown"
             raise RuntimeError(
-                f"color_scheme is required but got None for node {self.node_id} at depth {self.depth}"
+                f"color_scheme is required but got None for node {node_id} at depth {self.depth}"
             )
 
         # Store for rendering
@@ -447,8 +450,21 @@ class NodeItem(QGraphicsRectItem):
                 # Get colors from color scheme
                 color_scheme = self.style_config.resolved_color_scheme
                 if color_scheme:
-                    # node_colors is required and contains all roles
-                    bg_color = color_scheme.node_colors[role]
+                    # Check if rainbow branches are enabled and this is a Level 1 node
+                    if color_scheme.use_rainbow_branches and self.depth == 1 and self.domain_node and self.domain_node.parent:
+                        # Get branch index from parent's children list
+                        try:
+                            branch_idx = self.domain_node.parent.children.index(self.domain_node)
+                            from cogist.domain.styles.extended_styles import (
+                                get_rainbow_branch_color,
+                            )
+                            bg_color = get_rainbow_branch_color(branch_idx, color_scheme.branch_colors)
+                        except (ValueError, AttributeError):
+                            # Fallback to default color if index not found
+                            bg_color = color_scheme.node_colors[role]
+                    else:
+                        # node_colors is required and contains all roles
+                        bg_color = color_scheme.node_colors[role]
 
                     # text_colors is optional - auto contrast if not provided
                     if color_scheme.text_colors and role in color_scheme.text_colors:
@@ -466,8 +482,9 @@ class NodeItem(QGraphicsRectItem):
                         border_color = None
                 else:
                     # CRITICAL: color_scheme must be available - no fallback allowed
+                    node_id = self.domain_node.id if self.domain_node else "unknown"
                     raise RuntimeError(
-                        f"color_scheme is required but got None for node {self.node_id} at depth {self.depth}"
+                        f"color_scheme is required but got None for node {node_id} at depth {self.depth}"
                     )
 
                 # Store for rendering
@@ -533,13 +550,15 @@ class NodeItem(QGraphicsRectItem):
                 self._apply_font_shadow()
             else:
                 # CRITICAL: template_style must exist for all roles - no fallback allowed
+                node_id = self.domain_node.id if self.domain_node else "unknown"
                 raise RuntimeError(
-                    f"template_style is required for role '{role}' but got None for node {self.node_id}"
+                    f"template_style is required for role '{role}' but got None for node {node_id}"
                 )
         else:
             # CRITICAL: resolved_template must be available - no fallback allowed
+            node_id = self.domain_node.id if self.domain_node else "unknown"
             raise RuntimeError(
-                f"resolved_template is required but got None for node {self.node_id}"
+                f"resolved_template is required but got None for node {node_id}"
             )
 
         # CRITICAL: Recalculate node geometry when style changes (padding, font size, etc.)
@@ -587,10 +606,10 @@ class NodeItem(QGraphicsRectItem):
             color_scheme = self.style_config.resolved_color_scheme
 
             # Check if rainbow branches are enabled and this is a Level 1 node
-            if color_scheme.use_rainbow_branches and self.depth == 1 and hasattr(self, 'parent') and self.parent:
+            if color_scheme.use_rainbow_branches and self.depth == 1 and self.domain_node and self.domain_node.parent:
                 # Get branch index from parent's children list
                 try:
-                    branch_idx = self.parent.children.index(self)
+                    branch_idx = self.domain_node.parent.children.index(self.domain_node)
                     from cogist.domain.styles.extended_styles import (
                         get_rainbow_branch_color,
                     )
