@@ -4,6 +4,8 @@ Edge Item - Presentation Layer
 Connector edge between nodes with strategy pattern support.
 """
 
+import contextlib
+
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPen
 from PySide6.QtWidgets import QGraphicsPathItem
@@ -91,15 +93,32 @@ class EdgeItem(QGraphicsPathItem):
                 enable_gradient = (connector_shape == "bezier")
 
             # Rainbow branch handling for Level 1 edges
+            # Apply rainbow color to:
+            # 1. Root -> Level 1 edges (target is Level 1)
+            # 2. Level 1 -> Level 2+ edges (source is Level 1)
             color_scheme = self.style_config.resolved_color_scheme
-            if (color_scheme and color_scheme.use_rainbow_branches and source_depth == 1 and
-                    hasattr(self.source_item, 'domain_node') and self.source_item.domain_node and self.source_item.domain_node.parent):
-                branch_idx = self.source_item.domain_node.parent.children.index(self.source_item.domain_node) if hasattr(self.source_item.domain_node.parent, 'children') else 0
-                branch_color = get_rainbow_branch_color(
-                    branch_idx,
-                    color_scheme.branch_colors  # Fixed: use branch_colors instead of rainbow_branch_colors
-                )
-                color_str = branch_color
+            if color_scheme and color_scheme.use_rainbow_branches:
+                branch_idx = None
+
+                # Case 1: Target is a Level 1 node (Root -> Level 1 edge)
+                if (hasattr(self.target_item, 'domain_node') and self.target_item.domain_node and
+                        self.target_item.domain_node.parent and self.target_item.depth == 1):
+                    with contextlib.suppress(ValueError, AttributeError):
+                        branch_idx = self.target_item.domain_node.parent.children.index(self.target_item.domain_node)
+
+                # Case 2: Source is a Level 1 node (Level 1 -> Level 2+ edge)
+                elif (hasattr(self.source_item, 'domain_node') and self.source_item.domain_node and
+                      self.source_item.domain_node.parent and source_depth == 1):
+                    with contextlib.suppress(ValueError, AttributeError):
+                        branch_idx = self.source_item.domain_node.parent.children.index(self.source_item.domain_node)
+
+                # Apply rainbow color if branch index found
+                if branch_idx is not None:
+                    branch_color = get_rainbow_branch_color(
+                        branch_idx,
+                        color_scheme.branch_colors
+                    )
+                    color_str = branch_color
 
             # Extract style values directly from config
             color = QColor(color_str)
