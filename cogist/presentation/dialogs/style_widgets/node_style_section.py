@@ -5,7 +5,6 @@ padding, and font properties. Implements lazy initialization for better performa
 """
 
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QCheckBox,
     QGridLayout,
@@ -65,8 +64,6 @@ class NodeStyleSection(CollapsiblePanel):
         return {
             "shape": "rounded_rect",
             "radius": 10,
-            "bg_color": "#2196F3",
-            "text_color": "#FFFFFF",
             "padding_w": 20,
             "padding_h": 16,
             "max_text_width": 250,  # Default max text width
@@ -204,38 +201,6 @@ class NodeStyleSection(CollapsiblePanel):
         radius_label.setVisible(show_radius)
 
         layout.addWidget(self.radius_spin, row, 1)
-        row += 1
-
-        # Background color
-        bg_label = QLabel("Background:")
-        bg_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        bg_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(bg_label, row, 0)
-
-        self.bg_color_btn = QPushButton()
-        self.bg_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
-        self.bg_color_btn.setStyleSheet(
-            f"background-color: {self.current_style['bg_color']}; "
-            "border: 1px solid #ccc; border-radius: 6px;"
-        )
-        self.bg_color_btn.clicked.connect(lambda: self._pick_color("bg_color"))
-        layout.addWidget(self.bg_color_btn, row, 1)
-        row += 1
-
-        # Text color
-        text_label = QLabel("Text Color:")
-        text_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        text_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(text_label, row, 0)
-
-        self.text_color_btn = QPushButton()
-        self.text_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
-        self.text_color_btn.setStyleSheet(
-            f"background-color: {self.current_style['text_color']}; "
-            "border: 1px solid #ccc; border-radius: 6px;"
-        )
-        self.text_color_btn.clicked.connect(lambda: self._pick_color("text_color"))
-        layout.addWidget(self.text_color_btn, row, 1)
         row += 1
 
         # Padding W
@@ -426,35 +391,6 @@ class NodeStyleSection(CollapsiblePanel):
         """Handle radius change."""
         self.current_style["radius"] = value
         self._emit_style_changed()
-
-    def _pick_color(self, color_type: str):
-        """Open color picker dialog."""
-        from PySide6.QtWidgets import QColorDialog
-
-        current_color = self.current_style.get(f"{color_type}", "#FFFFFF")
-        current = QColor(current_color)
-
-        # Determine which button was clicked
-        if color_type == "bg_color":
-            button = self.bg_color_btn
-        elif color_type == "text_color":
-            button = self.text_color_btn
-        else:
-            return
-
-        color = QColorDialog.getColor(current, self, f"Select {color_type.replace('_', ' ').title()} Color", QColorDialog.ShowAlphaChannel)
-
-        if color.isValid():
-            # Use name(QColor.HexArgb) to preserve alpha channel
-            color_name = color.name(QColor.HexArgb)
-            self.current_style[color_type] = color_name
-
-            # Update button appearance
-            button.setStyleSheet(
-                f"background-color: {color_name}; border: 1px solid #ccc; border-radius: 6px;"
-            )
-
-            self._emit_style_changed()
 
     def _on_padding_changed(self):
         """Handle padding changes."""
@@ -998,16 +934,6 @@ class NodeStyleSection(CollapsiblePanel):
 
             if "radius" in style:
                 self.radius_spin.setValue(style["radius"])
-
-            if "bg_color" in style:
-                self.bg_color_btn.setStyleSheet(
-                    f"background-color: {style['bg_color']}; border: 1px solid #ccc; border-radius: 6px;"
-                )
-
-            if "text_color" in style:
-                self.text_color_btn.setStyleSheet(
-                    f"background-color: {style['text_color']}; border: 1px solid #ccc; border-radius: 6px;"
-                )
 
             if "padding_w" in style:
                 self.padding_w_spin.setValue(style["padding_w"])

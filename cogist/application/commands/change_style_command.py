@@ -131,7 +131,7 @@ class ChangeStyleCommand(Command):
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}
-            connector_keys = {"connector_shape", "connector_style", "line_width", "color"}
+            connector_keys = {"connector_shape", "connector_style", "line_width", "connector_color"}
 
             if keys & spacing_keys:
                 # Backup spacing configuration from role-based style
@@ -252,7 +252,7 @@ class ChangeStyleCommand(Command):
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}
-            connector_keys = {"connector_shape", "connector_style", "line_width", "color"}
+            connector_keys = {"connector_shape", "connector_style", "line_width", "connector_color"}
 
             if style_updates.keys() & spacing_keys:
                 # Apply spacing configuration to role-based style

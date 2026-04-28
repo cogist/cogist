@@ -5,12 +5,10 @@ Implements lazy initialization for better performance.
 """
 
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,
-    QPushButton,
     QSpinBox,
 )
 
@@ -51,7 +49,6 @@ class ConnectorSection(CollapsiblePanel):
             "connector_shape": "bezier",
             "connector_style": "solid",
             "line_width": 2,
-            "connector_color": "#666666",
         }
 
         # Connect toggle signal for lazy initialization
@@ -145,21 +142,6 @@ class ConnectorSection(CollapsiblePanel):
         self.connector_width_spin.valueChanged.connect(self._on_width_changed)
         layout.addWidget(self.connector_width_spin, 2, 1)
 
-        # Connector color
-        color_label = QLabel("Color:")
-        color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        color_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(color_label, 3, 0)
-
-        self.connector_color_btn = QPushButton()
-        self.connector_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
-        self.connector_color_btn.setStyleSheet(
-            f"background-color: {self.current_style['connector_color']}; "
-            "border: 1px solid #ccc; border-radius: 6px;"
-        )
-        self.connector_color_btn.clicked.connect(self._pick_color)
-        layout.addWidget(self.connector_color_btn, 3, 1)
-
         self.setLayout(layout)
 
     def _button_style(self) -> str:
@@ -201,24 +183,6 @@ class ConnectorSection(CollapsiblePanel):
         self.current_style["line_width"] = value
         self._emit_style_changed()
 
-    def _pick_color(self):
-        """Open color picker dialog."""
-        from PySide6.QtWidgets import QColorDialog
-
-        current = QColor(self.current_style["connector_color"])
-        color = QColorDialog.getColor(
-            current, self, "Select Connector Color", QColorDialog.ShowAlphaChannel
-        )
-
-        if color.isValid():
-            # Use name(QColor.HexArgb) to preserve alpha channel
-            self.current_style["connector_color"] = color.name(QColor.HexArgb)
-            self.connector_color_btn.setStyleSheet(
-                f"background-color: {self.current_style['connector_color']}; "
-                "border: 1px solid #ccc; border-radius: 6px;"
-            )
-            self._emit_style_changed()
-
     def _emit_style_changed(self):
         """Emit style changed signal."""
         self.style_changed.emit(self.current_style.copy())
@@ -247,9 +211,3 @@ class ConnectorSection(CollapsiblePanel):
 
             if "line_width" in style:
                 self.connector_width_spin.setValue(style["line_width"])
-
-            if "connector_color" in style:
-                self.connector_color_btn.setStyleSheet(
-                    f"background-color: {style['connector_color']}; "
-                    "border: 1px solid #ccc; border-radius: 6px;"
-                )

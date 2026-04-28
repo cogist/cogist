@@ -12,7 +12,6 @@ from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 
 from .style_widgets import (
     BorderSection,
-    CanvasSection,
     ColorSchemeSection,
     ConnectorSection,
     LayerSelector,
@@ -27,7 +26,7 @@ class AdvancedStyleTab(QWidget):
 
     This refactored version uses component-based architecture:
     - LayerSelector: Layer switching
-    - CanvasSection: Canvas background
+    - ColorSchemeSection: Color scheme management
     - NodeStyleSection: Node appearance
     - BorderSection: Border styling
     - ConnectorSection: Edge styling
@@ -375,7 +374,6 @@ class AdvancedStyleTab(QWidget):
 
         # Add modular components
         self.layer_selector = LayerSelector()
-        self.canvas_section = CanvasSection()
         self.color_scheme_section = ColorSchemeSection()
         self.spacing_section = SpacingSection()
         self.node_style_section = NodeStyleSection()
@@ -384,7 +382,6 @@ class AdvancedStyleTab(QWidget):
         self.connector_section = ConnectorSection()
 
         layout.addWidget(self.layer_selector)
-        layout.addWidget(self.canvas_section)
         layout.addWidget(self.color_scheme_section)
         layout.addWidget(self.spacing_section)
         layout.addWidget(self.node_style_section)
@@ -432,8 +429,8 @@ class AdvancedStyleTab(QWidget):
         # Layer selection
         self.layer_selector.layer_changed.connect(self._on_layer_changed)
 
-        # Canvas background
-        self.canvas_section.color_changed.connect(self._on_canvas_color_changed)
+        # Color scheme
+        self.color_scheme_section.color_changed.connect(self._on_color_scheme_changed)
 
         # Spacing configuration
         self.spacing_section.spacing_changed.connect(self._on_spacing_changed)
@@ -463,10 +460,6 @@ class AdvancedStyleTab(QWidget):
         is_canvas = layer_name == "canvas"
         is_priority = layer_name in ["critical", "minor"]
 
-        # Canvas background: only show for canvas layer
-        self.canvas_section.setVisible(is_canvas)
-        self.canvas_section.setCollapsed(False)
-
         # Spacing: only show for non-canvas layers (not a global setting)
         self.spacing_section.setVisible(not is_canvas)
 
@@ -479,30 +472,85 @@ class AdvancedStyleTab(QWidget):
         # Load style for selected layer
         self._load_current_layer_style()
 
-    def _on_canvas_color_changed(self, color: str):
-        """Handle canvas background color change."""
+    def _on_color_scheme_changed(self, colors: dict):
+        """Handle color scheme change.
+
+        This method routes color changes to the appropriate place in style_config:
+        - bg_color -> color_scheme.node_colors[current_role]
+        - text_color -> color_scheme.text_colors[current_role]
+        - border_color -> color_scheme.border_colors[current_role]
+        - connector_color -> role_style.connector_color
+        - canvas_bg -> color_scheme.canvas_bg
+
+        Args:
+            colors: Dictionary of changed color values
+        """
         assert self.style_config is not None
 
+        # Get current role
+        role = self._get_current_layer_role()
+        if not role:
+            # Canvas layer - handle canvas_bg separately
+            if "canvas_bg" in colors and self.style_config.resolved_color_scheme:
+                self.style_config.resolved_color_scheme.canvas_bg_color = colors["canvas_bg"]
+                self._apply_styles_to_mindmap()
+            return
+
+        # Get color_scheme
+        if not self.style_config.resolved_color_scheme:
+            return
+
+        color_scheme = self.style_config.resolved_color_scheme
         # Use command system if available
         if self.command_history:
             from cogist.application.commands import ChangeStyleCommand
             from cogist.application.commands.change_style_command import StyleChange
 
-            change = StyleChange(
-                layer="canvas",
-                style_updates={"bg_color": color},
-            )
-            command = ChangeStyleCommand(
-                style_config=self.style_config,
-                changes=[change],
-            )
-            command.execute()
-            self.command_history.push(command)
+            style_updates = {}
+
+            # Build style updates based on changed colors
+            if "bg_color" in colors:
+                style_updates["bg_color"] = colors["bg_color"]
+            if "text_color" in colors:
+                style_updates["text_color"] = colors["text_color"]
+            if "border_color" in colors:
+                style_updates["border_color"] = colors["border_color"]
+            if "connector_color" in colors:
+                style_updates["connector_color"] = colors["connector_color"]
+
+            if style_updates:
+                change = StyleChange(
+                    layer=self.current_layer,
+                    style_updates=style_updates,
+                )
+                command = ChangeStyleCommand(
+                    style_config=self.style_config,
+                    changes=[change],
+                )
+                command.execute()
+                self.command_history.push(command)
         else:
             # Fallback: direct update without undo/redo
-            self.style_config.canvas_bg_color = color
-            if self.style_config.resolved_color_scheme:
-                self.style_config.resolved_color_scheme.canvas_bg_color = color
+            # Handle node background color
+            if "bg_color" in colors:
+                color_scheme.node_colors[role] = colors["bg_color"]
+
+            # Handle text/foreground color
+            if "text_color" in colors:
+                if not color_scheme.text_colors:
+                    color_scheme.text_colors = {}
+                color_scheme.text_colors[role] = colors["text_color"]
+
+            # Handle border color
+            if "border_color" in colors:
+                if not color_scheme.border_colors:
+                    color_scheme.border_colors = {}
+                color_scheme.border_colors[role] = colors["border_color"]
+
+            # Handle connector color
+            if "connector_color" in colors and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+                role_style = self.style_config.resolved_template.role_styles[role]
+                role_style.connector_color = colors["connector_color"]
 
         self._apply_styles_to_mindmap()
 
@@ -768,10 +816,6 @@ class AdvancedStyleTab(QWidget):
 
     def _set_initial_visibility(self):
         """Set initial visibility of sections based on default layer (canvas)."""
-        # Canvas layer is selected by default
-        self.canvas_section.setVisible(True)
-        self.canvas_section.setCollapsed(False)
-
         # Hide spacing for canvas layer
         self.spacing_section.setVisible(False)
         self.spacing_section.setCollapsed(True)
@@ -792,13 +836,27 @@ class AdvancedStyleTab(QWidget):
         self.color_scheme_section.set_role(self.current_layer)
 
         if self.current_layer == "canvas":
-            # Load canvas style
+            # Load canvas style into color_scheme_section
             if "bg_color" in layer_data:
-                self.canvas_section.set_color(layer_data["bg_color"])
+                self.color_scheme_section.set_colors({"canvas_bg": layer_data["bg_color"]})
             # Hide shadow section for canvas
             self.shadow_section.setVisible(False)
         else:
-            # Load node style
+            # Load colors into color_scheme_section
+            color_data = {}
+            if "bg_color" in layer_data:
+                color_data["bg_color"] = layer_data["bg_color"]
+            if "text_color" in layer_data:
+                color_data["text_color"] = layer_data["text_color"]
+            if "border_color" in layer_data:
+                color_data["border_color"] = layer_data["border_color"]
+            if "connector_color" in layer_data:
+                color_data["connector_color"] = layer_data["connector_color"]
+
+            if color_data:
+                self.color_scheme_section.set_colors(color_data)
+
+            # Load node style (without colors - they're now in color_scheme_section)
             self.node_style_section.set_style(layer_data)
             # Sync shadow section visibility with shadow_enabled state
             shadow_enabled = layer_data["shadow_enabled"]

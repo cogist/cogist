@@ -5,11 +5,9 @@ Implements lazy initialization for better performance.
 """
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QGridLayout, QLabel, QMenu, QPushButton, QSpinBox
+from PySide6.QtWidgets import QGridLayout, QLabel, QMenu, QSpinBox
 
 from .collapsible_panel import CollapsiblePanel
-from .dialog_utils import position_color_dialog
 from .menu_button import MenuButton
 
 
@@ -35,7 +33,6 @@ class BorderSection(CollapsiblePanel):
         self.current_style = {
             "border_style": "solid",
             "border_width": 2,
-            "border_color": "#1976D2",
         }
 
         # Connect toggle signal for lazy initialization
@@ -95,21 +92,6 @@ class BorderSection(CollapsiblePanel):
         self.border_width_spin.valueChanged.connect(self._on_width_changed)
         layout.addWidget(self.border_width_spin, 1, 1)
 
-        # Border color
-        color_label = QLabel("Color:")
-        color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        color_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(color_label, 2, 0)
-
-        self.border_color_btn = QPushButton()
-        self.border_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
-        self.border_color_btn.setStyleSheet(
-            f"background-color: {self.current_style['border_color']}; "
-            "border: 1px solid #ccc; border-radius: 6px;"
-        )
-        self.border_color_btn.clicked.connect(self._pick_color)
-        layout.addWidget(self.border_color_btn, 2, 1)
-
         self.setLayout(layout)
 
     def _button_style(self) -> str:
@@ -146,41 +128,12 @@ class BorderSection(CollapsiblePanel):
         self.current_style["border_width"] = value
         self._emit_style_changed()
 
-    def _pick_color(self):
-        """Open color picker dialog."""
-        from PySide6.QtWidgets import QColorDialog
-
-        current = QColor(self.current_style["border_color"])
-        color_dialog = QColorDialog(current, self)
-        color_dialog.setWindowTitle("Select Border Color")
-
-        # Use native system dialog for better UX
-        # (Removed DontUseNativeDialog to use system native picker)
-
-        # Enable alpha channel (transparency) support
-        color_dialog.setOption(QColorDialog.ShowAlphaChannel)
-
-        # Position dialog with boundary check
-        position_color_dialog(color_dialog, self.border_color_btn)
-
-        if color_dialog.exec():
-            color = color_dialog.currentColor()
-            if color.isValid():
-                # Use name(QColor.HexArgb) to preserve alpha channel
-                self.current_style["border_color"] = color.name(QColor.HexArgb)
-                self.border_color_btn.setStyleSheet(
-                    f"background-color: {self.current_style['border_color']}; "
-                    "border: 1px solid #ccc; border-radius: 6px;"
-                )
-                self._emit_style_changed()
-
     def _emit_style_changed(self):
         """Emit style changed signal with only border-related fields."""
         # Only emit border-related fields to avoid overwriting other style properties
         border_only_style = {
             "border_style": self.current_style["border_style"],
             "border_width": self.current_style["border_width"],
-            "border_color": self.current_style["border_color"],
         }
         self.style_changed.emit(border_only_style)
 
@@ -204,9 +157,3 @@ class BorderSection(CollapsiblePanel):
 
             if "border_width" in style:
                 self.border_width_spin.setValue(style["border_width"])
-
-            if "border_color" in style:
-                self.border_color_btn.setStyleSheet(
-                    f"background-color: {style['border_color']}; "
-                    "border: 1px solid #ccc; border-radius: 6px;"
-                )

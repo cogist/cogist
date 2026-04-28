@@ -249,3 +249,20 @@ class Template:
 
 # Import MindMapStyle from style_config to avoid circular imports
 # MindMapStyle will be updated to use template_name and color_scheme_name
+
+
+def get_rainbow_branch_color(branch_idx: int, branch_colors: list[str]) -> str:
+    """Get color for a rainbow branch by index.
+
+    Args:
+        branch_idx: Index of the branch (0-based)
+        branch_colors: List of available branch colors
+
+    Returns:
+        Color string in hex format
+    """
+    if not branch_colors:
+        return "#FF666666"  # Default gray color
+
+    # Cycle through colors if more branches than colors
+    return branch_colors[branch_idx % len(branch_colors)]
