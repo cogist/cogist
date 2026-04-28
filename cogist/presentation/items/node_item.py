@@ -167,8 +167,22 @@ class NodeItem(QGraphicsRectItem):
         # Get colors from color scheme
         color_scheme = self.style_config.resolved_color_scheme
         if color_scheme:
-            # node_colors is required and contains all roles
-            bg_color = color_scheme.node_colors[role]
+            # Check if rainbow branches are enabled and this is a Level 1 node
+            if color_scheme.use_rainbow_branches and depth == 1 and hasattr(self, 'parent') and self.parent:
+                # Get branch index from parent's children list
+                try:
+                    branch_idx = self.parent.children.index(self)
+                    from cogist.domain.styles.extended_styles import (
+                        get_rainbow_branch_color,
+                    )
+                    branch_color = get_rainbow_branch_color(branch_idx, color_scheme.branch_colors)
+                    bg_color = branch_color
+                except (ValueError, AttributeError):
+                    # Fallback to default color if index not found
+                    bg_color = color_scheme.node_colors[role]
+            else:
+                # node_colors is required and contains all roles
+                bg_color = color_scheme.node_colors[role]
 
             # text_colors is optional - auto contrast if not provided
             if color_scheme.text_colors and role in color_scheme.text_colors:
@@ -571,7 +585,22 @@ class NodeItem(QGraphicsRectItem):
         # Read colors directly from global style_config (no caching)
         if self.style_config and self.style_config.resolved_color_scheme:
             color_scheme = self.style_config.resolved_color_scheme
-            bg_color = color_scheme.node_colors[role]
+
+            # Check if rainbow branches are enabled and this is a Level 1 node
+            if color_scheme.use_rainbow_branches and self.depth == 1 and hasattr(self, 'parent') and self.parent:
+                # Get branch index from parent's children list
+                try:
+                    branch_idx = self.parent.children.index(self)
+                    from cogist.domain.styles.extended_styles import (
+                        get_rainbow_branch_color,
+                    )
+                    bg_color = get_rainbow_branch_color(branch_idx, color_scheme.branch_colors)
+                except (ValueError, AttributeError):
+                    # Fallback to default color if index not found
+                    bg_color = color_scheme.node_colors[role]
+            else:
+                bg_color = color_scheme.node_colors[role]
+
             border_color = (
                 color_scheme.border_colors[role]
                 if color_scheme.border_colors and role in color_scheme.border_colors

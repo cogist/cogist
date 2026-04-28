@@ -97,7 +97,7 @@ class EdgeItem(QGraphicsPathItem):
                 branch_idx = self.source_item.parent.children.index(self.source_item) if hasattr(self.source_item.parent, 'children') else 0
                 branch_color = get_rainbow_branch_color(
                     branch_idx,
-                    color_scheme.rainbow_branch_colors
+                    color_scheme.branch_colors  # Fixed: use branch_colors instead of rainbow_branch_colors
                 )
                 color_str = branch_color
 
