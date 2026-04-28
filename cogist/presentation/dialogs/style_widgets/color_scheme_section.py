@@ -1,10 +1,9 @@
 """Color scheme section widget.
 
-Centralized color management for:
-- Background color (from Node Style)
-- Text/Foreground color (from Node Style)
-- Border color (from Border Section)
-- Connector color (from Connector Section)
+Provides controls for customizing color scheme including:
+- Per-role colors (background, text, border, connector)
+- Auto-calculation for derived levels (level_2, level_3_plus)
+- Rainbow branch colors (only for level_1)
 - Canvas background
 
 This section is Part of Presentation Layer (UI).
@@ -13,43 +12,75 @@ This section is Part of Presentation Layer (UI).
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
+    QCheckBox,
     QColorDialog,
     QGridLayout,
+    QHBoxLayout,
     QLabel,
     QPushButton,
+    QWidget,
 )
 
 from .collapsible_panel import CollapsiblePanel
 
 
-def position_color_dialog(dialog: QColorDialog, button: QPushButton):
-    """Position color dialog next to the button with boundary checks.
+class RainbowColorPool(QWidget):
+    """Rainbow branch color pool with 8 color buttons.
 
-    Args:
-        dialog: The QColorDialog to position
-        button: The button to position relative to
+    Signals:
+        color_pool_changed(list): Emitted when color pool changes
     """
-    button_rect = button.rect()
-    global_pos = button.mapToGlobal(button_rect.bottomLeft())
 
-    dialog_width = dialog.width()
-    dialog_height = dialog.height()
-    screen = button.screen().availableGeometry()
+    color_pool_changed = Signal(list)
 
-    x = global_pos.x()
-    y = global_pos.y()
+    def __init__(self, colors: list[str] | None = None, parent=None):
+        super().__init__(parent)
+        self.colors = colors or [
+            "#FFFF6B6B", "#FF4ECDC4", "#FF45B7D1", "#FFFFA07A",
+            "#FF98D8C8", "#FFF7DC6F", "#FFBB8FCE", "#FF85C1E2",
+        ]
+        self._init_ui()
 
-    # Boundary checks
-    if x + dialog_width > screen.right():
-        x = screen.right() - dialog_width
-    if y + dialog_height > screen.bottom():
-        y = screen.bottom() - dialog_height
-    if x < screen.left():
-        x = screen.left()
-    if y < screen.top():
-        y = screen.top()
+    def _init_ui(self):
+        layout = QHBoxLayout(self)
+        layout.setSpacing(4)
+        layout.setContentsMargins(0, 0, 0, 0)
 
-    dialog.move(x, y)
+        self.buttons = []
+        for i, color in enumerate(self.colors):
+            btn = QPushButton()
+            btn.setFixedSize(24, 24)
+            btn.setStyleSheet(
+                f"background-color: {color}; "
+                "border: 1px solid #CCCCCC; border-radius: 3px;"
+            )
+            btn.clicked.connect(lambda _, idx=i: self._edit_color(idx))
+            self.buttons.append(btn)
+            layout.addWidget(btn)
+
+    def _edit_color(self, index: int):
+        current = QColor(self.colors[index])
+        color = QColorDialog.getColor(
+            current, self, "Select Branch Color", QColorDialog.ShowAlphaChannel
+        )
+        if color.isValid():
+            self.colors[index] = color.name(QColor.HexArgb)
+            self.buttons[index].setStyleSheet(
+                f"background-color: {self.colors[index]}; "
+                "border: 1px solid #CCCCCC; border-radius: 3px;"
+            )
+            self.color_pool_changed.emit(self.colors)
+
+    def set_colors(self, colors: list[str]):
+        self.colors = colors[:8]  # Ensure 8 colors
+        for i, btn in enumerate(self.buttons):
+            btn.setStyleSheet(
+                f"background-color: {self.colors[i]}; "
+                "border: 1px solid #CCCCCC; border-radius: 3px;"
+            )
+
+    def get_colors(self) -> list[str]:
+        return self.colors
 
 
 class ColorSchemeSection(CollapsiblePanel):
@@ -71,6 +102,7 @@ class ColorSchemeSection(CollapsiblePanel):
 
         self._initialized = False
         self.current_role = None
+        self._rainbow_visible = False  # Track rainbow check state
 
         # Default colors
         self._default_colors = {
@@ -81,7 +113,13 @@ class ColorSchemeSection(CollapsiblePanel):
             "canvas_bg": "#FFFFFF",
         }
 
-        # Color button references
+        # Default rainbow colors
+        self._default_rainbow = [
+            "#FFFF6B6B", "#FF4ECDC4", "#FF45B7D1", "#FFFFA07A",
+            "#FF98D8C8", "#FFF7DC6F", "#FFBB8FCE", "#FF85C1E2",
+        ]
+
+        # Color picker references
         self.bg_color_btn: QPushButton | None = None
         self.text_color_btn: QPushButton | None = None
         self.border_color_btn: QPushButton | None = None
@@ -94,6 +132,14 @@ class ColorSchemeSection(CollapsiblePanel):
         self.border_label: QLabel | None = None
         self.conn_label: QLabel | None = None
         self.canvas_label: QLabel | None = None
+
+        # Auto checkbox (single switch for all colors)
+        self.auto_check: QCheckBox | None = None
+
+        # Rainbow branch references
+        self.rainbow_label: QLabel | None = None
+        self.rainbow_check: QCheckBox | None = None
+        self.rainbow_pool: RainbowColorPool | None = None
 
         self.toggled.connect(self._on_toggled)
 
@@ -109,7 +155,7 @@ class ColorSchemeSection(CollapsiblePanel):
         layout.setSpacing(6)
         layout.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
         layout.setColumnStretch(0, 0)  # Label column - fixed width
-        layout.setColumnStretch(1, 1)  # Color picker column - stretchable
+        layout.setColumnStretch(1, 1)  # Widget column - stretchable
 
         row = 0
 
@@ -177,6 +223,36 @@ class ColorSchemeSection(CollapsiblePanel):
         layout.addWidget(self.conn_color_btn, row, 1)
         row += 1
 
+        # Auto checkbox (show only for level_2 and level_3_plus)
+        self.auto_label = QLabel("Auto:")
+        self.auto_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.auto_label.setMinimumWidth(self.LABEL_WIDTH)
+        self.auto_check = QCheckBox("Inherit from parent")
+        self.auto_check.stateChanged.connect(self._on_auto_changed)
+        layout.addWidget(self.auto_label, row, 0)
+        layout.addWidget(self.auto_check, row, 1)
+        row += 1
+
+        # Rainbow branch (show only for level_1)
+        self.rainbow_label = QLabel("Rainbow:")
+        self.rainbow_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.rainbow_label.setMinimumWidth(self.LABEL_WIDTH)
+        layout.addWidget(self.rainbow_label, row, 0)
+
+        self.rainbow_check = QCheckBox("Use Rainbow")
+        self.rainbow_check.stateChanged.connect(self._on_rainbow_changed)
+        layout.addWidget(self.rainbow_check, row, 1)
+        row += 1
+
+        # Rainbow color pool
+        self.rainbow_pool = RainbowColorPool(self._default_rainbow)
+        self.rainbow_pool.setVisible(False)
+        self.rainbow_pool.color_pool_changed.connect(
+            lambda colors: self._emit_change("rainbow_pool", colors)
+        )
+        layout.addWidget(self.rainbow_pool, row, 0, 1, 2)  # Span both columns
+        row += 1
+
         # Canvas background (show only when Layer is canvas)
         self.canvas_label = QLabel("Canvas:")
         self.canvas_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -218,26 +294,43 @@ class ColorSchemeSection(CollapsiblePanel):
             return
 
         is_canvas = self.current_role == "canvas"
+        is_level_1 = self.current_role == "level_1"
+        needs_auto = self.current_role in ("level_2", "level_3_plus")
 
-        # Node colors (bg, text, border) - hide for canvas
+        # Node colors (bg, text, border, connector) - hide for canvas
         if self.bg_label:
             self.bg_label.setVisible(not is_canvas)
         if self.bg_color_btn:
             self.bg_color_btn.setVisible(not is_canvas)
+
         if self.text_label:
             self.text_label.setVisible(not is_canvas)
         if self.text_color_btn:
             self.text_color_btn.setVisible(not is_canvas)
+
         if self.border_label:
             self.border_label.setVisible(not is_canvas)
         if self.border_color_btn:
             self.border_color_btn.setVisible(not is_canvas)
 
-        # Connector color - hide for canvas
         if self.conn_label:
             self.conn_label.setVisible(not is_canvas)
         if self.conn_color_btn:
             self.conn_color_btn.setVisible(not is_canvas)
+
+        # Auto checkbox - show only for level_2 and level_3_plus
+        if self.auto_label:
+            self.auto_label.setVisible(needs_auto)
+        if self.auto_check:
+            self.auto_check.setVisible(needs_auto)
+
+        # Rainbow branch - show only for level_1
+        if self.rainbow_label:
+            self.rainbow_label.setVisible(is_level_1)
+        if self.rainbow_check:
+            self.rainbow_check.setVisible(is_level_1)
+        if self.rainbow_pool:
+            self.rainbow_pool.setVisible(is_level_1 and self._rainbow_visible)
 
         # Canvas background - show only for canvas
         if self.canvas_label:
@@ -245,12 +338,33 @@ class ColorSchemeSection(CollapsiblePanel):
         if self.canvas_picker:
             self.canvas_picker.setVisible(is_canvas)
 
-    def _pick_color(self, color_key: str):
-        """Open color picker dialog.
+    def _on_auto_changed(self, state: int):
+        """Handle Auto checkbox state change."""
+        enabled = state == Qt.Checked
 
-        Args:
-            color_key: The key for the color being picked
-        """
+        # Disable all color pickers when Auto is enabled
+        if self.bg_color_btn:
+            self.bg_color_btn.setEnabled(not enabled)
+        if self.text_color_btn:
+            self.text_color_btn.setEnabled(not enabled)
+        if self.border_color_btn:
+            self.border_color_btn.setEnabled(not enabled)
+        if self.conn_color_btn:
+            self.conn_color_btn.setEnabled(not enabled)
+
+        # Emit change for all color types
+        self._emit_change("auto_enabled", enabled)
+
+    def _on_rainbow_changed(self, state: int):
+        """Handle rainbow checkbox state change."""
+        enabled = state == Qt.Checked
+        self._rainbow_visible = enabled
+        if self.rainbow_pool:
+            self.rainbow_pool.setVisible(enabled)
+        self._emit_change("use_rainbow", enabled)
+
+    def _pick_color(self, color_key: str):
+        """Open color picker dialog."""
         button_map = {
             "bg_color": self.bg_color_btn,
             "text_color": self.text_color_btn,
@@ -269,6 +383,7 @@ class ColorSchemeSection(CollapsiblePanel):
         color_dialog.setOption(QColorDialog.ShowAlphaChannel)
 
         # Position dialog
+        from .dialog_utils import position_color_dialog
         position_color_dialog(color_dialog, button)
 
         if color_dialog.exec():
@@ -283,13 +398,7 @@ class ColorSchemeSection(CollapsiblePanel):
                 self._emit_color_changed(color_key, new_color)
 
     def _emit_color_changed(self, color_key: str, color_value: str):
-        """Emit color change signal.
-
-        Args:
-            color_key: The color property that changed
-            color_value: The new color value
-        """
-        # Map color keys to style keys expected by downstream components
+        """Emit color change signal."""
         style_key_map = {
             "bg_color": "bg_color",
             "text_color": "text_color",
@@ -301,12 +410,12 @@ class ColorSchemeSection(CollapsiblePanel):
         style_key = style_key_map.get(color_key, color_key)
         self.color_changed.emit({style_key: color_value})
 
-    def get_colors(self) -> dict:
-        """Get current color values.
+    def _emit_change(self, key: str, value):
+        """Emit a change signal with key-value pair."""
+        self.color_changed.emit({key: value})
 
-        Returns:
-            Dictionary of color values
-        """
+    def get_colors(self) -> dict:
+        """Get current color values."""
         colors = {}
 
         if self.bg_color_btn:
@@ -320,14 +429,20 @@ class ColorSchemeSection(CollapsiblePanel):
         if self.canvas_picker:
             colors["canvas_bg"] = self.canvas_picker.styleSheet().split("background-color: ")[1].split(";")[0]
 
+        # Auto state
+        if self.auto_check:
+            colors["auto_enabled"] = self.auto_check.isChecked()
+
+        # Rainbow
+        if self.rainbow_check:
+            colors["use_rainbow"] = self.rainbow_check.isChecked()
+        if self.rainbow_pool:
+            colors["rainbow_pool"] = self.rainbow_pool.get_colors()
+
         return colors
 
     def set_colors(self, colors: dict):
-        """Set colors programmatically.
-
-        Args:
-            colors: Dictionary of color values
-        """
+        """Set colors programmatically."""
         if not self._initialized:
             return
 
@@ -345,3 +460,17 @@ class ColorSchemeSection(CollapsiblePanel):
                     f"background-color: {colors[color_key]}; "
                     "border: 1px solid #ccc; border-radius: 6px;"
                 )
+
+        # Auto state
+        if "auto_enabled" in colors and self.auto_check:
+            self.auto_check.setChecked(colors["auto_enabled"])
+
+        # Rainbow
+        if "use_rainbow" in colors and self.rainbow_check:
+            self.rainbow_check.setChecked(colors["use_rainbow"])
+            self._rainbow_visible = colors["use_rainbow"]
+            if self.rainbow_pool:
+                self.rainbow_pool.setVisible(colors["use_rainbow"])
+
+        if "rainbow_pool" in colors and self.rainbow_pool:
+            self.rainbow_pool.set_colors(colors["rainbow_pool"])
