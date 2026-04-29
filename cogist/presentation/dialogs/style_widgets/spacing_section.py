@@ -58,8 +58,8 @@ class SpacingSection(CollapsiblePanel):
 
         row = 0
 
-        # Parent-child spacing
-        pc_label = QLabel("Parent-Child:")
+        # Horizontal spacing (Parent-Child)
+        pc_label = QLabel("H-Spacing:")
         pc_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         pc_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(pc_label, row, 0)
@@ -72,8 +72,8 @@ class SpacingSection(CollapsiblePanel):
         layout.addWidget(self.parent_child_spin, row, 1)
         row += 1
 
-        # Sibling spacing
-        sib_label = QLabel("Sibling:")
+        # Vertical spacing (Sibling)
+        sib_label = QLabel("V-Spacing:")
         sib_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         sib_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(sib_label, row, 0)
@@ -139,6 +139,6 @@ class SpacingSection(CollapsiblePanel):
                 for i in range(content_layout.count()):
                     item = content_layout.itemAt(i)
                     widget = item.widget() if item else None
-                    if widget and (widget == self.sibling_spin or (isinstance(widget, QLabel) and "Sibling" in widget.text())):
+                    if widget and (widget == self.sibling_spin or (isinstance(widget, QLabel) and "V-Spacing" in widget.text())):
                         # Check if it's the sibling spin or its label
                         widget.setVisible(not hide)

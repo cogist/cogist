@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QSlider,
+    QWidget,
 )
 
 from cogist.presentation.widgets import ToggleSwitch
@@ -145,9 +146,11 @@ class ColorSchemeSection(CollapsiblePanel):
         self.rainbow_label_pool.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(self.rainbow_label_pool, row, 0)
 
-        rainbow_layout = QGridLayout()
-        rainbow_layout.setSpacing(4)
-        rainbow_layout.setContentsMargins(0, 0, 0, 0)
+        # Rainbow color buttons container - 2 rows x 4 columns
+        rainbow_widget = QWidget()
+        rainbow_grid = QGridLayout()
+        rainbow_grid.setSpacing(4)
+        rainbow_grid.setContentsMargins(0, 0, 0, 0)
 
         self.rainbow_buttons = []
         self.rainbow_colors = self._default_rainbow.copy()
@@ -164,12 +167,13 @@ class ColorSchemeSection(CollapsiblePanel):
             btn.clicked.connect(lambda _, idx=i: self._edit_rainbow_color(idx))
             self.rainbow_buttons.append(btn)
 
-            # 4 buttons per row (2 rows total)
-            r = i // 4
-            c = i % 4
-            rainbow_layout.addWidget(btn, r, c)
+            # 2 rows x 4 columns grid
+            grid_row = i // 4
+            grid_col = i % 4
+            rainbow_grid.addWidget(btn, grid_row, grid_col)
 
-        layout.addLayout(rainbow_layout, row, 1)
+        rainbow_widget.setLayout(rainbow_grid)
+        layout.addWidget(rainbow_widget, row, 1)
         self.rainbow_buttons_row = row
         row += 1
 
