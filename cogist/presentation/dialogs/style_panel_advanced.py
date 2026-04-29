@@ -167,6 +167,12 @@ class AdvancedStyleTab(QWidget):
             # Rainbow branch - global ColorScheme properties (same for all layers)
             "use_rainbow": color_scheme.use_rainbow_branches,
             "rainbow_pool": color_scheme.branch_colors,
+            # Rainbow bg/border - per-role configuration
+            "rainbow_bg_enabled": color_scheme.role_configs[role].rainbow_bg_enabled,
+            "rainbow_border_enabled": color_scheme.role_configs[role].rainbow_border_enabled,
+            # Brightness - per-role configuration
+            "brightness_enabled": color_scheme.role_configs[role].brightness_enabled,
+            "brightness_amount": color_scheme.role_configs[role].brightness_amount,
         }
 
         return layer_data
@@ -542,6 +548,25 @@ class AdvancedStyleTab(QWidget):
 
         if "rainbow_pool" in colors:
             color_scheme.branch_colors = colors["rainbow_pool"]
+
+        # Handle per-role rainbow mode controls (for level_1/2/3+)
+        if role and self.current_layer in ["level_1", "level_2", "level_3_plus"]:
+            if "rainbow_bg_enabled" in colors:
+                color_scheme.role_configs[role].rainbow_bg_enabled = colors[
+                    "rainbow_bg_enabled"
+                ]
+            if "rainbow_border_enabled" in colors:
+                color_scheme.role_configs[role].rainbow_border_enabled = colors[
+                    "rainbow_border_enabled"
+                ]
+            if "brightness_enabled" in colors:
+                color_scheme.role_configs[role].brightness_enabled = colors[
+                    "brightness_enabled"
+                ]
+            if "brightness_amount" in colors:
+                color_scheme.role_configs[role].brightness_amount = colors[
+                    "brightness_amount"
+                ]
 
         # Use command system if available
         if self.command_history:
@@ -931,6 +956,17 @@ class AdvancedStyleTab(QWidget):
                 color_data["use_rainbow"] = layer_data["use_rainbow"]
             if "rainbow_pool" in layer_data:
                 color_data["rainbow_pool"] = layer_data["rainbow_pool"]
+
+            # Per-role rainbow mode controls - load for level_1/2/3+
+            if self.current_layer in ["level_1", "level_2", "level_3_plus"]:
+                if "rainbow_bg_enabled" in layer_data:
+                    color_data["rainbow_bg_enabled"] = layer_data["rainbow_bg_enabled"]
+                if "rainbow_border_enabled" in layer_data:
+                    color_data["rainbow_border_enabled"] = layer_data["rainbow_border_enabled"]
+                if "brightness_enabled" in layer_data:
+                    color_data["brightness_enabled"] = layer_data["brightness_enabled"]
+                if "brightness_amount" in layer_data:
+                    color_data["brightness_amount"] = layer_data["brightness_amount"]
 
             if color_data:
                 self.color_scheme_section.set_colors(color_data)

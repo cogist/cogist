@@ -86,6 +86,7 @@ class ColorSchemeSection(CollapsiblePanel):
         self.canvas_label: QLabel | None = None
 
         # Rainbow branch references
+        self.rainbow_pool_widget: QWidget | None = None
         self.rainbow_label: QLabel | None = None
         self.rainbow_check: ToggleSwitch | None = None
         self.rainbow_label_pool: QLabel | None = None
@@ -121,13 +122,12 @@ class ColorSchemeSection(CollapsiblePanel):
 
         row = 0
 
-        # === Global Rainbow Branch Switch (always visible) ===
-        # Add a wrapper widget with padding to match the height of other rows
+        # === Global Rainbow Branch Switch ===
         switch_row = QHBoxLayout()
-        switch_row.setContentsMargins(0, 6, 0, 6)  # Vertical padding to match row height
+        switch_row.setContentsMargins(0, 0, 0, 0)
         switch_row.setSpacing(0)
 
-        self.rainbow_label = QLabel("Rainbow Branches:")
+        self.rainbow_label = QLabel("Branches:")
         self.rainbow_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.rainbow_label.setMinimumWidth(self.LABEL_WIDTH)
         switch_row.addWidget(self.rainbow_label)
@@ -142,10 +142,15 @@ class ColorSchemeSection(CollapsiblePanel):
         row += 1
 
         # === Rainbow Branch Color Pool (shown when rainbow enabled) ===
+        # Add top margin to reduce spacing when pool is visible
+        pool_row = QHBoxLayout()
+        pool_row.setContentsMargins(0, 0, 0, 0)
+        pool_row.setSpacing(0)
+
         self.rainbow_label_pool = QLabel("Color Pool:")
         self.rainbow_label_pool.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.rainbow_label_pool.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(self.rainbow_label_pool, row, 0)
+        pool_row.addWidget(self.rainbow_label_pool)
 
         # Rainbow color buttons container - 2 rows with flexible spacing
         buttons_container = QWidget()
@@ -157,9 +162,9 @@ class ColorSchemeSection(CollapsiblePanel):
         self.rainbow_colors = self._default_rainbow.copy()
 
         for row_idx in range(2):
-            row_layout = QHBoxLayout()
-            row_layout.setSpacing(0)  # No fixed spacing, use stretch instead
-            row_layout.setContentsMargins(0, 0, 0, 0)
+            btn_row_layout = QHBoxLayout()
+            btn_row_layout.setSpacing(0)  # No fixed spacing, use stretch instead
+            btn_row_layout.setContentsMargins(0, 0, 0, 0)
 
             for col_idx in range(4):
                 i = row_idx * 4 + col_idx
@@ -173,24 +178,32 @@ class ColorSchemeSection(CollapsiblePanel):
                 )
                 btn.clicked.connect(lambda _, idx=i: self._edit_rainbow_color(idx))
                 self.rainbow_buttons.append(btn)
-                row_layout.addWidget(btn)
+                btn_row_layout.addWidget(btn)
 
                 # Add stretch after each button except the last one in each row
                 if col_idx < 3:
-                    row_layout.addStretch()
+                    btn_row_layout.addStretch()
 
-            buttons_layout.addLayout(row_layout)
+            buttons_layout.addLayout(btn_row_layout)
 
         buttons_container.setLayout(buttons_layout)
-        layout.addWidget(buttons_container, row, 1)
+        pool_row.addWidget(buttons_container)
+
+        # Wrap pool in a widget for visibility control
+        self.rainbow_pool_widget = QWidget()
+        pool_layout = QVBoxLayout()
+        pool_layout.setContentsMargins(0, 0, 0, 0)
+        pool_layout.setSpacing(0)
+        pool_layout.addLayout(pool_row)
+        self.rainbow_pool_widget.setLayout(pool_layout)
+
+        layout.addWidget(self.rainbow_pool_widget, row, 0, 1, 2)
         self.rainbow_buttons_row = row
         row += 1
 
         # Initially hide rainbow pool
-        if self.rainbow_label_pool:
-            self.rainbow_label_pool.setVisible(False)
-        for btn in self.rainbow_buttons:
-            btn.setVisible(False)
+        if self.rainbow_pool_widget:
+            self.rainbow_pool_widget.setVisible(False)
 
         # Background color
         self.bg_label = QLabel("Background:")
@@ -466,11 +479,9 @@ class ColorSchemeSection(CollapsiblePanel):
         enabled = checked
         self._rainbow_visible = enabled
 
-        # Show/hide rainbow color pool buttons and label
-        if self.rainbow_label_pool:
-            self.rainbow_label_pool.setVisible(enabled)
-        for btn in self.rainbow_buttons:
-            btn.setVisible(enabled)
+        # Show/hide entire rainbow pool widget
+        if self.rainbow_pool_widget:
+            self.rainbow_pool_widget.setVisible(enabled)
 
         # Update role-specific controls visibility
         self._apply_role_visibility()
