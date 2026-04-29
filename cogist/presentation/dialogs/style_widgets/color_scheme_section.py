@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QSlider,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -146,34 +147,42 @@ class ColorSchemeSection(CollapsiblePanel):
         self.rainbow_label_pool.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(self.rainbow_label_pool, row, 0)
 
-        # Rainbow color buttons container - 2 rows x 4 columns
-        rainbow_widget = QWidget()
-        rainbow_grid = QGridLayout()
-        rainbow_grid.setSpacing(4)
-        rainbow_grid.setContentsMargins(0, 0, 0, 0)
+        # Rainbow color buttons container - 2 rows with flexible spacing
+        buttons_container = QWidget()
+        buttons_layout = QVBoxLayout()
+        buttons_layout.setSpacing(4)
+        buttons_layout.setContentsMargins(0, 0, 0, 0)
 
         self.rainbow_buttons = []
         self.rainbow_colors = self._default_rainbow.copy()
 
-        for i in range(8):
-            btn = QPushButton()
-            btn.setFixedSize(32, 32)
-            btn.setToolTip(f"Branch {i + 1} color")
-            color = self.rainbow_colors[i] if i < len(self.rainbow_colors) else "#FFCCCCCC"
-            btn.setStyleSheet(
-                f"background-color: {color}; "
-                "border: none; border-radius: 4px;"
-            )
-            btn.clicked.connect(lambda _, idx=i: self._edit_rainbow_color(idx))
-            self.rainbow_buttons.append(btn)
+        for row_idx in range(2):
+            row_layout = QHBoxLayout()
+            row_layout.setSpacing(0)  # No fixed spacing, use stretch instead
+            row_layout.setContentsMargins(0, 0, 0, 0)
 
-            # 2 rows x 4 columns grid
-            grid_row = i // 4
-            grid_col = i % 4
-            rainbow_grid.addWidget(btn, grid_row, grid_col)
+            for col_idx in range(4):
+                i = row_idx * 4 + col_idx
+                btn = QPushButton()
+                btn.setFixedSize(32, 32)
+                btn.setToolTip(f"Branch {i + 1} color")
+                color = self.rainbow_colors[i] if i < len(self.rainbow_colors) else "#FFCCCCCC"
+                btn.setStyleSheet(
+                    f"background-color: {color}; "
+                    "border: none; border-radius: 4px;"
+                )
+                btn.clicked.connect(lambda _, idx=i: self._edit_rainbow_color(idx))
+                self.rainbow_buttons.append(btn)
+                row_layout.addWidget(btn)
 
-        rainbow_widget.setLayout(rainbow_grid)
-        layout.addWidget(rainbow_widget, row, 1)
+                # Add stretch after each button except the last one in each row
+                if col_idx < 3:
+                    row_layout.addStretch()
+
+            buttons_layout.addLayout(row_layout)
+
+        buttons_container.setLayout(buttons_layout)
+        layout.addWidget(buttons_container, row, 1)
         self.rainbow_buttons_row = row
         row += 1
 
