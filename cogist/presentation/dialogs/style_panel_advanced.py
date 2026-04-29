@@ -93,7 +93,15 @@ class AdvancedStyleTab(QWidget):
         assert self.style_config is not None, "style_config must be set"
 
         if layer_name == "canvas":
-            return {"bg_color": self.style_config.canvas_bg_color}
+            # Canvas needs global rainbow config too
+            color_scheme = self.style_config.resolved_color_scheme
+            data = {
+                "bg_color": self.style_config.canvas_bg_color,
+                "use_rainbow": color_scheme.use_rainbow_branches if color_scheme else False,
+                "rainbow_pool": color_scheme.branch_colors if color_scheme else [],
+            }
+            print(f"[DEBUG] Canvas layer_data: use_rainbow={data['use_rainbow']}")
+            return data
 
         # Map layer names to NodeRole
         layer_to_role = {
@@ -525,6 +533,17 @@ class AdvancedStyleTab(QWidget):
 
         # Get current role
         role = self._get_current_layer_role()
+
+        # Handle global rainbow config FIRST (before checking role)
+        # This ensures rainbow state is synced across all layers including canvas
+        if self.style_config.resolved_color_scheme:
+            color_scheme = self.style_config.resolved_color_scheme
+            if "use_rainbow" in colors:
+                color_scheme.use_rainbow_branches = colors["use_rainbow"]
+                print(f"[DEBUG] Updated global use_rainbow to {colors['use_rainbow']}")
+            if "rainbow_pool" in colors:
+                color_scheme.branch_colors = colors["rainbow_pool"]
+
         if not role:
             # Canvas layer - handle canvas_bg separately
             if "canvas_bg" in colors:
@@ -542,13 +561,6 @@ class AdvancedStyleTab(QWidget):
             return
 
         color_scheme = self.style_config.resolved_color_scheme
-
-        # Handle rainbow branches first (before command system, as it's a global setting)
-        if "use_rainbow" in colors:
-            color_scheme.use_rainbow_branches = colors["use_rainbow"]
-
-        if "rainbow_pool" in colors:
-            color_scheme.branch_colors = colors["rainbow_pool"]
 
         # Handle per-role rainbow mode controls (for level_1/2/3+)
         if role and self.current_layer in ["level_1", "level_2", "level_3_plus"]:
@@ -933,10 +945,14 @@ class AdvancedStyleTab(QWidget):
 
         if self.current_layer == "canvas":
             # Load canvas style into color_scheme_section
-            if "bg_color" in layer_data:
-                self.color_scheme_section.set_colors(
-                    {"canvas_bg": layer_data["bg_color"]}
-                )
+            color_data = {"canvas_bg": layer_data["bg_color"]}
+            # Also pass global rainbow config (so checkbox state is synced)
+            if "use_rainbow" in layer_data:
+                color_data["use_rainbow"] = layer_data["use_rainbow"]
+                print(f"[DEBUG] Canvas set_colors: use_rainbow={layer_data['use_rainbow']}")
+            if "rainbow_pool" in layer_data:
+                color_data["rainbow_pool"] = layer_data["rainbow_pool"]
+            self.color_scheme_section.set_colors(color_data)
             # Hide shadow section for canvas
             self.shadow_section.setVisible(False)
         else:
@@ -955,6 +971,7 @@ class AdvancedStyleTab(QWidget):
             # They should always be updated regardless of current layer
             if "use_rainbow" in layer_data:
                 color_data["use_rainbow"] = layer_data["use_rainbow"]
+                print(f"[DEBUG] {self.current_layer} set_colors: use_rainbow={layer_data['use_rainbow']}")
             if "rainbow_pool" in layer_data:
                 color_data["rainbow_pool"] = layer_data["rainbow_pool"]
 
