@@ -330,40 +330,36 @@ class ColorSchemeSection(CollapsiblePanel):
         # Brightness slider (0-200, maps to 0.0-2.0)
         brightness_slider_row = QHBoxLayout()
         brightness_slider_row.setContentsMargins(0, 0, 0, 0)
-        brightness_slider_row.setSpacing(0)
+        brightness_slider_row.setSpacing(8)
 
         self.brightness_label = QLabel("Brightness:")
         self.brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.brightness_label.setFixedWidth(self._label_width)
         brightness_slider_row.addWidget(self.brightness_label)
 
-        brightness_slider_row.addStretch()
-
         self.brightness_slider = QSlider(Qt.Horizontal)
         self.brightness_slider.setRange(0, 200)
         self.brightness_slider.setValue(100)  # 100 / 100.0 = 1.0 (no change)
         self.brightness_slider.valueChanged.connect(lambda value: self._emit_change("brightness_amount", value / 100.0))
-        brightness_slider_row.addWidget(self.brightness_slider)
+        brightness_slider_row.addWidget(self.brightness_slider, 1)  # Stretch factor 1
 
         brightness_opacity_layout.addLayout(brightness_slider_row)
 
         # Opacity slider (0-255)
         opacity_slider_row = QHBoxLayout()
         opacity_slider_row.setContentsMargins(0, 0, 0, 0)
-        opacity_slider_row.setSpacing(0)
+        opacity_slider_row.setSpacing(8)
 
         self.opacity_label = QLabel("Opacity:")
         self.opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.opacity_label.setFixedWidth(self._label_width)
         opacity_slider_row.addWidget(self.opacity_label)
 
-        opacity_slider_row.addStretch()
-
         self.opacity_slider = QSlider(Qt.Horizontal)
         self.opacity_slider.setRange(0, 255)
         self.opacity_slider.setValue(255)  # Fully opaque
         self.opacity_slider.valueChanged.connect(lambda value: self._emit_change("opacity_amount", value))
-        opacity_slider_row.addWidget(self.opacity_slider)
+        opacity_slider_row.addWidget(self.opacity_slider, 1)  # Stretch factor 1
 
         brightness_opacity_layout.addLayout(opacity_slider_row)
         self.brightness_opacity_widget.setLayout(brightness_opacity_layout)
