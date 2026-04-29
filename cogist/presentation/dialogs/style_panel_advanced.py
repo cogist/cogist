@@ -100,7 +100,6 @@ class AdvancedStyleTab(QWidget):
                 "use_rainbow": color_scheme.use_rainbow_branches if color_scheme else False,
                 "rainbow_pool": color_scheme.branch_colors if color_scheme else [],
             }
-            print(f"[DEBUG] Canvas layer_data: use_rainbow={data['use_rainbow']}")
             return data
 
         # Map layer names to NodeRole
@@ -179,9 +178,9 @@ class AdvancedStyleTab(QWidget):
             # Rainbow bg/border - per-role configuration
             "rainbow_bg_enabled": color_scheme.role_configs[role].rainbow_bg_enabled,
             "rainbow_border_enabled": color_scheme.role_configs[role].rainbow_border_enabled,
-            # Brightness - per-role configuration
-            "brightness_enabled": color_scheme.role_configs[role].brightness_enabled,
+            # Brightness and opacity - per-role configuration
             "brightness_amount": color_scheme.role_configs[role].brightness_amount,
+            "opacity_amount": color_scheme.role_configs[role].opacity_amount,
         }
 
         return layer_data
@@ -540,12 +539,11 @@ class AdvancedStyleTab(QWidget):
             color_scheme = self.style_config.resolved_color_scheme
             if "use_rainbow" in colors:
                 color_scheme.use_rainbow_branches = colors["use_rainbow"]
-                print(f"[DEBUG] Updated global use_rainbow to {colors['use_rainbow']}")
             if "rainbow_pool" in colors:
                 color_scheme.branch_colors = colors["rainbow_pool"]
 
         if not role:
-            # Canvas layer - handle canvas_bg separately
+            # Canvas layer - handle canvas_bg and rainbow config
             if "canvas_bg" in colors:
                 # Update both style_config and resolved_color_scheme
                 self.style_config.canvas_bg_color = colors["canvas_bg"]
@@ -553,7 +551,9 @@ class AdvancedStyleTab(QWidget):
                     self.style_config.resolved_color_scheme.canvas_bg_color = colors[
                         "canvas_bg"
                     ]
-                self._apply_styles_to_mindmap()
+
+            # Apply styles to mindmap after updating canvas/rainbow config
+            self._apply_styles_to_mindmap()
             return
 
         # Get color_scheme
@@ -572,14 +572,17 @@ class AdvancedStyleTab(QWidget):
                 color_scheme.role_configs[role].rainbow_border_enabled = colors[
                     "rainbow_border_enabled"
                 ]
-            if "brightness_enabled" in colors:
-                color_scheme.role_configs[role].brightness_enabled = colors[
-                    "brightness_enabled"
-                ]
             if "brightness_amount" in colors:
                 color_scheme.role_configs[role].brightness_amount = colors[
                     "brightness_amount"
                 ]
+            if "opacity_amount" in colors:
+                color_scheme.role_configs[role].opacity_amount = colors[
+                    "opacity_amount"
+                ]
+
+        # Apply styles to mindmap after updating role configs
+        self._apply_styles_to_mindmap()
 
         # Use command system if available
         if self.command_history:
@@ -949,7 +952,6 @@ class AdvancedStyleTab(QWidget):
             # Also pass global rainbow config (so checkbox state is synced)
             if "use_rainbow" in layer_data:
                 color_data["use_rainbow"] = layer_data["use_rainbow"]
-                print(f"[DEBUG] Canvas set_colors: use_rainbow={layer_data['use_rainbow']}")
             if "rainbow_pool" in layer_data:
                 color_data["rainbow_pool"] = layer_data["rainbow_pool"]
             self.color_scheme_section.set_colors(color_data)
@@ -971,7 +973,6 @@ class AdvancedStyleTab(QWidget):
             # They should always be updated regardless of current layer
             if "use_rainbow" in layer_data:
                 color_data["use_rainbow"] = layer_data["use_rainbow"]
-                print(f"[DEBUG] {self.current_layer} set_colors: use_rainbow={layer_data['use_rainbow']}")
             if "rainbow_pool" in layer_data:
                 color_data["rainbow_pool"] = layer_data["rainbow_pool"]
 
@@ -981,10 +982,10 @@ class AdvancedStyleTab(QWidget):
                     color_data["rainbow_bg_enabled"] = layer_data["rainbow_bg_enabled"]
                 if "rainbow_border_enabled" in layer_data:
                     color_data["rainbow_border_enabled"] = layer_data["rainbow_border_enabled"]
-                if "brightness_enabled" in layer_data:
-                    color_data["brightness_enabled"] = layer_data["brightness_enabled"]
                 if "brightness_amount" in layer_data:
                     color_data["brightness_amount"] = layer_data["brightness_amount"]
+                if "opacity_amount" in layer_data:
+                    color_data["opacity_amount"] = layer_data["opacity_amount"]
 
             if color_data:
                 self.color_scheme_section.set_colors(color_data)

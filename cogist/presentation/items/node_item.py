@@ -206,7 +206,7 @@ class NodeItem(QGraphicsRectItem):
                 # Level 2+: Inherit from Level 1 ancestor with brightness adjustment
                 elif depth >= 2 and self.domain_node:
                     level_1_ancestor = self._find_level_1_ancestor()
-                    if level_1_ancestor and role_config.brightness_enabled:
+                    if level_1_ancestor:
                         # Get Level 1 ancestor's branch color
                         try:
                             # Find the Level 1 node's position in its parent's children
@@ -219,13 +219,20 @@ class NodeItem(QGraphicsRectItem):
                                     branch_idx, color_scheme.branch_colors
                                 )
 
-                                # Apply brightness adjustment (map 0-100 to 0.0-2.0)
-                                brightness_factor = role_config.brightness_amount / 50.0
+                                # Apply brightness adjustment (0.0-2.0)
+                                brightness_factor = role_config.brightness_amount
                                 bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+
+                                # Apply opacity adjustment (0-255)
+                                if role_config.opacity_amount < 255:
+                                    bg_color = self._apply_opacity(bg_color, role_config.opacity_amount)
 
                                 # Border follows background
                                 if default_border_color:
                                     border_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+                                    # Apply opacity adjustment to border as well
+                                    if role_config.opacity_amount < 255:
+                                        border_color = self._apply_opacity(border_color, role_config.opacity_amount)
                                 else:
                                     border_color = None
                             else:
@@ -511,6 +518,29 @@ class NodeItem(QGraphicsRectItem):
 
         return f"#{alpha:02X}{r_int:02X}{g_int:02X}{b_int:02X}"
 
+    def _apply_opacity(self, color_hex: str, opacity: int) -> str:
+        """Apply opacity to a color by modifying the alpha channel.
+
+        Args:
+            color_hex: Color in hex format (#AARRGGBB or #RRGGBB)
+            opacity: Opacity value (0-255), 255 = fully opaque
+
+        Returns:
+            Color with modified alpha channel in #AARRGGBB format
+        """
+        color_hex = color_hex.lstrip("#")
+
+        # Extract RGB components
+        if len(color_hex) == 8:
+            rgb_hex = color_hex[2:]
+        elif len(color_hex) == 6:
+            rgb_hex = color_hex
+        else:
+            return color_hex
+
+        # Apply new opacity
+        return f"#{opacity:02X}{rgb_hex}"
+
     def _apply_font_shadow(self):
         """Apply font shadow effect to text_item based on template_style.
 
@@ -608,7 +638,7 @@ class NodeItem(QGraphicsRectItem):
                         # Level 2+: Inherit from Level 1 ancestor with brightness adjustment
                         elif self.depth >= 2 and self.domain_node:
                             level_1_ancestor = self._find_level_1_ancestor()
-                            if level_1_ancestor and role_config.brightness_enabled:
+                            if level_1_ancestor:
                                 # Get Level 1 ancestor's branch color
                                 try:
                                     # Find the Level 1 node's position in its parent's children
@@ -621,9 +651,13 @@ class NodeItem(QGraphicsRectItem):
                                             branch_idx, color_scheme.branch_colors
                                         )
 
-                                        # Apply brightness adjustment (map 0-100 to 0.0-2.0)
-                                        brightness_factor = role_config.brightness_amount / 50.0
+                                        # Apply brightness adjustment (0.0-2.0)
+                                        brightness_factor = role_config.brightness_amount
                                         bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+
+                                        # Apply opacity adjustment (0-255)
+                                        if role_config.opacity_amount < 255:
+                                            bg_color = self._apply_opacity(bg_color, role_config.opacity_amount)
 
                                         # Border follows background
                                         if default_border_color:
@@ -812,7 +846,7 @@ class NodeItem(QGraphicsRectItem):
                 # Level 2+: Inherit from Level 1 ancestor with brightness adjustment
                 elif self.depth >= 2 and self.domain_node:
                     level_1_ancestor = self._find_level_1_ancestor()
-                    if level_1_ancestor and role_config.brightness_enabled:
+                    if level_1_ancestor:
                         # Get Level 1 ancestor's branch color
                         try:
                             # Find the Level 1 node's position in its parent's children
@@ -825,13 +859,20 @@ class NodeItem(QGraphicsRectItem):
                                     branch_idx, color_scheme.branch_colors
                                 )
 
-                                # Apply brightness adjustment (map 0-100 to 0.0-2.0)
-                                brightness_factor = role_config.brightness_amount / 50.0
+                                # Apply brightness adjustment (0.0-2.0)
+                                brightness_factor = role_config.brightness_amount
                                 bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+
+                                # Apply opacity adjustment (0-255)
+                                if role_config.opacity_amount < 255:
+                                    bg_color = self._apply_opacity(bg_color, role_config.opacity_amount)
 
                                 # Border follows background
                                 if default_border_color:
                                     border_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+                                    # Apply opacity adjustment to border as well
+                                    if role_config.opacity_amount < 255:
+                                        border_color = self._apply_opacity(border_color, role_config.opacity_amount)
                                 else:
                                     border_color = None
                             else:

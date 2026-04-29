@@ -207,9 +207,9 @@ class NodeColorConfig:
     rainbow_bg_enabled: bool = True
     rainbow_border_enabled: bool = True
 
-    # Brightness adjustment for child nodes (only meaningful for SECONDARY/TERTIARY)
-    brightness_enabled: bool = True
-    brightness_amount: int = 50  # 0-100, mapped to 0.0-2.0 in rendering (50 = no change)
+    # Brightness and opacity adjustment (only meaningful for SECONDARY/TERTIARY)
+    brightness_amount: float = 1.0  # 0.0-2.0, 1.0 = no change
+    opacity_amount: int = 255  # 0-255, 255 = fully opaque
 
 
 @dataclass
@@ -225,29 +225,29 @@ class ColorScheme:
             bg_color="#FF2196F3",
             rainbow_bg_enabled=False,
             rainbow_border_enabled=False,
-            brightness_enabled=False,
             brightness_amount=1.0,
+            opacity_amount=255,
         ),
         NodeRole.PRIMARY: NodeColorConfig(
             bg_color="#FF4CAF50",
             rainbow_bg_enabled=True,
             rainbow_border_enabled=True,
-            brightness_enabled=False,
             brightness_amount=1.0,
+            opacity_amount=255,
         ),
         NodeRole.SECONDARY: NodeColorConfig(
             bg_color="#FFFF9800",
             rainbow_bg_enabled=False,
             rainbow_border_enabled=False,
-            brightness_enabled=True,
-            brightness_amount=50,  # Default: no change (50 maps to 1.0)
+            brightness_amount=1.0,  # Default: no change
+            opacity_amount=255,  # Default: fully opaque
         ),
         NodeRole.TERTIARY: NodeColorConfig(
             bg_color="#FF9E9E9E",
             rainbow_bg_enabled=False,
             rainbow_border_enabled=False,
-            brightness_enabled=True,
-            brightness_amount=50,  # Default: no change (50 maps to 1.0)
+            brightness_amount=1.0,  # Default: no change
+            opacity_amount=255,  # Default: fully opaque
         ),
     })
 

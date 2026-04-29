@@ -98,14 +98,14 @@ class ColorSchemeSection(CollapsiblePanel):
         # Rainbow mode controls (per-role)
         self.rainbow_bg_check: ToggleSwitch | None = None
         self.rainbow_border_check: ToggleSwitch | None = None
-        self.brightness_check: ToggleSwitch | None = None
         self.brightness_slider: QSlider | None = None
+        self.opacity_slider: QSlider | None = None
 
         # Labels for rainbow mode controls
         self.rainbow_bg_label: QLabel | None = None
         self.rainbow_border_label: QLabel | None = None
         self.brightness_label: QLabel | None = None
-        self.brightness_slider_label: QLabel | None = None
+        self.opacity_label: QLabel | None = None
 
         self.toggled.connect(self._on_toggled)
 
@@ -321,48 +321,48 @@ class ColorSchemeSection(CollapsiblePanel):
         layout.addLayout(border_row, row, 0, 1, 2)
         row += 1
 
-        # Level 2/3+: Brightness adjustment toggle
-        brightness_toggle_row = QHBoxLayout()
-        brightness_toggle_row.setContentsMargins(0, 0, 0, 0)
-        brightness_toggle_row.setSpacing(0)
-
-        self.brightness_label = QLabel("Brightness:")
-        self.brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.brightness_label.setFixedWidth(self._label_width)
-        brightness_toggle_row.addWidget(self.brightness_label)
-
-        brightness_toggle_row.addStretch()
-
-        # Use ToggleSwitch instead of QCheckBox
-        self.brightness_check = ToggleSwitch()
-        self.brightness_check.toggled.connect(lambda checked: self._on_brightness_toggled(checked))
-        brightness_toggle_row.addWidget(self.brightness_check)
-
-        layout.addLayout(brightness_toggle_row, row, 0, 1, 2)
-        row += 1
-
-        # Brightness slider with label (only visible when switch is ON)
+        # Level 2/3+: Brightness slider (0-200, maps to 0.0-2.0)
         brightness_slider_row = QHBoxLayout()
         brightness_slider_row.setContentsMargins(0, 0, 0, 0)
         brightness_slider_row.setSpacing(0)
 
-        self.brightness_slider_label = QLabel("Adjust:")
-        self.brightness_slider_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.brightness_slider_label.setFixedWidth(self._label_width)
-        self.brightness_slider_label.setVisible(False)  # Initially hidden
-        brightness_slider_row.addWidget(self.brightness_slider_label)
+        self.brightness_label = QLabel("Brightness:")
+        self.brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.brightness_label.setFixedWidth(self._label_width)
+        brightness_slider_row.addWidget(self.brightness_label)
 
         brightness_slider_row.addStretch()
 
         self.brightness_slider = QSlider(Qt.Horizontal)
-        self.brightness_slider.setRange(0, 100)
-        self.brightness_slider.setValue(50)
-        self.brightness_slider.setEnabled(False)
-        self.brightness_slider.setVisible(False)  # Initially hidden
-        self.brightness_slider.valueChanged.connect(lambda value: self._emit_change("brightness_amount", value))
+        self.brightness_slider.setRange(0, 200)
+        self.brightness_slider.setValue(100)  # 100 / 100.0 = 1.0 (no change)
+        self.brightness_slider.setVisible(False)  # Initially hidden for non-level-2/3+ roles
+        self.brightness_slider.valueChanged.connect(lambda value: self._emit_change("brightness_amount", value / 100.0))
         brightness_slider_row.addWidget(self.brightness_slider)
 
         layout.addLayout(brightness_slider_row, row, 0, 1, 2)
+        row += 1
+
+        # Level 2/3+: Opacity slider (0-255)
+        opacity_slider_row = QHBoxLayout()
+        opacity_slider_row.setContentsMargins(0, 0, 0, 0)
+        opacity_slider_row.setSpacing(0)
+
+        self.opacity_label = QLabel("Opacity:")
+        self.opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.opacity_label.setFixedWidth(self._label_width)
+        opacity_slider_row.addWidget(self.opacity_label)
+
+        opacity_slider_row.addStretch()
+
+        self.opacity_slider = QSlider(Qt.Horizontal)
+        self.opacity_slider.setRange(0, 255)
+        self.opacity_slider.setValue(255)  # Fully opaque
+        self.opacity_slider.setVisible(False)  # Initially hidden for non-level-2/3+ roles
+        self.opacity_slider.valueChanged.connect(lambda value: self._emit_change("opacity_amount", value))
+        opacity_slider_row.addWidget(self.opacity_slider)
+
+        layout.addLayout(opacity_slider_row, row, 0, 1, 2)
         row += 1
 
         # Initially hide all rainbow mode controls
@@ -438,7 +438,7 @@ class ColorSchemeSection(CollapsiblePanel):
                 btn.setVisible(True)
 
             if is_level_2 or is_level_3_plus:
-                # Level 2/3+: Show rainbow bg/border toggles AND brightness controls
+                # Level 2/3+: Show rainbow bg/border toggles AND brightness/opacity controls
                 if self.rainbow_bg_label:
                     self.rainbow_bg_label.setVisible(True)
                 if self.rainbow_bg_check:
@@ -448,19 +448,18 @@ class ColorSchemeSection(CollapsiblePanel):
                 if self.rainbow_border_check:
                     self.rainbow_border_check.setVisible(True)
 
-                # Show brightness adjustment for level 2/3+
+                # Show brightness and opacity sliders for level 2/3+
                 if self.brightness_label:
                     self.brightness_label.setVisible(True)
-                if self.brightness_check:
-                    self.brightness_check.setVisible(True)
-                if self.brightness_slider and self.brightness_slider_label and self.brightness_check:
-                    # Slider and label visibility is controlled by the toggle switch state
-                    is_checked = self.brightness_check.isChecked()
-                    self.brightness_slider.setVisible(is_checked)
-                    self.brightness_slider_label.setVisible(is_checked)
+                if self.brightness_slider:
+                    self.brightness_slider.setVisible(True)
+                if self.opacity_label:
+                    self.opacity_label.setVisible(True)
+                if self.opacity_slider:
+                    self.opacity_slider.setVisible(True)
 
             elif is_level_1:
-                # Level 1 only: Show rainbow bg/border toggles, hide brightness controls
+                # Level 1 only: Show rainbow bg/border toggles, hide brightness/opacity controls
                 if self.rainbow_bg_label:
                     self.rainbow_bg_label.setVisible(True)
                 if self.rainbow_bg_check:
@@ -470,15 +469,15 @@ class ColorSchemeSection(CollapsiblePanel):
                 if self.rainbow_border_check:
                     self.rainbow_border_check.setVisible(True)
 
-                # Hide brightness controls for level 1
+                # Hide brightness and opacity controls for level 1
                 if self.brightness_label:
                     self.brightness_label.setVisible(False)
-                if self.brightness_check:
-                    self.brightness_check.setVisible(False)
-                if self.brightness_slider_label:
-                    self.brightness_slider_label.setVisible(False)
                 if self.brightness_slider:
                     self.brightness_slider.setVisible(False)
+                if self.opacity_label:
+                    self.opacity_label.setVisible(False)
+                if self.opacity_slider:
+                    self.opacity_slider.setVisible(False)
             else:
                 # Other roles (root, canvas): hide level-specific rainbow controls but keep color pool visible
                 if self.rainbow_bg_label:
@@ -491,12 +490,12 @@ class ColorSchemeSection(CollapsiblePanel):
                     self.rainbow_border_check.setVisible(False)
                 if self.brightness_label:
                     self.brightness_label.setVisible(False)
-                if self.brightness_check:
-                    self.brightness_check.setVisible(False)
-                if self.brightness_slider_label:
-                    self.brightness_slider_label.setVisible(False)
                 if self.brightness_slider:
                     self.brightness_slider.setVisible(False)
+                if self.opacity_label:
+                    self.opacity_label.setVisible(False)
+                if self.opacity_slider:
+                    self.opacity_slider.setVisible(False)
         else:
             # Rainbow disabled: hide all rainbow mode controls
             self._hide_rainbow_mode_controls()
@@ -548,21 +547,12 @@ class ColorSchemeSection(CollapsiblePanel):
         # Level 2/3+ controls
         if self.brightness_label:
             self.brightness_label.setVisible(False)
-        if self.brightness_check:
-            self.brightness_check.setVisible(False)
-        if self.brightness_slider_label:
-            self.brightness_slider_label.setVisible(False)
         if self.brightness_slider:
             self.brightness_slider.setVisible(False)
-
-    def _on_brightness_toggled(self, checked: bool):
-        """Handle brightness toggle switch state change."""
-        if self.brightness_slider:
-            self.brightness_slider.setEnabled(checked)
-            self.brightness_slider.setVisible(checked)  # Show/hide slider
-        if self.brightness_slider_label:
-            self.brightness_slider_label.setVisible(checked)  # Show/hide label
-        self._emit_change("brightness_enabled", checked)
+        if self.opacity_label:
+            self.opacity_label.setVisible(False)
+        if self.opacity_slider:
+            self.opacity_slider.setVisible(False)
 
     def _edit_rainbow_color(self, index: int):
         """Edit a rainbow branch color."""
@@ -739,28 +729,16 @@ class ColorSchemeSection(CollapsiblePanel):
             self.rainbow_border_check.setChecked(colors["rainbow_border_enabled"])
             self.rainbow_border_check.blockSignals(False)
 
-        if "brightness_enabled" in colors and self.brightness_check:
-            self.brightness_check.blockSignals(True)
-            self.brightness_check.setChecked(colors["brightness_enabled"])
-            self.brightness_check.blockSignals(False)
-
-            # Only update slider visibility if current role allows brightness controls (level_2 or level_3_plus)
-            is_level_2 = self.current_role == "level_2"
-            is_level_3_plus = self.current_role == "level_3_plus"
-            should_show_brightness = is_level_2 or is_level_3_plus
-
-            if self.brightness_slider:
-                self.brightness_slider.setEnabled(colors["brightness_enabled"])
-                # Update slider visibility based on checked state AND role
-                self.brightness_slider.setVisible(colors["brightness_enabled"] and should_show_brightness)
-            if self.brightness_slider_label:
-                # Update label visibility based on checked state AND role
-                self.brightness_slider_label.setVisible(colors["brightness_enabled"] and should_show_brightness)
-
         if "brightness_amount" in colors and self.brightness_slider:
             self.brightness_slider.blockSignals(True)
-            self.brightness_slider.setValue(int(colors["brightness_amount"]))
+            # Convert 0.0-2.0 to 0-200 for slider
+            self.brightness_slider.setValue(int(colors["brightness_amount"] * 100))
             self.brightness_slider.blockSignals(False)
+
+        if "opacity_amount" in colors and self.opacity_slider:
+            self.opacity_slider.blockSignals(True)
+            self.opacity_slider.setValue(int(colors["opacity_amount"]))
+            self.opacity_slider.blockSignals(False)
 
         # Set rainbow colors
         if "rainbow_pool" in colors and self.rainbow_buttons:

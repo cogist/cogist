@@ -227,8 +227,8 @@ def serialize_color_scheme(scheme: ColorScheme) -> dict:
                 "text_color": config.text_color,
                 "rainbow_bg_enabled": config.rainbow_bg_enabled,
                 "rainbow_border_enabled": config.rainbow_border_enabled,
-                "brightness_enabled": config.brightness_enabled,
                 "brightness_amount": config.brightness_amount,
+                "opacity_amount": config.opacity_amount,
             }
             for role, config in scheme.role_configs.items()
         },
@@ -251,8 +251,8 @@ def deserialize_color_scheme(data: dict) -> ColorScheme:
             text_color=config_data.get("text_color"),
             rainbow_bg_enabled=config_data.get("rainbow_bg_enabled", True),
             rainbow_border_enabled=config_data.get("rainbow_border_enabled", True),
-            brightness_enabled=config_data.get("brightness_enabled", True),
-            brightness_amount=config_data.get("brightness_amount", 50),  # 50 = no change
+            brightness_amount=config_data.get("brightness_amount", 1.0),  # 1.0 = no change
+            opacity_amount=config_data.get("opacity_amount", 255),  # 255 = fully opaque
         )
 
     # Fallback to old format if role_configs not present (backward compatibility)
