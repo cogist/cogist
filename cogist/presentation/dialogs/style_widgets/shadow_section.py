@@ -51,8 +51,15 @@ class ShadowSection(CollapsiblePanel):
     def _on_toggled(self, checked: bool):
         """Handle expand/collapse events."""
         if checked and not self._initialized:
+            # Hide content widget before initialization to prevent flicker
+            self._content_widget.setVisible(False)
+
+            # Initialize content
             self._init_content()
             self._initialized = True
+
+            # Show content widget after initialization is complete
+            self._content_widget.setVisible(True)
 
     def _init_content(self):
         """Initialize content on first expand (lazy initialization)."""
