@@ -76,8 +76,10 @@ class EdgeItem(QGraphicsPathItem):
                 1: NodeRole.PRIMARY,
                 2: NodeRole.SECONDARY,
             }
-            # Use target depth for role (edge inherits target node's role)
-            role = role_map.get(target_depth, NodeRole.TERTIARY)
+            # Use source depth for connector style (edge inherits source node's connector config)
+            connector_role = role_map.get(source_depth, NodeRole.TERTIARY)
+            # Use target depth for rainbow branch color inheritance
+            rainbow_role = role_map.get(target_depth, NodeRole.TERTIARY)
 
             # Default values
             color_str = "#FF666666"
@@ -87,8 +89,8 @@ class EdgeItem(QGraphicsPathItem):
             enable_gradient = True
 
             if (self.style_config.resolved_template and
-                role in self.style_config.resolved_template.role_styles):
-                role_style = self.style_config.resolved_template.role_styles[role]
+                connector_role in self.style_config.resolved_template.role_styles):
+                role_style = self.style_config.resolved_template.role_styles[connector_role]
                 color_str = role_style.connector_color or (self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666")
                 line_width = role_style.line_width
                 connector_style_str = role_style.connector_style
@@ -103,7 +105,7 @@ class EdgeItem(QGraphicsPathItem):
             color_scheme = self.style_config.resolved_color_scheme
             if color_scheme and color_scheme.use_rainbow_branches:
                 branch_idx = None
-                role_config = color_scheme.role_configs.get(role)
+                role_config = color_scheme.role_configs.get(rainbow_role)
 
                 # Case 1: Target is a Level 1 node (Root -> Level 1 edge)
                 if (hasattr(self.target_item, 'domain_node') and self.target_item.domain_node and
