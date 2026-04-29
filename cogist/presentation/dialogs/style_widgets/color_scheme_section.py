@@ -124,9 +124,12 @@ class ColorSchemeSection(CollapsiblePanel):
         self.rainbow_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(self.rainbow_label, row, 0)
 
+        # Add stretch to push switch to the right
+        layout.setColumnStretch(1, 1)  # Stretch column to push content right
+
         self.rainbow_check = ToggleSwitch()
         self.rainbow_check.toggled.connect(self._on_rainbow_changed)
-        layout.addWidget(self.rainbow_check, row, 1)
+        layout.addWidget(self.rainbow_check, row, 1, Qt.AlignRight)
         row += 1
 
         # Separator line
