@@ -321,7 +321,13 @@ class ColorSchemeSection(CollapsiblePanel):
         layout.addLayout(border_row, row, 0, 1, 2)
         row += 1
 
-        # Level 2/3+: Brightness slider (0-200, maps to 0.0-2.0)
+        # Level 2/3+: Brightness and Opacity controls (wrapped in a container for visibility control)
+        self.brightness_opacity_widget = QWidget()
+        brightness_opacity_layout = QVBoxLayout()
+        brightness_opacity_layout.setSpacing(6)
+        brightness_opacity_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Brightness slider (0-200, maps to 0.0-2.0)
         brightness_slider_row = QHBoxLayout()
         brightness_slider_row.setContentsMargins(0, 0, 0, 0)
         brightness_slider_row.setSpacing(0)
@@ -336,14 +342,12 @@ class ColorSchemeSection(CollapsiblePanel):
         self.brightness_slider = QSlider(Qt.Horizontal)
         self.brightness_slider.setRange(0, 200)
         self.brightness_slider.setValue(100)  # 100 / 100.0 = 1.0 (no change)
-        self.brightness_slider.setVisible(False)  # Initially hidden for non-level-2/3+ roles
         self.brightness_slider.valueChanged.connect(lambda value: self._emit_change("brightness_amount", value / 100.0))
         brightness_slider_row.addWidget(self.brightness_slider)
 
-        layout.addLayout(brightness_slider_row, row, 0, 1, 2)
-        row += 1
+        brightness_opacity_layout.addLayout(brightness_slider_row)
 
-        # Level 2/3+: Opacity slider (0-255)
+        # Opacity slider (0-255)
         opacity_slider_row = QHBoxLayout()
         opacity_slider_row.setContentsMargins(0, 0, 0, 0)
         opacity_slider_row.setSpacing(0)
@@ -358,11 +362,15 @@ class ColorSchemeSection(CollapsiblePanel):
         self.opacity_slider = QSlider(Qt.Horizontal)
         self.opacity_slider.setRange(0, 255)
         self.opacity_slider.setValue(255)  # Fully opaque
-        self.opacity_slider.setVisible(False)  # Initially hidden for non-level-2/3+ roles
         self.opacity_slider.valueChanged.connect(lambda value: self._emit_change("opacity_amount", value))
         opacity_slider_row.addWidget(self.opacity_slider)
 
-        layout.addLayout(opacity_slider_row, row, 0, 1, 2)
+        brightness_opacity_layout.addLayout(opacity_slider_row)
+        self.brightness_opacity_widget.setLayout(brightness_opacity_layout)
+
+        # Add to main layout (initially hidden)
+        layout.addWidget(self.brightness_opacity_widget, row, 0, 1, 2)
+        self.brightness_opacity_widget.setVisible(False)  # Initially hidden for non-level-2/3+ roles
         row += 1
 
         self.setLayout(layout)
@@ -458,7 +466,11 @@ class ColorSchemeSection(CollapsiblePanel):
                 if self.rainbow_border_check:
                     self.rainbow_border_check.setVisible(True)
 
-                # Show brightness and opacity sliders for level 2/3+
+                # Show brightness and opacity container for level 2/3+
+                if self.brightness_opacity_widget:
+                    self.brightness_opacity_widget.setVisible(True)
+
+                # Show individual controls (for backward compatibility)
                 if self.brightness_label:
                     self.brightness_label.setVisible(True)
                 if self.brightness_slider:
@@ -479,7 +491,11 @@ class ColorSchemeSection(CollapsiblePanel):
                 if self.rainbow_border_check:
                     self.rainbow_border_check.setVisible(True)
 
-                # Hide brightness and opacity controls for level 1
+                # Hide brightness and opacity container for level 1
+                if self.brightness_opacity_widget:
+                    self.brightness_opacity_widget.setVisible(False)
+
+                # Hide individual controls (for backward compatibility)
                 if self.brightness_label:
                     self.brightness_label.setVisible(False)
                 if self.brightness_slider:
@@ -498,6 +514,12 @@ class ColorSchemeSection(CollapsiblePanel):
                     self.rainbow_border_label.setVisible(False)
                 if self.rainbow_border_check:
                     self.rainbow_border_check.setVisible(False)
+
+                # Hide brightness and opacity container for root/canvas
+                if self.brightness_opacity_widget:
+                    self.brightness_opacity_widget.setVisible(False)
+
+                # Hide individual controls (for backward compatibility)
                 if self.brightness_label:
                     self.brightness_label.setVisible(False)
                 if self.brightness_slider:
