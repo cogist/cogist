@@ -928,10 +928,11 @@ class AdvancedStyleTab(QWidget):
                 color_data["border_color"] = layer_data["border_color"]
             if "connector_color" in layer_data:
                 color_data["connector_color"] = layer_data["connector_color"]
-            # Rainbow branch fields
-            if "use_rainbow" in layer_data:
-                color_data["use_rainbow"] = layer_data["use_rainbow"]
-            if "rainbow_pool" in layer_data:
+
+            # Note: use_rainbow is a global ColorScheme property, not per-layer
+            # It should NOT be updated when switching layers
+            # Only update rainbow pool for level_1 (for display purposes)
+            if self.current_layer == "level_1" and "rainbow_pool" in layer_data:
                 color_data["rainbow_pool"] = layer_data["rainbow_pool"]
 
             if color_data:
