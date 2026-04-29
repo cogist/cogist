@@ -252,7 +252,7 @@ def deserialize_color_scheme(data: dict) -> ColorScheme:
             rainbow_bg_enabled=config_data.get("rainbow_bg_enabled", True),
             rainbow_border_enabled=config_data.get("rainbow_border_enabled", True),
             brightness_enabled=config_data.get("brightness_enabled", True),
-            brightness_amount=config_data.get("brightness_amount", 0.5),
+            brightness_amount=config_data.get("brightness_amount", 50),  # 50 = no change
         )
 
     # Fallback to old format if role_configs not present (backward compatibility)

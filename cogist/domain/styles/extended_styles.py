@@ -209,7 +209,7 @@ class NodeColorConfig:
 
     # Brightness adjustment for child nodes (only meaningful for SECONDARY/TERTIARY)
     brightness_enabled: bool = True
-    brightness_amount: float = 0.5  # 0.0=fully darkened, 1.0=no change
+    brightness_amount: int = 50  # 0-100, mapped to 0.0-2.0 in rendering (50 = no change)
 
 
 @dataclass
@@ -240,14 +240,14 @@ class ColorScheme:
             rainbow_bg_enabled=False,
             rainbow_border_enabled=False,
             brightness_enabled=True,
-            brightness_amount=0.5,
+            brightness_amount=50,  # Default: no change (50 maps to 1.0)
         ),
         NodeRole.TERTIARY: NodeColorConfig(
             bg_color="#FF9E9E9E",
             rainbow_bg_enabled=False,
             rainbow_border_enabled=False,
             brightness_enabled=True,
-            brightness_amount=0.3,
+            brightness_amount=50,  # Default: no change (50 maps to 1.0)
         ),
     })
 

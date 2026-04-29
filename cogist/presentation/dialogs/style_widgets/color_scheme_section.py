@@ -359,7 +359,7 @@ class ColorSchemeSection(CollapsiblePanel):
         self.brightness_slider.setValue(50)
         self.brightness_slider.setEnabled(False)
         self.brightness_slider.setVisible(False)  # Initially hidden
-        self.brightness_slider.valueChanged.connect(lambda value: self._emit_change("brightness_amount", value / 100.0))
+        self.brightness_slider.valueChanged.connect(lambda value: self._emit_change("brightness_amount", value))
         brightness_slider_row.addWidget(self.brightness_slider)
 
         layout.addLayout(brightness_slider_row, row, 0, 1, 2)
@@ -759,7 +759,7 @@ class ColorSchemeSection(CollapsiblePanel):
 
         if "brightness_amount" in colors and self.brightness_slider:
             self.brightness_slider.blockSignals(True)
-            self.brightness_slider.setValue(int(colors["brightness_amount"] * 100))
+            self.brightness_slider.setValue(int(colors["brightness_amount"]))
             self.brightness_slider.blockSignals(False)
 
         # Set rainbow colors

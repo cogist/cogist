@@ -219,8 +219,8 @@ class NodeItem(QGraphicsRectItem):
                                     branch_idx, color_scheme.branch_colors
                                 )
 
-                                # Apply brightness adjustment
-                                brightness_factor = role_config.brightness_amount
+                                # Apply brightness adjustment (map 0-100 to 0.0-2.0)
+                                brightness_factor = role_config.brightness_amount / 50.0
                                 bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
 
                                 # Border follows background
@@ -466,8 +466,8 @@ class NodeItem(QGraphicsRectItem):
 
         Args:
             color_hex: Color in hex format (#AARRGGBB or #RRGGBB)
-            brightness_factor: Brightness adjustment factor (0.0-1.0)
-                             1.0 = no change, 0.5 = 50% darker, 1.5 = 50% brighter
+            brightness_factor: Brightness adjustment factor (0.0-2.0)
+                             0.0 = fully darkened, 1.0 = no change, 2.0 = fully brightened
 
         Returns:
             Adjusted color in #AARRGGBB format
@@ -621,8 +621,8 @@ class NodeItem(QGraphicsRectItem):
                                             branch_idx, color_scheme.branch_colors
                                         )
 
-                                        # Apply brightness adjustment
-                                        brightness_factor = role_config.brightness_amount
+                                        # Apply brightness adjustment (map 0-100 to 0.0-2.0)
+                                        brightness_factor = role_config.brightness_amount / 50.0
                                         bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
 
                                         # Border follows background
@@ -825,8 +825,8 @@ class NodeItem(QGraphicsRectItem):
                                     branch_idx, color_scheme.branch_colors
                                 )
 
-                                # Apply brightness adjustment
-                                brightness_factor = role_config.brightness_amount
+                                # Apply brightness adjustment (map 0-100 to 0.0-2.0)
+                                brightness_factor = role_config.brightness_amount / 50.0
                                 bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
 
                                 # Border follows background
