@@ -180,11 +180,16 @@ class NodeItem(QGraphicsRectItem):
                 if depth == 1 and self.domain_node and self.domain_node.parent:
                     # Get branch index from parent's children list
                     try:
-                        branch_idx = self.domain_node.parent.children.index(self.domain_node)
+                        branch_idx = self.domain_node.parent.children.index(
+                            self.domain_node
+                        )
                         from cogist.domain.styles.extended_styles import (
                             get_rainbow_branch_color,
                         )
-                        branch_color = get_rainbow_branch_color(branch_idx, color_scheme.branch_colors)
+
+                        branch_color = get_rainbow_branch_color(
+                            branch_idx, color_scheme.branch_colors
+                        )
 
                         # In rainbow mode: switches control whether to draw color (rainbow) or not (transparent)
                         # Background: if enabled, draw rainbow color; if disabled, no background
@@ -211,10 +216,13 @@ class NodeItem(QGraphicsRectItem):
                         try:
                             # Find the Level 1 node's position in its parent's children
                             if level_1_ancestor.parent:
-                                branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
+                                branch_idx = level_1_ancestor.parent.children.index(
+                                    level_1_ancestor
+                                )
                                 from cogist.domain.styles.extended_styles import (
                                     get_rainbow_branch_color,
                                 )
+
                                 ancestor_branch_color = get_rainbow_branch_color(
                                     branch_idx, color_scheme.branch_colors
                                 )
@@ -224,19 +232,29 @@ class NodeItem(QGraphicsRectItem):
 
                                 # Background: if enabled, draw rainbow color; if disabled, no background
                                 if role_config.rainbow_bg_enabled:
-                                    bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+                                    bg_color = self._adjust_color_brightness(
+                                        ancestor_branch_color, brightness_factor
+                                    )
                                     # Apply opacity adjustment (0-255)
                                     if role_config.opacity_amount < 255:
-                                        bg_color = self._apply_opacity(bg_color, role_config.opacity_amount)
+                                        bg_color = self._apply_opacity(
+                                            bg_color, role_config.opacity_amount
+                                        )
                                 else:
-                                    bg_color = "#00000000"  # Transparent (no background)
+                                    bg_color = (
+                                        "#00000000"  # Transparent (no background)
+                                    )
 
                                 # Border: if enabled, draw rainbow color; if disabled, no border
                                 if role_config.rainbow_border_enabled:
-                                    border_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+                                    border_color = self._adjust_color_brightness(
+                                        ancestor_branch_color, brightness_factor
+                                    )
                                     # Apply opacity adjustment to border as well
                                     if role_config.opacity_amount < 255:
-                                        border_color = self._apply_opacity(border_color, role_config.opacity_amount)
+                                        border_color = self._apply_opacity(
+                                            border_color, role_config.opacity_amount
+                                        )
                                 else:
                                     border_color = None  # No border
                             else:
@@ -257,8 +275,22 @@ class NodeItem(QGraphicsRectItem):
                 bg_color = default_bg_color
                 border_color = default_border_color
 
-            # text_color from role config or auto contrast
-            text_color = role_config.text_color if role_config.text_color else self._auto_contrast(bg_color)
+            # text_color: use cached value from role_config if available, otherwise auto-calculate
+            # In rainbow mode, always auto-calculate based on actual background color (considering transparency)
+            if color_scheme.use_rainbow_branches and depth >= 1:
+                # Rainbow mode: calculate based on actual background (after brightness/opacity adjustments)
+                # If background is transparent/semi-transparent, blend with canvas background
+                effective_bg_color = self._blend_with_canvas(
+                    bg_color, color_scheme.canvas_bg_color
+                )
+                text_color = self._auto_contrast(effective_bg_color)
+            else:
+                # Non-rainbow mode: use cached value from role_config or auto-calculate
+                text_color = (
+                    role_config.text_color
+                    if role_config.text_color
+                    else self._auto_contrast(bg_color)
+                )
         else:
             # CRITICAL: color_scheme must be available - no fallback allowed
             node_id = self.domain_node.id if self.domain_node else "unknown"
@@ -420,6 +452,50 @@ class NodeItem(QGraphicsRectItem):
         role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
         return role_map.get(depth, NodeRole.TERTIARY)
 
+    def _blend_with_canvas(self, bg_color: str, canvas_bg_color: str) -> str:
+        """Blend background color with canvas background if transparent.
+
+        Args:
+            bg_color: Node background color in hex format (#AARRGGBB)
+            canvas_bg_color: Canvas background color in hex format (#AARRGGBB)
+
+        Returns:
+            Blended color in #AARRGGBB format
+        """
+        # Parse alpha channel
+        bg_color_stripped = bg_color.lstrip("#")
+        canvas_bg_color_stripped = canvas_bg_color.lstrip("#")
+
+        # Get alpha value (0-255)
+        alpha = int(bg_color_stripped[0:2], 16) if len(bg_color_stripped) == 8 else 255
+
+        # If fully opaque, return as-is
+        if alpha >= 255:
+            return f"#FF{bg_color_stripped[-6:]}"
+
+        # If fully transparent, return canvas background
+        if alpha <= 0:
+            return f"#FF{canvas_bg_color_stripped[-6:]}"
+
+        # Blend colors based on alpha
+        alpha_ratio = alpha / 255.0
+
+        # Parse RGB values
+        bg_r = int(bg_color_stripped[-6:-4], 16)
+        bg_g = int(bg_color_stripped[-4:-2], 16)
+        bg_b = int(bg_color_stripped[-2:], 16)
+
+        canvas_r = int(canvas_bg_color_stripped[-6:-4], 16)
+        canvas_g = int(canvas_bg_color_stripped[-4:-2], 16)
+        canvas_b = int(canvas_bg_color_stripped[-2:], 16)
+
+        # Blend: result = bg * alpha_ratio + canvas * (1 - alpha_ratio)
+        blended_r = int(bg_r * alpha_ratio + canvas_r * (1 - alpha_ratio))
+        blended_g = int(bg_g * alpha_ratio + canvas_g * (1 - alpha_ratio))
+        blended_b = int(bg_b * alpha_ratio + canvas_b * (1 - alpha_ratio))
+
+        return f"#FF{blended_r:02X}{blended_g:02X}{blended_b:02X}"
+
     def _auto_contrast(self, bg_color: str) -> str:
         """Automatically choose text color based on background brightness.
 
@@ -467,7 +543,11 @@ class NodeItem(QGraphicsRectItem):
             current = current.parent
 
         # Check if current's parent is root
-        if current.parent and hasattr(current.parent, 'is_root') and current.parent.is_root:
+        if (
+            current.parent
+            and hasattr(current.parent, "is_root")
+            and current.parent.is_root
+        ):
             return current
 
         return None
@@ -613,21 +693,32 @@ class NodeItem(QGraphicsRectItem):
                     # Check if rainbow branches are enabled
                     if color_scheme.use_rainbow_branches:
                         # Level 1: Use rainbow colors if enabled
-                        if self.depth == 1 and self.domain_node and self.domain_node.parent:
+                        if (
+                            self.depth == 1
+                            and self.domain_node
+                            and self.domain_node.parent
+                        ):
                             # Get branch index from parent's children list
                             try:
-                                branch_idx = self.domain_node.parent.children.index(self.domain_node)
+                                branch_idx = self.domain_node.parent.children.index(
+                                    self.domain_node
+                                )
                                 from cogist.domain.styles.extended_styles import (
                                     get_rainbow_branch_color,
                                 )
-                                branch_color = get_rainbow_branch_color(branch_idx, color_scheme.branch_colors)
+
+                                branch_color = get_rainbow_branch_color(
+                                    branch_idx, color_scheme.branch_colors
+                                )
 
                                 # In rainbow mode: switches control whether to draw color (rainbow) or not (transparent)
                                 # Background: if enabled, draw rainbow color; if disabled, no background
                                 if role_config.rainbow_bg_enabled:
                                     bg_color = branch_color
                                 else:
-                                    bg_color = "#00000000"  # Transparent (no background)
+                                    bg_color = (
+                                        "#00000000"  # Transparent (no background)
+                                    )
 
                                 # Border: if enabled, draw rainbow color; if disabled, no border
                                 if role_config.rainbow_border_enabled:
@@ -647,32 +738,53 @@ class NodeItem(QGraphicsRectItem):
                                 try:
                                     # Find the Level 1 node's position in its parent's children
                                     if level_1_ancestor.parent:
-                                        branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
+                                        branch_idx = (
+                                            level_1_ancestor.parent.children.index(
+                                                level_1_ancestor
+                                            )
+                                        )
                                         from cogist.domain.styles.extended_styles import (
                                             get_rainbow_branch_color,
                                         )
-                                        ancestor_branch_color = get_rainbow_branch_color(
-                                            branch_idx, color_scheme.branch_colors
+
+                                        ancestor_branch_color = (
+                                            get_rainbow_branch_color(
+                                                branch_idx, color_scheme.branch_colors
+                                            )
                                         )
 
                                         # Apply brightness adjustment (0.0-2.0)
-                                        brightness_factor = role_config.brightness_amount
+                                        brightness_factor = (
+                                            role_config.brightness_amount
+                                        )
 
                                         # Background: if enabled, draw rainbow color; if disabled, no background
                                         if role_config.rainbow_bg_enabled:
-                                            bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+                                            bg_color = self._adjust_color_brightness(
+                                                ancestor_branch_color, brightness_factor
+                                            )
                                             # Apply opacity adjustment (0-255)
                                             if role_config.opacity_amount < 255:
-                                                bg_color = self._apply_opacity(bg_color, role_config.opacity_amount)
+                                                bg_color = self._apply_opacity(
+                                                    bg_color, role_config.opacity_amount
+                                                )
                                         else:
                                             bg_color = "#00000000"  # Transparent (no background)
 
                                         # Border: if enabled, draw rainbow color; if disabled, no border
                                         if role_config.rainbow_border_enabled:
-                                            border_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+                                            border_color = (
+                                                self._adjust_color_brightness(
+                                                    ancestor_branch_color,
+                                                    brightness_factor,
+                                                )
+                                            )
                                             # Apply opacity adjustment to border as well
                                             if role_config.opacity_amount < 255:
-                                                border_color = self._apply_opacity(border_color, role_config.opacity_amount)
+                                                border_color = self._apply_opacity(
+                                                    border_color,
+                                                    role_config.opacity_amount,
+                                                )
                                         else:
                                             border_color = None  # No border
                                     else:
@@ -694,7 +806,18 @@ class NodeItem(QGraphicsRectItem):
                         border_color = default_border_color
 
                     # text_color from role config or auto contrast
-                    text_color = role_config.text_color if role_config.text_color else self._auto_contrast(bg_color)
+                    # In rainbow mode, blend transparent background with canvas
+                    if color_scheme.use_rainbow_branches and self.depth >= 1:
+                        effective_bg_color = self._blend_with_canvas(
+                            bg_color, color_scheme.canvas_bg_color
+                        )
+                        text_color = self._auto_contrast(effective_bg_color)
+                    else:
+                        text_color = (
+                            role_config.text_color
+                            if role_config.text_color
+                            else self._auto_contrast(bg_color)
+                        )
                 else:
                     # CRITICAL: color_scheme must be available - no fallback allowed
                     node_id = self.domain_node.id if self.domain_node else "unknown"
@@ -748,9 +871,15 @@ class NodeItem(QGraphicsRectItem):
                     font.setItalic(True)
 
                 # CRITICAL: Apply underline and strikeout
-                if hasattr(template_style, "font_underline") and template_style.font_underline:
+                if (
+                    hasattr(template_style, "font_underline")
+                    and template_style.font_underline
+                ):
                     font.setUnderline(True)
-                if hasattr(template_style, "font_strikeout") and template_style.font_strikeout:
+                if (
+                    hasattr(template_style, "font_strikeout")
+                    and template_style.font_strikeout
+                ):
                     font.setStrikeOut(True)
 
                 self.text_item.setFont(font)

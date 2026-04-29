@@ -17,6 +17,49 @@ from .extended_styles import (
 from .style_config import MindMapStyle
 
 
+def _calculate_luminance(hex_color: str) -> float:
+    """Calculate the luminance of a color.
+
+    Args:
+        hex_color: Color in hex format (#RRGGBB or #AARRGGBB)
+
+    Returns:
+        Luminance value between 0.0 (black) and 1.0 (white)
+    """
+    hex_color = hex_color.lstrip("#")
+
+    # Support both 6-digit (#RRGGBB) and 8-digit (#AARRGGBB) formats
+    if len(hex_color) == 8:
+        hex_color = hex_color[2:]  # Remove AA prefix
+    elif len(hex_color) != 6:
+        return 0.5  # Default to middle luminance
+
+    try:
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+    except ValueError:
+        return 0.5
+
+    # Calculate luminance using standard formula
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
+
+
+def _auto_contrast_text_color(bg_color: str) -> str:
+    """Automatically choose text color based on background brightness.
+
+    Args:
+        bg_color: Background color in hex format (#RRGGBB or #AARRGGBB)
+
+    Returns:
+        '#FFFFFFFF' for dark backgrounds, '#FF000000' for light backgrounds
+    """
+    luminance = _calculate_luminance(bg_color)
+
+    # Return white for dark backgrounds, black for light
+    return "#FFFFFFFF" if luminance < 0.5 else "#FF000000"
+
+
 def resolve_style(
     style_config: MindMapStyle,
     template_registry: dict[str, Template],
@@ -39,9 +82,15 @@ def resolve_style(
     if not template or not color_scheme:
         # Fallback to defaults if not found
         if not template:
-            template = list(template_registry.values())[0] if template_registry else None
+            template = (
+                list(template_registry.values())[0] if template_registry else None
+            )
         if not color_scheme:
-            color_scheme = list(color_scheme_registry.values())[0] if color_scheme_registry else None
+            color_scheme = (
+                list(color_scheme_registry.values())[0]
+                if color_scheme_registry
+                else None
+            )
 
     if not template or not color_scheme:
         return  # Cannot resolve without both
@@ -59,9 +108,12 @@ def resolve_style(
         _deep_copy_role_style(template_style)
 
         # Apply colors from color scheme
-        if role in color_scheme.node_colors:
-            # Note: We store colors separately, NodeItem will combine them
-            pass  # Colors are applied at render time
+        if role in color_scheme.role_configs:
+            role_config = color_scheme.role_configs[role]
+
+            # Auto-calculate text color if not explicitly set
+            if not role_config.text_color and role_config.bg_color:
+                role_config.text_color = _auto_contrast_text_color(role_config.bg_color)
 
         # Store in a temporary resolved dict (for future use)
         # For now, we keep the legacy depth_styles for backward compatibility
@@ -82,7 +134,9 @@ def _deep_copy_role_style(style: RoleBasedStyle) -> RoleBasedStyle:
         background=BackgroundStyle(
             bg_type=style.background.bg_type,
             gradient_type=style.background.gradient_type,
-            gradient_colors=style.background.gradient_colors.copy() if style.background.gradient_colors else None,
+            gradient_colors=style.background.gradient_colors.copy()
+            if style.background.gradient_colors
+            else None,
             gradient_angle=style.background.gradient_angle,
             texture_type=style.background.texture_type,
             texture_opacity=style.background.texture_opacity,
@@ -100,7 +154,9 @@ def _deep_copy_role_style(style: RoleBasedStyle) -> RoleBasedStyle:
             image_path=style.border.image_path,
             image_scale=style.border.image_scale,
             gradient_type=style.border.gradient_type,
-            gradient_colors=style.border.gradient_colors.copy() if style.border.gradient_colors else None,
+            gradient_colors=style.border.gradient_colors.copy()
+            if style.border.gradient_colors
+            else None,
             gradient_angle=style.border.gradient_angle,
         ),
         padding_w=style.padding_w,
@@ -131,11 +187,9 @@ def serialize_style(style_config: MindMapStyle) -> dict:
     """
     return {
         "name": style_config.name,
-
         # === Global spacing configuration (fallback for backward compatibility) ===
         "parent_child_spacing": style_config.parent_child_spacing,
         "sibling_spacing": style_config.sibling_spacing,
-
         # === Canvas background ===
         "canvas_bg_color": style_config.canvas_bg_color,
     }
@@ -154,17 +208,16 @@ def deserialize_style(data: dict) -> MindMapStyle:
     Returns:
         MindMapStyle instance
     """
+
     # Convert string keys back to int for depth-based configs
     def convert_depth_keys(d: dict) -> dict[int, Any]:
         return {int(k): v for k, v in d.items()}
 
     style = MindMapStyle(
         name=data.get("name", "Default"),
-
         # === Global spacing configuration ===
         parent_child_spacing=data.get("parent_child_spacing", 80.0),
         sibling_spacing=data.get("sibling_spacing", 60.0),
-
         # === Canvas background ===
         canvas_bg_color=data.get("canvas_bg_color", "#FFFFFFFF"),
     )
@@ -201,7 +254,9 @@ def deserialize_template(data: dict) -> Template:
 
     spacing_data = data.get("spacing", {})
     spacing = SpacingConfig(
-        parent_child_spacing=SpacingLevel(spacing_data.get("parent_child_spacing", "normal")),
+        parent_child_spacing=SpacingLevel(
+            spacing_data.get("parent_child_spacing", "normal")
+        ),
         sibling_spacing=SpacingLevel(spacing_data.get("sibling_spacing", "normal")),
     )
 
@@ -251,7 +306,9 @@ def deserialize_color_scheme(data: dict) -> ColorScheme:
             text_color=config_data.get("text_color"),
             rainbow_bg_enabled=config_data.get("rainbow_bg_enabled", True),
             rainbow_border_enabled=config_data.get("rainbow_border_enabled", True),
-            brightness_amount=config_data.get("brightness_amount", 1.0),  # 1.0 = no change
+            brightness_amount=config_data.get(
+                "brightness_amount", 1.0
+            ),  # 1.0 = no change
             opacity_amount=config_data.get("opacity_amount", 255),  # 255 = fully opaque
         )
 
@@ -261,8 +318,12 @@ def deserialize_color_scheme(data: dict) -> ColorScheme:
             role = NodeRole(role_str)
             role_configs[role] = NodeColorConfig(
                 bg_color=color,
-                border_color=data.get("border_colors", {}).get(role_str) if data.get("border_colors") else None,
-                text_color=data.get("text_colors", {}).get(role_str) if data.get("text_colors") else None,
+                border_color=data.get("border_colors", {}).get(role_str)
+                if data.get("border_colors")
+                else None,
+                text_color=data.get("text_colors", {}).get(role_str)
+                if data.get("text_colors")
+                else None,
             )
 
     return ColorScheme(
@@ -277,6 +338,7 @@ def deserialize_color_scheme(data: dict) -> ColorScheme:
 
 
 # Helper functions for nested structures
+
 
 def serialize_role_based_style(style: RoleBasedStyle) -> dict:
     """Serialize RoleBasedStyle to dict."""
@@ -464,6 +526,3 @@ def deserialize_edge_style(data: dict):
         arrow_svg=data.get("arrow_svg"),
         dash_pattern=data.get("dash_pattern"),
     )
-
-
-
