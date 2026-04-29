@@ -14,6 +14,7 @@ from .style_widgets import (
     BorderSection,
     ColorSchemeSection,
     ConnectorSection,
+    FontStyleSection,
     LayerSelector,
     NodeStyleSection,
     ShadowSection,
@@ -420,6 +421,7 @@ class AdvancedStyleTab(QWidget):
         self.color_scheme_section = ColorSchemeSection()
         self.spacing_section = SpacingSection()
         self.node_style_section = NodeStyleSection()
+        self.font_style_section = FontStyleSection()
         self.shadow_section = ShadowSection()
         self.border_section = BorderSection()
         self.connector_section = ConnectorSection()
@@ -428,6 +430,7 @@ class AdvancedStyleTab(QWidget):
         layout.addWidget(self.color_scheme_section)
         layout.addWidget(self.spacing_section)
         layout.addWidget(self.node_style_section)
+        layout.addWidget(self.font_style_section)
         layout.addWidget(self.shadow_section)
         layout.addWidget(self.border_section)
         layout.addWidget(self.connector_section)
@@ -484,6 +487,12 @@ class AdvancedStyleTab(QWidget):
             self._on_shadow_enabled_changed
         )
 
+        # Font style
+        self.font_style_section.style_changed.connect(self._on_font_style_changed)
+        self.font_style_section.shadow_enabled_changed.connect(
+            self._on_font_shadow_enabled_changed
+        )
+
         # Shadow style
         self.shadow_section.shadow_changed.connect(self._on_shadow_changed)
 
@@ -508,6 +517,7 @@ class AdvancedStyleTab(QWidget):
 
         # Node/Border/Connector: only show for non-canvas layers
         self.node_style_section.setVisible(not is_canvas)
+        self.font_style_section.setVisible(not is_canvas)
         # Shadow section visibility is controlled by shadow_enabled state in _load_current_layer_style
         self.border_section.setVisible(not is_canvas)
         self.connector_section.setVisible(not is_canvas and not is_priority)
@@ -770,6 +780,75 @@ class AdvancedStyleTab(QWidget):
 
             self._apply_styles_to_mindmap()
 
+    def _on_font_style_changed(self, style: dict):
+        """Handle font style changes."""
+        if self.current_layer != "canvas":
+            # Check if this change affects node dimensions (requires size recalculation)
+            dimension_keys = {
+                "font_size",
+                "font_family",
+                "font_weight",
+                "font_italic",
+                "font_underline",
+                "font_strikeout",
+            }
+            affects_dimensions = any(key in style for key in dimension_keys)
+
+            # Skip command creation if we're updating from undo/redo
+            if self._updating_from_undo_redo:
+                # Direct update without creating a command
+                self._update_role_style_in_config(self.current_layer, style)
+            elif self.command_history:
+                from cogist.application.commands import ChangeStyleCommand
+                from cogist.application.commands.change_style_command import StyleChange
+
+                # Create and execute style change command
+                change = StyleChange(
+                    layer=self.current_layer,
+                    style_updates=style,
+                )
+                command = ChangeStyleCommand(
+                    style_config=self.style_config,
+                    changes=[change],
+                )
+                command.execute()
+                self.command_history.push(command)
+            else:
+                # Fallback: direct update without undo/redo
+                self._update_role_style_in_config(self.current_layer, style)
+
+            self._apply_styles_to_mindmap(force_rebuild=affects_dimensions)
+
+    def _on_font_shadow_enabled_changed(self, enabled: bool):
+        """Handle font shadow enabled state change from FontStyleSection."""
+        self.shadow_section.setVisible(enabled)
+        if enabled:
+            self.shadow_section.setCollapsed(False)
+
+        # Update using command system if available
+        if self.current_layer != "canvas":
+            if self.command_history:
+                from cogist.application.commands import ChangeStyleCommand
+                from cogist.application.commands.change_style_command import StyleChange
+
+                change = StyleChange(
+                    layer=self.current_layer,
+                    style_updates={"shadow_enabled": enabled},
+                )
+                command = ChangeStyleCommand(
+                    style_config=self.style_config,
+                    changes=[change],
+                )
+                command.execute()
+                self.command_history.push(command)
+            else:
+                # Fallback: direct update without undo/redo
+                self._update_role_style_in_config(
+                    self.current_layer, {"shadow_enabled": enabled}
+                )
+
+            self._apply_styles_to_mindmap()
+
     def _on_shadow_changed(self, shadow: dict):
         """Handle shadow style changes."""
         if self.current_layer != "canvas":
@@ -935,6 +1014,7 @@ class AdvancedStyleTab(QWidget):
 
         # Hide node/shadow/border/connector for canvas layer
         self.node_style_section.setVisible(False)
+        self.font_style_section.setVisible(False)
         # Shadow section is controlled by shadow_enabled checkbox
         self.shadow_section.setVisible(False)
         self.border_section.setVisible(False)
@@ -994,6 +1074,9 @@ class AdvancedStyleTab(QWidget):
 
             # Load node style (without colors - they're now in color_scheme_section)
             self.node_style_section.set_style(layer_data)
+
+            # Load font style
+            self.font_style_section.set_style(layer_data)
             # Sync shadow section visibility with shadow_enabled state
             shadow_enabled = layer_data["shadow_enabled"]
             self.shadow_section.setVisible(shadow_enabled)
