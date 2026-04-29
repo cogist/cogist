@@ -572,6 +572,8 @@ class AdvancedStyleTab(QWidget):
                 color_scheme.role_configs[role].rainbow_border_enabled = colors[
                     "rainbow_border_enabled"
                 ]
+                # Control border section visibility based on rainbow_border_enabled
+                self.border_section.setVisible(colors["rainbow_border_enabled"])
             if "brightness_amount" in colors:
                 color_scheme.role_configs[role].brightness_amount = colors[
                     "brightness_amount"
@@ -1008,6 +1010,9 @@ class AdvancedStyleTab(QWidget):
 
             # Load border style
             self.border_section.set_style(layer_data)
+            # Sync border section visibility with rainbow_border_enabled state
+            if "rainbow_border_enabled" in layer_data:
+                self.border_section.setVisible(layer_data["rainbow_border_enabled"])
 
             # Load spacing configuration (per-layer)
             spacing_config = {
