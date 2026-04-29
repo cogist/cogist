@@ -6,16 +6,15 @@ padding, and font properties. Implements lazy initialization for better performa
 
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox,
     QGridLayout,
     QLabel,
     QMenu,
     QPushButton,
     QSpinBox,
-    QWidget,
+    QVBoxLayout,
 )
 
-from cogist.presentation.widgets import VisualPreviewButton
+from cogist.presentation.widgets import ToggleSwitch, VisualPreviewButton
 from cogist.presentation.widgets.node_shape_previews import (
     generate_bottom_line_preview,
     generate_circle_preview,
@@ -304,43 +303,52 @@ class NodeStyleSection(CollapsiblePanel):
         layout.addWidget(self.font_weight_combo, row, 1)
         row += 1
 
-        # Font style checkboxes - 2x2 grid layout
-        font_style_label = QLabel("Font Style:")
-        font_style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        font_style_label.setFixedWidth(self._label_width)
-        layout.addWidget(font_style_label, row, 0)
+        # Italic toggle
+        italic_label = QLabel("Italic:")
+        italic_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        italic_label.setFixedWidth(self._label_width)
+        layout.addWidget(italic_label, row, 0)
 
-        # Container for 2x2 checkbox grid
-        style_container = QWidget()
-        style_layout = QGridLayout(style_container)
-        style_layout.setSpacing(6)
-        style_layout.setContentsMargins(0, 0, 0, 4)
-
-        self.font_italic_check = QCheckBox("Italic")
+        self.font_italic_check = ToggleSwitch()
         self.font_italic_check.setChecked(self.current_style["font_italic"])
-        self.font_italic_check.setStyleSheet("QCheckBox { background: transparent; }")
         self.font_italic_check.toggled.connect(self._on_font_style_changed)
-        style_layout.addWidget(self.font_italic_check, 0, 0)
+        layout.addWidget(self.font_italic_check, row, 1, alignment=Qt.AlignRight)
+        row += 1
 
-        self.font_underline_check = QCheckBox("Underline")
+        # Underline toggle
+        underline_label = QLabel("Underline:")
+        underline_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        underline_label.setFixedWidth(self._label_width)
+        layout.addWidget(underline_label, row, 0)
+
+        self.font_underline_check = ToggleSwitch()
         self.font_underline_check.setChecked(self.current_style["font_underline"])
-        self.font_underline_check.setStyleSheet("QCheckBox { background: transparent; }")
         self.font_underline_check.toggled.connect(self._on_font_style_changed)
-        style_layout.addWidget(self.font_underline_check, 0, 1)
+        layout.addWidget(self.font_underline_check, row, 1, alignment=Qt.AlignRight)
+        row += 1
 
-        self.font_strikeout_check = QCheckBox("Strikeout")
+        # Strikeout toggle
+        strikeout_label = QLabel("Strikeout:")
+        strikeout_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        strikeout_label.setFixedWidth(self._label_width)
+        layout.addWidget(strikeout_label, row, 0)
+
+        self.font_strikeout_check = ToggleSwitch()
         self.font_strikeout_check.setChecked(self.current_style["font_strikeout"])
-        self.font_strikeout_check.setStyleSheet("QCheckBox { background: transparent; }")
         self.font_strikeout_check.toggled.connect(self._on_font_style_changed)
-        style_layout.addWidget(self.font_strikeout_check, 1, 0)
+        layout.addWidget(self.font_strikeout_check, row, 1, alignment=Qt.AlignRight)
+        row += 1
 
-        self.font_shadow_check = QCheckBox("Shadow")
+        # Shadow toggle
+        shadow_label = QLabel("Shadow:")
+        shadow_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        shadow_label.setFixedWidth(self._label_width)
+        layout.addWidget(shadow_label, row, 0)
+
+        self.font_shadow_check = ToggleSwitch()
         self.font_shadow_check.setChecked(self.current_style.get("shadow_enabled", False))
-        self.font_shadow_check.setStyleSheet("QCheckBox { background: transparent; }")
         self.font_shadow_check.toggled.connect(self._on_font_shadow_toggled)
-        style_layout.addWidget(self.font_shadow_check, 1, 1)
-
-        layout.addWidget(style_container, row, 1)
+        layout.addWidget(self.font_shadow_check, row, 1, alignment=Qt.AlignRight)
 
         self.setLayout(layout)
 
@@ -508,7 +516,6 @@ class NodeStyleSection(CollapsiblePanel):
         from PySide6.QtWidgets import (
             QDialog,
             QListWidget,
-            QVBoxLayout,
         )
 
         # Reuse existing dialog if available
