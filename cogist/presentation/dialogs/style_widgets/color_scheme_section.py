@@ -39,7 +39,7 @@ class ColorSchemeSection(CollapsiblePanel):
     color_changed = Signal(dict)
 
     # UI constants
-    LABEL_WIDTH = 75
+    LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
 
@@ -127,9 +127,9 @@ class ColorSchemeSection(CollapsiblePanel):
         switch_row.setContentsMargins(0, 0, 0, 0)
         switch_row.setSpacing(0)
 
-        self.rainbow_label = QLabel("Branches:")
+        self.rainbow_label = QLabel("Branch-based:")
         self.rainbow_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.rainbow_label.setMinimumWidth(self.LABEL_WIDTH)
+        self.rainbow_label.setFixedWidth(self.LABEL_WIDTH)
         switch_row.addWidget(self.rainbow_label)
 
         switch_row.addStretch()
@@ -142,15 +142,10 @@ class ColorSchemeSection(CollapsiblePanel):
         row += 1
 
         # === Rainbow Branch Color Pool (shown when rainbow enabled) ===
-        # Add top margin to reduce spacing when pool is visible
-        pool_row = QHBoxLayout()
-        pool_row.setContentsMargins(0, 0, 0, 0)
-        pool_row.setSpacing(0)
-
         self.rainbow_label_pool = QLabel("Color Pool:")
         self.rainbow_label_pool.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.rainbow_label_pool.setMinimumWidth(self.LABEL_WIDTH)
-        pool_row.addWidget(self.rainbow_label_pool)
+        self.rainbow_label_pool.setFixedWidth(self.LABEL_WIDTH)
+        layout.addWidget(self.rainbow_label_pool, row, 0)
 
         # Rainbow color buttons container - 2 rows with flexible spacing
         buttons_container = QWidget()
@@ -187,17 +182,16 @@ class ColorSchemeSection(CollapsiblePanel):
             buttons_layout.addLayout(btn_row_layout)
 
         buttons_container.setLayout(buttons_layout)
-        pool_row.addWidget(buttons_container)
 
-        # Wrap pool in a widget for visibility control
+        # Wrap pool buttons in a widget for visibility control
         self.rainbow_pool_widget = QWidget()
         pool_layout = QVBoxLayout()
         pool_layout.setContentsMargins(0, 0, 0, 0)
         pool_layout.setSpacing(0)
-        pool_layout.addLayout(pool_row)
+        pool_layout.addWidget(buttons_container)
         self.rainbow_pool_widget.setLayout(pool_layout)
 
-        layout.addWidget(self.rainbow_pool_widget, row, 0, 1, 2)
+        layout.addWidget(self.rainbow_pool_widget, row, 1)
         self.rainbow_buttons_row = row
         row += 1
 
@@ -208,7 +202,7 @@ class ColorSchemeSection(CollapsiblePanel):
         # Background color
         self.bg_label = QLabel("Background:")
         self.bg_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.bg_label.setMinimumWidth(self.LABEL_WIDTH)
+        self.bg_label.setFixedWidth(self.LABEL_WIDTH)
         layout.addWidget(self.bg_label, row, 0)
 
         self.bg_color_btn = QPushButton()
@@ -224,7 +218,7 @@ class ColorSchemeSection(CollapsiblePanel):
         # Text/Foreground color
         self.text_label = QLabel("Text Color:")
         self.text_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.text_label.setMinimumWidth(self.LABEL_WIDTH)
+        self.text_label.setFixedWidth(self.LABEL_WIDTH)
         layout.addWidget(self.text_label, row, 0)
 
         self.text_color_btn = QPushButton()
@@ -240,7 +234,7 @@ class ColorSchemeSection(CollapsiblePanel):
         # Border color
         self.border_label = QLabel("Border:")
         self.border_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.border_label.setMinimumWidth(self.LABEL_WIDTH)
+        self.border_label.setFixedWidth(self.LABEL_WIDTH)
         layout.addWidget(self.border_label, row, 0)
 
         self.border_color_btn = QPushButton()
@@ -256,7 +250,7 @@ class ColorSchemeSection(CollapsiblePanel):
         # Connector color
         self.conn_label = QLabel("Connector:")
         self.conn_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.conn_label.setMinimumWidth(self.LABEL_WIDTH)
+        self.conn_label.setFixedWidth(self.LABEL_WIDTH)
         layout.addWidget(self.conn_label, row, 0)
 
         self.conn_color_btn = QPushButton()
@@ -272,7 +266,7 @@ class ColorSchemeSection(CollapsiblePanel):
         # Canvas background (show only when Layer is canvas)
         self.canvas_label = QLabel("Canvas:")
         self.canvas_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.canvas_label.setMinimumWidth(self.LABEL_WIDTH)
+        self.canvas_label.setFixedWidth(self.LABEL_WIDTH)
         layout.addWidget(self.canvas_label, row, 0)
 
         self.canvas_picker = QPushButton()
@@ -293,7 +287,7 @@ class ColorSchemeSection(CollapsiblePanel):
 
         self.rainbow_bg_label = QLabel("Background:")
         self.rainbow_bg_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.rainbow_bg_label.setMinimumWidth(self.LABEL_WIDTH)
+        self.rainbow_bg_label.setFixedWidth(self.LABEL_WIDTH)
         bg_row.addWidget(self.rainbow_bg_label)
 
         bg_row.addStretch()
@@ -312,7 +306,7 @@ class ColorSchemeSection(CollapsiblePanel):
 
         self.rainbow_border_label = QLabel("Border:")
         self.rainbow_border_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.rainbow_border_label.setMinimumWidth(self.LABEL_WIDTH)
+        self.rainbow_border_label.setFixedWidth(self.LABEL_WIDTH)
         border_row.addWidget(self.rainbow_border_label)
 
         border_row.addStretch()
@@ -327,7 +321,7 @@ class ColorSchemeSection(CollapsiblePanel):
         # Level 2/3+: Brightness adjustment
         self.brightness_label = QLabel("Brightness:")
         self.brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.brightness_label.setMinimumWidth(self.LABEL_WIDTH)
+        self.brightness_label.setFixedWidth(self.LABEL_WIDTH)
         layout.addWidget(self.brightness_label, row, 0)
 
         brightness_layout = QHBoxLayout()

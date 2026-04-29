@@ -20,7 +20,7 @@ class SpacingSection(CollapsiblePanel):
     spacing_changed = Signal(dict)
 
     # UI constants
-    LABEL_WIDTH = 75
+    LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
 
@@ -61,7 +61,7 @@ class SpacingSection(CollapsiblePanel):
         # Horizontal spacing (Parent-Child)
         pc_label = QLabel("H-Spacing:")
         pc_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        pc_label.setMinimumWidth(self.LABEL_WIDTH)
+        pc_label.setFixedWidth(self.LABEL_WIDTH)
         layout.addWidget(pc_label, row, 0)
 
         self.parent_child_spin = QSpinBox()
@@ -75,7 +75,7 @@ class SpacingSection(CollapsiblePanel):
         # Vertical spacing (Sibling)
         sib_label = QLabel("V-Spacing:")
         sib_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        sib_label.setMinimumWidth(self.LABEL_WIDTH)
+        sib_label.setFixedWidth(self.LABEL_WIDTH)
         layout.addWidget(sib_label, row, 0)
 
         self.sibling_spin = QSpinBox()

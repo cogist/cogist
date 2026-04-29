@@ -21,7 +21,7 @@ class ShadowSection(CollapsiblePanel):
     shadow_changed = Signal(dict)
 
     # UI constants
-    LABEL_WIDTH = 75
+    LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
 
@@ -64,7 +64,7 @@ class ShadowSection(CollapsiblePanel):
         # Offset X
         offset_x_label = QLabel("Offset X:")
         offset_x_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        offset_x_label.setMinimumWidth(self.LABEL_WIDTH)
+        offset_x_label.setFixedWidth(self.LABEL_WIDTH)
         offset_x_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
         layout.addWidget(offset_x_label, row, 0)
 
@@ -80,7 +80,7 @@ class ShadowSection(CollapsiblePanel):
         # Offset Y
         offset_y_label = QLabel("Offset Y:")
         offset_y_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        offset_y_label.setMinimumWidth(self.LABEL_WIDTH)
+        offset_y_label.setFixedWidth(self.LABEL_WIDTH)
         offset_y_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
         layout.addWidget(offset_y_label, row, 0)
 
@@ -96,7 +96,7 @@ class ShadowSection(CollapsiblePanel):
         # Blur
         blur_label = QLabel("Blur:")
         blur_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        blur_label.setMinimumWidth(self.LABEL_WIDTH)
+        blur_label.setFixedWidth(self.LABEL_WIDTH)
         blur_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
         layout.addWidget(blur_label, row, 0)
 
@@ -112,7 +112,7 @@ class ShadowSection(CollapsiblePanel):
         # Color
         color_label = QLabel("Color:")
         color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        color_label.setMinimumWidth(self.LABEL_WIDTH)
+        color_label.setFixedWidth(self.LABEL_WIDTH)
         color_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
         layout.addWidget(color_label, row, 0)
 

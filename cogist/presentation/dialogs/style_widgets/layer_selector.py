@@ -26,7 +26,7 @@ class LayerSelector(QFrame):
     layer_changed = Signal(str)
 
     # UI Constants
-    LABEL_WIDTH = 75
+    LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
 

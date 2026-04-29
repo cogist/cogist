@@ -36,7 +36,7 @@ class ConnectorSection(CollapsiblePanel):
     style_changed = Signal(dict)
 
     # UI constants
-    LABEL_WIDTH = 75
+    LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
 
@@ -71,7 +71,7 @@ class ConnectorSection(CollapsiblePanel):
         # Connector shape selector - using reusable VisualPreviewButton
         shape_label = QLabel("Shape:")
         shape_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        shape_label.setMinimumWidth(self.LABEL_WIDTH)
+        shape_label.setFixedWidth(self.LABEL_WIDTH)
         layout.addWidget(shape_label, 0, 0)
 
         # Create visual options for popup
@@ -101,7 +101,7 @@ class ConnectorSection(CollapsiblePanel):
         # Connector style
         style_label = QLabel("Style:")
         style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        style_label.setMinimumWidth(self.LABEL_WIDTH)
+        style_label.setFixedWidth(self.LABEL_WIDTH)
         layout.addWidget(style_label, 1, 0)
 
         # Get initial connector style from current_style
@@ -131,7 +131,7 @@ class ConnectorSection(CollapsiblePanel):
         # Connector width
         width_label = QLabel("Width:")
         width_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        width_label.setMinimumWidth(self.LABEL_WIDTH)
+        width_label.setFixedWidth(self.LABEL_WIDTH)
         layout.addWidget(width_label, 2, 0)
 
         self.connector_width_spin = QSpinBox()
