@@ -112,7 +112,7 @@ class ColorSchemeSection(CollapsiblePanel):
         """Initialize content on first expand."""
         layout = QGridLayout()
         layout.setSpacing(6)
-        layout.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
+        layout.setContentsMargins(self.GROUP_MARGIN, 6, self.GROUP_MARGIN, 16)
         layout.setColumnStretch(0, 0)  # Label column - fixed width
         layout.setColumnStretch(1, 1)  # Widget column - stretchable
 
