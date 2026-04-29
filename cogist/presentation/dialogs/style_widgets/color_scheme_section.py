@@ -417,8 +417,8 @@ class ColorSchemeSection(CollapsiblePanel):
             for btn in self.rainbow_buttons:
                 btn.setVisible(True)
 
-            if is_level_1 or is_level_2 or is_level_3_plus:
-                # Level 1/2/3+: Show rainbow bg/border toggles
+            if is_level_2 or is_level_3_plus:
+                # Level 2/3+: Show rainbow bg/border toggles AND brightness controls
                 if self.rainbow_bg_label:
                     self.rainbow_bg_label.setVisible(True)
                 if self.rainbow_bg_check:
@@ -428,23 +428,32 @@ class ColorSchemeSection(CollapsiblePanel):
                 if self.rainbow_border_check:
                     self.rainbow_border_check.setVisible(True)
 
-                # Level 1 only: Hide brightness controls
-                if is_level_1:
-                    if self.brightness_label:
-                        self.brightness_label.setVisible(False)
-                    if self.brightness_check:
-                        self.brightness_check.setVisible(False)
-                    if self.brightness_slider:
-                        self.brightness_slider.setVisible(False)
-
-            elif is_level_2 or is_level_3_plus:
-                # Level 2/3+: Show brightness adjustment
+                # Show brightness adjustment for level 2/3+
                 if self.brightness_label:
                     self.brightness_label.setVisible(True)
                 if self.brightness_check:
                     self.brightness_check.setVisible(True)
                 if self.brightness_slider:
                     self.brightness_slider.setVisible(True)
+
+            elif is_level_1:
+                # Level 1 only: Show rainbow bg/border toggles, hide brightness controls
+                if self.rainbow_bg_label:
+                    self.rainbow_bg_label.setVisible(True)
+                if self.rainbow_bg_check:
+                    self.rainbow_bg_check.setVisible(True)
+                if self.rainbow_border_label:
+                    self.rainbow_border_label.setVisible(True)
+                if self.rainbow_border_check:
+                    self.rainbow_border_check.setVisible(True)
+
+                # Hide brightness controls for level 1
+                if self.brightness_label:
+                    self.brightness_label.setVisible(False)
+                if self.brightness_check:
+                    self.brightness_check.setVisible(False)
+                if self.brightness_slider:
+                    self.brightness_slider.setVisible(False)
             else:
                 # Other roles (root, canvas): hide level-specific rainbow controls but keep color pool visible
                 if self.rainbow_bg_label:
