@@ -119,24 +119,23 @@ class ColorSchemeSection(CollapsiblePanel):
         row = 0
 
         # === Global Rainbow Branch Switch (always visible) ===
+        # Add a wrapper widget with padding to match the height of other rows
+        switch_row = QHBoxLayout()
+        switch_row.setContentsMargins(0, 6, 0, 6)  # Vertical padding to match row height
+        switch_row.setSpacing(0)
+
         self.rainbow_label = QLabel("Rainbow Branches:")
         self.rainbow_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.rainbow_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(self.rainbow_label, row, 0)
+        switch_row.addWidget(self.rainbow_label)
 
-        # Add stretch to push switch to the right
-        layout.setColumnStretch(1, 1)  # Stretch column to push content right
+        switch_row.addStretch()
 
         self.rainbow_check = ToggleSwitch()
         self.rainbow_check.toggled.connect(self._on_rainbow_changed)
-        layout.addWidget(self.rainbow_check, row, 1, Qt.AlignRight)
-        row += 1
+        switch_row.addWidget(self.rainbow_check)
 
-        # Separator line
-        separator = QLabel()
-        separator.setFrameStyle(QLabel.HLine | QLabel.Sunken)
-        separator.setStyleSheet("color: #cccccc;")
-        layout.addWidget(separator, row, 0, 1, 2)
+        layout.addLayout(switch_row, row, 0, 1, 2)
         row += 1
 
         # Background color

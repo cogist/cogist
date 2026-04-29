@@ -21,7 +21,7 @@ __all__ = [
     "VisualOptionButton",
     "VisualPreviewButton",
     "VisualSelector",
-    
+
     # Preview generators
     "generate_bezier_preview",
     "generate_bezier_uniform_preview",
