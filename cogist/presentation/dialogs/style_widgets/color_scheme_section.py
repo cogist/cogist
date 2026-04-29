@@ -95,6 +95,11 @@ class ColorSchemeSection(CollapsiblePanel):
         self.brightness_check: QCheckBox | None = None
         self.brightness_slider: QSlider | None = None
 
+        # Labels for rainbow mode controls
+        self.rainbow_bg_label: QLabel | None = None
+        self.rainbow_border_label: QLabel | None = None
+        self.brightness_label: QLabel | None = None
+
         self.toggled.connect(self._on_toggled)
 
     def _on_toggled(self, expanded: bool):
@@ -238,6 +243,57 @@ class ColorSchemeSection(CollapsiblePanel):
         for btn in self.rainbow_buttons:
             btn.setVisible(False)
 
+        # === Per-Role Rainbow Mode Controls (dynamic visibility) ===
+
+        # Level 1: Rainbow Background checkbox
+        self.rainbow_bg_label = QLabel("Rainbow BG:")
+        self.rainbow_bg_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.rainbow_bg_label.setMinimumWidth(self.LABEL_WIDTH)
+        layout.addWidget(self.rainbow_bg_label, row, 0)
+
+        self.rainbow_bg_check = QCheckBox("Enable")
+        self.rainbow_bg_check.toggled.connect(lambda checked: self._emit_change("rainbow_bg_enabled", checked))
+        layout.addWidget(self.rainbow_bg_check, row, 1)
+        row += 1
+
+        # Level 1: Rainbow Border checkbox
+        self.rainbow_border_label = QLabel("Rainbow Border:")
+        self.rainbow_border_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.rainbow_border_label.setMinimumWidth(self.LABEL_WIDTH)
+        layout.addWidget(self.rainbow_border_label, row, 0)
+
+        self.rainbow_border_check = QCheckBox("Enable")
+        self.rainbow_border_check.toggled.connect(lambda checked: self._emit_change("rainbow_border_enabled", checked))
+        layout.addWidget(self.rainbow_border_check, row, 1)
+        row += 1
+
+        # Level 2/3+: Brightness adjustment
+        self.brightness_label = QLabel("Brightness:")
+        self.brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.brightness_label.setMinimumWidth(self.LABEL_WIDTH)
+        layout.addWidget(self.brightness_label, row, 0)
+
+        brightness_layout = QHBoxLayout()
+        brightness_layout.setSpacing(8)
+
+        self.brightness_check = QCheckBox("Adjust")
+        self.brightness_check.toggled.connect(lambda checked: self._on_brightness_toggled(checked))
+        brightness_layout.addWidget(self.brightness_check)
+
+        self.brightness_slider = QSlider(Qt.Horizontal)
+        self.brightness_slider.setRange(0, 100)
+        self.brightness_slider.setValue(50)
+        self.brightness_slider.setEnabled(False)
+        self.brightness_slider.valueChanged.connect(lambda value: self._emit_change("brightness_amount", value / 100.0))
+        brightness_layout.addWidget(self.brightness_slider)
+
+        brightness_layout.addStretch()
+        layout.addLayout(brightness_layout, row, 1)
+        row += 1
+
+        # Initially hide all rainbow mode controls
+        self._hide_rainbow_mode_controls()
+
         self.setLayout(layout)
 
         # Apply current role visibility after content is created
@@ -264,29 +320,86 @@ class ColorSchemeSection(CollapsiblePanel):
             return
 
         is_canvas = self.current_role == "canvas"
+        is_level_1 = self.current_role == "level_1"
+        is_level_2 = self.current_role == "level_2"
+        is_level_3_plus = self.current_role == "level_3_plus"
+
+        rainbow_enabled = self._rainbow_visible
 
         # Node colors (bg, text, border, connector) - hide for canvas
         if self.bg_label:
             self.bg_label.setVisible(not is_canvas)
         if self.bg_color_btn:
-            self.bg_color_btn.setVisible(not is_canvas)
+            # Hide in rainbow mode for level_1/2/3+
+            should_show_bg = not is_canvas and not (rainbow_enabled and (is_level_1 or is_level_2 or is_level_3_plus))
+            self.bg_color_btn.setVisible(should_show_bg)
 
         if self.text_label:
             self.text_label.setVisible(not is_canvas)
         if self.text_color_btn:
-            self.text_color_btn.setVisible(not is_canvas)
+            # Hide in rainbow mode (use auto contrast)
+            should_show_text = not is_canvas and not rainbow_enabled
+            self.text_color_btn.setVisible(should_show_text)
 
         if self.border_label:
             self.border_label.setVisible(not is_canvas)
         if self.border_color_btn:
-            self.border_color_btn.setVisible(not is_canvas)
+            # Hide in rainbow mode for level_1/2/3+
+            should_show_border = not is_canvas and not (rainbow_enabled and (is_level_1 or is_level_2 or is_level_3_plus))
+            self.border_color_btn.setVisible(should_show_border)
 
         if self.conn_label:
             self.conn_label.setVisible(not is_canvas)
         if self.conn_color_btn:
-            self.conn_color_btn.setVisible(not is_canvas)
+            # Hide in rainbow mode (follow node color)
+            should_show_conn = not is_canvas and not rainbow_enabled
+            self.conn_color_btn.setVisible(should_show_conn)
 
-        # Auto checkbox - show only for level_2 and level_3_plus
+        # Rainbow mode controls - show based on role and rainbow state
+        if rainbow_enabled:
+            if is_level_1:
+                # Level 1: Show rainbow bg/border checkboxes
+                if self.rainbow_bg_label:
+                    self.rainbow_bg_label.setVisible(True)
+                if self.rainbow_bg_check:
+                    self.rainbow_bg_check.setVisible(True)
+                if self.rainbow_border_label:
+                    self.rainbow_border_label.setVisible(True)
+                if self.rainbow_border_check:
+                    self.rainbow_border_check.setVisible(True)
+
+                # Hide brightness controls
+                if self.brightness_label:
+                    self.brightness_label.setVisible(False)
+                if self.brightness_check:
+                    self.brightness_check.setVisible(False)
+                if self.brightness_slider:
+                    self.brightness_slider.setVisible(False)
+
+            elif is_level_2 or is_level_3_plus:
+                # Level 2/3+: Show brightness adjustment
+                if self.brightness_label:
+                    self.brightness_label.setVisible(True)
+                if self.brightness_check:
+                    self.brightness_check.setVisible(True)
+                if self.brightness_slider:
+                    self.brightness_slider.setVisible(True)
+
+                # Hide rainbow bg/border checkboxes
+                if self.rainbow_bg_label:
+                    self.rainbow_bg_label.setVisible(False)
+                if self.rainbow_bg_check:
+                    self.rainbow_bg_check.setVisible(False)
+                if self.rainbow_border_label:
+                    self.rainbow_border_label.setVisible(False)
+                if self.rainbow_border_check:
+                    self.rainbow_border_check.setVisible(False)
+            else:
+                # Other roles (root, canvas): hide all rainbow mode controls
+                self._hide_rainbow_mode_controls()
+        else:
+            # Rainbow disabled: hide all rainbow mode controls
+            self._hide_rainbow_mode_controls()
 
         # Canvas background - show only for canvas
         if self.canvas_label:
@@ -303,6 +416,9 @@ class ColorSchemeSection(CollapsiblePanel):
         for btn in self.rainbow_buttons:
             btn.setVisible(enabled)
 
+        # Update role-specific controls visibility
+        self._apply_role_visibility()
+
         # Force layout update
         if self.rainbow_buttons:
             self.updateGeometry()
@@ -310,6 +426,32 @@ class ColorSchemeSection(CollapsiblePanel):
                 self.layout().update()
 
         self._emit_change("use_rainbow", enabled)
+
+    def _hide_rainbow_mode_controls(self):
+        """Hide all rainbow mode specific controls."""
+        # Level 1 controls
+        if self.rainbow_bg_label:
+            self.rainbow_bg_label.setVisible(False)
+        if self.rainbow_bg_check:
+            self.rainbow_bg_check.setVisible(False)
+        if self.rainbow_border_label:
+            self.rainbow_border_label.setVisible(False)
+        if self.rainbow_border_check:
+            self.rainbow_border_check.setVisible(False)
+
+        # Level 2/3+ controls
+        if self.brightness_label:
+            self.brightness_label.setVisible(False)
+        if self.brightness_check:
+            self.brightness_check.setVisible(False)
+        if self.brightness_slider:
+            self.brightness_slider.setVisible(False)
+
+    def _on_brightness_toggled(self, checked: bool):
+        """Handle brightness checkbox state change."""
+        if self.brightness_slider:
+            self.brightness_slider.setEnabled(checked)
+        self._emit_change("brightness_enabled", checked)
 
     def _edit_rainbow_color(self, index: int):
         """Edit a rainbow branch color."""
@@ -460,11 +602,41 @@ class ColorSchemeSection(CollapsiblePanel):
             rainbow_enabled = colors["use_rainbow"]
             self._rainbow_visible = rainbow_enabled
 
+            # Update rainbow checkbox state (block signals to avoid recursion)
+            if self.rainbow_check:
+                self.rainbow_check.blockSignals(True)
+                self.rainbow_check.setChecked(rainbow_enabled)
+                self.rainbow_check.blockSignals(False)
+
             # Update button visibility based on loaded state
-            is_level_1 = self.current_role == "level_1"
-            visible = is_level_1 and rainbow_enabled
             for btn in self.rainbow_buttons:
-                btn.setVisible(visible)
+                btn.setVisible(rainbow_enabled)
+
+            # Update role-specific controls
+            self._apply_role_visibility()
+
+        # Set rainbow mode control values
+        if "rainbow_bg_enabled" in colors and self.rainbow_bg_check:
+            self.rainbow_bg_check.blockSignals(True)
+            self.rainbow_bg_check.setChecked(colors["rainbow_bg_enabled"])
+            self.rainbow_bg_check.blockSignals(False)
+
+        if "rainbow_border_enabled" in colors and self.rainbow_border_check:
+            self.rainbow_border_check.blockSignals(True)
+            self.rainbow_border_check.setChecked(colors["rainbow_border_enabled"])
+            self.rainbow_border_check.blockSignals(False)
+
+        if "brightness_enabled" in colors and self.brightness_check:
+            self.brightness_check.blockSignals(True)
+            self.brightness_check.setChecked(colors["brightness_enabled"])
+            self.brightness_check.blockSignals(False)
+            if self.brightness_slider:
+                self.brightness_slider.setEnabled(colors["brightness_enabled"])
+
+        if "brightness_amount" in colors and self.brightness_slider:
+            self.brightness_slider.blockSignals(True)
+            self.brightness_slider.setValue(int(colors["brightness_amount"] * 100))
+            self.brightness_slider.blockSignals(False)
 
         # Set rainbow colors
         if "rainbow_pool" in colors and self.rainbow_buttons:
