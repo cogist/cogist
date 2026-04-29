@@ -752,9 +752,23 @@ class AdvancedStyleTab(QWidget):
 
     def _on_shadow_enabled_changed(self, enabled: bool):
         """Handle font shadow enabled state change."""
-        self.shadow_section.setVisible(enabled)
         if enabled:
+            # Disable updates on parent to prevent layout flash
+            self.setUpdatesEnabled(False)
+
+            # Initialize content first if not already initialized (lazy init)
+            if not self.shadow_section._initialized:
+                self.shadow_section._init_content()
+                self.shadow_section._initialized = True
+
+            # Set collapsed state and make visible while updates are disabled
             self.shadow_section.setCollapsed(False)
+            self.shadow_section.setVisible(True)
+
+            # Re-enable updates - Qt will do a single layout update
+            self.setUpdatesEnabled(True)
+        else:
+            self.shadow_section.setVisible(False)
 
         # Update using command system if available
         if self.current_layer != "canvas":
@@ -821,9 +835,23 @@ class AdvancedStyleTab(QWidget):
 
     def _on_font_shadow_enabled_changed(self, enabled: bool):
         """Handle font shadow enabled state change from FontStyleSection."""
-        self.shadow_section.setVisible(enabled)
         if enabled:
+            # Disable updates on parent to prevent layout flash
+            self.setUpdatesEnabled(False)
+
+            # Initialize content first if not already initialized (lazy init)
+            if not self.shadow_section._initialized:
+                self.shadow_section._init_content()
+                self.shadow_section._initialized = True
+
+            # Set collapsed state and make visible while updates are disabled
             self.shadow_section.setCollapsed(False)
+            self.shadow_section.setVisible(True)
+
+            # Re-enable updates - Qt will do a single layout update
+            self.setUpdatesEnabled(True)
+        else:
+            self.shadow_section.setVisible(False)
 
         # Update using command system if available
         if self.current_layer != "canvas":
