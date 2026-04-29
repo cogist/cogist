@@ -8,8 +8,6 @@ Provides controls for customizing color scheme including:
 
 This section is Part of Presentation Layer (UI).
 """
-
-
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
@@ -21,6 +19,8 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSlider,
 )
+
+from cogist.presentation.widgets import ToggleSwitch
 
 from .collapsible_panel import CollapsiblePanel
 
@@ -85,7 +85,7 @@ class ColorSchemeSection(CollapsiblePanel):
 
         # Rainbow branch references
         self.rainbow_label: QLabel | None = None
-        self.rainbow_check: QCheckBox | None = None
+        self.rainbow_check: ToggleSwitch | None = None
         self.rainbow_buttons: list[QPushButton] = []
         self.rainbow_colors: list[str] = []
 
@@ -124,7 +124,7 @@ class ColorSchemeSection(CollapsiblePanel):
         self.rainbow_label.setMinimumWidth(self.LABEL_WIDTH)
         layout.addWidget(self.rainbow_label, row, 0)
 
-        self.rainbow_check = QCheckBox("Enable Rainbow")
+        self.rainbow_check = ToggleSwitch()
         self.rainbow_check.toggled.connect(self._on_rainbow_changed)
         layout.addWidget(self.rainbow_check, row, 1)
         row += 1
