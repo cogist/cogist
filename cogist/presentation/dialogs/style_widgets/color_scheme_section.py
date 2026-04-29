@@ -267,10 +267,16 @@ class ColorSchemeSection(CollapsiblePanel):
         row += 1
 
         # Canvas background (show only when Layer is canvas)
+        # Wrap in a container widget so hiding the container removes the entire row from layout
+        self.canvas_widget = QWidget()
+        canvas_layout = QHBoxLayout()
+        canvas_layout.setContentsMargins(0, 0, 0, 0)
+        canvas_layout.setSpacing(8)
+
         self.canvas_label = QLabel("Canvas:")
         self.canvas_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.canvas_label.setFixedWidth(self._label_width)
-        layout.addWidget(self.canvas_label, row, 0)
+        canvas_layout.addWidget(self.canvas_label)
 
         self.canvas_picker = QPushButton()
         self.canvas_picker.setFixedHeight(self.WIDGET_HEIGHT)
@@ -278,7 +284,10 @@ class ColorSchemeSection(CollapsiblePanel):
             "background-color: #FFFFFF; border: 1px solid #ccc; border-radius: 6px;"
         )
         self.canvas_picker.clicked.connect(lambda: self._pick_color("canvas_bg"))
-        layout.addWidget(self.canvas_picker, row, 1)
+        canvas_layout.addWidget(self.canvas_picker, 1)  # Stretch factor 1
+
+        self.canvas_widget.setLayout(canvas_layout)
+        layout.addWidget(self.canvas_widget, row, 0, 1, 2)
         row += 1
 
         # === Per-Role Rainbow Mode Controls (dynamic visibility) ===
@@ -386,6 +395,24 @@ class ColorSchemeSection(CollapsiblePanel):
         # This ensures color pool is correctly shown/hidden after lazy initialization
         self._apply_role_visibility()
 
+    def _get_widget_row(self, grid_layout: QGridLayout, widget: QWidget) -> int | None:
+        """Get the row index of a widget in QGridLayout.
+
+        Args:
+            grid_layout: The QGridLayout to search
+            widget: The widget to find
+
+        Returns:
+            The row index if found, None otherwise
+        """
+        # Iterate through all cells in the grid
+        for row in range(grid_layout.rowCount()):
+            for col in range(grid_layout.columnCount()):
+                item = grid_layout.itemAtPosition(row, col)
+                if item and item.widget() == widget:
+                    return row
+        return None
+
     def set_role(self, role: str):
         """Set current role and update visibility.
 
@@ -404,6 +431,9 @@ class ColorSchemeSection(CollapsiblePanel):
         """Apply visibility settings based on current role."""
         if not self._initialized:
             return
+
+        # Disable updates to prevent layout flash and margin issues during multiple setVisible calls
+        self.setUpdatesEnabled(False)
 
         is_canvas = self.current_role == "canvas"
         is_level_1 = self.current_role == "level_1"
@@ -490,6 +520,12 @@ class ColorSchemeSection(CollapsiblePanel):
                 # Hide brightness and opacity container for level 1
                 if self.brightness_opacity_widget:
                     self.brightness_opacity_widget.setVisible(False)
+                    # Set row minimum height to 0 to remove space
+                    grid_layout = self.layout()
+                    if grid_layout:
+                        row_info = self._get_widget_row(grid_layout, self.brightness_opacity_widget)
+                        if row_info is not None:
+                            grid_layout.setRowMinimumHeight(row_info, 0)
 
                 # Hide individual controls (for backward compatibility)
                 if self.brightness_label:
@@ -514,6 +550,12 @@ class ColorSchemeSection(CollapsiblePanel):
                 # Hide brightness and opacity container for root/canvas
                 if self.brightness_opacity_widget:
                     self.brightness_opacity_widget.setVisible(False)
+                    # Set row minimum height to 0 to remove space
+                    grid_layout = self.layout()
+                    if grid_layout:
+                        row_info = self._get_widget_row(grid_layout, self.brightness_opacity_widget)
+                        if row_info is not None:
+                            grid_layout.setRowMinimumHeight(row_info, 0)
 
                 # Hide individual controls (for backward compatibility)
                 if self.brightness_label:
@@ -529,15 +571,34 @@ class ColorSchemeSection(CollapsiblePanel):
             self._hide_rainbow_mode_controls()
 
         # Canvas background - show only for canvas
-        if self.canvas_label:
-            self.canvas_label.setVisible(is_canvas)
-        if self.canvas_picker:
-            self.canvas_picker.setVisible(is_canvas)
+        if self.canvas_widget:
+            self.canvas_widget.setVisible(is_canvas)
+            # Set row minimum height to 0 when hidden to remove space
+            grid_layout = self.layout()
+            if grid_layout:
+                row_info = self._get_widget_row(grid_layout, self.canvas_widget)
+                if row_info is not None:
+                    grid_layout.setRowMinimumHeight(row_info, 0 if not is_canvas else -1)
+
+        # Re-enable updates
+        self.setUpdatesEnabled(True)
+
+        # Force parent layout to recalculate after visibility changes
+        # This ensures QGridLayout properly shrinks when widgets are hidden
+        parent = self.parentWidget()
+        if parent:
+            parent_layout = parent.layout()
+            if parent_layout:
+                parent_layout.invalidate()
+                parent_layout.activate()
 
     def _on_rainbow_changed(self, checked: bool):
         """Handle rainbow checkbox state change."""
         enabled = checked
         self._rainbow_visible = enabled
+
+        # Disable updates to prevent layout flash during multiple setVisible calls
+        self.setUpdatesEnabled(False)
 
         # Show/hide entire rainbow pool widget
         if self.rainbow_pool_widget:
@@ -546,16 +607,16 @@ class ColorSchemeSection(CollapsiblePanel):
         # Update role-specific controls visibility
         self._apply_role_visibility()
 
-        # Force layout update
-        if self.rainbow_buttons:
-            self.updateGeometry()
-            if self.layout():
-                self.layout().update()
+        # Re-enable updates - Qt will do a single layout update
+        self.setUpdatesEnabled(True)
 
         self._emit_change("use_rainbow", enabled)
 
     def _hide_rainbow_mode_controls(self):
         """Hide all rainbow mode specific controls."""
+        # Disable updates to prevent layout flash and margin issues
+        self.setUpdatesEnabled(False)
+
         # Rainbow pool widget (container)
         if self.rainbow_pool_widget:
             self.rainbow_pool_widget.setVisible(False)
@@ -578,15 +639,27 @@ class ColorSchemeSection(CollapsiblePanel):
         if self.rainbow_border_check:
             self.rainbow_border_check.setVisible(False)
 
-        # Level 2/3+ controls
-        if self.brightness_label:
-            self.brightness_label.setVisible(False)
-        if self.brightness_slider:
-            self.brightness_slider.setVisible(False)
-        if self.opacity_label:
-            self.opacity_label.setVisible(False)
-        if self.opacity_slider:
-            self.opacity_slider.setVisible(False)
+        # Level 2/3+ controls - hide the entire container
+        if self.brightness_opacity_widget:
+            self.brightness_opacity_widget.setVisible(False)
+            # Set row minimum height to 0 to remove space
+            grid_layout = self.layout()
+            if grid_layout:
+                row_info = self._get_widget_row(grid_layout, self.brightness_opacity_widget)
+                if row_info is not None:
+                    grid_layout.setRowMinimumHeight(row_info, 0)
+
+        # Re-enable updates
+        self.setUpdatesEnabled(True)
+
+        # Force parent layout to recalculate after visibility changes
+        # This ensures QGridLayout properly shrinks when widgets are hidden
+        parent = self.parentWidget()
+        if parent:
+            parent_layout = parent.layout()
+            if parent_layout:
+                parent_layout.invalidate()
+                parent_layout.activate()
 
     def _edit_rainbow_color(self, index: int):
         """Edit a rainbow branch color."""
