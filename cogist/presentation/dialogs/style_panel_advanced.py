@@ -164,13 +164,9 @@ class AdvancedStyleTab(QWidget):
             # Spacing - read from role-based configuration
             "parent_child_spacing": self._get_level_spacing_for_layer(layer_name),
             "sibling_spacing": self._get_sibling_spacing_for_layer(layer_name),
-            # Rainbow branch (only for level_1)
-            "use_rainbow": color_scheme.use_rainbow_branches
-            if layer_name == "level_1"
-            else False,
-            "rainbow_pool": color_scheme.branch_colors
-            if layer_name == "level_1"
-            else [],
+            # Rainbow branch - global ColorScheme properties (same for all layers)
+            "use_rainbow": color_scheme.use_rainbow_branches,
+            "rainbow_pool": color_scheme.branch_colors,
         }
 
         return layer_data
@@ -929,10 +925,11 @@ class AdvancedStyleTab(QWidget):
             if "connector_color" in layer_data:
                 color_data["connector_color"] = layer_data["connector_color"]
 
-            # Note: use_rainbow is a global ColorScheme property, not per-layer
-            # It should NOT be updated when switching layers
-            # Only update rainbow pool for level_1 (for display purposes)
-            if self.current_layer == "level_1" and "rainbow_pool" in layer_data:
+            # Note: use_rainbow and rainbow_pool are global ColorScheme properties
+            # They should always be updated regardless of current layer
+            if "use_rainbow" in layer_data:
+                color_data["use_rainbow"] = layer_data["use_rainbow"]
+            if "rainbow_pool" in layer_data:
                 color_data["rainbow_pool"] = layer_data["rainbow_pool"]
 
             if color_data:

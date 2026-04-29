@@ -521,7 +521,7 @@ class ColorSchemeSection(CollapsiblePanel):
             self.rainbow_colors[index] = color.name(QColor.HexArgb)
             self.rainbow_buttons[index].setStyleSheet(
                 f"background-color: {self.rainbow_colors[index]}; "
-                "border: 1px solid #CCCCCC; border-radius: 3px;"
+                "border: none; border-radius: 4px;"
             )
             self._emit_change("rainbow_pool", self.rainbow_colors)
 
@@ -708,5 +708,5 @@ class ColorSchemeSection(CollapsiblePanel):
                 if i < len(self.rainbow_colors):
                     btn.setStyleSheet(
                         f"background-color: {self.rainbow_colors[i]}; "
-                        "border: 1px solid #CCCCCC; border-radius: 3px;"
+                        "border: none; border-radius: 4px;"
                     )
