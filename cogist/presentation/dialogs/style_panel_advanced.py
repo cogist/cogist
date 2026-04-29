@@ -125,20 +125,16 @@ class AdvancedStyleTab(QWidget):
             # Shape
             "shape": role_style.shape.basic_shape,
             "radius": role_style.shape.border_radius,
-            # Colors - node_colors is required and contains all roles
-            "bg_color": color_scheme.node_colors[role],
-            # text_colors is optional - auto contrast if not provided
+            # Colors - role_configs contains all roles
+            "bg_color": color_scheme.role_configs[role].bg_color,
+            # text_color from role config or auto contrast
             "text_color": (
-                color_scheme.text_colors[role]
-                if color_scheme.text_colors and role in color_scheme.text_colors
-                else self._auto_contrast(color_scheme.node_colors[role])
+                color_scheme.role_configs[role].text_color
+                if color_scheme.role_configs[role].text_color
+                else self._auto_contrast(color_scheme.role_configs[role].bg_color)
             ),
-            # border_colors is optional - None if not provided
-            "border_color": (
-                color_scheme.border_colors[role]
-                if color_scheme.border_colors and role in color_scheme.border_colors
-                else None
-            ),
+            # border_color from role config (None if not set)
+            "border_color": color_scheme.role_configs[role].border_color,
             # Font
             "font_family": role_style.font_family,
             "font_size": role_style.font_size,
@@ -358,19 +354,15 @@ class AdvancedStyleTab(QWidget):
             elif key == "bg_color":
                 # Background color goes to color_scheme
                 if color_scheme:
-                    color_scheme.node_colors[role] = value
+                    color_scheme.role_configs[role].bg_color = value
             elif key == "text_color":
                 # Text color goes to color_scheme
                 if color_scheme:
-                    if not color_scheme.text_colors:
-                        color_scheme.text_colors = {}
-                    color_scheme.text_colors[role] = value
+                    color_scheme.role_configs[role].text_color = value
             elif key == "border_color":
                 # Border color goes to color_scheme
                 if color_scheme:
-                    if not color_scheme.border_colors:
-                        color_scheme.border_colors = {}
-                    color_scheme.border_colors[role] = value
+                    color_scheme.role_configs[role].border_color = value
             elif key == "font_italic":
                 # Direct boolean assignment
                 if hasattr(role_style, "font_italic"):
@@ -587,19 +579,15 @@ class AdvancedStyleTab(QWidget):
             # Fallback: direct update without undo/redo
             # Handle node background color
             if "bg_color" in colors:
-                color_scheme.node_colors[role] = colors["bg_color"]
+                color_scheme.role_configs[role].bg_color = colors["bg_color"]
 
             # Handle text/foreground color
             if "text_color" in colors:
-                if not color_scheme.text_colors:
-                    color_scheme.text_colors = {}
-                color_scheme.text_colors[role] = colors["text_color"]
+                color_scheme.role_configs[role].text_color = colors["text_color"]
 
             # Handle border color
             if "border_color" in colors:
-                if not color_scheme.border_colors:
-                    color_scheme.border_colors = {}
-                color_scheme.border_colors[role] = colors["border_color"]
+                color_scheme.role_configs[role].border_color = colors["border_color"]
 
             # Handle connector color
             if (
@@ -1085,24 +1073,20 @@ class AdvancedStyleTab(QWidget):
             # Update color scheme
             if not style.resolved_color_scheme:
                 style.resolved_color_scheme = ColorScheme(
-                    name="Custom", description="", node_colors={}
+                    name="Custom", description=""
                 )
 
             # Set node color
             if "bg_color" in layer_data:
-                style.resolved_color_scheme.node_colors[role] = layer_data["bg_color"]
+                style.resolved_color_scheme.role_configs[role].bg_color = layer_data["bg_color"]
 
             # Set text color
             if "text_color" in layer_data:
-                if not style.resolved_color_scheme.text_colors:
-                    style.resolved_color_scheme.text_colors = {}
-                style.resolved_color_scheme.text_colors[role] = layer_data["text_color"]
+                style.resolved_color_scheme.role_configs[role].text_color = layer_data["text_color"]
 
             # Set border color (only if not None)
             if "border_color" in layer_data and layer_data["border_color"] is not None:
-                if not style.resolved_color_scheme.border_colors:
-                    style.resolved_color_scheme.border_colors = {}
-                style.resolved_color_scheme.border_colors[role] = layer_data[
+                style.resolved_color_scheme.role_configs[role].border_color = layer_data[
                     "border_color"
                 ]
 

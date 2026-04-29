@@ -193,25 +193,63 @@ class RoleBasedStyle:
 
 
 @dataclass
+class NodeColorConfig:
+    """Unified color configuration for any node role.
+
+    All roles share the same structure, with optional fields that may not be
+    meaningful for all roles (e.g., rainbow settings only apply to Level 1).
+    """
+    bg_color: str = "#FFFFFFFF"
+    border_color: str | None = None
+    text_color: str | None = None
+
+    # Rainbow branch settings (only meaningful for PRIMARY/Level 1)
+    rainbow_bg_enabled: bool = True
+    rainbow_border_enabled: bool = True
+
+    # Brightness adjustment for child nodes (only meaningful for SECONDARY/TERTIARY)
+    brightness_enabled: bool = True
+    brightness_amount: float = 0.5  # 0.0=fully darkened, 1.0=no change
+
+
+@dataclass
 class ColorScheme:
     """Color scheme (pure color definitions)."""
 
     name: str
     description: str
 
-    # Node colors by role (using HexArgb format to support transparency)
-    node_colors: dict[NodeRole, str] = field(default_factory=lambda: {
-        NodeRole.ROOT: "#FF2196F3",
-        NodeRole.PRIMARY: "#FF4CAF50",
-        NodeRole.SECONDARY: "#FFFF9800",
-        NodeRole.TERTIARY: "#FF9E9E9E",
+    # Per-role color configurations (following Template pattern)
+    role_configs: dict[NodeRole, NodeColorConfig] = field(default_factory=lambda: {
+        NodeRole.ROOT: NodeColorConfig(
+            bg_color="#FF2196F3",
+            rainbow_bg_enabled=False,
+            rainbow_border_enabled=False,
+            brightness_enabled=False,
+            brightness_amount=1.0,
+        ),
+        NodeRole.PRIMARY: NodeColorConfig(
+            bg_color="#FF4CAF50",
+            rainbow_bg_enabled=True,
+            rainbow_border_enabled=True,
+            brightness_enabled=False,
+            brightness_amount=1.0,
+        ),
+        NodeRole.SECONDARY: NodeColorConfig(
+            bg_color="#FFFF9800",
+            rainbow_bg_enabled=False,
+            rainbow_border_enabled=False,
+            brightness_enabled=True,
+            brightness_amount=0.5,
+        ),
+        NodeRole.TERTIARY: NodeColorConfig(
+            bg_color="#FF9E9E9E",
+            rainbow_bg_enabled=False,
+            rainbow_border_enabled=False,
+            brightness_enabled=True,
+            brightness_amount=0.3,
+        ),
     })
-
-    # Border colors (optional, if not provided use darker version of node color)
-    border_colors: dict[NodeRole, str] | None = None
-
-    # Text colors (optional, if not provided auto-select black/white based on brightness)
-    text_colors: dict[NodeRole, str] | None = None
 
     # Branch color pool (for rainbow branches) (using HexArgb format)
     branch_colors: list[str] = field(default_factory=lambda: [
@@ -221,10 +259,6 @@ class ColorScheme:
 
     # Enable rainbow branches
     use_rainbow_branches: bool = False
-
-    # Unified auto-inherit switch for derived levels (Level 2 & 3+)
-    # When True, Level 2/3+ colors are automatically calculated from parent levels
-    auto_inherit_enabled: bool = False
 
     # Base colors (using HexArgb format to support transparency)
     canvas_bg_color: str = "#FFFFFFFF"

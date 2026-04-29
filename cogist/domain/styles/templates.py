@@ -8,6 +8,7 @@ from .extended_styles import (
     BackgroundStyle,
     BorderStyle,
     ColorScheme,
+    NodeColorConfig,
     NodeRole,
     NodeShape,
     RoleBasedStyle,
@@ -191,18 +192,11 @@ def create_default_template() -> MindMapStyle:
     color_scheme = ColorScheme(
         name="default",
         description="Default blue color scheme",
-        node_colors={
-            NodeRole.ROOT: "#FF2196F3",
-            NodeRole.PRIMARY: "#FF4CAF50",
-            NodeRole.SECONDARY: "#FFFF9800",
-            NodeRole.TERTIARY: "#FF9E9E9E",
-        },
-        # Border colors (same as node colors for decorative lines)
-        border_colors={
-            NodeRole.ROOT: "#FF2196F3",
-            NodeRole.PRIMARY: "#FF4CAF50",
-            NodeRole.SECONDARY: "#FFFF9800",
-            NodeRole.TERTIARY: "#FF9E9E9E",
+        role_configs={
+            NodeRole.ROOT: NodeColorConfig(bg_color="#FF2196F3", border_color="#FF2196F3"),
+            NodeRole.PRIMARY: NodeColorConfig(bg_color="#FF4CAF50", border_color="#FF4CAF50"),
+            NodeRole.SECONDARY: NodeColorConfig(bg_color="#FFFF9800", border_color="#FFFF9800"),
+            NodeRole.TERTIARY: NodeColorConfig(bg_color="#FF9E9E9E", border_color="#FF9E9E9E"),
         },
         canvas_bg_color="#FFFFFFFF",
         edge_color="#FF666666",

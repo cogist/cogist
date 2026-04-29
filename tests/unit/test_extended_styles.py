@@ -4,6 +4,7 @@ from cogist.domain.styles import (
     BackgroundStyle,
     BorderStyle,
     ColorScheme,
+    NodeColorConfig,
     NodeRole,
     NodeShape,
     RoleBasedStyle,
@@ -136,16 +137,18 @@ def test_color_scheme():
     scheme = ColorScheme(
         name="Blue Theme",
         description="A blue color scheme",
-        node_colors={
-            NodeRole.ROOT: "#2196F3",
-            NodeRole.PRIMARY: "#4CAF50",
+        role_configs={
+            NodeRole.ROOT: NodeColorConfig(bg_color="#2196F3"),
+            NodeRole.PRIMARY: NodeColorConfig(bg_color="#4CAF50"),
+            NodeRole.SECONDARY: NodeColorConfig(),
+            NodeRole.TERTIARY: NodeColorConfig(),
         },
         canvas_bg_color="#FFFFFF",
         edge_color="#666666",
     )
 
     assert scheme.name == "Blue Theme"
-    assert scheme.node_colors[NodeRole.ROOT] == "#2196F3"
+    assert scheme.role_configs[NodeRole.ROOT].bg_color == "#2196F3"
     assert len(scheme.branch_colors) == 10  # Default branch colors
 
     print("✅ ColorScheme test passed")

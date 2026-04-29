@@ -6,6 +6,7 @@ from pathlib import Path
 from cogist.domain.styles import (
     ColorScheme,
     MindMapStyle,
+    NodeColorConfig,
     NodeRole,
     RoleBasedStyle,
     SpacingConfig,
@@ -83,9 +84,11 @@ def create_test_style_config() -> MindMapStyle:
     color_scheme = ColorScheme(
         name="test",
         description="Test colors",
-        node_colors={
-            NodeRole.ROOT: "#FF0000",
-            NodeRole.PRIMARY: "#00FF00",
+        role_configs={
+            NodeRole.ROOT: NodeColorConfig(bg_color="#FF0000"),
+            NodeRole.PRIMARY: NodeColorConfig(bg_color="#00FF00"),
+            NodeRole.SECONDARY: NodeColorConfig(),
+            NodeRole.TERTIARY: NodeColorConfig(),
         },
     )
 

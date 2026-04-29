@@ -8,6 +8,7 @@ from .extended_styles import (
     BorderStyle,
     ColorScheme,
     EdgeConfig,
+    NodeColorConfig,
     NodeShape,
     RoleBasedStyle,
     SpacingConfig,
@@ -219,12 +220,20 @@ def serialize_color_scheme(scheme: ColorScheme) -> dict:
     return {
         "name": scheme.name,
         "description": scheme.description,
-        "node_colors": {role.value: color for role, color in scheme.node_colors.items()},
-        "border_colors": {role.value: color for role, color in scheme.border_colors.items()} if scheme.border_colors else None,
-        "text_colors": {role.value: color for role, color in scheme.text_colors.items()} if scheme.text_colors else None,
+        "role_configs": {
+            role.value: {
+                "bg_color": config.bg_color,
+                "border_color": config.border_color,
+                "text_color": config.text_color,
+                "rainbow_bg_enabled": config.rainbow_bg_enabled,
+                "rainbow_border_enabled": config.rainbow_border_enabled,
+                "brightness_enabled": config.brightness_enabled,
+                "brightness_amount": config.brightness_amount,
+            }
+            for role, config in scheme.role_configs.items()
+        },
         "branch_colors": scheme.branch_colors,
         "use_rainbow_branches": scheme.use_rainbow_branches,
-        "auto_inherit_enabled": scheme.auto_inherit_enabled,
         "canvas_bg_color": scheme.canvas_bg_color,
         "edge_color": scheme.edge_color,
     }
@@ -232,34 +241,36 @@ def serialize_color_scheme(scheme: ColorScheme) -> dict:
 
 def deserialize_color_scheme(data: dict) -> ColorScheme:
     """Deserialize ColorScheme from JSON-compatible dict."""
-    node_colors = {
-        NodeRole(role): color
-        for role, color in data.get("node_colors", {}).items()
-    }
+    # Deserialize role_configs
+    role_configs = {}
+    for role_str, config_data in data.get("role_configs", {}).items():
+        role = NodeRole(role_str)
+        role_configs[role] = NodeColorConfig(
+            bg_color=config_data.get("bg_color", "#FFFFFFFF"),
+            border_color=config_data.get("border_color"),
+            text_color=config_data.get("text_color"),
+            rainbow_bg_enabled=config_data.get("rainbow_bg_enabled", True),
+            rainbow_border_enabled=config_data.get("rainbow_border_enabled", True),
+            brightness_enabled=config_data.get("brightness_enabled", True),
+            brightness_amount=config_data.get("brightness_amount", 0.5),
+        )
 
-    border_colors = None
-    if data.get("border_colors"):
-        border_colors = {
-            NodeRole(role): color
-            for role, color in data["border_colors"].items()
-        }
-
-    text_colors = None
-    if data.get("text_colors"):
-        text_colors = {
-            NodeRole(role): color
-            for role, color in data["text_colors"].items()
-        }
+    # Fallback to old format if role_configs not present (backward compatibility)
+    if not role_configs and "node_colors" in data:
+        for role_str, color in data.get("node_colors", {}).items():
+            role = NodeRole(role_str)
+            role_configs[role] = NodeColorConfig(
+                bg_color=color,
+                border_color=data.get("border_colors", {}).get(role_str) if data.get("border_colors") else None,
+                text_color=data.get("text_colors", {}).get(role_str) if data.get("text_colors") else None,
+            )
 
     return ColorScheme(
         name=data["name"],
         description=data.get("description", ""),
-        node_colors=node_colors,
-        border_colors=border_colors,
-        text_colors=text_colors,
+        role_configs=role_configs,
         branch_colors=data.get("branch_colors", []),
         use_rainbow_branches=data.get("use_rainbow_branches", False),
-        auto_inherit_enabled=data.get("auto_inherit_enabled", False),
         canvas_bg_color=data.get("canvas_bg_color", "#FFFFFFFF"),
         edge_color=data.get("edge_color", "#FF666666"),
     )

@@ -4,6 +4,7 @@ import json
 
 from cogist.domain.styles import (
     ColorScheme,
+    NodeColorConfig,
     NodeRole,
     RoleBasedStyle,
     SpacingConfig,
@@ -77,16 +78,19 @@ def test_color_scheme_serialization():
     scheme = ColorScheme(
         name="Blue Theme",
         description="A blue color scheme",
-        node_colors={
-            NodeRole.ROOT: "#2196F3",
-            NodeRole.PRIMARY: "#4CAF50",
-            NodeRole.SECONDARY: "#FF9800",
-        },
-        border_colors={
-            NodeRole.ROOT: "#1976D2",
-        },
-        text_colors={
-            NodeRole.ROOT: "#FFFFFF",
+        role_configs={
+            NodeRole.ROOT: NodeColorConfig(
+                bg_color="#2196F3",
+                border_color="#1976D2",
+                text_color="#FFFFFF",
+            ),
+            NodeRole.PRIMARY: NodeColorConfig(
+                bg_color="#4CAF50",
+            ),
+            NodeRole.SECONDARY: NodeColorConfig(
+                bg_color="#FF9800",
+            ),
+            NodeRole.TERTIARY: NodeColorConfig(),
         },
         branch_colors=["#FF6B6B", "#4ECDC4"],
         use_rainbow_branches=True,
@@ -106,12 +110,10 @@ def test_color_scheme_serialization():
     # Verify
     assert restored.name == scheme.name
     assert restored.description == scheme.description
-    assert restored.node_colors[NodeRole.ROOT] == "#2196F3"
-    assert restored.node_colors[NodeRole.PRIMARY] == "#4CAF50"
-    assert restored.border_colors is not None
-    assert restored.border_colors[NodeRole.ROOT] == "#1976D2"
-    assert restored.text_colors is not None
-    assert restored.text_colors[NodeRole.ROOT] == "#FFFFFF"
+    assert restored.role_configs[NodeRole.ROOT].bg_color == "#2196F3"
+    assert restored.role_configs[NodeRole.PRIMARY].bg_color == "#4CAF50"
+    assert restored.role_configs[NodeRole.ROOT].border_color == "#1976D2"
+    assert restored.role_configs[NodeRole.ROOT].text_color == "#FFFFFF"
     assert len(restored.branch_colors) == 2
     assert restored.use_rainbow_branches is True
     assert restored.canvas_bg_color == "#F5F5F5"

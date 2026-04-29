@@ -81,9 +81,6 @@ class ColorSchemeSection(CollapsiblePanel):
         self.conn_label: QLabel | None = None
         self.canvas_label: QLabel | None = None
 
-        # Auto checkbox (single switch for all colors)
-        self.auto_check: QCheckBox | None = None
-
         # Rainbow branch references
         self.rainbow_label: QLabel | None = None
         self.rainbow_check: QCheckBox | None = None
@@ -172,17 +169,11 @@ class ColorSchemeSection(CollapsiblePanel):
         layout.addWidget(self.conn_color_btn, row, 1)
         row += 1
 
-        # Auto checkbox (show only for level_2 and level_3_plus)
-        self.auto_label = QLabel("Auto:")
-        self.auto_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.auto_label.setMinimumWidth(self.LABEL_WIDTH)
-        self.auto_check = QCheckBox("Inherit from parent")
-        self.auto_check.stateChanged.connect(self._on_auto_changed)
-        layout.addWidget(self.auto_label, row, 0)
-        layout.addWidget(self.auto_check, row, 1)
-        row += 1
 
-        # Rainbow branch (show only for level_1)
+        # Rainbow branch section (show only for level_1)
+        # This will be shown/hidden based on rainbow state
+        self.rainbow_section_start_row = row
+
         self.rainbow_label = QLabel("Rainbow:")
         self.rainbow_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.rainbow_label.setMinimumWidth(self.LABEL_WIDTH)
@@ -193,7 +184,7 @@ class ColorSchemeSection(CollapsiblePanel):
         layout.addWidget(self.rainbow_check, row, 1)
         row += 1
 
-        # Rainbow color buttons (8 individual buttons, not wrapped in QWidget)
+        # Rainbow color buttons (8 individual buttons)
         self.rainbow_buttons = []
         self.rainbow_colors = self._default_rainbow.copy()
         rainbow_layout = QHBoxLayout()
@@ -202,7 +193,7 @@ class ColorSchemeSection(CollapsiblePanel):
 
         for i, color in enumerate(self.rainbow_colors):
             btn = QPushButton()
-            btn.setFixedSize(32, 32)  # Larger size for better visibility
+            btn.setFixedSize(32, 32)
             btn.setToolTip(f"Branch {i + 1} color")
             btn.setStyleSheet(
                 f"background-color: {color}; "
@@ -214,7 +205,11 @@ class ColorSchemeSection(CollapsiblePanel):
 
         rainbow_layout.addStretch()
         layout.addLayout(rainbow_layout, row, 0, 1, 2)
+        self.rainbow_buttons_row = row
         row += 1
+
+        # Initially hide rainbow section if not checked
+        self._update_rainbow_ui_visibility(False)
 
         # Canvas background (show only when Layer is canvas)
         self.canvas_label = QLabel("Canvas:")
@@ -257,7 +252,6 @@ class ColorSchemeSection(CollapsiblePanel):
 
         is_canvas = self.current_role == "canvas"
         is_level_1 = self.current_role == "level_1"
-        needs_auto = self.current_role in ("level_2", "level_3_plus")
 
         # Node colors (bg, text, border, connector) - hide for canvas
         if self.bg_label:
@@ -281,10 +275,6 @@ class ColorSchemeSection(CollapsiblePanel):
             self.conn_color_btn.setVisible(not is_canvas)
 
         # Auto checkbox - show only for level_2 and level_3_plus
-        if self.auto_label:
-            self.auto_label.setVisible(needs_auto)
-        if self.auto_check:
-            self.auto_check.setVisible(needs_auto)
 
         # Rainbow branch - show only for level_1
         if self.rainbow_label:
@@ -301,23 +291,6 @@ class ColorSchemeSection(CollapsiblePanel):
             self.canvas_label.setVisible(is_canvas)
         if self.canvas_picker:
             self.canvas_picker.setVisible(is_canvas)
-
-    def _on_auto_changed(self, state: int):
-        """Handle Auto checkbox state change."""
-        enabled = state == Qt.Checked
-
-        # Disable all color pickers when Auto is enabled
-        if self.bg_color_btn:
-            self.bg_color_btn.setEnabled(not enabled)
-        if self.text_color_btn:
-            self.text_color_btn.setEnabled(not enabled)
-        if self.border_color_btn:
-            self.border_color_btn.setEnabled(not enabled)
-        if self.conn_color_btn:
-            self.conn_color_btn.setEnabled(not enabled)
-
-        # Emit change for all color types
-        self._emit_change("auto_enabled", enabled)
 
     def _on_rainbow_changed(self, checked: bool):
         """Handle rainbow checkbox state change."""
@@ -448,8 +421,6 @@ class ColorSchemeSection(CollapsiblePanel):
             )
 
         # Auto state
-        if self.auto_check:
-            colors["auto_enabled"] = self.auto_check.isChecked()
 
         # Rainbow
         if self.rainbow_check:
@@ -483,10 +454,6 @@ class ColorSchemeSection(CollapsiblePanel):
                     f"background-color: {colors[color_key]}; "
                     "border: 1px solid #ccc; border-radius: 6px;"
                 )
-
-        # Auto state
-        if "auto_enabled" in colors and self.auto_check:
-            self.auto_check.setChecked(colors["auto_enabled"])
 
         # Rainbow
         # Only update internal state and button visibility, don't reset checkbox state
