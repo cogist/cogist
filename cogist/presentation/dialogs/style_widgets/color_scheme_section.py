@@ -330,32 +330,32 @@ class ColorSchemeSection(CollapsiblePanel):
         rainbow_enabled = self._rainbow_visible
 
         # Node colors (bg, text, border, connector) - hide for canvas
-        if self.bg_label:
-            self.bg_label.setVisible(not is_canvas)
-        if self.bg_color_btn:
+        # Background
+        if self.bg_label and self.bg_color_btn:
             # Hide in rainbow mode for level_1/2/3+
             should_show_bg = not is_canvas and not (rainbow_enabled and (is_level_1 or is_level_2 or is_level_3_plus))
+            self.bg_label.setVisible(should_show_bg)
             self.bg_color_btn.setVisible(should_show_bg)
 
-        if self.text_label:
-            self.text_label.setVisible(not is_canvas)
-        if self.text_color_btn:
+        # Text Color
+        if self.text_label and self.text_color_btn:
             # Hide in rainbow mode (use auto contrast)
             should_show_text = not is_canvas and not rainbow_enabled
+            self.text_label.setVisible(should_show_text)
             self.text_color_btn.setVisible(should_show_text)
 
-        if self.border_label:
-            self.border_label.setVisible(not is_canvas)
-        if self.border_color_btn:
+        # Border Color
+        if self.border_label and self.border_color_btn:
             # Hide in rainbow mode for level_1/2/3+
             should_show_border = not is_canvas and not (rainbow_enabled and (is_level_1 or is_level_2 or is_level_3_plus))
+            self.border_label.setVisible(should_show_border)
             self.border_color_btn.setVisible(should_show_border)
 
-        if self.conn_label:
-            self.conn_label.setVisible(not is_canvas)
-        if self.conn_color_btn:
+        # Connector Color
+        if self.conn_label and self.conn_color_btn:
             # Hide in rainbow mode (follow node color)
             should_show_conn = not is_canvas and not rainbow_enabled
+            self.conn_label.setVisible(should_show_conn)
             self.conn_color_btn.setVisible(should_show_conn)
 
         # Rainbow mode controls - show based on role and rainbow state
