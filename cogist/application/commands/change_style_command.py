@@ -203,17 +203,17 @@ class ChangeStyleCommand(Command):
                                     if hasattr(role_style, 'shape'):
                                         backup[key] = role_style.shape.border_radius
                                 elif key == "bg_color":
-                                    # Background color from color_scheme
+                                    # Background color from role_configs
                                     if self.style_config.resolved_color_scheme:
-                                        backup[key] = self.style_config.resolved_color_scheme.node_colors.get(role)
+                                        backup[key] = self.style_config.resolved_color_scheme.role_configs[role].bg_color
                                 elif key == "text_color":
-                                    # Text color from color_scheme
-                                    if self.style_config.resolved_color_scheme and self.style_config.resolved_color_scheme.text_colors:
-                                        backup[key] = self.style_config.resolved_color_scheme.text_colors.get(role)
+                                    # Text color from role_configs
+                                    if self.style_config.resolved_color_scheme:
+                                        backup[key] = self.style_config.resolved_color_scheme.role_configs[role].text_color
                                 elif key == "border_color":
-                                    # Border color from color_scheme
-                                    if self.style_config.resolved_color_scheme and self.style_config.resolved_color_scheme.border_colors:
-                                        backup[key] = self.style_config.resolved_color_scheme.border_colors.get(role)
+                                    # Border color from role_configs
+                                    if self.style_config.resolved_color_scheme:
+                                        backup[key] = self.style_config.resolved_color_scheme.role_configs[role].border_color
                                 elif key == "font_italic":
                                     # Direct boolean backup
                                     if hasattr(role_style, 'font_italic'):
@@ -331,21 +331,17 @@ class ChangeStyleCommand(Command):
                                     if hasattr(role_style, 'shape'):
                                         role_style.shape.border_radius = value
                                 elif key == "bg_color":
-                                    # Background color goes to color_scheme
+                                    # Background color goes to role_configs
                                     if self.style_config.resolved_color_scheme:
-                                        self.style_config.resolved_color_scheme.node_colors[role] = value
+                                        self.style_config.resolved_color_scheme.role_configs[role].bg_color = value
                                 elif key == "text_color":
-                                    # Text color goes to color_scheme
+                                    # Text color goes to role_configs
                                     if self.style_config.resolved_color_scheme:
-                                        if not self.style_config.resolved_color_scheme.text_colors:
-                                            self.style_config.resolved_color_scheme.text_colors = {}
-                                        self.style_config.resolved_color_scheme.text_colors[role] = value
+                                        self.style_config.resolved_color_scheme.role_configs[role].text_color = value
                                 elif key == "border_color":
-                                    # Border color goes to color_scheme
+                                    # Border color goes to role_configs
                                     if self.style_config.resolved_color_scheme:
-                                        if not self.style_config.resolved_color_scheme.border_colors:
-                                            self.style_config.resolved_color_scheme.border_colors = {}
-                                        self.style_config.resolved_color_scheme.border_colors[role] = value
+                                        self.style_config.resolved_color_scheme.role_configs[role].border_color = value
                                 elif key == "font_italic":
                                     # Direct boolean assignment
                                     if hasattr(role_style, 'font_italic'):
