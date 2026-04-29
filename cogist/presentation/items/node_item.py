@@ -205,43 +205,49 @@ class NodeItem(QGraphicsRectItem):
 
                 # Level 2+: Inherit from Level 1 ancestor with brightness adjustment
                 elif depth >= 2 and self.domain_node:
-                    level_1_ancestor = self._find_level_1_ancestor()
-                    if level_1_ancestor:
-                        # Get Level 1 ancestor's branch color
-                        try:
-                            # Find the Level 1 node's position in its parent's children
-                            if level_1_ancestor.parent:
-                                branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
-                                from cogist.domain.styles.extended_styles import (
-                                    get_rainbow_branch_color,
-                                )
-                                ancestor_branch_color = get_rainbow_branch_color(
-                                    branch_idx, color_scheme.branch_colors
-                                )
+                    # Check if rainbow background is enabled for this role
+                    if role_config.rainbow_bg_enabled:
+                        level_1_ancestor = self._find_level_1_ancestor()
+                        if level_1_ancestor:
+                            # Get Level 1 ancestor's branch color
+                            try:
+                                # Find the Level 1 node's position in its parent's children
+                                if level_1_ancestor.parent:
+                                    branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
+                                    from cogist.domain.styles.extended_styles import (
+                                        get_rainbow_branch_color,
+                                    )
+                                    ancestor_branch_color = get_rainbow_branch_color(
+                                        branch_idx, color_scheme.branch_colors
+                                    )
 
-                                # Apply brightness adjustment (0.0-2.0)
-                                brightness_factor = role_config.brightness_amount
-                                bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+                                    # Apply brightness adjustment (0.0-2.0)
+                                    brightness_factor = role_config.brightness_amount
+                                    bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
 
-                                # Apply opacity adjustment (0-255)
-                                if role_config.opacity_amount < 255:
-                                    bg_color = self._apply_opacity(bg_color, role_config.opacity_amount)
-
-                                # Border follows background
-                                if default_border_color:
-                                    border_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
-                                    # Apply opacity adjustment to border as well
+                                    # Apply opacity adjustment (0-255)
                                     if role_config.opacity_amount < 255:
-                                        border_color = self._apply_opacity(border_color, role_config.opacity_amount)
+                                        bg_color = self._apply_opacity(bg_color, role_config.opacity_amount)
+
+                                    # Border follows background if enabled
+                                    if role_config.rainbow_border_enabled and default_border_color:
+                                        border_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+                                        # Apply opacity adjustment to border as well
+                                        if role_config.opacity_amount < 255:
+                                            border_color = self._apply_opacity(border_color, role_config.opacity_amount)
+                                    else:
+                                        border_color = default_border_color
                                 else:
-                                    border_color = None
-                            else:
+                                    bg_color = default_bg_color
+                                    border_color = default_border_color
+                            except (ValueError, AttributeError):
                                 bg_color = default_bg_color
                                 border_color = default_border_color
-                        except (ValueError, AttributeError):
+                        else:
                             bg_color = default_bg_color
                             border_color = default_border_color
                     else:
+                        # Rainbow background disabled: use default colors
                         bg_color = default_bg_color
                         border_color = default_border_color
                 else:
@@ -845,43 +851,49 @@ class NodeItem(QGraphicsRectItem):
 
                 # Level 2+: Inherit from Level 1 ancestor with brightness adjustment
                 elif self.depth >= 2 and self.domain_node:
-                    level_1_ancestor = self._find_level_1_ancestor()
-                    if level_1_ancestor:
-                        # Get Level 1 ancestor's branch color
-                        try:
-                            # Find the Level 1 node's position in its parent's children
-                            if level_1_ancestor.parent:
-                                branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
-                                from cogist.domain.styles.extended_styles import (
-                                    get_rainbow_branch_color,
-                                )
-                                ancestor_branch_color = get_rainbow_branch_color(
-                                    branch_idx, color_scheme.branch_colors
-                                )
+                    # Check if rainbow background is enabled for this role
+                    if role_config.rainbow_bg_enabled:
+                        level_1_ancestor = self._find_level_1_ancestor()
+                        if level_1_ancestor:
+                            # Get Level 1 ancestor's branch color
+                            try:
+                                # Find the Level 1 node's position in its parent's children
+                                if level_1_ancestor.parent:
+                                    branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
+                                    from cogist.domain.styles.extended_styles import (
+                                        get_rainbow_branch_color,
+                                    )
+                                    ancestor_branch_color = get_rainbow_branch_color(
+                                        branch_idx, color_scheme.branch_colors
+                                    )
 
-                                # Apply brightness adjustment (0.0-2.0)
-                                brightness_factor = role_config.brightness_amount
-                                bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+                                    # Apply brightness adjustment (0.0-2.0)
+                                    brightness_factor = role_config.brightness_amount
+                                    bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
 
-                                # Apply opacity adjustment (0-255)
-                                if role_config.opacity_amount < 255:
-                                    bg_color = self._apply_opacity(bg_color, role_config.opacity_amount)
-
-                                # Border follows background
-                                if default_border_color:
-                                    border_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
-                                    # Apply opacity adjustment to border as well
+                                    # Apply opacity adjustment (0-255)
                                     if role_config.opacity_amount < 255:
-                                        border_color = self._apply_opacity(border_color, role_config.opacity_amount)
+                                        bg_color = self._apply_opacity(bg_color, role_config.opacity_amount)
+
+                                    # Border follows background if enabled
+                                    if role_config.rainbow_border_enabled and default_border_color:
+                                        border_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+                                        # Apply opacity adjustment to border as well
+                                        if role_config.opacity_amount < 255:
+                                            border_color = self._apply_opacity(border_color, role_config.opacity_amount)
+                                    else:
+                                        border_color = default_border_color
                                 else:
-                                    border_color = None
-                            else:
+                                    bg_color = default_bg_color
+                                    border_color = default_border_color
+                            except (ValueError, AttributeError):
                                 bg_color = default_bg_color
                                 border_color = default_border_color
-                        except (ValueError, AttributeError):
+                        else:
                             bg_color = default_bg_color
                             border_color = default_border_color
                     else:
+                        # Rainbow background disabled: use default colors
                         bg_color = default_bg_color
                         border_color = default_border_color
                 else:
