@@ -174,33 +174,75 @@ class NodeItem(QGraphicsRectItem):
             default_bg_color = role_config.bg_color
             default_border_color = role_config.border_color
 
-            # Check if rainbow branches are enabled and this is a Level 1 node
-            if color_scheme.use_rainbow_branches and depth == 1 and self.domain_node and self.domain_node.parent:
-                # Check if rainbow background is enabled for this role
-                if role_config.rainbow_bg_enabled:
-                    # Get branch index from parent's children list
-                    try:
-                        branch_idx = self.domain_node.parent.children.index(self.domain_node)
-                        from cogist.domain.styles.extended_styles import (
-                            get_rainbow_branch_color,
-                        )
-                        branch_color = get_rainbow_branch_color(branch_idx, color_scheme.branch_colors)
+            # Check if rainbow branches are enabled
+            if color_scheme.use_rainbow_branches:
+                # Level 1: Use rainbow colors if enabled
+                if depth == 1 and self.domain_node and self.domain_node.parent:
+                    # Check if rainbow background is enabled for this role
+                    if role_config.rainbow_bg_enabled:
+                        # Get branch index from parent's children list
+                        try:
+                            branch_idx = self.domain_node.parent.children.index(self.domain_node)
+                            from cogist.domain.styles.extended_styles import (
+                                get_rainbow_branch_color,
+                            )
+                            branch_color = get_rainbow_branch_color(branch_idx, color_scheme.branch_colors)
 
-                        # Apply branch color only to non-transparent properties
-                        # Check transparency: alpha channel (top 8 bits) == 0x00
-                        bg_is_transparent = len(default_bg_color.lstrip('#')) == 8 and ((int(default_bg_color.lstrip('#'), 16) >> 24) & 0xFF) == 0x00
-                        border_is_transparent = default_border_color and len(default_border_color.lstrip('#')) == 8 and ((int(default_border_color.lstrip('#'), 16) >> 24) & 0xFF) == 0x00
+                            # Apply branch color only to non-transparent properties
+                            # Check transparency: alpha channel (top 8 bits) == 0x00
+                            bg_is_transparent = len(default_bg_color.lstrip('#')) == 8 and ((int(default_bg_color.lstrip('#'), 16) >> 24) & 0xFF) == 0x00
+                            border_is_transparent = default_border_color and len(default_border_color.lstrip('#')) == 8 and ((int(default_border_color.lstrip('#'), 16) >> 24) & 0xFF) == 0x00
 
-                        bg_color = branch_color if not bg_is_transparent else default_bg_color
-                        border_color = branch_color if default_border_color and not border_is_transparent else default_border_color
-                    except (ValueError, AttributeError):
-                        # Fallback to default color if index not found
+                            bg_color = branch_color if not bg_is_transparent else default_bg_color
+                            border_color = branch_color if default_border_color and not border_is_transparent else default_border_color
+                        except (ValueError, AttributeError):
+                            # Fallback to default color if index not found
+                            bg_color = default_bg_color
+                            border_color = default_border_color
+                    else:
+                        bg_color = default_bg_color
+                        border_color = default_border_color
+
+                # Level 2+: Inherit from Level 1 ancestor with brightness adjustment
+                elif depth >= 2 and self.domain_node:
+                    level_1_ancestor = self._find_level_1_ancestor()
+                    if level_1_ancestor and role_config.brightness_enabled:
+                        # Get Level 1 ancestor's branch color
+                        try:
+                            # Find the Level 1 node's position in its parent's children
+                            if level_1_ancestor.parent:
+                                branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
+                                from cogist.domain.styles.extended_styles import (
+                                    get_rainbow_branch_color,
+                                )
+                                ancestor_branch_color = get_rainbow_branch_color(
+                                    branch_idx, color_scheme.branch_colors
+                                )
+
+                                # Apply brightness adjustment
+                                brightness_factor = role_config.brightness_amount
+                                bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+
+                                # Border follows background
+                                if default_border_color:
+                                    border_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+                                else:
+                                    border_color = None
+                            else:
+                                bg_color = default_bg_color
+                                border_color = default_border_color
+                        except (ValueError, AttributeError):
+                            bg_color = default_bg_color
+                            border_color = default_border_color
+                    else:
                         bg_color = default_bg_color
                         border_color = default_border_color
                 else:
+                    # Root or other nodes: use default colors
                     bg_color = default_bg_color
                     border_color = default_border_color
             else:
+                # Rainbow disabled: use default colors
                 bg_color = default_bg_color
                 border_color = default_border_color
 
@@ -399,6 +441,76 @@ class NodeItem(QGraphicsRectItem):
         # Return white for dark backgrounds, black for light
         return "#FFFFFFFF" if luminance < 0.5 else "#FF000000"
 
+    def _find_level_1_ancestor(self):  # type: ignore
+        """Find the Level 1 ancestor node (direct child of root).
+
+        Returns:
+            The Level 1 ancestor node, or None if not found.
+        """
+        if not self.domain_node or not self.domain_node.parent:
+            return None
+
+        # Walk up the tree to find the Level 1 node
+        current = self.domain_node
+        while current.parent and current.parent.parent:  # Stop when parent is root
+            current = current.parent
+
+        # Check if current's parent is root
+        if current.parent and hasattr(current.parent, 'is_root') and current.parent.is_root:
+            return current
+
+        return None
+
+    def _adjust_color_brightness(self, color_hex: str, brightness_factor: float) -> str:
+        """Adjust color brightness using HSL color space.
+
+        Args:
+            color_hex: Color in hex format (#AARRGGBB or #RRGGBB)
+            brightness_factor: Brightness adjustment factor (0.0-1.0)
+                             1.0 = no change, 0.5 = 50% darker, 1.5 = 50% brighter
+
+        Returns:
+            Adjusted color in #AARRGGBB format
+        """
+        import colorsys
+
+        # Parse hex color
+        color_hex = color_hex.lstrip("#")
+
+        # Extract alpha channel
+        if len(color_hex) == 8:
+            alpha = int(color_hex[0:2], 16)
+            rgb_hex = color_hex[2:]
+        elif len(color_hex) == 6:
+            alpha = 255
+            rgb_hex = color_hex
+        else:
+            return color_hex
+
+        try:
+            r = int(rgb_hex[0:2], 16) / 255.0
+            g = int(rgb_hex[2:4], 16) / 255.0
+            b = int(rgb_hex[4:6], 16) / 255.0
+        except ValueError:
+            return color_hex
+
+        # Convert RGB to HLS
+        h, lightness, s = colorsys.rgb_to_hls(r, g, b)
+
+        # Adjust lightness
+        new_lightness = lightness * brightness_factor
+        new_lightness = max(0.0, min(1.0, new_lightness))  # Clamp to [0, 1]
+
+        # Convert back to RGB
+        new_r, new_g, new_b = colorsys.hls_to_rgb(h, new_lightness, s)
+
+        # Convert to hex
+        r_int = int(new_r * 255)
+        g_int = int(new_g * 255)
+        b_int = int(new_b * 255)
+
+        return f"#{alpha:02X}{r_int:02X}{g_int:02X}{b_int:02X}"
+
     def _apply_font_shadow(self):
         """Apply font shadow effect to text_item based on template_style.
 
@@ -464,33 +576,75 @@ class NodeItem(QGraphicsRectItem):
                     default_bg_color = role_config.bg_color
                     default_border_color = role_config.border_color
 
-                    # Check if rainbow branches are enabled and this is a Level 1 node
-                    if color_scheme.use_rainbow_branches and self.depth == 1 and self.domain_node and self.domain_node.parent:
-                        # Check if rainbow background is enabled for this role
-                        if role_config.rainbow_bg_enabled:
-                            # Get branch index from parent's children list
-                            try:
-                                branch_idx = self.domain_node.parent.children.index(self.domain_node)
-                                from cogist.domain.styles.extended_styles import (
-                                    get_rainbow_branch_color,
-                                )
-                                branch_color = get_rainbow_branch_color(branch_idx, color_scheme.branch_colors)
+                    # Check if rainbow branches are enabled
+                    if color_scheme.use_rainbow_branches:
+                        # Level 1: Use rainbow colors if enabled
+                        if self.depth == 1 and self.domain_node and self.domain_node.parent:
+                            # Check if rainbow background is enabled for this role
+                            if role_config.rainbow_bg_enabled:
+                                # Get branch index from parent's children list
+                                try:
+                                    branch_idx = self.domain_node.parent.children.index(self.domain_node)
+                                    from cogist.domain.styles.extended_styles import (
+                                        get_rainbow_branch_color,
+                                    )
+                                    branch_color = get_rainbow_branch_color(branch_idx, color_scheme.branch_colors)
 
-                                # Apply branch color only to non-transparent properties
-                                # Check transparency: alpha channel (top 8 bits) == 0x00
-                                bg_is_transparent = len(default_bg_color.lstrip('#')) == 8 and ((int(default_bg_color.lstrip('#'), 16) >> 24) & 0xFF) == 0x00
-                                border_is_transparent = default_border_color and len(default_border_color.lstrip('#')) == 8 and ((int(default_border_color.lstrip('#'), 16) >> 24) & 0xFF) == 0x00
+                                    # Apply branch color only to non-transparent properties
+                                    # Check transparency: alpha channel (top 8 bits) == 0x00
+                                    bg_is_transparent = len(default_bg_color.lstrip('#')) == 8 and ((int(default_bg_color.lstrip('#'), 16) >> 24) & 0xFF) == 0x00
+                                    border_is_transparent = default_border_color and len(default_border_color.lstrip('#')) == 8 and ((int(default_border_color.lstrip('#'), 16) >> 24) & 0xFF) == 0x00
 
-                                bg_color = branch_color if not bg_is_transparent else default_bg_color
-                                border_color = branch_color if default_border_color and not border_is_transparent else default_border_color
-                            except (ValueError, AttributeError):
-                                # Fallback to default color if index not found
+                                    bg_color = branch_color if not bg_is_transparent else default_bg_color
+                                    border_color = branch_color if default_border_color and not border_is_transparent else default_border_color
+                                except (ValueError, AttributeError):
+                                    # Fallback to default color if index not found
+                                    bg_color = default_bg_color
+                                    border_color = default_border_color
+                            else:
+                                bg_color = default_bg_color
+                                border_color = default_border_color
+
+                        # Level 2+: Inherit from Level 1 ancestor with brightness adjustment
+                        elif self.depth >= 2 and self.domain_node:
+                            level_1_ancestor = self._find_level_1_ancestor()
+                            if level_1_ancestor and role_config.brightness_enabled:
+                                # Get Level 1 ancestor's branch color
+                                try:
+                                    # Find the Level 1 node's position in its parent's children
+                                    if level_1_ancestor.parent:
+                                        branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
+                                        from cogist.domain.styles.extended_styles import (
+                                            get_rainbow_branch_color,
+                                        )
+                                        ancestor_branch_color = get_rainbow_branch_color(
+                                            branch_idx, color_scheme.branch_colors
+                                        )
+
+                                        # Apply brightness adjustment
+                                        brightness_factor = role_config.brightness_amount
+                                        bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+
+                                        # Border follows background
+                                        if default_border_color:
+                                            border_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+                                        else:
+                                            border_color = None
+                                    else:
+                                        bg_color = default_bg_color
+                                        border_color = default_border_color
+                                except (ValueError, AttributeError):
+                                    bg_color = default_bg_color
+                                    border_color = default_border_color
+                            else:
                                 bg_color = default_bg_color
                                 border_color = default_border_color
                         else:
+                            # Root or other nodes: use default colors
                             bg_color = default_bg_color
                             border_color = default_border_color
                     else:
+                        # Rainbow disabled: use default colors
                         bg_color = default_bg_color
                         border_color = default_border_color
 
@@ -626,33 +780,75 @@ class NodeItem(QGraphicsRectItem):
             default_bg_color = role_config.bg_color
             default_border_color = role_config.border_color
 
-            # Check if rainbow branches are enabled and this is a Level 1 node
-            if color_scheme.use_rainbow_branches and self.depth == 1 and self.domain_node and self.domain_node.parent:
-                # Check if rainbow background is enabled for this role
-                if role_config.rainbow_bg_enabled:
-                    # Get branch index from parent's children list
-                    try:
-                        branch_idx = self.domain_node.parent.children.index(self.domain_node)
-                        from cogist.domain.styles.extended_styles import (
-                            get_rainbow_branch_color,
-                        )
-                        branch_color = get_rainbow_branch_color(branch_idx, color_scheme.branch_colors)
+            # Check if rainbow branches are enabled
+            if color_scheme.use_rainbow_branches:
+                # Level 1: Use rainbow colors if enabled
+                if self.depth == 1 and self.domain_node and self.domain_node.parent:
+                    # Check if rainbow background is enabled for this role
+                    if role_config.rainbow_bg_enabled:
+                        # Get branch index from parent's children list
+                        try:
+                            branch_idx = self.domain_node.parent.children.index(self.domain_node)
+                            from cogist.domain.styles.extended_styles import (
+                                get_rainbow_branch_color,
+                            )
+                            branch_color = get_rainbow_branch_color(branch_idx, color_scheme.branch_colors)
 
-                        # Apply branch color only to non-transparent properties
-                        # Check transparency: alpha channel (top 8 bits) == 0x00
-                        bg_is_transparent = len(default_bg_color.lstrip('#')) == 8 and ((int(default_bg_color.lstrip('#'), 16) >> 24) & 0xFF) == 0x00
-                        border_is_transparent = default_border_color and len(default_border_color.lstrip('#')) == 8 and ((int(default_border_color.lstrip('#'), 16) >> 24) & 0xFF) == 0x00
+                            # Apply branch color only to non-transparent properties
+                            # Check transparency: alpha channel (top 8 bits) == 0x00
+                            bg_is_transparent = len(default_bg_color.lstrip('#')) == 8 and ((int(default_bg_color.lstrip('#'), 16) >> 24) & 0xFF) == 0x00
+                            border_is_transparent = default_border_color and len(default_border_color.lstrip('#')) == 8 and ((int(default_border_color.lstrip('#'), 16) >> 24) & 0xFF) == 0x00
 
-                        bg_color = branch_color if not bg_is_transparent else default_bg_color
-                        border_color = branch_color if default_border_color and not border_is_transparent else default_border_color
-                    except (ValueError, AttributeError):
-                        # Fallback to default color if index not found
+                            bg_color = branch_color if not bg_is_transparent else default_bg_color
+                            border_color = branch_color if default_border_color and not border_is_transparent else default_border_color
+                        except (ValueError, AttributeError):
+                            # Fallback to default color if index not found
+                            bg_color = default_bg_color
+                            border_color = default_border_color
+                    else:
+                        bg_color = default_bg_color
+                        border_color = default_border_color
+
+                # Level 2+: Inherit from Level 1 ancestor with brightness adjustment
+                elif self.depth >= 2 and self.domain_node:
+                    level_1_ancestor = self._find_level_1_ancestor()
+                    if level_1_ancestor and role_config.brightness_enabled:
+                        # Get Level 1 ancestor's branch color
+                        try:
+                            # Find the Level 1 node's position in its parent's children
+                            if level_1_ancestor.parent:
+                                branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
+                                from cogist.domain.styles.extended_styles import (
+                                    get_rainbow_branch_color,
+                                )
+                                ancestor_branch_color = get_rainbow_branch_color(
+                                    branch_idx, color_scheme.branch_colors
+                                )
+
+                                # Apply brightness adjustment
+                                brightness_factor = role_config.brightness_amount
+                                bg_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+
+                                # Border follows background
+                                if default_border_color:
+                                    border_color = self._adjust_color_brightness(ancestor_branch_color, brightness_factor)
+                                else:
+                                    border_color = None
+                            else:
+                                bg_color = default_bg_color
+                                border_color = default_border_color
+                        except (ValueError, AttributeError):
+                            bg_color = default_bg_color
+                            border_color = default_border_color
+                    else:
                         bg_color = default_bg_color
                         border_color = default_border_color
                 else:
+                    # Root or other nodes: use default colors
                     bg_color = default_bg_color
                     border_color = default_border_color
             else:
+                # Rainbow disabled: use default colors
                 bg_color = default_bg_color
                 border_color = default_border_color
         else:
