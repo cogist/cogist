@@ -6,7 +6,8 @@ Similar to iOS/macOS system switches.
 This widget can be reused across the application for any on/off toggle functionality.
 """
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QRectF, Qt
+from PySide6.QtGui import QColor, QPainter, QPainterPath
 from PySide6.QtWidgets import QPushButton
 
 
@@ -15,6 +16,7 @@ class ToggleSwitch(QPushButton):
 
     A modern toggle switch with:
     - Rounded rectangle background (green when ON, gray when OFF)
+    - Circular thumb that slides left/right
     - Smooth hover and pressed states
     - Compact size (44x24 pixels)
 
@@ -29,41 +31,53 @@ class ToggleSwitch(QPushButton):
         self.setChecked(False)
         self.setFixedSize(44, 24)
         self.setCursor(Qt.PointingHandCursor)
-        self._update_style()
-        self.toggled.connect(self._update_style)
+        # Don't use stylesheet, we'll paint manually
+        self.setStyleSheet("QPushButton { background: transparent; border: none; }")
 
-    def _update_style(self):
-        """Update stylesheet based on checked state."""
+    def paintEvent(self, event):
+        """Paint the toggle switch."""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Colors based on state
         if self.isChecked():
-            # ON state: green background
-            self.setStyleSheet("""
-                QPushButton {
-                    background-color: #34C759;
-                    border-radius: 12px;
-                    border: none;
-                }
-                QPushButton:hover {
-                    background-color: #30B350;
-                }
-                QPushButton:pressed {
-                    background-color: #2CA048;
-                }
-            """)
+            bg_color = QColor("#34C759")  # Green
+            if self.isDown():
+                bg_color = QColor("#2CA048")
+            elif self.underMouse():
+                bg_color = QColor("#30B350")
         else:
-            # OFF state: gray background
-            self.setStyleSheet("""
-                QPushButton {
-                    background-color: #E9E9EA;
-                    border-radius: 12px;
-                    border: none;
-                }
-                QPushButton:hover {
-                    background-color: #DCDCDD;
-                }
-                QPushButton:pressed {
-                    background-color: #D1D1D2;
-                }
-            """)
+            bg_color = QColor("#E9E9EA")  # Gray
+            if self.isDown():
+                bg_color = QColor("#D1D1D2")
+            elif self.underMouse():
+                bg_color = QColor("#DCDCDD")
+
+        # Draw rounded rectangle background
+        rect = QRectF(0, 0, self.width(), self.height())
+        path = QPainterPath()
+        path.addRoundedRect(rect, 12, 12)
+        painter.fillPath(path, bg_color)
+
+        # Draw circular thumb
+        thumb_radius = 10
+        thumb_y = self.height() / 2
+
+        if self.isChecked():
+            # Thumb on right side
+            thumb_x = self.width() - thumb_radius - 2
+        else:
+            # Thumb on left side
+            thumb_x = thumb_radius + 2
+
+        painter.setBrush(QColor("#FFFFFF"))
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(QRectF(
+            thumb_x - thumb_radius,
+            thumb_y - thumb_radius,
+            thumb_radius * 2,
+            thumb_radius * 2
+        ))
 
     def set_checked(self, checked: bool):
         """Set the checked state without triggering signals.
@@ -74,4 +88,4 @@ class ToggleSwitch(QPushButton):
         self.blockSignals(True)
         self.setChecked(checked)
         self.blockSignals(False)
-        self._update_style()
+        self.update()  # Trigger repaint
