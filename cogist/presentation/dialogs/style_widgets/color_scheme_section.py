@@ -9,6 +9,7 @@ Provides controls for customizing color scheme including:
 This section is Part of Presentation Layer (UI).
 """
 
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
@@ -18,6 +19,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSlider,
 )
 
 from .collapsible_panel import CollapsiblePanel
@@ -87,6 +89,12 @@ class ColorSchemeSection(CollapsiblePanel):
         self.rainbow_buttons: list[QPushButton] = []
         self.rainbow_colors: list[str] = []
 
+        # Rainbow mode controls (per-role)
+        self.rainbow_bg_check: QCheckBox | None = None
+        self.rainbow_border_check: QCheckBox | None = None
+        self.brightness_check: QCheckBox | None = None
+        self.brightness_slider: QSlider | None = None
+
         self.toggled.connect(self._on_toggled)
 
     def _on_toggled(self, expanded: bool):
@@ -104,6 +112,24 @@ class ColorSchemeSection(CollapsiblePanel):
         layout.setColumnStretch(1, 1)  # Widget column - stretchable
 
         row = 0
+
+        # === Global Rainbow Branch Switch (always visible) ===
+        self.rainbow_label = QLabel("Rainbow Branches:")
+        self.rainbow_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.rainbow_label.setMinimumWidth(self.LABEL_WIDTH)
+        layout.addWidget(self.rainbow_label, row, 0)
+
+        self.rainbow_check = QCheckBox("Enable Rainbow")
+        self.rainbow_check.toggled.connect(self._on_rainbow_changed)
+        layout.addWidget(self.rainbow_check, row, 1)
+        row += 1
+
+        # Separator line
+        separator = QLabel()
+        separator.setFrameStyle(QLabel.HLine | QLabel.Sunken)
+        separator.setStyleSheet("color: #cccccc;")
+        layout.addWidget(separator, row, 0, 1, 2)
+        row += 1
 
         # Background color
         self.bg_label = QLabel("Background:")
@@ -169,22 +195,22 @@ class ColorSchemeSection(CollapsiblePanel):
         layout.addWidget(self.conn_color_btn, row, 1)
         row += 1
 
+        # Canvas background (show only when Layer is canvas)
+        self.canvas_label = QLabel("Canvas:")
+        self.canvas_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.canvas_label.setMinimumWidth(self.LABEL_WIDTH)
+        layout.addWidget(self.canvas_label, row, 0)
 
-        # Rainbow branch section (show only for level_1)
-        # This will be shown/hidden based on rainbow state
-        self.rainbow_section_start_row = row
-
-        self.rainbow_label = QLabel("Rainbow:")
-        self.rainbow_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.rainbow_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(self.rainbow_label, row, 0)
-
-        self.rainbow_check = QCheckBox("Use Rainbow")
-        self.rainbow_check.toggled.connect(self._on_rainbow_changed)
-        layout.addWidget(self.rainbow_check, row, 1)
+        self.canvas_picker = QPushButton()
+        self.canvas_picker.setFixedHeight(self.WIDGET_HEIGHT)
+        self.canvas_picker.setStyleSheet(
+            "background-color: #FFFFFF; border: 1px solid #ccc; border-radius: 6px;"
+        )
+        self.canvas_picker.clicked.connect(lambda: self._pick_color("canvas_bg"))
+        layout.addWidget(self.canvas_picker, row, 1)
         row += 1
 
-        # Rainbow color buttons (8 individual buttons)
+        # === Rainbow Branch Color Pool (shown when rainbow enabled) ===
         self.rainbow_buttons = []
         self.rainbow_colors = self._default_rainbow.copy()
         rainbow_layout = QHBoxLayout()
@@ -208,22 +234,9 @@ class ColorSchemeSection(CollapsiblePanel):
         self.rainbow_buttons_row = row
         row += 1
 
-        # Initially hide rainbow section if not checked
-        self._update_rainbow_ui_visibility(False)
-
-        # Canvas background (show only when Layer is canvas)
-        self.canvas_label = QLabel("Canvas:")
-        self.canvas_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.canvas_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(self.canvas_label, row, 0)
-
-        self.canvas_picker = QPushButton()
-        self.canvas_picker.setFixedHeight(self.WIDGET_HEIGHT)
-        self.canvas_picker.setStyleSheet(
-            "background-color: #FFFFFF; border: 1px solid #ccc; border-radius: 6px;"
-        )
-        self.canvas_picker.clicked.connect(lambda: self._pick_color("canvas_bg"))
-        layout.addWidget(self.canvas_picker, row, 1)
+        # Initially hide rainbow buttons
+        for btn in self.rainbow_buttons:
+            btn.setVisible(False)
 
         self.setLayout(layout)
 
@@ -251,7 +264,6 @@ class ColorSchemeSection(CollapsiblePanel):
             return
 
         is_canvas = self.current_role == "canvas"
-        is_level_1 = self.current_role == "level_1"
 
         # Node colors (bg, text, border, connector) - hide for canvas
         if self.bg_label:
@@ -276,16 +288,6 @@ class ColorSchemeSection(CollapsiblePanel):
 
         # Auto checkbox - show only for level_2 and level_3_plus
 
-        # Rainbow branch - show only for level_1
-        if self.rainbow_label:
-            self.rainbow_label.setVisible(is_level_1)
-        if self.rainbow_check:
-            self.rainbow_check.setVisible(is_level_1)
-        # Show/hide rainbow buttons based on role and checkbox state
-        rainbow_visible = is_level_1 and self._rainbow_visible
-        for btn in self.rainbow_buttons:
-            btn.setVisible(rainbow_visible)
-
         # Canvas background - show only for canvas
         if self.canvas_label:
             self.canvas_label.setVisible(is_canvas)
@@ -297,18 +299,15 @@ class ColorSchemeSection(CollapsiblePanel):
         enabled = checked
         self._rainbow_visible = enabled
 
-        # Directly set rainbow buttons visibility
-        # Only show if current role is level_1 AND checkbox is checked
-        is_level_1 = self.current_role == "level_1"
-        visible = is_level_1 and enabled
-
+        # Show/hide rainbow color pool buttons
         for btn in self.rainbow_buttons:
-            btn.setVisible(visible)
+            btn.setVisible(enabled)
 
         # Force layout update
         if self.rainbow_buttons:
             self.updateGeometry()
-            self.layout().update()
+            if self.layout():
+                self.layout().update()
 
         self._emit_change("use_rainbow", enabled)
 
