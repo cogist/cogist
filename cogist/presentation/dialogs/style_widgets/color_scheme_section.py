@@ -93,8 +93,8 @@ class ColorSchemeSection(CollapsiblePanel):
         self.rainbow_colors: list[str] = []
 
         # Rainbow mode controls (per-role)
-        self.rainbow_bg_check: QCheckBox | None = None
-        self.rainbow_border_check: QCheckBox | None = None
+        self.rainbow_bg_check: ToggleSwitch | None = None
+        self.rainbow_border_check: ToggleSwitch | None = None
         self.brightness_check: QCheckBox | None = None
         self.brightness_slider: QSlider | None = None
 
@@ -273,26 +273,42 @@ class ColorSchemeSection(CollapsiblePanel):
 
         # === Per-Role Rainbow Mode Controls (dynamic visibility) ===
 
-        # Level 1: Rainbow Background checkbox
-        self.rainbow_bg_label = QLabel("Rainbow BG:")
+        # Level 1: Rainbow Background toggle
+        bg_row = QHBoxLayout()
+        bg_row.setContentsMargins(0, 0, 0, 0)
+        bg_row.setSpacing(0)
+
+        self.rainbow_bg_label = QLabel("Background:")
         self.rainbow_bg_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.rainbow_bg_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(self.rainbow_bg_label, row, 0)
+        bg_row.addWidget(self.rainbow_bg_label)
 
-        self.rainbow_bg_check = QCheckBox("Enable")
+        bg_row.addStretch()
+
+        self.rainbow_bg_check = ToggleSwitch()
         self.rainbow_bg_check.toggled.connect(lambda checked: self._emit_change("rainbow_bg_enabled", checked))
-        layout.addWidget(self.rainbow_bg_check, row, 1)
+        bg_row.addWidget(self.rainbow_bg_check)
+
+        layout.addLayout(bg_row, row, 0, 1, 2)
         row += 1
 
-        # Level 1: Rainbow Border checkbox
-        self.rainbow_border_label = QLabel("Rainbow Border:")
+        # Level 1: Rainbow Border toggle
+        border_row = QHBoxLayout()
+        border_row.setContentsMargins(0, 0, 0, 0)
+        border_row.setSpacing(0)
+
+        self.rainbow_border_label = QLabel("Border:")
         self.rainbow_border_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.rainbow_border_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(self.rainbow_border_label, row, 0)
+        border_row.addWidget(self.rainbow_border_label)
 
-        self.rainbow_border_check = QCheckBox("Enable")
+        border_row.addStretch()
+
+        self.rainbow_border_check = ToggleSwitch()
         self.rainbow_border_check.toggled.connect(lambda checked: self._emit_change("rainbow_border_enabled", checked))
-        layout.addWidget(self.rainbow_border_check, row, 1)
+        border_row.addWidget(self.rainbow_border_check)
+
+        layout.addLayout(border_row, row, 0, 1, 2)
         row += 1
 
         # Level 2/3+: Brightness adjustment
@@ -391,8 +407,8 @@ class ColorSchemeSection(CollapsiblePanel):
             for btn in self.rainbow_buttons:
                 btn.setVisible(True)
 
-            if is_level_1:
-                # Level 1: Show rainbow bg/border checkboxes
+            if is_level_1 or is_level_2 or is_level_3_plus:
+                # Level 1/2/3+: Show rainbow bg/border toggles
                 if self.rainbow_bg_label:
                     self.rainbow_bg_label.setVisible(True)
                 if self.rainbow_bg_check:
@@ -402,13 +418,14 @@ class ColorSchemeSection(CollapsiblePanel):
                 if self.rainbow_border_check:
                     self.rainbow_border_check.setVisible(True)
 
-                # Hide brightness controls
-                if self.brightness_label:
-                    self.brightness_label.setVisible(False)
-                if self.brightness_check:
-                    self.brightness_check.setVisible(False)
-                if self.brightness_slider:
-                    self.brightness_slider.setVisible(False)
+                # Level 1 only: Hide brightness controls
+                if is_level_1:
+                    if self.brightness_label:
+                        self.brightness_label.setVisible(False)
+                    if self.brightness_check:
+                        self.brightness_check.setVisible(False)
+                    if self.brightness_slider:
+                        self.brightness_slider.setVisible(False)
 
             elif is_level_2 or is_level_3_plus:
                 # Level 2/3+: Show brightness adjustment
@@ -418,16 +435,6 @@ class ColorSchemeSection(CollapsiblePanel):
                     self.brightness_check.setVisible(True)
                 if self.brightness_slider:
                     self.brightness_slider.setVisible(True)
-
-                # Hide rainbow bg/border checkboxes
-                if self.rainbow_bg_label:
-                    self.rainbow_bg_label.setVisible(False)
-                if self.rainbow_bg_check:
-                    self.rainbow_bg_check.setVisible(False)
-                if self.rainbow_border_label:
-                    self.rainbow_border_label.setVisible(False)
-                if self.rainbow_border_check:
-                    self.rainbow_border_check.setVisible(False)
             else:
                 # Other roles (root, canvas): hide level-specific rainbow controls but keep color pool visible
                 if self.rainbow_bg_label:
