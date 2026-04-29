@@ -11,7 +11,6 @@ This section is Part of Presentation Layer (UI).
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QCheckBox,
     QColorDialog,
     QGridLayout,
     QHBoxLayout,
@@ -99,13 +98,14 @@ class ColorSchemeSection(CollapsiblePanel):
         # Rainbow mode controls (per-role)
         self.rainbow_bg_check: ToggleSwitch | None = None
         self.rainbow_border_check: ToggleSwitch | None = None
-        self.brightness_check: QCheckBox | None = None
+        self.brightness_check: ToggleSwitch | None = None
         self.brightness_slider: QSlider | None = None
 
         # Labels for rainbow mode controls
         self.rainbow_bg_label: QLabel | None = None
         self.rainbow_border_label: QLabel | None = None
         self.brightness_label: QLabel | None = None
+        self.brightness_slider_label: QLabel | None = None
 
         self.toggled.connect(self._on_toggled)
 
@@ -321,28 +321,48 @@ class ColorSchemeSection(CollapsiblePanel):
         layout.addLayout(border_row, row, 0, 1, 2)
         row += 1
 
-        # Level 2/3+: Brightness adjustment
+        # Level 2/3+: Brightness adjustment toggle
+        brightness_toggle_row = QHBoxLayout()
+        brightness_toggle_row.setContentsMargins(0, 0, 0, 0)
+        brightness_toggle_row.setSpacing(0)
+
         self.brightness_label = QLabel("Brightness:")
         self.brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.brightness_label.setFixedWidth(self._label_width)
-        layout.addWidget(self.brightness_label, row, 0)
+        brightness_toggle_row.addWidget(self.brightness_label)
 
-        brightness_layout = QHBoxLayout()
-        brightness_layout.setSpacing(8)
+        brightness_toggle_row.addStretch()
 
-        self.brightness_check = QCheckBox("Adjust")
+        # Use ToggleSwitch instead of QCheckBox
+        self.brightness_check = ToggleSwitch()
         self.brightness_check.toggled.connect(lambda checked: self._on_brightness_toggled(checked))
-        brightness_layout.addWidget(self.brightness_check)
+        brightness_toggle_row.addWidget(self.brightness_check)
+
+        layout.addLayout(brightness_toggle_row, row, 0, 1, 2)
+        row += 1
+
+        # Brightness slider with label (only visible when switch is ON)
+        brightness_slider_row = QHBoxLayout()
+        brightness_slider_row.setContentsMargins(0, 0, 0, 0)
+        brightness_slider_row.setSpacing(0)
+
+        self.brightness_slider_label = QLabel("Adjust:")
+        self.brightness_slider_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.brightness_slider_label.setFixedWidth(self._label_width)
+        self.brightness_slider_label.setVisible(False)  # Initially hidden
+        brightness_slider_row.addWidget(self.brightness_slider_label)
+
+        brightness_slider_row.addStretch()
 
         self.brightness_slider = QSlider(Qt.Horizontal)
         self.brightness_slider.setRange(0, 100)
         self.brightness_slider.setValue(50)
         self.brightness_slider.setEnabled(False)
+        self.brightness_slider.setVisible(False)  # Initially hidden
         self.brightness_slider.valueChanged.connect(lambda value: self._emit_change("brightness_amount", value / 100.0))
-        brightness_layout.addWidget(self.brightness_slider)
+        brightness_slider_row.addWidget(self.brightness_slider)
 
-        brightness_layout.addStretch()
-        layout.addLayout(brightness_layout, row, 1)
+        layout.addLayout(brightness_slider_row, row, 0, 1, 2)
         row += 1
 
         # Initially hide all rainbow mode controls
@@ -433,8 +453,11 @@ class ColorSchemeSection(CollapsiblePanel):
                     self.brightness_label.setVisible(True)
                 if self.brightness_check:
                     self.brightness_check.setVisible(True)
-                if self.brightness_slider:
-                    self.brightness_slider.setVisible(True)
+                if self.brightness_slider and self.brightness_slider_label and self.brightness_check:
+                    # Slider and label visibility is controlled by the toggle switch state
+                    is_checked = self.brightness_check.isChecked()
+                    self.brightness_slider.setVisible(is_checked)
+                    self.brightness_slider_label.setVisible(is_checked)
 
             elif is_level_1:
                 # Level 1 only: Show rainbow bg/border toggles, hide brightness controls
@@ -452,6 +475,8 @@ class ColorSchemeSection(CollapsiblePanel):
                     self.brightness_label.setVisible(False)
                 if self.brightness_check:
                     self.brightness_check.setVisible(False)
+                if self.brightness_slider_label:
+                    self.brightness_slider_label.setVisible(False)
                 if self.brightness_slider:
                     self.brightness_slider.setVisible(False)
             else:
@@ -468,6 +493,8 @@ class ColorSchemeSection(CollapsiblePanel):
                     self.brightness_label.setVisible(False)
                 if self.brightness_check:
                     self.brightness_check.setVisible(False)
+                if self.brightness_slider_label:
+                    self.brightness_slider_label.setVisible(False)
                 if self.brightness_slider:
                     self.brightness_slider.setVisible(False)
         else:
@@ -523,13 +550,18 @@ class ColorSchemeSection(CollapsiblePanel):
             self.brightness_label.setVisible(False)
         if self.brightness_check:
             self.brightness_check.setVisible(False)
+        if self.brightness_slider_label:
+            self.brightness_slider_label.setVisible(False)
         if self.brightness_slider:
             self.brightness_slider.setVisible(False)
 
     def _on_brightness_toggled(self, checked: bool):
-        """Handle brightness checkbox state change."""
+        """Handle brightness toggle switch state change."""
         if self.brightness_slider:
             self.brightness_slider.setEnabled(checked)
+            self.brightness_slider.setVisible(checked)  # Show/hide slider
+        if self.brightness_slider_label:
+            self.brightness_slider_label.setVisible(checked)  # Show/hide label
         self._emit_change("brightness_enabled", checked)
 
     def _edit_rainbow_color(self, index: int):
@@ -711,8 +743,19 @@ class ColorSchemeSection(CollapsiblePanel):
             self.brightness_check.blockSignals(True)
             self.brightness_check.setChecked(colors["brightness_enabled"])
             self.brightness_check.blockSignals(False)
+
+            # Only update slider visibility if current role allows brightness controls (level_2 or level_3_plus)
+            is_level_2 = self.current_role == "level_2"
+            is_level_3_plus = self.current_role == "level_3_plus"
+            should_show_brightness = is_level_2 or is_level_3_plus
+
             if self.brightness_slider:
                 self.brightness_slider.setEnabled(colors["brightness_enabled"])
+                # Update slider visibility based on checked state AND role
+                self.brightness_slider.setVisible(colors["brightness_enabled"] and should_show_brightness)
+            if self.brightness_slider_label:
+                # Update label visibility based on checked state AND role
+                self.brightness_slider_label.setVisible(colors["brightness_enabled"] and should_show_brightness)
 
         if "brightness_amount" in colors and self.brightness_slider:
             self.brightness_slider.blockSignals(True)
