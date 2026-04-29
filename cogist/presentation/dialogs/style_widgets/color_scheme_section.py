@@ -365,14 +365,22 @@ class ColorSchemeSection(CollapsiblePanel):
         layout.addLayout(opacity_slider_row, row, 0, 1, 2)
         row += 1
 
-        # Initially hide all rainbow mode controls
-        self._hide_rainbow_mode_controls()
-
         self.setLayout(layout)
 
         # Apply current role visibility after content is created
         if self.current_role:
             self.set_role(self.current_role)
+
+        # CRITICAL: Sync rainbow checkbox state with _rainbow_visible
+        # This ensures checkbox reflects the actual state after lazy initialization
+        if self.rainbow_check:
+            self.rainbow_check.blockSignals(True)
+            self.rainbow_check.setChecked(self._rainbow_visible)
+            self.rainbow_check.blockSignals(False)
+
+        # CRITICAL: Apply visibility based on current _rainbow_visible state
+        # This ensures color pool is correctly shown/hidden after lazy initialization
+        self._apply_role_visibility()
 
     def set_role(self, role: str):
         """Set current role and update visibility.
@@ -432,6 +440,8 @@ class ColorSchemeSection(CollapsiblePanel):
         # Rainbow mode controls - show based on role and rainbow state
         if rainbow_enabled:
             # Always show rainbow color pool when rainbow is enabled (regardless of role)
+            if self.rainbow_pool_widget:
+                self.rainbow_pool_widget.setVisible(True)
             if self.rainbow_label_pool:
                 self.rainbow_label_pool.setVisible(True)
             for btn in self.rainbow_buttons:
@@ -528,9 +538,15 @@ class ColorSchemeSection(CollapsiblePanel):
 
     def _hide_rainbow_mode_controls(self):
         """Hide all rainbow mode specific controls."""
-        # Rainbow pool
+        # Rainbow pool widget (container)
+        if self.rainbow_pool_widget:
+            self.rainbow_pool_widget.setVisible(False)
+
+        # Rainbow pool label
         if self.rainbow_label_pool:
             self.rainbow_label_pool.setVisible(False)
+
+        # Rainbow pool buttons
         for btn in self.rainbow_buttons:
             btn.setVisible(False)
 
@@ -709,14 +725,8 @@ class ColorSchemeSection(CollapsiblePanel):
                 self.rainbow_check.setChecked(rainbow_enabled)
                 self.rainbow_check.blockSignals(False)
 
-            # Update button and label visibility based on loaded state
-            if self.rainbow_label_pool:
-                self.rainbow_label_pool.setVisible(rainbow_enabled)
-            for btn in self.rainbow_buttons:
-                btn.setVisible(rainbow_enabled)
-
-            # Update role-specific controls
-            self._apply_role_visibility()
+        # Always update role-specific controls visibility (even if use_rainbow not in colors)
+        self._apply_role_visibility()
 
         # Set rainbow mode control values
         if "rainbow_bg_enabled" in colors and self.rainbow_bg_check:
