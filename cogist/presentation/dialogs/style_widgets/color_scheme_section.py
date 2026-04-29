@@ -86,6 +86,7 @@ class ColorSchemeSection(CollapsiblePanel):
         # Rainbow branch references
         self.rainbow_label: QLabel | None = None
         self.rainbow_check: ToggleSwitch | None = None
+        self.rainbow_label_pool: QLabel | None = None
         self.rainbow_buttons: list[QPushButton] = []
         self.rainbow_colors: list[str] = []
 
@@ -137,6 +138,46 @@ class ColorSchemeSection(CollapsiblePanel):
 
         layout.addLayout(switch_row, row, 0, 1, 2)
         row += 1
+
+        # === Rainbow Branch Color Pool (shown when rainbow enabled) ===
+        self.rainbow_label_pool = QLabel("Color Pool:")
+        self.rainbow_label_pool.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.rainbow_label_pool.setMinimumWidth(self.LABEL_WIDTH)
+        layout.addWidget(self.rainbow_label_pool, row, 0)
+
+        rainbow_layout = QGridLayout()
+        rainbow_layout.setSpacing(4)
+        rainbow_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.rainbow_buttons = []
+        self.rainbow_colors = self._default_rainbow.copy()
+
+        for i in range(8):
+            btn = QPushButton()
+            btn.setFixedSize(32, 32)
+            btn.setToolTip(f"Branch {i + 1} color")
+            color = self.rainbow_colors[i] if i < len(self.rainbow_colors) else "#FFCCCCCC"
+            btn.setStyleSheet(
+                f"background-color: {color}; "
+                "border: none; border-radius: 4px;"
+            )
+            btn.clicked.connect(lambda _, idx=i: self._edit_rainbow_color(idx))
+            self.rainbow_buttons.append(btn)
+
+            # 4 buttons per row (2 rows total)
+            r = i // 4
+            c = i % 4
+            rainbow_layout.addWidget(btn, r, c)
+
+        layout.addLayout(rainbow_layout, row, 1)
+        self.rainbow_buttons_row = row
+        row += 1
+
+        # Initially hide rainbow pool
+        if self.rainbow_label_pool:
+            self.rainbow_label_pool.setVisible(False)
+        for btn in self.rainbow_buttons:
+            btn.setVisible(False)
 
         # Background color
         self.bg_label = QLabel("Background:")
@@ -216,34 +257,6 @@ class ColorSchemeSection(CollapsiblePanel):
         self.canvas_picker.clicked.connect(lambda: self._pick_color("canvas_bg"))
         layout.addWidget(self.canvas_picker, row, 1)
         row += 1
-
-        # === Rainbow Branch Color Pool (shown when rainbow enabled) ===
-        self.rainbow_buttons = []
-        self.rainbow_colors = self._default_rainbow.copy()
-        rainbow_layout = QHBoxLayout()
-        rainbow_layout.setSpacing(4)
-        rainbow_layout.setContentsMargins(0, 0, 0, 0)
-
-        for i, color in enumerate(self.rainbow_colors):
-            btn = QPushButton()
-            btn.setFixedSize(32, 32)
-            btn.setToolTip(f"Branch {i + 1} color")
-            btn.setStyleSheet(
-                f"background-color: {color}; "
-                "border: 2px solid #999999; border-radius: 4px;"
-            )
-            btn.clicked.connect(lambda _, idx=i: self._edit_rainbow_color(idx))
-            self.rainbow_buttons.append(btn)
-            rainbow_layout.addWidget(btn)
-
-        rainbow_layout.addStretch()
-        layout.addLayout(rainbow_layout, row, 0, 1, 2)
-        self.rainbow_buttons_row = row
-        row += 1
-
-        # Initially hide rainbow buttons
-        for btn in self.rainbow_buttons:
-            btn.setVisible(False)
 
         # === Per-Role Rainbow Mode Controls (dynamic visibility) ===
 
@@ -359,6 +372,12 @@ class ColorSchemeSection(CollapsiblePanel):
 
         # Rainbow mode controls - show based on role and rainbow state
         if rainbow_enabled:
+            # Always show rainbow color pool when rainbow is enabled (regardless of role)
+            if self.rainbow_label_pool:
+                self.rainbow_label_pool.setVisible(True)
+            for btn in self.rainbow_buttons:
+                btn.setVisible(True)
+
             if is_level_1:
                 # Level 1: Show rainbow bg/border checkboxes
                 if self.rainbow_bg_label:
@@ -397,8 +416,21 @@ class ColorSchemeSection(CollapsiblePanel):
                 if self.rainbow_border_check:
                     self.rainbow_border_check.setVisible(False)
             else:
-                # Other roles (root, canvas): hide all rainbow mode controls
-                self._hide_rainbow_mode_controls()
+                # Other roles (root, canvas): hide level-specific rainbow controls but keep color pool visible
+                if self.rainbow_bg_label:
+                    self.rainbow_bg_label.setVisible(False)
+                if self.rainbow_bg_check:
+                    self.rainbow_bg_check.setVisible(False)
+                if self.rainbow_border_label:
+                    self.rainbow_border_label.setVisible(False)
+                if self.rainbow_border_check:
+                    self.rainbow_border_check.setVisible(False)
+                if self.brightness_label:
+                    self.brightness_label.setVisible(False)
+                if self.brightness_check:
+                    self.brightness_check.setVisible(False)
+                if self.brightness_slider:
+                    self.brightness_slider.setVisible(False)
         else:
             # Rainbow disabled: hide all rainbow mode controls
             self._hide_rainbow_mode_controls()
@@ -414,7 +446,9 @@ class ColorSchemeSection(CollapsiblePanel):
         enabled = checked
         self._rainbow_visible = enabled
 
-        # Show/hide rainbow color pool buttons
+        # Show/hide rainbow color pool buttons and label
+        if self.rainbow_label_pool:
+            self.rainbow_label_pool.setVisible(enabled)
         for btn in self.rainbow_buttons:
             btn.setVisible(enabled)
 
@@ -431,6 +465,12 @@ class ColorSchemeSection(CollapsiblePanel):
 
     def _hide_rainbow_mode_controls(self):
         """Hide all rainbow mode specific controls."""
+        # Rainbow pool
+        if self.rainbow_label_pool:
+            self.rainbow_label_pool.setVisible(False)
+        for btn in self.rainbow_buttons:
+            btn.setVisible(False)
+
         # Level 1 controls
         if self.rainbow_bg_label:
             self.rainbow_bg_label.setVisible(False)
@@ -610,7 +650,9 @@ class ColorSchemeSection(CollapsiblePanel):
                 self.rainbow_check.setChecked(rainbow_enabled)
                 self.rainbow_check.blockSignals(False)
 
-            # Update button visibility based on loaded state
+            # Update button and label visibility based on loaded state
+            if self.rainbow_label_pool:
+                self.rainbow_label_pool.setVisible(rainbow_enabled)
             for btn in self.rainbow_buttons:
                 btn.setVisible(rainbow_enabled)
 
