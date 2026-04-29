@@ -78,8 +78,8 @@ class EdgeItem(QGraphicsPathItem):
             }
             # Use source depth for connector style (edge inherits source node's connector config)
             connector_role = role_map.get(source_depth, NodeRole.TERTIARY)
-            # Use target depth for rainbow branch color inheritance
-            rainbow_role = role_map.get(target_depth, NodeRole.TERTIARY)
+            # Use source depth for brightness/opacity adjustments (edge belongs to source node's layer)
+            adjustment_role = connector_role
 
             # Default values
             color_str = "#FF666666"
@@ -105,7 +105,7 @@ class EdgeItem(QGraphicsPathItem):
             color_scheme = self.style_config.resolved_color_scheme
             if color_scheme and color_scheme.use_rainbow_branches:
                 branch_idx = None
-                role_config = color_scheme.role_configs.get(rainbow_role)
+                role_config = color_scheme.role_configs.get(adjustment_role)
 
                 # Case 1: Target is a Level 1 node (Root -> Level 1 edge)
                 if (hasattr(self.target_item, 'domain_node') and self.target_item.domain_node and
