@@ -562,8 +562,8 @@ class AdvancedStyleTab(QWidget):
 
         color_scheme = self.style_config.resolved_color_scheme
 
-        # Handle per-role rainbow mode controls (for level_1/2/3+)
-        if role and self.current_layer in ["level_1", "level_2", "level_3_plus"]:
+        # Handle per-role rainbow mode controls (for root/level_1/2/3+)
+        if role and self.current_layer in ["root", "level_1", "level_2", "level_3_plus"]:
             if "rainbow_bg_enabled" in colors:
                 color_scheme.role_configs[role].rainbow_bg_enabled = colors[
                     "rainbow_bg_enabled"
@@ -976,8 +976,8 @@ class AdvancedStyleTab(QWidget):
             if "rainbow_pool" in layer_data:
                 color_data["rainbow_pool"] = layer_data["rainbow_pool"]
 
-            # Per-role rainbow mode controls - load for level_1/2/3+
-            if self.current_layer in ["level_1", "level_2", "level_3_plus"]:
+            # Per-role rainbow mode controls - load for root/level_1/2/3+
+            if self.current_layer in ["root", "level_1", "level_2", "level_3_plus"]:
                 if "rainbow_bg_enabled" in layer_data:
                     color_data["rainbow_bg_enabled"] = layer_data["rainbow_bg_enabled"]
                 if "rainbow_border_enabled" in layer_data:
