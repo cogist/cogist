@@ -38,13 +38,16 @@ class NodeStyleSection(CollapsiblePanel):
     style_changed = Signal(dict)
     shadow_enabled_changed = Signal(bool)
 
-    # UI constants
+    # UI constants (fallback value, will use parent's LABEL_WIDTH if available)
     LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
 
     def __init__(self, parent=None):
         super().__init__("Node Style", collapsed=True, parent=parent)
+
+        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
         # State
         self._initialized = False
@@ -155,7 +158,7 @@ class NodeStyleSection(CollapsiblePanel):
         # Style selector - using reusable VisualPreviewButton
         style_label = QLabel("Style:")
         style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        style_label.setFixedWidth(self.LABEL_WIDTH)
+        style_label.setFixedWidth(self._label_width)
         layout.addWidget(style_label, row, 0)
 
         # Create visual options for popup
@@ -180,7 +183,7 @@ class NodeStyleSection(CollapsiblePanel):
         # Corner radius
         radius_label = QLabel("Radius:")
         radius_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        radius_label.setFixedWidth(self.LABEL_WIDTH)
+        radius_label.setFixedWidth(self._label_width)
         layout.addWidget(radius_label, row, 0)
 
         self.radius_spin = QSpinBox()
@@ -206,7 +209,7 @@ class NodeStyleSection(CollapsiblePanel):
         # Padding W
         padding_w_label = QLabel("Padding W:")
         padding_w_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        padding_w_label.setFixedWidth(self.LABEL_WIDTH)
+        padding_w_label.setFixedWidth(self._label_width)
         layout.addWidget(padding_w_label, row, 0)
 
         self.padding_w_spin = QSpinBox()
@@ -221,7 +224,7 @@ class NodeStyleSection(CollapsiblePanel):
         # Padding H
         padding_h_label = QLabel("Padding H:")
         padding_h_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        padding_h_label.setFixedWidth(self.LABEL_WIDTH)
+        padding_h_label.setFixedWidth(self._label_width)
         layout.addWidget(padding_h_label, row, 0)
 
         self.padding_h_spin = QSpinBox()
@@ -236,7 +239,7 @@ class NodeStyleSection(CollapsiblePanel):
         # Max text width
         max_text_width_label = QLabel("Max Width:")
         max_text_width_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        max_text_width_label.setFixedWidth(self.LABEL_WIDTH)
+        max_text_width_label.setFixedWidth(self._label_width)
         layout.addWidget(max_text_width_label, row, 0)
 
         self.max_text_width_spin = QSpinBox()
@@ -252,7 +255,7 @@ class NodeStyleSection(CollapsiblePanel):
         # Font family
         font_family_label = QLabel("Font:")
         font_family_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        font_family_label.setFixedWidth(self.LABEL_WIDTH)
+        font_family_label.setFixedWidth(self._label_width)
         layout.addWidget(font_family_label, row, 0)
 
         self.font_family_combo = QPushButton(self.current_style["font_family"])
@@ -265,7 +268,7 @@ class NodeStyleSection(CollapsiblePanel):
         # Font size
         font_size_label = QLabel("Font Size:")
         font_size_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        font_size_label.setFixedWidth(self.LABEL_WIDTH)
+        font_size_label.setFixedWidth(self._label_width)
         layout.addWidget(font_size_label, row, 0)
 
         self.font_size_spin = QSpinBox()
@@ -280,7 +283,7 @@ class NodeStyleSection(CollapsiblePanel):
         # Font weight
         font_weight_label = QLabel("Weight:")
         font_weight_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        font_weight_label.setFixedWidth(self.LABEL_WIDTH)
+        font_weight_label.setFixedWidth(self._label_width)
         layout.addWidget(font_weight_label, row, 0)
 
         self.font_weight_menu = QMenu()
@@ -304,7 +307,7 @@ class NodeStyleSection(CollapsiblePanel):
         # Font style checkboxes - 2x2 grid layout
         font_style_label = QLabel("Font Style:")
         font_style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        font_style_label.setFixedWidth(self.LABEL_WIDTH)
+        font_style_label.setFixedWidth(self._label_width)
         layout.addWidget(font_style_label, row, 0)
 
         # Container for 2x2 checkbox grid

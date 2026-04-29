@@ -37,6 +37,7 @@ class AdvancedStyleTab(QWidget):
 
     # Panel dimensions
     PANEL_WIDTH = 260  # Original carefully designed width
+    LABEL_WIDTH = 90   # Unified label column width for all sections
 
     def __init__(
         self, style_config=None, config_manager=None, command_history=None, parent=None

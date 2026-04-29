@@ -20,13 +20,16 @@ class BorderSection(CollapsiblePanel):
 
     style_changed = Signal(dict)
 
-    # UI constants
+    # UI constants (fallback value, will use parent's LABEL_WIDTH if available)
     LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
 
     def __init__(self, parent=None):
         super().__init__("Border Style", collapsed=True, parent=parent)
+
+        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
         # State
         self._initialized = False
@@ -55,7 +58,7 @@ class BorderSection(CollapsiblePanel):
         # Border style
         style_label = QLabel("Style:")
         style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        style_label.setFixedWidth(self.LABEL_WIDTH)
+        style_label.setFixedWidth(self._label_width)
         layout.addWidget(style_label, 0, 0)
 
         # Get initial border style from current_style
@@ -81,7 +84,7 @@ class BorderSection(CollapsiblePanel):
         # Border width
         width_label = QLabel("Width:")
         width_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        width_label.setFixedWidth(self.LABEL_WIDTH)
+        width_label.setFixedWidth(self._label_width)
         layout.addWidget(width_label, 1, 0)
 
         self.border_width_spin = QSpinBox()

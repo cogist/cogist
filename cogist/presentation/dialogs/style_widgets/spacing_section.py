@@ -19,13 +19,16 @@ class SpacingSection(CollapsiblePanel):
 
     spacing_changed = Signal(dict)
 
-    # UI constants
+    # UI constants (fallback value, will use parent's LABEL_WIDTH if available)
     LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
 
     def __init__(self, parent=None):
         super().__init__("Spacing", collapsed=True, parent=parent)
+
+        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
         # State - will be initialized from style_config when loaded
         self._initialized = False
@@ -61,7 +64,7 @@ class SpacingSection(CollapsiblePanel):
         # Horizontal spacing (Parent-Child)
         pc_label = QLabel("H-Spacing:")
         pc_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        pc_label.setFixedWidth(self.LABEL_WIDTH)
+        pc_label.setFixedWidth(self._label_width)
         layout.addWidget(pc_label, row, 0)
 
         self.parent_child_spin = QSpinBox()
@@ -75,7 +78,7 @@ class SpacingSection(CollapsiblePanel):
         # Vertical spacing (Sibling)
         sib_label = QLabel("V-Spacing:")
         sib_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        sib_label.setFixedWidth(self.LABEL_WIDTH)
+        sib_label.setFixedWidth(self._label_width)
         layout.addWidget(sib_label, row, 0)
 
         self.sibling_spin = QSpinBox()
