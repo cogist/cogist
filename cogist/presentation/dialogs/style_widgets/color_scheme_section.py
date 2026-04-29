@@ -125,6 +125,10 @@ class ColorSchemeSection(CollapsiblePanel):
 
         row = 0
 
+        # Get current colors from parent (AdvancedStyleTab) if available
+        # This ensures we use template colors instead of hardcoded defaults
+        current_colors = self._get_current_colors_from_parent()
+
         # === Global Rainbow Branch Switch ===
         switch_row = QHBoxLayout()
         switch_row.setContentsMargins(0, 0, 0, 0)
@@ -208,10 +212,11 @@ class ColorSchemeSection(CollapsiblePanel):
         self.bg_label.setFixedWidth(self._label_width)
         layout.addWidget(self.bg_label, row, 0)
 
+        bg_color = current_colors.get("bg_color", self._default_colors["bg_color"])
         self.bg_color_btn = QPushButton()
         self.bg_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
         self.bg_color_btn.setStyleSheet(
-            f"background-color: {self._default_colors['bg_color']}; "
+            f"background-color: {bg_color}; "
             "border: 1px solid #ccc; border-radius: 6px;"
         )
         self.bg_color_btn.clicked.connect(lambda: self._pick_color("bg_color"))
@@ -224,10 +229,11 @@ class ColorSchemeSection(CollapsiblePanel):
         self.text_label.setFixedWidth(self._label_width)
         layout.addWidget(self.text_label, row, 0)
 
+        text_color = current_colors.get("text_color", self._default_colors["text_color"])
         self.text_color_btn = QPushButton()
         self.text_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
         self.text_color_btn.setStyleSheet(
-            f"background-color: {self._default_colors['text_color']}; "
+            f"background-color: {text_color}; "
             "border: 1px solid #ccc; border-radius: 6px;"
         )
         self.text_color_btn.clicked.connect(lambda: self._pick_color("text_color"))
@@ -240,10 +246,11 @@ class ColorSchemeSection(CollapsiblePanel):
         self.border_label.setFixedWidth(self._label_width)
         layout.addWidget(self.border_label, row, 0)
 
+        border_color = current_colors.get("border_color", self._default_colors["border_color"])
         self.border_color_btn = QPushButton()
         self.border_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
         self.border_color_btn.setStyleSheet(
-            f"background-color: {self._default_colors['border_color']}; "
+            f"background-color: {border_color}; "
             "border: 1px solid #ccc; border-radius: 6px;"
         )
         self.border_color_btn.clicked.connect(lambda: self._pick_color("border_color"))
@@ -256,10 +263,11 @@ class ColorSchemeSection(CollapsiblePanel):
         self.conn_label.setFixedWidth(self._label_width)
         layout.addWidget(self.conn_label, row, 0)
 
+        connector_color = current_colors.get("connector_color", self._default_colors["connector_color"])
         self.conn_color_btn = QPushButton()
         self.conn_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
         self.conn_color_btn.setStyleSheet(
-            f"background-color: {self._default_colors['connector_color']}; "
+            f"background-color: {connector_color}; "
             "border: 1px solid #ccc; border-radius: 6px;"
         )
         self.conn_color_btn.clicked.connect(lambda: self._pick_color("connector_color"))
@@ -395,6 +403,52 @@ class ColorSchemeSection(CollapsiblePanel):
         # This ensures color pool is correctly shown/hidden after lazy initialization
         self._apply_role_visibility()
 
+    def _get_current_colors_from_parent(self) -> dict:
+        """Get current colors from parent (AdvancedStyleTab).
+
+        Returns:
+            Dictionary with current color values, or empty dict if parent not available
+        """
+        parent = self.parentWidget()
+        if not parent or not hasattr(parent, 'style_config'):
+            return {}
+
+        style_config = parent.style_config
+        if not style_config:
+            return {}
+
+        # Get role from current_role
+        role_str = self.current_role
+        if not role_str:
+            return {}
+
+        # Map role string to NodeRole
+        from cogist.domain.styles import NodeRole
+        role_map = {
+            "root": NodeRole.ROOT,
+            "level_1": NodeRole.PRIMARY,
+            "level_2": NodeRole.SECONDARY,
+            "level_3_plus": NodeRole.TERTIARY,
+        }
+
+        role = role_map.get(role_str)
+        if not role:
+            return {}
+
+        # Get colors from resolved_color_scheme
+        color_scheme = style_config.resolved_color_scheme
+        if not color_scheme or role not in color_scheme.role_configs:
+            return {}
+
+        role_config = color_scheme.role_configs[role]
+
+        return {
+            "bg_color": role_config.bg_color,
+            "text_color": role_config.text_color,
+            "border_color": role_config.border_color,
+            "connector_color": role_config.connector_color,
+        }
+
     def _get_widget_row(self, grid_layout: QGridLayout, widget: QWidget) -> int | None:
         """Get the row index of a widget in QGridLayout.
 
@@ -452,8 +506,8 @@ class ColorSchemeSection(CollapsiblePanel):
 
         # Text Color
         if self.text_label and self.text_color_btn:
-            # Hide in rainbow mode (use auto contrast)
-            should_show_text = not is_canvas and not rainbow_enabled
+            # Hide in rainbow mode for level_1/2/3+ only (root can still set text color)
+            should_show_text = not is_canvas and not (rainbow_enabled and (is_level_1 or is_level_2 or is_level_3_plus))
             self.text_label.setVisible(should_show_text)
             self.text_color_btn.setVisible(should_show_text)
 
