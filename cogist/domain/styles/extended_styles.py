@@ -151,108 +151,149 @@ class EdgeConfig:
 
 
 @dataclass
-class RoleBasedStyle:
-    """Role-based style configuration (without colors).
+class RoleStyle:
+    """Flat role-based style configuration (NEW ARCHITECTURE).
 
-    Colors come from ColorScheme, this only defines geometry and appearance.
+    All style fields at the same level. Colors reference ColorScheme.branch_colors
+    via index, with brightness and opacity adjustments.
+
+    This replaces the old nested structure (RoleBasedStyle with BackgroundStyle,
+    BorderStyle, etc.) for a simpler, more maintainable design.
     """
 
     role: NodeRole
 
-    # === Node shape ===
-    shape: NodeShape = field(default_factory=NodeShape)
+    # === Shape ===
+    shape_type: str = "basic"  # basic / svg / custom
+    basic_shape: str = "rounded_rect"  # rounded_rect, rect, circle, ellipse, bottom_line, left_line, none
+    border_radius: int = 8
 
-    # === Background style ===
-    background: BackgroundStyle = field(default_factory=BackgroundStyle)
+    # === Background (flat fields) ===
+    bg_enabled: bool = True
+    bg_color_index: int = 0  # Index into branch_colors
+    bg_brightness: float = 1.0  # 0.5-1.5
+    bg_opacity: int = 255  # 0-255
 
-    # === Border style ===
-    border: BorderStyle = field(default_factory=BorderStyle)
+    # === Border (flat fields) ===
+    border_enabled: bool = True
+    border_width: int = 0
+    border_color_index: int = 0  # Index into branch_colors
+    border_brightness: float = 1.0
+    border_opacity: int = 255
+    border_style: str = "solid"  # solid / dashed / dotted / dash_dot
 
-    # === Padding ===
-    padding_w: int = 12
-    padding_h: int = 8
+    # === Connector (flat fields) ===
+    connector_shape: str = "bezier"  # bezier / straight / orthogonal / rounded_orthogonal
+    connector_color_index: int = 0  # Index into branch_colors
+    connector_brightness: float = 1.0
+    connector_opacity: int = 255
+    line_width: float = 2.0
+    connector_style: str = "solid"  # solid / dashed / dotted
 
-    # === Text constraints ===
-    max_text_width: int = (
-        250  # Maximum text width before wrapping (can vary by role/depth)
-    )
-
-    # === Font properties (without colors) ===
+    # === Text ===
+    text_color: str | None = None  # Auto-calculated if None (based on background luminance)
     font_size: int = 14
     font_weight: str = "Normal"  # Normal / Bold / Light
-    font_italic: bool = False  # Italic style
+    font_italic: bool = False
     font_family: str = "Arial"
     font_underline: bool = False
     font_strikeout: bool = False
 
-    # === Shadow effect ===
+    # === Shadow ===
     shadow_enabled: bool = False
     shadow_offset_x: int = 2
     shadow_offset_y: int = 2
     shadow_blur: int = 4
-    shadow_color: str | None = None  # Optional, default black semi-transparent
+    shadow_color: str | None = None  # Default: none (black semi-transparent if enabled)
 
-    # === Spacing configuration (per-role) ===
-    parent_child_spacing: float = 80.0  # Spacing to child nodes
-    sibling_spacing: float = 60.0  # Spacing between sibling nodes
+    # === Spacing ===
+    parent_child_spacing: float = 80.0
+    sibling_spacing: float = 60.0
 
-    # === Text color (per-role) ===
-    text_color: str | None = None  # Auto-calculated if None (based on background luminance)
-    
-    # === Connector configuration (per-role) ===
-    connector_shape: str = (
-        "bezier"  # bezier / straight / orthogonal / rounded_orthogonal
-    )
-    connector_style: str = "solid"  # solid / dashed / dotted
-    line_width: float = 2.0
-    
-    # Connector color reference and adjustment (follows role layer)
-    connector_color_index: int = 0  # Index into ColorScheme.branch_colors
-    connector_brightness: float = 1.0  # Brightness adjustment (0.5-1.5)
-    connector_opacity: int = 255  # Opacity adjustment (0-255)
+    # === Padding ===
+    padding_w: int = 12
+    padding_h: int = 8
+    max_text_width: int = 250
 
+
+# === DEPRECATED CLASSES (Will be removed in future versions) ===
+# These classes are kept temporarily for migration purposes only.
+# Use RoleStyle instead.
 
 @dataclass
-class NodeColorConfig:
-    """Deprecated: Use RoleBasedStyle fields directly.
-    
-    This class is kept for backward compatibility only.
-    All color configuration has moved to:
-    - BackgroundStyle.color_index (background color)
-    - BorderStyle.color_index (border color)
-    - RoleBasedStyle.connector_color_index (connector color)
-    - RoleBasedStyle.text_color (text color)
-    """
+class RoleBasedStyle:
+    """DEPRECATED: Use RoleStyle instead.
 
-    # Deprecated - use RoleBasedStyle.text_color instead
+    Old nested structure that will be removed. Kept for backward compatibility during migration.
+    """
+    role: NodeRole
+    shape: NodeShape = field(default_factory=NodeShape)
+    background: BackgroundStyle = field(default_factory=BackgroundStyle)
+    border: BorderStyle = field(default_factory=BorderStyle)
+    padding_w: int = 12
+    padding_h: int = 8
+    max_text_width: int = 250
+    font_size: int = 14
+    font_weight: str = "Normal"
+    font_italic: bool = False
+    font_family: str = "Arial"
+    font_underline: bool = False
+    font_strikeout: bool = False
+    shadow_enabled: bool = False
+    shadow_offset_x: int = 2
+    shadow_offset_y: int = 2
+    shadow_blur: int = 4
+    shadow_color: str | None = None
+    parent_child_spacing: float = 80.0
+    sibling_spacing: float = 60.0
     text_color: str | None = None
+    connector_shape: str = "bezier"
+    connector_style: str = "solid"
+    line_width: float = 2.0
+    connector_color_index: int = 0
+    connector_brightness: float = 1.0
+    connector_opacity: int = 255
 
 
 @dataclass
 class ColorScheme:
-    """Color scheme (pure color definitions only)."""
+    """Color scheme (pure color pool only).
+
+    Contains only the color palette. No style properties.
+    Canvas background color is stored at index 8 of branch_colors.
+    """
 
     name: str
     description: str
 
-    # Branch color pool (8 colors for 2x4 grid) (using HexArgb format)
+    # Branch color pool (9 colors using HexArgb format)
+    # Indices [0-7]: Branch colors for rainbow mode
+    # Index [8]: Canvas background color
     branch_colors: list[str] = field(
         default_factory=lambda: [
-            "#FFFF6B6B",  # Red
-            "#FF4ECDC4",  # Teal
-            "#FF45B7D1",  # Light Blue
-            "#FFFFA07A",  # Light Salmon
-            "#FF98D8C8",  # Mint
-            "#FFF7DC6F",  # Yellow
-            "#FFBB8FCE",  # Purple
-            "#FF85C1E2",  # Sky Blue
+            "#FFFF6B6B",  # [0] Red
+            "#FF4ECDC4",  # [1] Teal
+            "#FF45B7D1",  # [2] Light Blue
+            "#FFFFA07A",  # [3] Light Salmon
+            "#FF98D8C8",  # [4] Mint
+            "#FFF7DC6F",  # [5] Yellow
+            "#FFBB8FCE",  # [6] Purple
+            "#FF85C1E2",  # [7] Sky Blue
+            "#FFFFFFFF",  # [8] Canvas Background (White)
         ]
     )
+
+    # Optional defaults
+    default_use_rainbow_branches: bool | None = None
 
 
 @dataclass
 class Template:
-    """Template: Role-based style definitions (without colors)."""
+    """DEPRECATED: Use MindMapStyle directly.
+
+    Old template structure. Kept for backward compatibility during migration.
+    New architecture uses MindMapStyle with embedded role_styles.
+    """
 
     name: str
     description: str

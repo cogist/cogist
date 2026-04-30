@@ -1,7 +1,5 @@
 """Style resolver - merges templates and color schemes into final styles."""
 
-from typing import Any
-
 from .enums import NodeRole
 from .extended_styles import (
     BackgroundStyle,
@@ -10,173 +8,120 @@ from .extended_styles import (
     EdgeConfig,
     NodeShape,
     RoleBasedStyle,
+    RoleStyle,  # NEW: Flat role-based style
     SpacingConfig,
     Template,
 )
 from .style_config import MindMapStyle
 
 
-def _calculate_luminance(hex_color: str) -> float:
-    """Calculate the luminance of a color.
-
-    Args:
-        hex_color: Color in hex format (#RRGGBB or #AARRGGBB)
-
-    Returns:
-        Luminance value between 0.0 (black) and 1.0 (white)
-    """
-    hex_color = hex_color.lstrip("#")
-
-    # Support both 6-digit (#RRGGBB) and 8-digit (#AARRGGBB) formats
-    if len(hex_color) == 8:
-        hex_color = hex_color[2:]  # Remove AA prefix
-    elif len(hex_color) != 6:
-        return 0.5  # Default to middle luminance
-
-    try:
-        r = int(hex_color[0:2], 16)
-        g = int(hex_color[2:4], 16)
-        b = int(hex_color[4:6], 16)
-    except ValueError:
-        return 0.5
-
-    # Calculate luminance using standard formula
-    return (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
-
-
-def _auto_contrast_text_color(bg_color: str) -> str:
-    """Automatically choose text color based on background brightness.
-
-    Args:
-        bg_color: Background color in hex format (#RRGGBB or #AARRGGBB)
-
-    Returns:
-        '#FFFFFFFF' for dark backgrounds, '#FF000000' for light backgrounds
-    """
-    luminance = _calculate_luminance(bg_color)
-
-    # Return white for dark backgrounds, black for light
-    return "#FFFFFFFF" if luminance < 0.5 else "#FF000000"
-
-
-def resolve_style(
-    style_config: MindMapStyle,
-    template_registry: dict[str, Template],
-    color_scheme_registry: dict[str, ColorScheme],
-) -> None:
-    """Resolve template and color scheme into final renderable styles.
-
-    This function merges the template's geometry/appearance with the color
-    scheme's colors to produce the final resolved styles.
-
-    Args:
-        style_config: The MindMapStyle to update
-        template_registry: Registry of available templates
-        color_scheme_registry: Registry of available color schemes
-    """
-    # Get template and color scheme
-    template = template_registry.get(style_config.template_name)
-    color_scheme = color_scheme_registry.get(style_config.color_scheme_name)
-
-    if not template or not color_scheme:
-        # Fallback to defaults if not found
-        if not template:
-            template = (
-                list(template_registry.values())[0] if template_registry else None
-            )
-        if not color_scheme:
-            color_scheme = (
-                list(color_scheme_registry.values())[0]
-                if color_scheme_registry
-                else None
-            )
-
-    if not template or not color_scheme:
-        return  # Cannot resolve without both
-
-    # Store resolved references
-    style_config.resolved_template = template
-    style_config.resolved_color_scheme = color_scheme
-
-    # Update canvas background from color scheme
-    style_config.canvas_bg_color = color_scheme.canvas_bg_color
-
-    # Resolve role-based styles by merging template + colors
-    for role, template_style in template.role_styles.items():
-        # Create a deep copy of the template style
-        _deep_copy_role_style(template_style)
-
-        # Apply colors from color scheme
-        if role in color_scheme.role_configs:
-            role_config = color_scheme.role_configs[role]
-
-            # Auto-calculate text color if not explicitly set
-            if not role_config.text_color and role_config.bg_color:
-                role_config.text_color = _auto_contrast_text_color(role_config.bg_color)
-
-        # Store in a temporary resolved dict (for future use)
-        # For now, we keep the legacy depth_styles for backward compatibility
-        # TODO: Migrate to role-based rendering
+def serialize_role_style(role_style: RoleStyle) -> dict:
+    """Serialize a single RoleStyle to dict (flat structure)."""
+    return {
+        "role": role_style.role.value,
+        # Shape
+        "shape_type": role_style.shape_type,
+        "basic_shape": role_style.basic_shape,
+        "border_radius": role_style.border_radius,
+        # Background
+        "bg_enabled": role_style.bg_enabled,
+        "bg_color_index": role_style.bg_color_index,
+        "bg_brightness": role_style.bg_brightness,
+        "bg_opacity": role_style.bg_opacity,
+        # Border
+        "border_enabled": role_style.border_enabled,
+        "border_width": role_style.border_width,
+        "border_color_index": role_style.border_color_index,
+        "border_brightness": role_style.border_brightness,
+        "border_opacity": role_style.border_opacity,
+        "border_style": role_style.border_style,
+        # Connector
+        "connector_shape": role_style.connector_shape,
+        "connector_color_index": role_style.connector_color_index,
+        "connector_brightness": role_style.connector_brightness,
+        "connector_opacity": role_style.connector_opacity,
+        "line_width": role_style.line_width,
+        "connector_style": role_style.connector_style,
+        # Text
+        "text_color": role_style.text_color,
+        "font_size": role_style.font_size,
+        "font_weight": role_style.font_weight,
+        "font_italic": role_style.font_italic,
+        "font_family": role_style.font_family,
+        "font_underline": role_style.font_underline,
+        "font_strikeout": role_style.font_strikeout,
+        # Shadow
+        "shadow_enabled": role_style.shadow_enabled,
+        "shadow_offset_x": role_style.shadow_offset_x,
+        "shadow_offset_y": role_style.shadow_offset_y,
+        "shadow_blur": role_style.shadow_blur,
+        "shadow_color": role_style.shadow_color,
+        # Spacing
+        "parent_child_spacing": role_style.parent_child_spacing,
+        "sibling_spacing": role_style.sibling_spacing,
+        # Padding
+        "padding_w": role_style.padding_w,
+        "padding_h": role_style.padding_h,
+        "max_text_width": role_style.max_text_width,
+    }
 
 
-def _deep_copy_role_style(style: RoleBasedStyle) -> RoleBasedStyle:
-    """Create a deep copy of a RoleBasedStyle."""
-    return RoleBasedStyle(
-        role=style.role,
-        shape=NodeShape(
-            shape_type=style.shape.shape_type,
-            basic_shape=style.shape.basic_shape,
-            border_radius=style.shape.border_radius,
-            svg_path=style.shape.svg_path,
-            custom_params=dict(style.shape.custom_params),
-        ),
-        background=BackgroundStyle(
-            bg_type=style.background.bg_type,
-            gradient_type=style.background.gradient_type,
-            gradient_colors=style.background.gradient_colors.copy()
-            if style.background.gradient_colors
-            else None,
-            gradient_angle=style.background.gradient_angle,
-            texture_type=style.background.texture_type,
-            texture_opacity=style.background.texture_opacity,
-            image_path=style.background.image_path,
-            image_scale=style.background.image_scale,
-            image_opacity=style.background.image_opacity,
-        ),
-        border=BorderStyle(
-            border_type=style.border.border_type,
-            border_width=style.border.border_width,
-            border_radius=style.border.border_radius,
-            border_style=style.border.border_style,
-            svg_path=style.border.svg_path,
-            svg_repeat=style.border.svg_repeat,
-            image_path=style.border.image_path,
-            image_scale=style.border.image_scale,
-            gradient_type=style.border.gradient_type,
-            gradient_colors=style.border.gradient_colors.copy()
-            if style.border.gradient_colors
-            else None,
-            gradient_angle=style.border.gradient_angle,
-        ),
-        padding_w=style.padding_w,
-        padding_h=style.padding_h,
-        font_size=style.font_size,
-        font_weight=style.font_weight,
-        font_italic=style.font_italic,
-        font_family=style.font_family,
-        shadow_enabled=style.shadow_enabled,
-        shadow_offset_x=style.shadow_offset_x,
-        shadow_offset_y=style.shadow_offset_y,
-        shadow_blur=style.shadow_blur,
-        shadow_color=style.shadow_color,
+def deserialize_role_style(data: dict) -> RoleStyle:
+    """Deserialize RoleStyle from dict (flat structure)."""
+    return RoleStyle(
+        role=NodeRole(data.get("role", "root")),
+        # Shape
+        shape_type=data.get("shape_type", "basic"),
+        basic_shape=data.get("basic_shape", "rounded_rect"),
+        border_radius=data.get("border_radius", 8),
+        # Background
+        bg_enabled=data.get("bg_enabled", True),
+        bg_color_index=data.get("bg_color_index", 0),
+        bg_brightness=data.get("bg_brightness", 1.0),
+        bg_opacity=data.get("bg_opacity", 255),
+        # Border
+        border_enabled=data.get("border_enabled", True),
+        border_width=data.get("border_width", 0),
+        border_color_index=data.get("border_color_index", 0),
+        border_brightness=data.get("border_brightness", 1.0),
+        border_opacity=data.get("border_opacity", 255),
+        border_style=data.get("border_style", "solid"),
+        # Connector
+        connector_shape=data.get("connector_shape", "bezier"),
+        connector_color_index=data.get("connector_color_index", 0),
+        connector_brightness=data.get("connector_brightness", 1.0),
+        connector_opacity=data.get("connector_opacity", 255),
+        line_width=data.get("line_width", 2.0),
+        connector_style=data.get("connector_style", "solid"),
+        # Text
+        text_color=data.get("text_color"),
+        font_size=data.get("font_size", 14),
+        font_weight=data.get("font_weight", "Normal"),
+        font_italic=data.get("font_italic", False),
+        font_family=data.get("font_family", "Arial"),
+        font_underline=data.get("font_underline", False),
+        font_strikeout=data.get("font_strikeout", False),
+        # Shadow
+        shadow_enabled=data.get("shadow_enabled", False),
+        shadow_offset_x=data.get("shadow_offset_x", 2),
+        shadow_offset_y=data.get("shadow_offset_y", 2),
+        shadow_blur=data.get("shadow_blur", 4),
+        shadow_color=data.get("shadow_color"),
+        # Spacing
+        parent_child_spacing=data.get("parent_child_spacing", 80.0),
+        sibling_spacing=data.get("sibling_spacing", 60.0),
+        # Padding
+        padding_w=data.get("padding_w", 12),
+        padding_h=data.get("padding_h", 8),
+        max_text_width=data.get("max_text_width", 250),
     )
 
 
 def serialize_style(style_config: MindMapStyle) -> dict:
-    """Serialize MindMapStyle to JSON-compatible dict.
+    """Serialize complete MindMapStyle to JSON-compatible dict.
 
-    Note: Template and ColorScheme are saved separately in style/template.json
-    and style/color_scheme.json. This function only saves MindMapStyle config.
+    New architecture: Single self-contained structure with embedded
+    color pool and role configurations.
 
     Args:
         style_config: The style configuration to serialize
@@ -186,20 +131,19 @@ def serialize_style(style_config: MindMapStyle) -> dict:
     """
     return {
         "name": style_config.name,
-        # === Global spacing configuration (fallback for backward compatibility) ===
-        "parent_child_spacing": style_config.parent_child_spacing,
-        "sibling_spacing": style_config.sibling_spacing,
-        # === Canvas background ===
-        "canvas_bg_color": style_config.canvas_bg_color,
+        "use_rainbow_branches": style_config.use_rainbow_branches,
+        "branch_colors": style_config.branch_colors,
+        "role_styles": {
+            role.value: serialize_role_style(role_style)
+            for role, role_style in style_config.role_styles.items()
+        },
     }
 
 
 def deserialize_style(data: dict) -> MindMapStyle:
     """Deserialize MindMapStyle from JSON-compatible dict.
 
-    Note: Template and ColorScheme should be loaded separately from
-    style/template.json and style/color_scheme.json, then assigned to
-    style_config.resolved_template and style_config.resolved_color_scheme.
+    New architecture: Self-contained structure with all data embedded.
 
     Args:
         data: Dictionary representation from JSON
@@ -207,19 +151,17 @@ def deserialize_style(data: dict) -> MindMapStyle:
     Returns:
         MindMapStyle instance
     """
-
-    # Convert string keys back to int for depth-based configs
-    def convert_depth_keys(d: dict) -> dict[int, Any]:
-        return {int(k): v for k, v in d.items()}
-
     style = MindMapStyle(
         name=data.get("name", "Default"),
-        # === Global spacing configuration ===
-        parent_child_spacing=data.get("parent_child_spacing", 80.0),
-        sibling_spacing=data.get("sibling_spacing", 60.0),
-        # === Canvas background ===
-        canvas_bg_color=data.get("canvas_bg_color", "#FFFFFFFF"),
+        use_rainbow_branches=data.get("use_rainbow_branches", False),
+        branch_colors=data.get("branch_colors", []),
     )
+
+    # Deserialize role styles
+    if "role_styles" in data:
+        for role_str, role_data in data["role_styles"].items():
+            role = NodeRole(role_str)
+            style.role_styles[role] = deserialize_role_style(role_data)
 
     return style
 
@@ -253,9 +195,7 @@ def deserialize_template(data: dict) -> Template:
 
     spacing_data = data.get("spacing", {})
     spacing = SpacingConfig(
-        parent_child_spacing=SpacingLevel(
-            spacing_data.get("parent_child_spacing", "normal")
-        ),
+        parent_child_spacing=SpacingLevel(spacing_data.get("parent_child_spacing", "normal")),
         sibling_spacing=SpacingLevel(spacing_data.get("sibling_spacing", "normal")),
     )
 
@@ -294,16 +234,20 @@ def serialize_color_scheme(scheme: ColorScheme) -> dict:
 
 
 def deserialize_color_scheme(data: dict) -> ColorScheme:
-    """Deserialize ColorScheme from JSON-compatible dict."""
+    """Deserialize ColorScheme from JSON-compatible dict.
+
+    Note: Old format with role_configs, canvas_bg_color, edge_color is deprecated.
+    New format only has branch_colors (9 colors).
+    """
     return ColorScheme(
         name=data["name"],
         description=data.get("description", ""),
         branch_colors=data.get("branch_colors", []),
+        default_use_rainbow_branches=data.get("default_use_rainbow_branches"),
     )
 
 
 # Helper functions for nested structures
-
 
 def serialize_role_based_style(style: RoleBasedStyle) -> dict:
     """Serialize RoleBasedStyle to dict."""
@@ -358,9 +302,7 @@ def serialize_role_based_style(style: RoleBasedStyle) -> dict:
         "connector_shape": style.connector_shape,
         "connector_style": style.connector_style,
         "line_width": style.line_width,
-        "connector_color_index": style.connector_color_index,
-        "connector_brightness": style.connector_brightness,
-        "connector_opacity": style.connector_opacity,
+        "connector_color": style.connector_color,
     }
 
 
@@ -495,3 +437,6 @@ def deserialize_edge_style(data: dict):
         arrow_svg=data.get("arrow_svg"),
         dash_pattern=data.get("dash_pattern"),
     )
+
+
+

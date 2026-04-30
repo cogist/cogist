@@ -10,6 +10,7 @@ from .extended_styles import (
     NodeColorConfig,
     NodeShape,
     RoleBasedStyle,
+    RoleStyle,  # NEW: Flat role-based style
     SpacingConfig,
     Template,
 )
@@ -41,9 +42,10 @@ __all__ = [
     "EdgeStyle",
     "EdgeConfig",
     "NodeColorConfig",
-    "RoleBasedStyle",
+    "RoleBasedStyle",  # DEPRECATED: Use RoleStyle
+    "RoleStyle",  # NEW: Flat role-based style (authoritative)
     "ColorScheme",
-    "Template",
+    "Template",  # DEPRECATED: Use MindMapStyle directly
 
     # Style resolver
     "resolve_style",
