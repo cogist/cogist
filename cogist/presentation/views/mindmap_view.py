@@ -172,11 +172,8 @@ class MindMapView(QGraphicsView):
         # Step 2: Apply layout with actual sizes
         from cogist.domain.layout import DefaultLayoutConfig
 
-        # Create layout config from style_config spacing values
-        # LayoutConfig will read spacing from role_styles via resolved_template reference
+        # Create layout config - spacing will be read from resolved_template.role_styles
         layout_config = DefaultLayoutConfig(
-            level_spacing=self.style_config.parent_child_spacing,
-            sibling_spacing=self.style_config.sibling_spacing,
             resolved_template=self.style_config.resolved_template,  # For role-based spacing
         )
 
@@ -383,7 +380,15 @@ class MindMapView(QGraphicsView):
         if hasattr(self, "style_config") and self.style_config:
             from PySide6.QtGui import QBrush, QColor
 
-            canvas_color = self.style_config.canvas_bg_color or "#FFFFFF"
+            # NEW: Use branch_colors[8] for canvas background
+            if (
+                hasattr(self.style_config, "branch_colors")
+                and self.style_config.branch_colors
+                and len(self.style_config.branch_colors) > 8
+            ):
+                canvas_color = self.style_config.branch_colors[8]
+            else:
+                canvas_color = "#FFFFFFFF"  # Default white
             self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
 
     def _create_ui_items(self, root: Node):
@@ -393,7 +398,15 @@ class MindMapView(QGraphicsView):
         if hasattr(self, "style_config") and self.style_config:
             from PySide6.QtGui import QBrush, QColor
 
-            canvas_color = self.style_config.canvas_bg_color or "#FFFFFF"
+            # NEW: Use branch_colors[8] for canvas background
+            if (
+                hasattr(self.style_config, "branch_colors")
+                and self.style_config.branch_colors
+                and len(self.style_config.branch_colors) > 8
+            ):
+                canvas_color = self.style_config.branch_colors[8]
+            else:
+                canvas_color = "#FFFFFFFF"  # Default white
             self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
 
         # Define branch colors (light colors for background, black text)
@@ -465,23 +478,15 @@ class MindMapView(QGraphicsView):
 
                         # Build edge style config from role-based values
                         color_scheme = self.style_config.resolved_color_scheme
-                        
-                        # Get connector color from color pool
-                        if color_scheme and role_style.connector_color_index < len(color_scheme.branch_colors):
-                            connector_color = color_scheme.branch_colors[role_style.connector_color_index]
-                            # Apply brightness
-                            if role_style.connector_brightness != 1.0:
-                                # Note: brightness adjustment would need helper method
-                                # For now, use base color
-                                pass
-                            # Apply opacity
-                            if role_style.connector_opacity < 255:
-                                # Note: opacity adjustment would need helper method
-                                # For now, use base color
-                                pass
+
+                        # Get connector color: use role override or fallback to edge_color
+                        if role_style.connector_color:
+                            connector_color = role_style.connector_color
+                        elif color_scheme:
+                            connector_color = color_scheme.edge_color
                         else:
                             connector_color = "#666666"
-                        
+
                         edge_style_config = {
                             "connector_color": connector_color,
                             "line_width": role_style.line_width,
@@ -1807,10 +1812,8 @@ class MindMapView(QGraphicsView):
         # Step 2: Re-apply layout, passing selected node to preserve its side
         from cogist.domain.layout import DefaultLayoutConfig
 
-        # Create layout config using role-based spacing (via resolved_template)
+        # Create layout config - spacing will be read from resolved_template.role_styles
         layout_config = DefaultLayoutConfig(
-            level_spacing=self.style_config.parent_child_spacing,
-            sibling_spacing=self.style_config.sibling_spacing,
             resolved_template=self.style_config.resolved_template,  # For role-based spacing
         )
 
@@ -2327,13 +2330,13 @@ class MindMapView(QGraphicsView):
                     role in self.style_config.resolved_template.role_styles):
                     role_style = self.style_config.resolved_template.role_styles[role]
                     color_scheme = self.style_config.resolved_color_scheme
-                    
+
                     # Get connector color from color pool
                     if color_scheme and role_style.connector_color_index < len(color_scheme.branch_colors):
                         color = color_scheme.branch_colors[role_style.connector_color_index]
                     else:
                         color = "#999999"
-                    
+
                     connector_shape = role_style.connector_shape
 
                 # Create a temporary EdgeItem with proper styling

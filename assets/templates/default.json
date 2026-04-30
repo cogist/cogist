@@ -1,281 +1,153 @@
 {
   "name": "default",
-  "description": "Custom template: default",
-  "style_config": {
-    "name": "Default",
-    "parent_child_spacing": 80.0,
-    "sibling_spacing": 60.0,
-    "canvas_bg_color": "#fffffcf0"
+  "description": "Default template with rounded rectangles and clean design",
+  
+  "role_styles": {
+    "ROOT": {
+      "shape_type": "rounded",
+      "padding_w": 24,
+      "padding_h": 16,
+      "max_text_width": 300,
+      
+      "border_enabled": true,
+      "border_width": 3,
+      "border_radius": 12,
+      "border_style": "solid",
+      
+      "bg_enabled": true,
+      "bg_type": "solid",
+      
+      "text_color_auto": true,
+      "font_size": 22,
+      "font_family": "Arial",
+      "font_weight": 700,
+      "font_italic": false,
+      
+      "connector_shape": "bezier",
+      "connector_style": "solid",
+      "line_width": 3.0,
+      
+      "parent_child_spacing": 100.0,
+      "sibling_spacing": 80.0,
+      
+      "shadow_enabled": false,
+      "shadow_blur": 8,
+      "shadow_offset_x": 2,
+      "shadow_offset_y": 2,
+      
+      "rainbow_bg_enabled": false,
+      "rainbow_border_enabled": false
+    },
+    
+    "PRIMARY": {
+      "shape_type": "rounded",
+      "padding_w": 20,
+      "padding_h": 14,
+      "max_text_width": 250,
+      
+      "border_enabled": true,
+      "border_width": 2,
+      "border_radius": 10,
+      "border_style": "solid",
+      
+      "bg_enabled": true,
+      "bg_type": "solid",
+      
+      "text_color_auto": true,
+      "font_size": 18,
+      "font_family": "Arial",
+      "font_weight": 600,
+      "font_italic": false,
+      
+      "connector_shape": "bezier",
+      "connector_style": "solid",
+      "line_width": 2.5,
+      
+      "parent_child_spacing": 90.0,
+      "sibling_spacing": 70.0,
+      
+      "shadow_enabled": false,
+      "shadow_blur": 6,
+      "shadow_offset_x": 1,
+      "shadow_offset_y": 1,
+      
+      "rainbow_bg_enabled": true,
+      "rainbow_border_enabled": true
+    },
+    
+    "SECONDARY": {
+      "shape_type": "rounded",
+      "padding_w": 16,
+      "padding_h": 10,
+      "max_text_width": 200,
+      
+      "border_enabled": false,
+      "border_width": 0,
+      "border_radius": 8,
+      "border_style": "solid",
+      
+      "bg_enabled": true,
+      "bg_type": "solid",
+      
+      "text_color_auto": true,
+      "font_size": 15,
+      "font_family": "Arial",
+      "font_weight": 400,
+      "font_italic": false,
+      
+      "connector_shape": "bezier",
+      "connector_style": "solid",
+      "line_width": 2.0,
+      
+      "parent_child_spacing": 80.0,
+      "sibling_spacing": 60.0,
+      
+      "shadow_enabled": false,
+      "shadow_blur": 0,
+      "shadow_offset_x": 0,
+      "shadow_offset_y": 0,
+      
+      "rainbow_bg_enabled": false,
+      "rainbow_border_enabled": false
+    },
+    
+    "TERTIARY": {
+      "shape_type": "rounded",
+      "padding_w": 12,
+      "padding_h": 8,
+      "max_text_width": 0,
+      
+      "border_enabled": false,
+      "border_width": 0,
+      "border_radius": 6,
+      "border_style": "solid",
+      
+      "bg_enabled": true,
+      "bg_type": "solid",
+      
+      "text_color_auto": true,
+      "font_size": 13,
+      "font_family": "Arial",
+      "font_weight": 400,
+      "font_italic": false,
+      
+      "connector_shape": "bezier",
+      "connector_style": "solid",
+      "line_width": 1.5,
+      
+      "parent_child_spacing": 70.0,
+      "sibling_spacing": 50.0,
+      
+      "shadow_enabled": false,
+      "shadow_blur": 0,
+      "shadow_offset_x": 0,
+      "shadow_offset_y": 0,
+      
+      "rainbow_bg_enabled": false,
+      "rainbow_border_enabled": false
+    }
   },
-  "template": {
-    "name": "default",
-    "description": "Default template with rounded rectangles",
-    "role_styles": {
-      "root": {
-        "shape": {
-          "shape_type": "basic",
-          "basic_shape": "rounded_rect",
-          "border_radius": 30,
-          "svg_path": null,
-          "custom_params": {}
-        },
-        "background": {
-          "bg_type": "solid",
-          "gradient_type": null,
-          "gradient_colors": null,
-          "gradient_angle": 0.0,
-          "texture_type": null,
-          "texture_opacity": 0.3,
-          "image_path": null,
-          "image_scale": 1.0,
-          "image_opacity": 1.0
-        },
-        "border": {
-          "border_type": "simple",
-          "border_width": 3,
-          "border_radius": 12,
-          "border_style": "solid",
-          "svg_path": null,
-          "svg_repeat": false,
-          "image_path": null,
-          "image_scale": 1.0,
-          "gradient_type": null,
-          "gradient_colors": null,
-          "gradient_angle": 0.0
-        },
-        "padding_w": 20,
-        "padding_h": 15,
-        "max_text_width": 250,
-        "font_size": 22,
-        "font_weight": "Bold",
-        "font_italic": false,
-        "font_family": "Arial",
-        "shadow_enabled": false,
-        "shadow_offset_x": 2,
-        "shadow_offset_y": 2,
-        "shadow_blur": 4,
-        "shadow_color": null,
-        "parent_child_spacing": 50,
-        "sibling_spacing": 0,
-        "connector_shape": "bezier",
-        "connector_style": "solid",
-        "line_width": 3,
-        "connector_color": "#ff0096ff"
-      },
-      "primary": {
-        "shape": {
-          "shape_type": "basic",
-          "basic_shape": "bottom_line",
-          "border_radius": 8,
-          "svg_path": null,
-          "custom_params": {}
-        },
-        "background": {
-          "bg_type": "solid",
-          "gradient_type": null,
-          "gradient_colors": null,
-          "gradient_angle": 0.0,
-          "texture_type": null,
-          "texture_opacity": 0.3,
-          "image_path": null,
-          "image_scale": 1.0,
-          "image_opacity": 1.0
-        },
-        "border": {
-          "border_type": "simple",
-          "border_width": 2,
-          "border_radius": 8,
-          "border_style": "solid",
-          "svg_path": null,
-          "svg_repeat": false,
-          "image_path": null,
-          "image_scale": 1.0,
-          "gradient_type": null,
-          "gradient_colors": null,
-          "gradient_angle": 0.0
-        },
-        "padding_w": 10,
-        "padding_h": 2,
-        "max_text_width": 250,
-        "font_size": 18,
-        "font_weight": "Normal",
-        "font_italic": false,
-        "font_family": "Arial",
-        "shadow_enabled": false,
-        "shadow_offset_x": 2,
-        "shadow_offset_y": 2,
-        "shadow_blur": 4,
-        "shadow_color": null,
-        "parent_child_spacing": 30,
-        "sibling_spacing": 10,
-        "connector_shape": "bezier",
-        "connector_style": "solid",
-        "line_width": 3,
-        "connector_color": "#ff0096ff"
-      },
-      "secondary": {
-        "shape": {
-          "shape_type": "basic",
-          "basic_shape": "bottom_line",
-          "border_radius": 6,
-          "svg_path": null,
-          "custom_params": {}
-        },
-        "background": {
-          "bg_type": "solid",
-          "gradient_type": null,
-          "gradient_colors": null,
-          "gradient_angle": 0.0,
-          "texture_type": null,
-          "texture_opacity": 0.3,
-          "image_path": null,
-          "image_scale": 1.0,
-          "image_opacity": 1.0
-        },
-        "border": {
-          "border_type": "simple",
-          "border_width": 2,
-          "border_radius": 6,
-          "border_style": "solid",
-          "svg_path": null,
-          "svg_repeat": false,
-          "image_path": null,
-          "image_scale": 1.0,
-          "gradient_type": null,
-          "gradient_colors": null,
-          "gradient_angle": 0.0
-        },
-        "padding_w": 10,
-        "padding_h": 2,
-        "max_text_width": 250,
-        "font_size": 16,
-        "font_weight": "Normal",
-        "font_italic": false,
-        "font_family": "Arial",
-        "shadow_enabled": false,
-        "shadow_offset_x": 2,
-        "shadow_offset_y": 2,
-        "shadow_blur": 4,
-        "shadow_color": null,
-        "parent_child_spacing": 30,
-        "sibling_spacing": 10,
-        "connector_shape": "bezier",
-        "connector_style": "solid",
-        "line_width": 3,
-        "connector_color": "#ff0096ff"
-      },
-      "tertiary": {
-        "shape": {
-          "shape_type": "basic",
-          "basic_shape": "bottom_line",
-          "border_radius": 4,
-          "svg_path": null,
-          "custom_params": {}
-        },
-        "background": {
-          "bg_type": "solid",
-          "gradient_type": null,
-          "gradient_colors": null,
-          "gradient_angle": 0.0,
-          "texture_type": null,
-          "texture_opacity": 0.3,
-          "image_path": null,
-          "image_scale": 1.0,
-          "image_opacity": 1.0
-        },
-        "border": {
-          "border_type": "simple",
-          "border_width": 2,
-          "border_radius": 4,
-          "border_style": "solid",
-          "svg_path": null,
-          "svg_repeat": false,
-          "image_path": null,
-          "image_scale": 1.0,
-          "gradient_type": null,
-          "gradient_colors": null,
-          "gradient_angle": 0.0
-        },
-        "padding_w": 10,
-        "padding_h": 2,
-        "max_text_width": 250,
-        "font_size": 14,
-        "font_weight": "Normal",
-        "font_italic": false,
-        "font_family": "Arial",
-        "shadow_enabled": false,
-        "shadow_offset_x": 2,
-        "shadow_offset_y": 2,
-        "shadow_blur": 4,
-        "shadow_color": null,
-        "parent_child_spacing": 30,
-        "sibling_spacing": 10,
-        "connector_shape": "bezier",
-        "connector_style": "solid",
-        "line_width": 3,
-        "connector_color": "#ff0096ff"
-      }
-    },
-    "spacing": {
-      "parent_child_spacing": "normal",
-      "sibling_spacing": "normal"
-    },
-    "default_color_scheme": "default",
-    "recommended_layout": null
-  },
-  "color_scheme": {
-    "name": "default",
-    "description": "Default blue color scheme",
-    "role_configs": {
-      "root": {
-        "bg_color": "#ff5e5e5e",
-        "border_color": "#00ffffff",
-        "text_color": "#ffffffff",
-        "rainbow_bg_enabled": true,
-        "rainbow_border_enabled": true,
-        "brightness_amount": 1.0,
-        "opacity_amount": 255
-      },
-      "primary": {
-        "bg_color": "#004caf50",
-        "border_color": "#ff0096ff",
-        "text_color": "#ff424242",
-        "rainbow_bg_enabled": false,
-        "rainbow_border_enabled": true,
-        "brightness_amount": 1.0,
-        "opacity_amount": 255
-      },
-      "secondary": {
-        "bg_color": "#00ff9800",
-        "border_color": "#ff0096ff",
-        "text_color": "#ff424242",
-        "rainbow_bg_enabled": false,
-        "rainbow_border_enabled": true,
-        "brightness_amount": 1.5,
-        "opacity_amount": 255
-      },
-      "tertiary": {
-        "bg_color": "#009e9e9e",
-        "border_color": "#ff0096ff",
-        "text_color": "#ff424242",
-        "rainbow_bg_enabled": false,
-        "rainbow_border_enabled": true,
-        "brightness_amount": 1.41,
-        "opacity_amount": 141
-      }
-    },
-    "branch_colors": [
-      "#ffee3848",
-      "#fff48333",
-      "#fff1cf27",
-      "#ff18dc6a",
-      "#ff14d0c1",
-      "#ff2a9ced",
-      "#ff8540e7",
-      "#ffea2e8c"
-    ],
-    "use_rainbow_branches": true,
-    "canvas_bg_color": "#fffffcf0",
-    "edge_color": "#FF666666"
-  }
+  
+  "recommended_color_scheme": "default",
+  "recommended_layout": "balanced_tree"
 }

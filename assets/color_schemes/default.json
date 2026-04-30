@@ -1,0 +1,18 @@
+{
+  "name": "default",
+  "description": "Default balanced color scheme with warm tones",
+  
+  "branch_colors": [
+    "#FFEE3848",
+    "#FFF48333",
+    "#FFF1CF27",
+    "#FF18DC6A",
+    "#FF14D0C1",
+    "#FF2A9CED",
+    "#FF8540E7",
+    "#FFEA2E8C"
+  ],
+  
+  "default_canvas_bg_color": "#FFFFFCF0",
+  "default_use_rainbow_branches": true
+}

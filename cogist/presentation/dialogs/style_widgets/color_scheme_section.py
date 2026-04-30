@@ -1,14 +1,22 @@
 """Color scheme section widget.
 
-Simplified to only manage color pool and rainbow branch mode.
-Background, border, brightness, opacity controls moved to their respective panels.
+Provides controls for customizing color scheme including:
+- Per-role colors (background, text, border, connector)
+- Auto-calculation for derived levels (level_2, level_3_plus)
+- Rainbow branch colors (only for level_1)
+- Canvas background
+
+This section is Part of Presentation Layer (UI).
 """
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
+    QColorDialog,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSlider,
     QVBoxLayout,
     QWidget,
 )
@@ -16,16 +24,12 @@ from PySide6.QtWidgets import (
 from cogist.presentation.widgets import ToggleSwitch
 
 from .collapsible_panel import CollapsiblePanel
-from .color_picker import create_color_picker
-from .dialog_utils import position_color_dialog
+
+# Removed RainbowColorPool QWidget wrapper - using 8 individual buttons instead
 
 
 class ColorSchemeSection(CollapsiblePanel):
     """Color scheme settings section.
-
-    Simplified to only manage:
-    - Rainbow branch mode switch
-    - Color pool (10 colors)
 
     Signals:
         color_changed(dict): Emitted when color properties change
@@ -33,7 +37,7 @@ class ColorSchemeSection(CollapsiblePanel):
 
     color_changed = Signal(dict)
 
-    # UI constants
+    # UI constants (fallback value, will use parent's LABEL_WIDTH if available)
     LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
@@ -41,40 +45,74 @@ class ColorSchemeSection(CollapsiblePanel):
     def __init__(self, parent=None):
         super().__init__("Color Scheme", collapsed=True, parent=parent)
 
-        # Get LABEL_WIDTH from parent if available
+        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
         self._initialized = False
-        self._rainbow_visible = False
+        self.current_role = None
+        self._rainbow_visible = False  # Track rainbow check state
+
+        # Default colors
+        self._default_colors = {
+            "bg_color": "#2196F3",
+            "text_color": "#FFFFFF",
+            "border_color": "#1976D2",
+            "connector_color": "#1565C0",
+            "canvas_bg": "#FFFFFF",
+        }
 
         # Default rainbow colors
         self._default_rainbow = [
-            "#FFFF6B6B",  # Red
-            "#FF4ECDC4",  # Teal
-            "#FF45B7D1",  # Light Blue
-            "#FFFFA07A",  # Light Salmon
-            "#FF98D8C8",  # Mint
-            "#FFF7DC6F",  # Yellow
-            "#FFBB8FCE",  # Purple
-            "#FF85C1E2",  # Sky Blue
+            "#FFFF6B6B",
+            "#FF4ECDC4",
+            "#FF45B7D1",
+            "#FFFFA07A",
+            "#FF98D8C8",
+            "#FFF7DC6F",
+            "#FFBB8FCE",
+            "#FF85C1E2",
         ]
 
-        # Rainbow controls
+        # Color picker references
+        self.bg_color_btn: QPushButton | None = None
+        self.text_color_btn: QPushButton | None = None
+        self.border_color_btn: QPushButton | None = None
+        self.conn_color_btn: QPushButton | None = None
+        self.canvas_picker: QPushButton | None = None
+
+        # Label references for visibility control
+        self.bg_label: QLabel | None = None
+        self.text_label: QLabel | None = None
+        self.border_label: QLabel | None = None
+        self.conn_label: QLabel | None = None
+        self.canvas_label: QLabel | None = None
+
+        # Rainbow branch references
+        self.rainbow_pool_widget: QWidget | None = None
+        self.rainbow_label: QLabel | None = None
         self.rainbow_check: ToggleSwitch | None = None
+        self.rainbow_label_pool: QLabel | None = None
         self.rainbow_buttons: list[QPushButton] = []
         self.rainbow_colors: list[str] = []
-        self.rainbow_pool_widget: QWidget | None = None
 
-        # Color picker (shared for all buttons)
-        self._color_picker: type[create_color_picker] | None = None
-        self._current_color_button: QPushButton | None = None
+        # Rainbow mode controls (per-role)
+        self.rainbow_bg_check: ToggleSwitch | None = None
+        self.rainbow_border_check: ToggleSwitch | None = None
+        self.brightness_slider: QSlider | None = None
+        self.opacity_slider: QSlider | None = None
+
+        # Labels for rainbow mode controls
+        self.rainbow_bg_label: QLabel | None = None
+        self.rainbow_border_label: QLabel | None = None
+        self.brightness_label: QLabel | None = None
+        self.opacity_label: QLabel | None = None
 
         self.toggled.connect(self._on_toggled)
 
     def _on_toggled(self, expanded: bool):
         """Handle panel expand/collapse."""
         if expanded and not self._initialized:
-            self._initialized = True
+            self._initialized = True  # Set before _init_content so set_role works
             self._init_content()
 
     def _init_content(self):
@@ -82,37 +120,41 @@ class ColorSchemeSection(CollapsiblePanel):
         layout = QGridLayout()
         layout.setSpacing(6)
         layout.setContentsMargins(self.GROUP_MARGIN, 6, self.GROUP_MARGIN, 16)
-        layout.setColumnStretch(0, 0)
-        layout.setColumnStretch(1, 1)
+        layout.setColumnStretch(0, 0)  # Label column - fixed width
+        layout.setColumnStretch(1, 1)  # Widget column - stretchable
 
         row = 0
 
-        # === Rainbow Branch Switch ===
+        # Get current colors from parent (AdvancedStyleTab) if available
+        # This ensures we use template colors instead of hardcoded defaults
+        current_colors = self._get_current_colors_from_parent()
+
+        # === Global Rainbow Branch Switch ===
         switch_row = QHBoxLayout()
         switch_row.setContentsMargins(0, 0, 0, 0)
         switch_row.setSpacing(0)
 
-        rainbow_label = QLabel("Branch-based:")
-        rainbow_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        rainbow_label.setFixedWidth(self._label_width)
-        switch_row.addWidget(rainbow_label)
+        self.rainbow_label = QLabel("Branch-based:")
+        self.rainbow_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.rainbow_label.setFixedWidth(self._label_width)
+        switch_row.addWidget(self.rainbow_label)
 
         switch_row.addStretch()
 
         self.rainbow_check = ToggleSwitch()
-        self.rainbow_check.toggled.connect(self._on_rainbow_toggled)
+        self.rainbow_check.toggled.connect(self._on_rainbow_changed)
         switch_row.addWidget(self.rainbow_check)
 
         layout.addLayout(switch_row, row, 0, 1, 2)
         row += 1
 
-        # === Rainbow Color Pool ===
-        pool_label = QLabel("Color Pool:")
-        pool_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        pool_label.setFixedWidth(self._label_width)
-        layout.addWidget(pool_label, row, 0)
+        # === Rainbow Branch Color Pool (shown when rainbow enabled) ===
+        self.rainbow_label_pool = QLabel("Color Pool:")
+        self.rainbow_label_pool.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.rainbow_label_pool.setFixedWidth(self._label_width)
+        layout.addWidget(self.rainbow_label_pool, row, 0)
 
-        # Color buttons container - 2 rows
+        # Rainbow color buttons container - 2 rows with flexible spacing
         buttons_container = QWidget()
         buttons_layout = QVBoxLayout()
         buttons_layout.setSpacing(4)
@@ -123,14 +165,14 @@ class ColorSchemeSection(CollapsiblePanel):
 
         for row_idx in range(2):
             btn_row_layout = QHBoxLayout()
-            btn_row_layout.setSpacing(0)
+            btn_row_layout.setSpacing(0)  # No fixed spacing, use stretch instead
             btn_row_layout.setContentsMargins(0, 0, 0, 0)
 
-            for col_idx in range(4):  # 4 columns x 2 rows = 8 colors
+            for col_idx in range(4):
                 i = row_idx * 4 + col_idx
                 btn = QPushButton()
                 btn.setFixedSize(32, 32)
-                btn.setToolTip(f"Color {i + 1}")
+                btn.setToolTip(f"Branch {i + 1} color")
                 color = self.rainbow_colors[i] if i < len(self.rainbow_colors) else "#FFCCCCCC"
                 btn.setStyleSheet(
                     f"background-color: {color}; "
@@ -140,95 +182,731 @@ class ColorSchemeSection(CollapsiblePanel):
                 self.rainbow_buttons.append(btn)
                 btn_row_layout.addWidget(btn)
 
+                # Add stretch after each button except the last one in each row
                 if col_idx < 3:
                     btn_row_layout.addStretch()
 
             buttons_layout.addLayout(btn_row_layout)
 
         buttons_container.setLayout(buttons_layout)
-        layout.addWidget(buttons_container, row, 1)
+
+        # Wrap pool buttons in a widget for visibility control
+        self.rainbow_pool_widget = QWidget()
+        pool_layout = QVBoxLayout()
+        pool_layout.setContentsMargins(0, 0, 0, 0)
+        pool_layout.setSpacing(0)
+        pool_layout.addWidget(buttons_container)
+        self.rainbow_pool_widget.setLayout(pool_layout)
+
+        layout.addWidget(self.rainbow_pool_widget, row, 1)
+        self.rainbow_buttons_row = row
+        row += 1
+
+        # Initially hide rainbow pool
+        if self.rainbow_pool_widget:
+            self.rainbow_pool_widget.setVisible(False)
+
+        # Background color
+        self.bg_label = QLabel("Background:")
+        self.bg_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.bg_label.setFixedWidth(self._label_width)
+        layout.addWidget(self.bg_label, row, 0)
+
+        bg_color = current_colors.get("bg_color", self._default_colors["bg_color"])
+        self.bg_color_btn = QPushButton()
+        self.bg_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
+        self.bg_color_btn.setStyleSheet(
+            f"background-color: {bg_color}; "
+            "border: 1px solid #ccc; border-radius: 6px;"
+        )
+        self.bg_color_btn.clicked.connect(lambda: self._pick_color("bg_color"))
+        layout.addWidget(self.bg_color_btn, row, 1)
+        row += 1
+
+        # Text/Foreground color
+        self.text_label = QLabel("Text Color:")
+        self.text_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.text_label.setFixedWidth(self._label_width)
+        layout.addWidget(self.text_label, row, 0)
+
+        text_color = current_colors.get("text_color", self._default_colors["text_color"])
+        self.text_color_btn = QPushButton()
+        self.text_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
+        self.text_color_btn.setStyleSheet(
+            f"background-color: {text_color}; "
+            "border: 1px solid #ccc; border-radius: 6px;"
+        )
+        self.text_color_btn.clicked.connect(lambda: self._pick_color("text_color"))
+        layout.addWidget(self.text_color_btn, row, 1)
+        row += 1
+
+        # Border color
+        self.border_label = QLabel("Border:")
+        self.border_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.border_label.setFixedWidth(self._label_width)
+        layout.addWidget(self.border_label, row, 0)
+
+        border_color = current_colors.get("border_color", self._default_colors["border_color"])
+        self.border_color_btn = QPushButton()
+        self.border_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
+        self.border_color_btn.setStyleSheet(
+            f"background-color: {border_color}; "
+            "border: 1px solid #ccc; border-radius: 6px;"
+        )
+        self.border_color_btn.clicked.connect(lambda: self._pick_color("border_color"))
+        layout.addWidget(self.border_color_btn, row, 1)
+        row += 1
+
+        # Connector color
+        self.conn_label = QLabel("Connector:")
+        self.conn_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.conn_label.setFixedWidth(self._label_width)
+        layout.addWidget(self.conn_label, row, 0)
+
+        connector_color = current_colors.get("connector_color", self._default_colors["connector_color"])
+        self.conn_color_btn = QPushButton()
+        self.conn_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
+        self.conn_color_btn.setStyleSheet(
+            f"background-color: {connector_color}; "
+            "border: 1px solid #ccc; border-radius: 6px;"
+        )
+        self.conn_color_btn.clicked.connect(lambda: self._pick_color("connector_color"))
+        layout.addWidget(self.conn_color_btn, row, 1)
+        row += 1
+
+        # Canvas background (show only when Layer is canvas)
+        # Wrap in a container widget so hiding the container removes the entire row from layout
+        self.canvas_widget = QWidget()
+        canvas_layout = QHBoxLayout()
+        canvas_layout.setContentsMargins(0, 0, 0, 0)
+        canvas_layout.setSpacing(8)
+
+        self.canvas_label = QLabel("Canvas:")
+        self.canvas_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.canvas_label.setFixedWidth(self._label_width)
+        canvas_layout.addWidget(self.canvas_label)
+
+        self.canvas_picker = QPushButton()
+        self.canvas_picker.setFixedHeight(self.WIDGET_HEIGHT)
+        self.canvas_picker.setStyleSheet(
+            "background-color: #FFFFFF; border: 1px solid #ccc; border-radius: 6px;"
+        )
+        self.canvas_picker.clicked.connect(lambda: self._pick_color("canvas_bg"))
+        canvas_layout.addWidget(self.canvas_picker, 1)  # Stretch factor 1
+
+        self.canvas_widget.setLayout(canvas_layout)
+        layout.addWidget(self.canvas_widget, row, 0, 1, 2)
+        row += 1
+
+        # === Per-Role Rainbow Mode Controls (dynamic visibility) ===
+
+        # Level 1: Rainbow Background toggle
+        bg_row = QHBoxLayout()
+        bg_row.setContentsMargins(0, 0, 0, 0)
+        bg_row.setSpacing(0)
+
+        self.rainbow_bg_label = QLabel("Background:")
+        self.rainbow_bg_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.rainbow_bg_label.setFixedWidth(self._label_width)
+        bg_row.addWidget(self.rainbow_bg_label)
+
+        bg_row.addStretch()
+
+        self.rainbow_bg_check = ToggleSwitch()
+        self.rainbow_bg_check.toggled.connect(lambda checked: self._emit_change("rainbow_bg_enabled", checked))
+        bg_row.addWidget(self.rainbow_bg_check)
+
+        layout.addLayout(bg_row, row, 0, 1, 2)
+        row += 1
+
+        # Level 1: Rainbow Border toggle
+        border_row = QHBoxLayout()
+        border_row.setContentsMargins(0, 0, 0, 0)
+        border_row.setSpacing(0)
+
+        self.rainbow_border_label = QLabel("Border:")
+        self.rainbow_border_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.rainbow_border_label.setFixedWidth(self._label_width)
+        border_row.addWidget(self.rainbow_border_label)
+
+        border_row.addStretch()
+
+        self.rainbow_border_check = ToggleSwitch()
+        self.rainbow_border_check.toggled.connect(lambda checked: self._emit_change("rainbow_border_enabled", checked))
+        border_row.addWidget(self.rainbow_border_check)
+
+        layout.addLayout(border_row, row, 0, 1, 2)
+        row += 1
+
+        # Level 2/3+: Brightness and Opacity controls (wrapped in a container for visibility control)
+        self.brightness_opacity_widget = QWidget()
+        brightness_opacity_layout = QVBoxLayout()
+        brightness_opacity_layout.setSpacing(6)
+        brightness_opacity_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Brightness slider (0-200, maps to 0.0-2.0)
+        brightness_slider_row = QHBoxLayout()
+        brightness_slider_row.setContentsMargins(0, 0, 0, 0)
+        brightness_slider_row.setSpacing(8)
+
+        self.brightness_label = QLabel("Brightness:")
+        self.brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.brightness_label.setFixedWidth(self._label_width)
+        brightness_slider_row.addWidget(self.brightness_label)
+
+        self.brightness_slider = QSlider(Qt.Horizontal)
+        self.brightness_slider.setRange(0, 200)
+        self.brightness_slider.setValue(100)  # 100 / 100.0 = 1.0 (no change)
+        self.brightness_slider.valueChanged.connect(lambda value: self._emit_change("brightness_amount", value / 100.0))
+        brightness_slider_row.addWidget(self.brightness_slider, 1)  # Stretch factor 1
+
+        brightness_opacity_layout.addLayout(brightness_slider_row)
+
+        # Opacity slider (0-255)
+        opacity_slider_row = QHBoxLayout()
+        opacity_slider_row.setContentsMargins(0, 0, 0, 0)
+        opacity_slider_row.setSpacing(8)
+
+        self.opacity_label = QLabel("Opacity:")
+        self.opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.opacity_label.setFixedWidth(self._label_width)
+        opacity_slider_row.addWidget(self.opacity_label)
+
+        self.opacity_slider = QSlider(Qt.Horizontal)
+        self.opacity_slider.setRange(0, 255)
+        self.opacity_slider.setValue(255)  # Fully opaque
+        self.opacity_slider.valueChanged.connect(lambda value: self._emit_change("opacity_amount", value))
+        opacity_slider_row.addWidget(self.opacity_slider, 1)  # Stretch factor 1
+
+        brightness_opacity_layout.addLayout(opacity_slider_row)
+        self.brightness_opacity_widget.setLayout(brightness_opacity_layout)
+
+        # Add to main layout (initially hidden)
+        layout.addWidget(self.brightness_opacity_widget, row, 0, 1, 2)
+        self.brightness_opacity_widget.setVisible(False)  # Initially hidden for non-level-2/3+ roles
         row += 1
 
         self.setLayout(layout)
 
-        # Always show color pool (no hiding)
-        self.rainbow_pool_widget = buttons_container
-        # self.rainbow_pool_widget.setVisible(self._rainbow_visible)  # Removed: always visible
+        # Apply current role visibility after content is created
+        if self.current_role:
+            self.set_role(self.current_role)
+
+        # CRITICAL: Sync rainbow checkbox state with _rainbow_visible
+        # This ensures checkbox reflects the actual state after lazy initialization
         if self.rainbow_check:
+            self.rainbow_check.blockSignals(True)
+            self.rainbow_check.setChecked(self._rainbow_visible)
             self.rainbow_check.blockSignals(False)
 
-    def _on_rainbow_toggled(self, checked: bool):
-        """Handle rainbow branch mode toggle."""
-        self._rainbow_visible = checked
+        # CRITICAL: Apply visibility based on current _rainbow_visible state
+        # This ensures color pool is correctly shown/hidden after lazy initialization
+        self._apply_role_visibility()
 
-        # Note: Color pool is always visible (no show/hide)
-        # Rainbow switch now only controls whether branches use rainbow colors
+    def _get_current_colors_from_parent(self) -> dict:
+        """Get current colors from parent (AdvancedStyleTab).
 
-        # Emit change
-        # Note: Rainbow switch is now global, emitted signal will be handled by parent
-        self.color_changed.emit({"use_rainbow_branches": checked})
+        Returns:
+            Dictionary with current color values, or empty dict if parent not available
+        """
+        parent = self.parentWidget()
+        if not parent or not hasattr(parent, 'style_config'):
+            return {}
 
-    def _edit_rainbow_color(self, index: int):
-        """Handle rainbow color button click."""
-        if self._color_picker is None:
-            self._color_picker = create_color_picker(self)
-            self._color_picker.color_selected.connect(
-                lambda color: self._on_rainbow_color_selected(index, color)
-            )
+        style_config = parent.style_config
+        if not style_config:
+            return {}
 
-        # Set current color
-        current_color = self.rainbow_colors[index] if index < len(self.rainbow_colors) else "#FFCCCCCC"
-        self._color_picker.set_current_color(current_color)
+        # Get role from current_role
+        role_str = self.current_role
+        if not role_str:
+            return {}
 
-        # Store current button reference
-        self._current_color_button = self.rainbow_buttons[index]
-
-        # Show color picker
-        self._color_picker.show()
-        self._color_picker.raise_()
-        self._color_picker.activateWindow()
-
-        # Position dialog
-        if self._current_color_button:
-            position_color_dialog(self._color_picker, self._current_color_button)
-
-    def _on_rainbow_color_selected(self, index: int, hex_color: str):
-        """Handle color selection from picker."""
-        if index < len(self.rainbow_colors):
-            self.rainbow_colors[index] = hex_color
-
-            # Update button color
-            if index < len(self.rainbow_buttons):
-                btn = self.rainbow_buttons[index]
-                btn.setStyleSheet(
-                    f"background-color: {hex_color}; "
-                    "border: none; border-radius: 4px;"
-                )
-
-            # Emit change
-            self._emit_color_changed()
-
-    def get_style(self) -> dict:
-        """Get current color scheme style."""
-        return {
-            "use_rainbow_branches": self._rainbow_visible,
-            "branch_colors": self.rainbow_colors.copy(),
+        # Map role string to NodeRole
+        from cogist.domain.styles import NodeRole
+        role_map = {
+            "root": NodeRole.ROOT,
+            "level_1": NodeRole.PRIMARY,
+            "level_2": NodeRole.SECONDARY,
+            "level_3_plus": NodeRole.TERTIARY,
         }
 
-    def set_style(self, style: dict):
-        """Set color scheme style programmatically."""
-        if "use_rainbow_branches" in style:
-            self._rainbow_visible = style["use_rainbow_branches"]
-            if self.rainbow_check:
-                self.rainbow_check.setChecked(self._rainbow_visible)
+        role = role_map.get(role_str)
+        if not role:
+            return {}
 
-        if "branch_colors" in style:
-            self.rainbow_colors = style["branch_colors"].copy()
-            # Update button colors
+        # Get colors from resolved_color_scheme
+        color_scheme = style_config.resolved_color_scheme
+        if not color_scheme or role not in color_scheme.role_configs:
+            return {}
+
+        role_config = color_scheme.role_configs[role]
+
+        return {
+            "bg_color": role_config.bg_color,
+            "text_color": role_config.text_color,
+            "border_color": role_config.border_color,
+            "connector_color": role_config.connector_color,
+        }
+
+    def _get_widget_row(self, grid_layout: QGridLayout, widget: QWidget) -> int | None:
+        """Get the row index of a widget in QGridLayout.
+
+        Args:
+            grid_layout: The QGridLayout to search
+            widget: The widget to find
+
+        Returns:
+            The row index if found, None otherwise
+        """
+        # Iterate through all cells in the grid
+        for row in range(grid_layout.rowCount()):
+            for col in range(grid_layout.columnCount()):
+                item = grid_layout.itemAtPosition(row, col)
+                if item and item.widget() == widget:
+                    return row
+        return None
+
+    def set_role(self, role: str):
+        """Set current role and update visibility.
+
+        Args:
+            role: Layer role (root, level_1, level_2, level_3_plus, canvas)
+        """
+        self.current_role = role
+
+        # If not initialized yet, just store the role - visibility will be set in _init_content
+        if not self._initialized:
+            return
+
+        self._apply_role_visibility()
+
+    def _apply_role_visibility(self):
+        """Apply visibility settings based on current role."""
+        if not self._initialized:
+            return
+
+        # Disable updates to prevent layout flash and margin issues during multiple setVisible calls
+        self.setUpdatesEnabled(False)
+
+        is_canvas = self.current_role == "canvas"
+        is_level_1 = self.current_role == "level_1"
+        is_level_2 = self.current_role == "level_2"
+        is_level_3_plus = self.current_role == "level_3_plus"
+
+        rainbow_enabled = self._rainbow_visible
+
+        # Node colors (bg, text, border, connector) - hide for canvas
+        # Background
+        if self.bg_label and self.bg_color_btn:
+            # Hide in rainbow mode for level_1/2/3+
+            should_show_bg = not is_canvas and not (rainbow_enabled and (is_level_1 or is_level_2 or is_level_3_plus))
+            self.bg_label.setVisible(should_show_bg)
+            self.bg_color_btn.setVisible(should_show_bg)
+
+        # Text Color
+        if self.text_label and self.text_color_btn:
+            # Hide in rainbow mode for level_1/2/3+ only (root can still set text color)
+            should_show_text = not is_canvas and not (rainbow_enabled and (is_level_1 or is_level_2 or is_level_3_plus))
+            self.text_label.setVisible(should_show_text)
+            self.text_color_btn.setVisible(should_show_text)
+
+        # Border Color
+        if self.border_label and self.border_color_btn:
+            # Hide in rainbow mode for level_1/2/3+
+            should_show_border = not is_canvas and not (rainbow_enabled and (is_level_1 or is_level_2 or is_level_3_plus))
+            self.border_label.setVisible(should_show_border)
+            self.border_color_btn.setVisible(should_show_border)
+
+        # Connector Color
+        if self.conn_label and self.conn_color_btn:
+            # Hide in rainbow mode (follow node color)
+            should_show_conn = not is_canvas and not rainbow_enabled
+            self.conn_label.setVisible(should_show_conn)
+            self.conn_color_btn.setVisible(should_show_conn)
+
+        # Rainbow mode controls - show based on role and rainbow state
+        if rainbow_enabled:
+            # Always show rainbow color pool when rainbow is enabled (regardless of role)
+            if self.rainbow_pool_widget:
+                self.rainbow_pool_widget.setVisible(True)
+            if self.rainbow_label_pool:
+                self.rainbow_label_pool.setVisible(True)
+            for btn in self.rainbow_buttons:
+                btn.setVisible(True)
+
+            if is_level_2 or is_level_3_plus:
+                # Level 2/3+: Show rainbow bg/border toggles AND brightness/opacity controls
+                if self.rainbow_bg_label:
+                    self.rainbow_bg_label.setVisible(True)
+                if self.rainbow_bg_check:
+                    self.rainbow_bg_check.setVisible(True)
+                if self.rainbow_border_label:
+                    self.rainbow_border_label.setVisible(True)
+                if self.rainbow_border_check:
+                    self.rainbow_border_check.setVisible(True)
+
+                # Show brightness and opacity container for level 2/3+
+                if self.brightness_opacity_widget:
+                    self.brightness_opacity_widget.setVisible(True)
+
+                # Show individual controls (for backward compatibility)
+                if self.brightness_label:
+                    self.brightness_label.setVisible(True)
+                if self.brightness_slider:
+                    self.brightness_slider.setVisible(True)
+                if self.opacity_label:
+                    self.opacity_label.setVisible(True)
+                if self.opacity_slider:
+                    self.opacity_slider.setVisible(True)
+
+            elif is_level_1:
+                # Level 1 only: Show rainbow bg/border toggles, hide brightness/opacity controls
+                if self.rainbow_bg_label:
+                    self.rainbow_bg_label.setVisible(True)
+                if self.rainbow_bg_check:
+                    self.rainbow_bg_check.setVisible(True)
+                if self.rainbow_border_label:
+                    self.rainbow_border_label.setVisible(True)
+                if self.rainbow_border_check:
+                    self.rainbow_border_check.setVisible(True)
+
+                # Hide brightness and opacity container for level 1
+                if self.brightness_opacity_widget:
+                    self.brightness_opacity_widget.setVisible(False)
+                    # Set row minimum height to 0 to remove space
+                    grid_layout = self.layout()
+                    if grid_layout:
+                        row_info = self._get_widget_row(grid_layout, self.brightness_opacity_widget)
+                        if row_info is not None:
+                            grid_layout.setRowMinimumHeight(row_info, 0)
+
+                # Hide individual controls (for backward compatibility)
+                if self.brightness_label:
+                    self.brightness_label.setVisible(False)
+                if self.brightness_slider:
+                    self.brightness_slider.setVisible(False)
+                if self.opacity_label:
+                    self.opacity_label.setVisible(False)
+                if self.opacity_slider:
+                    self.opacity_slider.setVisible(False)
+            else:
+                # Other roles (root, canvas): hide level-specific rainbow controls but keep color pool visible
+                if self.rainbow_bg_label:
+                    self.rainbow_bg_label.setVisible(False)
+                if self.rainbow_bg_check:
+                    self.rainbow_bg_check.setVisible(False)
+                if self.rainbow_border_label:
+                    self.rainbow_border_label.setVisible(False)
+                if self.rainbow_border_check:
+                    self.rainbow_border_check.setVisible(False)
+
+                # Hide brightness and opacity container for root/canvas
+                if self.brightness_opacity_widget:
+                    self.brightness_opacity_widget.setVisible(False)
+                    # Set row minimum height to 0 to remove space
+                    grid_layout = self.layout()
+                    if grid_layout:
+                        row_info = self._get_widget_row(grid_layout, self.brightness_opacity_widget)
+                        if row_info is not None:
+                            grid_layout.setRowMinimumHeight(row_info, 0)
+
+                # Hide individual controls (for backward compatibility)
+                if self.brightness_label:
+                    self.brightness_label.setVisible(False)
+                if self.brightness_slider:
+                    self.brightness_slider.setVisible(False)
+                if self.opacity_label:
+                    self.opacity_label.setVisible(False)
+                if self.opacity_slider:
+                    self.opacity_slider.setVisible(False)
+        else:
+            # Rainbow disabled: hide all rainbow mode controls
+            self._hide_rainbow_mode_controls()
+
+        # Canvas background - show only for canvas
+        if self.canvas_widget:
+            self.canvas_widget.setVisible(is_canvas)
+            # Set row minimum height to 0 when hidden to remove space
+            grid_layout = self.layout()
+            if grid_layout:
+                row_info = self._get_widget_row(grid_layout, self.canvas_widget)
+                if row_info is not None:
+                    grid_layout.setRowMinimumHeight(row_info, 0 if not is_canvas else -1)
+
+        # Re-enable updates
+        self.setUpdatesEnabled(True)
+
+        # Force parent layout to recalculate after visibility changes
+        # This ensures QGridLayout properly shrinks when widgets are hidden
+        parent = self.parentWidget()
+        if parent:
+            parent_layout = parent.layout()
+            if parent_layout:
+                parent_layout.invalidate()
+                parent_layout.activate()
+
+    def _on_rainbow_changed(self, checked: bool):
+        """Handle rainbow checkbox state change."""
+        enabled = checked
+        self._rainbow_visible = enabled
+
+        # Disable updates to prevent layout flash during multiple setVisible calls
+        self.setUpdatesEnabled(False)
+
+        # Show/hide entire rainbow pool widget
+        if self.rainbow_pool_widget:
+            self.rainbow_pool_widget.setVisible(enabled)
+
+        # Update role-specific controls visibility
+        self._apply_role_visibility()
+
+        # Re-enable updates - Qt will do a single layout update
+        self.setUpdatesEnabled(True)
+
+        self._emit_change("use_rainbow", enabled)
+
+    def _hide_rainbow_mode_controls(self):
+        """Hide all rainbow mode specific controls."""
+        # Disable updates to prevent layout flash and margin issues
+        self.setUpdatesEnabled(False)
+
+        # Rainbow pool widget (container)
+        if self.rainbow_pool_widget:
+            self.rainbow_pool_widget.setVisible(False)
+
+        # Rainbow pool label
+        if self.rainbow_label_pool:
+            self.rainbow_label_pool.setVisible(False)
+
+        # Rainbow pool buttons
+        for btn in self.rainbow_buttons:
+            btn.setVisible(False)
+
+        # Level 1 controls
+        if self.rainbow_bg_label:
+            self.rainbow_bg_label.setVisible(False)
+        if self.rainbow_bg_check:
+            self.rainbow_bg_check.setVisible(False)
+        if self.rainbow_border_label:
+            self.rainbow_border_label.setVisible(False)
+        if self.rainbow_border_check:
+            self.rainbow_border_check.setVisible(False)
+
+        # Level 2/3+ controls - hide the entire container
+        if self.brightness_opacity_widget:
+            self.brightness_opacity_widget.setVisible(False)
+            # Set row minimum height to 0 to remove space
+            grid_layout = self.layout()
+            if grid_layout:
+                row_info = self._get_widget_row(grid_layout, self.brightness_opacity_widget)
+                if row_info is not None:
+                    grid_layout.setRowMinimumHeight(row_info, 0)
+
+        # Re-enable updates
+        self.setUpdatesEnabled(True)
+
+        # Force parent layout to recalculate after visibility changes
+        # This ensures QGridLayout properly shrinks when widgets are hidden
+        parent = self.parentWidget()
+        if parent:
+            parent_layout = parent.layout()
+            if parent_layout:
+                parent_layout.invalidate()
+                parent_layout.activate()
+
+    def _edit_rainbow_color(self, index: int):
+        """Edit a rainbow branch color."""
+        from PySide6.QtGui import QColor
+        from PySide6.QtWidgets import QColorDialog
+
+        current = QColor(self.rainbow_colors[index])
+        color = QColorDialog.getColor(
+            current, self, "Select Branch Color", QColorDialog.ShowAlphaChannel
+        )
+        if color.isValid():
+            self.rainbow_colors[index] = color.name(QColor.HexArgb)
+            self.rainbow_buttons[index].setStyleSheet(
+                f"background-color: {self.rainbow_colors[index]}; "
+                "border: none; border-radius: 4px;"
+            )
+            self._emit_change("rainbow_pool", self.rainbow_colors)
+
+    def _pick_color(self, color_key: str):
+        """Open color picker dialog."""
+        button_map = {
+            "bg_color": self.bg_color_btn,
+            "text_color": self.text_color_btn,
+            "border_color": self.border_color_btn,
+            "connector_color": self.conn_color_btn,
+            "canvas_bg": self.canvas_picker,
+        }
+
+        button = button_map.get(color_key)
+        if not button:
+            return
+
+        current_color = QColor(
+            button.styleSheet().split("background-color: ")[1].split(";")[0]
+        )
+        color_dialog = QColorDialog(current_color, self)
+        color_dialog.setWindowTitle(
+            f"Select {color_key.replace('_', ' ').title()} Color"
+        )
+        color_dialog.setOption(QColorDialog.ShowAlphaChannel)
+
+        # Position dialog
+        from .dialog_utils import position_color_dialog
+
+        position_color_dialog(color_dialog, button)
+
+        if color_dialog.exec():
+            color = color_dialog.currentColor()
+            if color.isValid():
+                # Use HexArgb to preserve alpha channel
+                new_color = color.name(QColor.HexArgb)
+                button.setStyleSheet(
+                    f"background-color: {new_color}; "
+                    "border: 1px solid #ccc; border-radius: 6px;"
+                )
+                self._emit_color_changed(color_key, new_color)
+
+    def _emit_color_changed(self, color_key: str, color_value: str):
+        """Emit color change signal."""
+        style_key_map = {
+            "bg_color": "bg_color",
+            "text_color": "text_color",
+            "border_color": "border_color",
+            "connector_color": "connector_color",
+            "canvas_bg": "canvas_bg",
+        }
+
+        style_key = style_key_map.get(color_key, color_key)
+        self.color_changed.emit({style_key: color_value})
+
+    def _emit_change(self, key: str, value):
+        """Emit a change signal with key-value pair."""
+        self.color_changed.emit({key: value})
+
+    def get_colors(self) -> dict:
+        """Get current color values."""
+        colors = {}
+
+        if self.bg_color_btn:
+            colors["bg_color"] = (
+                self.bg_color_btn.styleSheet()
+                .split("background-color: ")[1]
+                .split(";")[0]
+            )
+        if self.text_color_btn:
+            colors["text_color"] = (
+                self.text_color_btn.styleSheet()
+                .split("background-color: ")[1]
+                .split(";")[0]
+            )
+        if self.border_color_btn:
+            colors["border_color"] = (
+                self.border_color_btn.styleSheet()
+                .split("background-color: ")[1]
+                .split(";")[0]
+            )
+        if self.conn_color_btn:
+            colors["connector_color"] = (
+                self.conn_color_btn.styleSheet()
+                .split("background-color: ")[1]
+                .split(";")[0]
+            )
+        if self.canvas_picker:
+            colors["canvas_bg"] = (
+                self.canvas_picker.styleSheet()
+                .split("background-color: ")[1]
+                .split(";")[0]
+            )
+
+        # Auto state
+
+        # Rainbow
+        if self.rainbow_check:
+            colors["use_rainbow"] = self.rainbow_check.isChecked()
+        if self.rainbow_buttons:
+            colors["rainbow_pool"] = self.rainbow_colors
+
+        return colors
+
+    def set_colors(self, colors: dict):
+        """Set colors programmatically."""
+        # Always update state, even if not initialized (for lazy loading)
+        if "use_rainbow" in colors:
+            self._rainbow_visible = colors["use_rainbow"]
+
+        # Update UI only if initialized
+        if not self._initialized:
+            return
+
+        button_map = {
+            "bg_color": self.bg_color_btn,
+            "text_color": self.text_color_btn,
+            "border_color": self.border_color_btn,
+            "connector_color": self.conn_color_btn,
+            "canvas_bg": self.canvas_picker,
+        }
+
+        for color_key, button in button_map.items():
+            if color_key in colors and button:
+                button.setStyleSheet(
+                    f"background-color: {colors[color_key]}; "
+                    "border: 1px solid #ccc; border-radius: 6px;"
+                )
+
+        # Rainbow
+        # Only update internal state and button visibility, don't reset checkbox state
+        if "use_rainbow" in colors:
+            rainbow_enabled = colors["use_rainbow"]
+            self._rainbow_visible = rainbow_enabled
+
+            # Update rainbow checkbox state (block signals to avoid recursion)
+            if self.rainbow_check:
+                self.rainbow_check.blockSignals(True)
+                self.rainbow_check.setChecked(rainbow_enabled)
+                self.rainbow_check.blockSignals(False)
+
+        # Always update role-specific controls visibility (even if use_rainbow not in colors)
+        self._apply_role_visibility()
+
+        # Set rainbow mode control values
+        if "rainbow_bg_enabled" in colors and self.rainbow_bg_check:
+            self.rainbow_bg_check.blockSignals(True)
+            self.rainbow_bg_check.setChecked(colors["rainbow_bg_enabled"])
+            self.rainbow_bg_check.blockSignals(False)
+
+        if "rainbow_border_enabled" in colors and self.rainbow_border_check:
+            self.rainbow_border_check.blockSignals(True)
+            self.rainbow_border_check.setChecked(colors["rainbow_border_enabled"])
+            self.rainbow_border_check.blockSignals(False)
+
+        if "brightness_amount" in colors and self.brightness_slider:
+            self.brightness_slider.blockSignals(True)
+            # Convert 0.0-2.0 to 0-200 for slider
+            self.brightness_slider.setValue(int(colors["brightness_amount"] * 100))
+            self.brightness_slider.blockSignals(False)
+
+        if "opacity_amount" in colors and self.opacity_slider:
+            self.opacity_slider.blockSignals(True)
+            self.opacity_slider.setValue(int(colors["opacity_amount"]))
+            self.opacity_slider.blockSignals(False)
+
+        # Set rainbow colors
+        if "rainbow_pool" in colors and self.rainbow_buttons:
+            self.rainbow_colors = colors["rainbow_pool"][:8]
+            # Pad with default colors if needed
+            while len(self.rainbow_colors) < 8:
+                self.rainbow_colors.append(
+                    self._default_rainbow[len(self.rainbow_colors)]
+                )
+
             for i, btn in enumerate(self.rainbow_buttons):
                 if i < len(self.rainbow_colors):
-                    color = self.rainbow_colors[i]
                     btn.setStyleSheet(
-                        f"background-color: {color}; "
+                        f"background-color: {self.rainbow_colors[i]}; "
                         "border: none; border-radius: 4px;"
                     )

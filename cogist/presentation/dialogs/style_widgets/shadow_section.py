@@ -45,7 +45,7 @@ class ShadowSection(CollapsiblePanel):
             "offset_x": 2,
             "offset_y": 2,
             "blur": 4,
-            "color": None,  # Will be set from global style config
+            "color": "#000000",
         }
 
     def _on_toggled(self, checked: bool):
@@ -153,23 +153,7 @@ class ShadowSection(CollapsiblePanel):
         """Open color picker dialog for shadow color."""
         from PySide6.QtWidgets import QColorDialog
 
-        # Get current color from style data object (no fallback)
-        current_color = self.current_shadow.get("color")
-        if not current_color:
-            # Get from parent's style_config if available
-            parent = self.parent()
-            if parent and hasattr(parent, 'style_config') and parent.style_config:
-                from cogist.domain.styles import NodeRole
-                role = self._get_current_role()
-                if role and parent.style_config.resolved_template:
-                    role_style = parent.style_config.resolved_template.role_styles.get(role)
-                    if role_style:
-                        current_color = role_style.shadow_color
-        
-        # If still no color, use black as last resort
-        if not current_color:
-            current_color = "#FF000000"
-        
+        current_color = self.current_shadow.get("color", "#000000")
         color = QColorDialog.getColor(QColor(current_color), self, "Select Shadow Color", QColorDialog.ShowAlphaChannel)
 
         if color.isValid():

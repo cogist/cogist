@@ -6,10 +6,8 @@ padding, and font properties. Implements lazy initialization for better performa
 
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox,
     QGridLayout,
     QLabel,
-    QSlider,
     QSpinBox,
 )
 
@@ -22,9 +20,6 @@ from cogist.presentation.widgets.node_shape_previews import (
 )
 
 from .collapsible_panel import CollapsiblePanel
-from .color_picker import create_color_picker
-from .dialog_utils import position_color_dialog
-from .menu_button import MenuButton
 
 
 class NodeStyleSection(CollapsiblePanel):
@@ -51,21 +46,8 @@ class NodeStyleSection(CollapsiblePanel):
 
         # State
         self._initialized = False
-        self.current_style = {
-            "enabled": True,
-            "color_index": 0,
-            "brightness": 1.0,
-            "opacity": 255,
-            "shape": "rounded_rect",
-            "radius": 10,
-            "padding_w": 20,
-            "padding_h": 16,
-            "max_text_width": 250,  # Default max text width
-        }
+        self.current_style = self._get_default_style()
         self.last_emitted_style = None  # Track last emitted style to detect changes
-
-        # Color picker (lazy creation)
-        self._color_picker = None
 
         # Connect toggle signal for lazy initialization
         self.toggled.connect(self._on_toggled)
@@ -96,51 +78,6 @@ class NodeStyleSection(CollapsiblePanel):
         layout.setColumnStretch(1, 1)
 
         row = 0
-
-        # Background enabled
-        self.bg_enabled_check = QCheckBox()
-        self.bg_enabled_check.setChecked(self.current_style.get("enabled", True))
-        self.bg_enabled_check.stateChanged.connect(self._on_bg_enabled_changed)
-        layout.addWidget(self.bg_enabled_check, row, 1, alignment=Qt.AlignLeft)
-        row += 1
-
-        # Background color (placeholder - will be implemented later)
-        bg_color_label = QLabel("Color:")
-        bg_color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        bg_color_label.setFixedWidth(self._label_width)
-        layout.addWidget(bg_color_label, row, 0)
-
-        self.bg_color_btn = MenuButton("Color 1", self.WIDGET_HEIGHT)
-        self.bg_color_btn.setStyleSheet(self._button_style())
-        self.bg_color_btn.clicked.connect(self._on_bg_color_clicked)
-        layout.addWidget(self.bg_color_btn, row, 1)
-        row += 1
-
-        # Brightness slider
-        brightness_label = QLabel("Brightness:")
-        brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        brightness_label.setFixedWidth(self._label_width)
-        layout.addWidget(brightness_label, row, 0)
-
-        self.brightness_slider = QSlider(Qt.Horizontal)
-        self.brightness_slider.setRange(50, 150)  # 0.5-1.5
-        self.brightness_slider.setValue(int(self.current_style.get("brightness", 1.0) * 100))
-        self.brightness_slider.valueChanged.connect(self._on_brightness_changed)
-        layout.addWidget(self.brightness_slider, row, 1)
-        row += 1
-
-        # Opacity slider
-        opacity_label = QLabel("Opacity:")
-        opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        opacity_label.setFixedWidth(self._label_width)
-        layout.addWidget(opacity_label, row, 0)
-
-        self.opacity_slider = QSlider(Qt.Horizontal)
-        self.opacity_slider.setRange(0, 255)
-        self.opacity_slider.setValue(self.current_style.get("opacity", 255))
-        self.opacity_slider.valueChanged.connect(self._on_opacity_changed)
-        layout.addWidget(self.opacity_slider, row, 1)
-        row += 1
 
         # Style selector - using reusable VisualPreviewButton
         style_label = QLabel("Style:")
@@ -286,21 +223,6 @@ class NodeStyleSection(CollapsiblePanel):
 
         self._emit_style_changed()
 
-    def _on_bg_enabled_changed(self, state):
-        """Handle background enabled change."""
-        self.current_style["enabled"] = state == Qt.Checked
-        self._emit_style_changed()
-
-    def _on_brightness_changed(self, value):
-        """Handle brightness change."""
-        self.current_style["brightness"] = value / 100.0
-        self._emit_style_changed()
-
-    def _on_opacity_changed(self, value):
-        """Handle opacity change."""
-        self.current_style["opacity"] = value
-        self._emit_style_changed()
-
     def _on_radius_changed(self, value: int):
         """Handle radius change."""
         self.current_style["radius"] = value
@@ -318,18 +240,25 @@ class NodeStyleSection(CollapsiblePanel):
         self._emit_style_changed()
 
     def _emit_style_changed(self):
-        """Emit style changed signal with all fields."""
+        """Emit style changed signal with only changed fields."""
         # If last_emitted_style is None, this means we haven't emitted anything yet
         # Initialize it with current state so future changes can be detected
         if self.last_emitted_style is None:
             self.last_emitted_style = dict(self.current_style)
             return  # Don't emit on initialization
 
+        # Calculate which fields have changed
+        changed_fields = {}
+        for key, value in self.current_style.items():
+            if key not in self.last_emitted_style or self.last_emitted_style[key] != value:
+                changed_fields[key] = value
+
         # Update last emitted style
         self.last_emitted_style = dict(self.current_style)
 
-        # Emit all fields
-        self.style_changed.emit(dict(self.current_style))
+        # Only emit if there are changes
+        if changed_fields:
+            self.style_changed.emit(changed_fields)
 
     def get_style(self) -> dict:
         """Get current node style."""
@@ -349,12 +278,6 @@ class NodeStyleSection(CollapsiblePanel):
 
         # Update UI if initialized
         if self._initialized:
-            if "enabled" in style:
-                self.bg_enabled_check.setChecked(style["enabled"])
-            if "brightness" in style:
-                self.brightness_slider.setValue(int(style["brightness"] * 100))
-            if "opacity" in style:
-                self.opacity_slider.setValue(style["opacity"])
             if "shape" in style:
                 # Update preview button
                 self.style_btn.set_value(style["shape"])
@@ -386,30 +309,3 @@ class NodeStyleSection(CollapsiblePanel):
 
             if "max_text_width" in style:
                 self.max_text_width_spin.setValue(style["max_text_width"])
-
-    def _on_bg_color_clicked(self):
-        """Handle background color button click."""
-        if self._color_picker is None:
-            self._color_picker = create_color_picker(self)
-            self._color_picker.color_selected.connect(self._on_bg_color_selected)
-
-        # Set current color
-        color_index = self.current_style.get("color_index", 0)
-        # Get color from parent's color pool if available
-        color_text = f"Color {color_index + 1}"
-        self.bg_color_btn.setText(color_text)
-
-        # Show color picker
-        self._color_picker.show()
-        self._color_picker.raise_()
-        self._color_picker.activateWindow()
-
-        # Position dialog
-        position_color_dialog(self._color_picker, self.bg_color_btn)
-
-    def _on_bg_color_selected(self, hex_color: str):
-        """Handle color selection from picker."""
-        # For now, just update button text
-        # In the future, this will update the color_index or store custom color
-        self.bg_color_btn.setText("Custom")
-        self._emit_style_changed()
