@@ -102,8 +102,8 @@ class EdgeItem(QGraphicsPathItem):
                         base_color = self._apply_opacity(base_color, role_style.connector_opacity)
                     color_str = base_color
                 else:
-                    # Fallback to edge_color from ColorScheme
-                    color_str = color_scheme.edge_color if color_scheme else "#666666"
+                    # Fallback to default color
+                    color_str = "#666666"
                 
                 line_width = role_style.line_width
                 connector_style_str = role_style.connector_style
@@ -116,7 +116,8 @@ class EdgeItem(QGraphicsPathItem):
             # 2. Level 1 -> Level 2+ edges (source is Level 1)
             # 3. Level 2+ -> Level 2+ edges (inherit from Level 1 ancestor)
             color_scheme = self.style_config.resolved_color_scheme
-            if color_scheme and color_scheme.use_rainbow_branches:
+            use_rainbow = self.style_config.use_rainbow_branches if self.style_config else False
+            if use_rainbow:
                 branch_idx = None
 
                 # Case 1: Target is a Level 1 node (Root -> Level 1 edge)
