@@ -142,7 +142,13 @@ class CanvasPanel(CollapsiblePanel):
         # Set current color from style data object (no fallback)
         parent = self.parent()
         if parent and hasattr(parent, 'style_config') and parent.style_config:
-            current_color = parent.style_config.canvas_bg_color
+            # NEW: Use branch_colors[8] for canvas background
+            if (hasattr(parent.style_config, 'branch_colors') and 
+                parent.style_config.branch_colors and
+                len(parent.style_config.branch_colors) > 8):
+                current_color = parent.style_config.branch_colors[8]
+            else:
+                current_color = "#FFFFFFFF"  # Default white
         else:
             # Should not happen - style_config is required
             return

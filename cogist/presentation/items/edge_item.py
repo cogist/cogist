@@ -62,10 +62,7 @@ class EdgeItem(QGraphicsPathItem):
 
         # Read style from global config if available (real-time, no caching)
         if self.style_config and hasattr(self.source_item, 'depth'):
-            from cogist.domain.styles.extended_styles import (
-                NodeRole,
-                get_rainbow_branch_color,
-            )
+            from cogist.domain.styles.extended_styles import NodeRole
 
             source_depth = self.source_item.depth
             target_depth = self.target_item.depth
@@ -88,10 +85,21 @@ class EdgeItem(QGraphicsPathItem):
             connector_shape = "bezier"
             enable_gradient = True
 
-            if (self.style_config.resolved_template and
-                connector_role in self.style_config.resolved_template.role_styles):
-                role_style = self.style_config.resolved_template.role_styles[connector_role]
-                color_str = role_style.connector_color or (self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666")
+            # NEW: Get connector style from MindMapStyle.role_styles (flat structure)
+            if (hasattr(self.style_config, 'role_styles') and
+                connector_role in self.style_config.role_styles):
+                role_style = self.style_config.role_styles[connector_role]
+
+                # Get connector color using index system
+                branch_colors = self.style_config.branch_colors
+                color_str = self._get_color_from_index(
+                    role_style.connector_color_index,
+                    branch_colors,
+                    role_style.connector_brightness,
+                    role_style.connector_opacity,
+                    True  # connector is always enabled
+                ) or "#FF666666"
+
                 line_width = role_style.line_width
                 connector_style_str = role_style.connector_style
                 connector_shape = role_style.connector_shape
@@ -102,10 +110,8 @@ class EdgeItem(QGraphicsPathItem):
             # 1. Root -> Level 1 edges (target is Level 1)
             # 2. Level 1 -> Level 2+ edges (source is Level 1)
             # 3. Level 2+ -> Level 2+ edges (inherit from Level 1 ancestor)
-            color_scheme = self.style_config.resolved_color_scheme
-            if color_scheme and color_scheme.use_rainbow_branches:
+            if self.style_config.use_rainbow_branches and len(self.style_config.branch_colors) >= 8:
                 branch_idx = None
-                role_config = color_scheme.role_configs.get(adjustment_role)
 
                 # Case 1: Target is a Level 1 node (Root -> Level 1 edge)
                 if (hasattr(self.target_item, 'domain_node') and self.target_item.domain_node and
@@ -127,24 +133,23 @@ class EdgeItem(QGraphicsPathItem):
                             branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
 
                 # Apply rainbow color if branch index found
-                if branch_idx is not None:
-                    branch_color = get_rainbow_branch_color(
-                        branch_idx,
-                        color_scheme.branch_colors
-                    )
+                if branch_idx is not None and branch_idx < len(self.style_config.branch_colors):
+                    # Get base rainbow color from branch_colors array
+                    rainbow_base = self.style_config.branch_colors[branch_idx % 8]  # Only use indices 0-7
 
                     # Apply brightness and opacity adjustments for Level 2+
-                    if role_config and target_depth >= 2:
-                        # Apply brightness adjustment (0.0-2.0)
-                        brightness_factor = role_config.brightness_amount
-                        if brightness_factor != 1.0:
-                            branch_color = self._adjust_color_brightness(branch_color, brightness_factor)
+                    if hasattr(self.style_config, 'role_styles') and adjustment_role in self.style_config.role_styles:
+                        role_style = self.style_config.role_styles[adjustment_role]
 
-                        # Apply opacity adjustment (0-255)
-                        if role_config.opacity_amount < 255:
-                            branch_color = self._apply_opacity(branch_color, role_config.opacity_amount)
+                        # Apply brightness adjustment
+                        if role_style.connector_brightness != 1.0:
+                            rainbow_base = self._adjust_color_brightness(rainbow_base, role_style.connector_brightness)
 
-                    color_str = branch_color
+                        # Apply opacity adjustment
+                        if role_style.connector_opacity < 255:
+                            rainbow_base = self._apply_opacity(rainbow_base, role_style.connector_opacity)
+
+                    color_str = rainbow_base
 
             # Extract style values directly from config
             color = QColor(color_str)
@@ -274,6 +279,38 @@ class EdgeItem(QGraphicsPathItem):
 
         # Apply new opacity
         return f"#{opacity:02X}{rgb_hex}"
+
+    def _get_color_from_index(self, color_index: int, branch_colors: list,
+                              brightness: float, opacity: int, enabled: bool) -> str | None:
+        """Get color from branch_colors index with adjustments.
+
+        Args:
+            color_index: Index into branch_colors array
+            branch_colors: List of colors
+            brightness: Brightness factor (0.5-1.5)
+            opacity: Opacity value (0-255)
+            enabled: Whether the element is enabled
+
+        Returns:
+            Color string in #AARRGGBB format, or None if disabled
+        """
+        if not enabled:
+            return None
+
+        if not branch_colors or color_index >= len(branch_colors):
+            return None
+
+        base_color = branch_colors[color_index]
+
+        # Apply brightness adjustment
+        if brightness != 1.0:
+            base_color = self._adjust_color_brightness(base_color, brightness)
+
+        # Apply opacity adjustment
+        if opacity < 255:
+            base_color = self._apply_opacity(base_color, opacity)
+
+        return base_color
 
     def _draw_dashed_line(self, painter, color, line_style):
         """Draw dashed/dotted/dash-dot lines with precise pattern control.
