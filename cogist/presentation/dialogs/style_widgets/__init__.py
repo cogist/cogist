@@ -5,6 +5,7 @@ implementing lazy initialization and collapsible panels for better UX.
 """
 
 from .border_section import BorderSection
+from .canvas_panel import CanvasPanel
 from .collapsible_panel import CollapsiblePanel
 from .color_scheme_section import ColorSchemeSection
 from .connector_section import ConnectorSection
@@ -26,4 +27,5 @@ __all__ = [
     "SpacingSection",
     "MenuButton",
     "ColorSchemeSection",
+    "CanvasPanel",
 ]
