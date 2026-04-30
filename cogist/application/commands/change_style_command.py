@@ -122,12 +122,11 @@ class ChangeStyleCommand(Command):
         if layer == "canvas":
             for key in keys:
                 if key == "bg_color":
-                    backup[key] = self.style_config.canvas_bg_color
-                    # Also backup resolved_color_scheme if it exists
-                    if self.style_config.resolved_color_scheme:
-                        backup["resolved_canvas_bg_color"] = (
-                            self.style_config.resolved_color_scheme.canvas_bg_color
-                        )
+                    # Read from branch_colors[8]
+                    if hasattr(self.style_config, 'branch_colors') and len(self.style_config.branch_colors) > 8:
+                        backup[key] = self.style_config.branch_colors[8]
+                    else:
+                        backup[key] = "#FFFFFFFF"  # Default white
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}
@@ -236,19 +235,11 @@ class ChangeStyleCommand(Command):
             style_updates: Dictionary of style properties to update
         """
         if layer == "canvas":
-            if "bg_color" in style_updates:
-                self.style_config.canvas_bg_color = style_updates["bg_color"]
-            # Also restore resolved_color_scheme if it was backed up
-            if "resolved_canvas_bg_color" in style_updates:
-                if self.style_config.resolved_color_scheme:
-                    self.style_config.resolved_color_scheme.canvas_bg_color = (
-                        style_updates["resolved_canvas_bg_color"]
-                    )
-            # Sync canvas_bg_color to resolved_color_scheme if only bg_color is present
-            elif "bg_color" in style_updates and self.style_config.resolved_color_scheme:
-                self.style_config.resolved_color_scheme.canvas_bg_color = (
-                    style_updates["bg_color"]
-                )
+            if "bg_color" in style_updates and hasattr(self.style_config, 'branch_colors'):
+                # Update branch_colors[8]
+                while len(self.style_config.branch_colors) < 9:
+                    self.style_config.branch_colors.append("#FFFFFFFF")
+                self.style_config.branch_colors[8] = style_updates["bg_color"]
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}

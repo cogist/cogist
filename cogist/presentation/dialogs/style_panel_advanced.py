@@ -592,12 +592,14 @@ class AdvancedStyleTab(QWidget):
         Args:
             style: Dictionary with 'bg_color' key containing the new color
         """
+        print(f"[_on_canvas_bg_color_changed] Received: {style}")
         assert self.style_config is not None
 
         if "bg_color" not in style:
             return
 
         new_color = style["bg_color"]
+        print(f"  New color: {new_color}")
 
         # Update MindMapStyle.branch_colors[8] (canvas background color)
         if hasattr(self.style_config, "branch_colors"):
@@ -605,9 +607,12 @@ class AdvancedStyleTab(QWidget):
             while len(self.style_config.branch_colors) < 9:
                 self.style_config.branch_colors.append("#FFFFFFFF")
             self.style_config.branch_colors[8] = new_color
+            print(f"  Updated branch_colors[8] to: {self.style_config.branch_colors[8]}")
 
         # Apply styles to mindmap
+        print("  Calling _apply_styles_to_mindmap()...")
         self._apply_styles_to_mindmap()
+        print("  _apply_styles_to_mindmap() completed")
 
         # Use command system if available
         if self.command_history:
@@ -676,13 +681,11 @@ class AdvancedStyleTab(QWidget):
 
         if not role:
             # Canvas layer - handle canvas_bg and rainbow config
-            if "canvas_bg" in colors:
-                # Update both style_config and resolved_color_scheme
-                self.style_config.canvas_bg_color = colors["canvas_bg"]
-                if self.style_config.resolved_color_scheme:
-                    self.style_config.resolved_color_scheme.canvas_bg_color = colors[
-                        "canvas_bg"
-                    ]
+            if "canvas_bg" in colors and hasattr(self.style_config, 'branch_colors'):
+                # Update branch_colors[8]
+                while len(self.style_config.branch_colors) < 9:
+                    self.style_config.branch_colors.append("#FFFFFFFF")
+                self.style_config.branch_colors[8] = colors["canvas_bg"]
 
             # Apply styles to mindmap after updating canvas/rainbow config
             self._apply_styles_to_mindmap()
@@ -1286,13 +1289,15 @@ class AdvancedStyleTab(QWidget):
             if hasattr(mindmap_view, "_refresh_layout"):
                 mindmap_view._refresh_layout(skip_measurement=False)
 
-        except Exception:
+        except Exception as e:
             # Error already shown in UI, no need to print to console
-            pass
+            import traceback
+            print(f"[_apply_styles_to_mindmap] ERROR: {e}")
+            traceback.print_exc()
 
     def _apply_node_styles_to_mindmap(self, mindmap_view):
         """Apply node layer styles using RoleBasedStyle architecture."""
-        from cogist.domain.styles import ColorScheme, NodeRole, Template
+        from cogist.domain.styles import NodeRole
 
         if not mindmap_view.style_config:
             return
@@ -1309,61 +1314,36 @@ class AdvancedStyleTab(QWidget):
             "minor": NodeRole.TERTIARY,
         }
 
-        # Initialize role_styles dict if template doesn't have it
-        if not style.resolved_template:
-            style.resolved_template = Template(
-                name="Custom", description="", role_styles={}
-            )
-
-        # Convert each layer to RoleBasedStyle + update ColorScheme
-        for layer_name, role in layer_to_role.items():
+        # Convert each layer to RoleBasedStyle
+        for layer_name, _role in layer_to_role.items():
             # Skip priority layers (critical/minor) - they use tertiary styles
             if layer_name in ["critical", "minor"]:
                 continue
 
-            # Get layer data directly from global style_config
-            layer_data = self._get_layer_data(layer_name)
-
             # CRITICAL: Do NOT recreate RoleBasedStyle objects!
             # Panel already updated the global config directly via _update_role_style_in_config.
             # Recreating would overwrite the changes with old values.
-            # Only update color scheme here.
-
-            # Update color scheme
-            if not style.resolved_color_scheme:
-                style.resolved_color_scheme = ColorScheme(name="Custom", description="")
-
-            # Set node color
-            if "bg_color" in layer_data:
-                style.resolved_color_scheme.role_configs[role].bg_color = layer_data[
-                    "bg_color"
-                ]
-
-            # Set text color
-            if "text_color" in layer_data:
-                style.resolved_color_scheme.role_configs[role].text_color = layer_data[
-                    "text_color"
-                ]
-
-            # Set border color (only if not None)
-            if "border_color" in layer_data and layer_data["border_color"] is not None:
-                style.resolved_color_scheme.role_configs[
-                    role
-                ].border_color = layer_data["border_color"]
 
         # Update canvas background color
         canvas_data = self._get_layer_data("canvas")
+        print(f"[_apply_node_styles] canvas_data: {canvas_data}")
         if "bg_color" in canvas_data:
             canvas_color = canvas_data["bg_color"]
-            style.canvas_bg_color = canvas_color
-            if style.resolved_color_scheme:
-                style.resolved_color_scheme.canvas_bg_color = canvas_color
+            print(f"  Canvas bg_color from layer_data: {canvas_color}")
+            # Update branch_colors[8] for canvas background
+            if hasattr(style, 'branch_colors'):
+                while len(style.branch_colors) < 9:
+                    style.branch_colors.append("#FFFFFFFF")
+                style.branch_colors[8] = canvas_color
+                print(f"  Updated style.branch_colors[8]: {style.branch_colors[8]}")
 
-            # CRITICAL: Update the scene background immediately
-            from PySide6.QtGui import QBrush, QColor
-
-            if hasattr(mindmap_view, "scene"):
-                mindmap_view.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
+            # Use mindmap_view's method to update scene background
+            print("  Checking if mindmap_view has _update_canvas_background...")
+            if hasattr(mindmap_view, '_update_canvas_background'):
+                print("  Calling _update_canvas_background()...")
+                mindmap_view._update_canvas_background()
+            else:
+                print("  ERROR: mindmap_view does NOT have _update_canvas_background!")
 
         # Update all existing node items with new style
         if hasattr(mindmap_view, "node_items"):
