@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 
 from .style_widgets import (
     BorderSection,
+    CanvasPanel,
     ColorSchemeSection,
     ConnectorSection,
     FontStyleSection,
@@ -392,12 +393,16 @@ class AdvancedStyleTab(QWidget):
 
         if layer_name == "canvas":
             # Handle canvas background color separately
-            if "bg_color" in updates:
-                self.style_config.canvas_bg_color = updates["bg_color"]
-                if self.style_config.resolved_color_scheme:
-                    self.style_config.resolved_color_scheme.canvas_bg_color = updates[
-                        "bg_color"
-                    ]
+            # NEW: Use branch_colors[8] for canvas background
+            if (
+                "bg_color" in updates
+                and hasattr(self.style_config, "branch_colors")
+                and self.style_config.branch_colors
+            ):
+                # Ensure we have at least 9 colors (indices 0-8)
+                while len(self.style_config.branch_colors) < 9:
+                    self.style_config.branch_colors.append("#FFFFFFFF")
+                self.style_config.branch_colors[8] = updates["bg_color"]
             return  # Canvas doesn't have role styles
 
         # Map layer to role
@@ -492,6 +497,7 @@ class AdvancedStyleTab(QWidget):
 
         # Add modular components
         self.layer_selector = LayerSelector()
+        self.canvas_panel = CanvasPanel(self)  # NEW: Canvas panel for background color
         self.color_scheme_section = ColorSchemeSection()
         self.spacing_section = SpacingSection()
         self.node_style_section = NodeStyleSection()
@@ -501,6 +507,7 @@ class AdvancedStyleTab(QWidget):
         self.connector_section = ConnectorSection()
 
         layout.addWidget(self.layer_selector)
+        layout.addWidget(self.canvas_panel)  # NEW: Canvas panel
         layout.addWidget(self.color_scheme_section)
         layout.addWidget(self.spacing_section)
         layout.addWidget(self.node_style_section)
@@ -509,6 +516,11 @@ class AdvancedStyleTab(QWidget):
         layout.addWidget(self.border_section)
         layout.addWidget(self.connector_section)
         layout.addStretch()
+
+        # Connect signals
+        self.canvas_panel.style_changed.connect(
+            lambda style: self._apply_style_updates_to_layer("canvas", style)
+        )
 
         scroll.setWidget(content_widget)
 
@@ -1143,6 +1155,10 @@ class AdvancedStyleTab(QWidget):
             if "rainbow_pool" in layer_data:
                 color_data["rainbow_pool"] = layer_data["rainbow_pool"]
             self.color_scheme_section.set_colors(color_data)
+
+            # NEW: Load canvas background color into CanvasPanel
+            self.canvas_panel.set_style({"bg_color": layer_data["bg_color"]})
+
             # Hide shadow section for canvas
             self.shadow_section.setVisible(False)
         else:
