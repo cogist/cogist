@@ -69,70 +69,8 @@ class MainWindow(QMainWindow):
 
         self.mindmap_service = MindMapService()
 
-        # Initialize style system with fallback strategy
-        from cogist.infrastructure.utils import config_manager
-        from cogist.infrastructure.utils.resources import (
-            color_scheme_loader,
-            template_deserializer,
-            template_loader,
-        )
-
-        # Step 1: Load template (two-level fallback)
-        template_dir = config_manager.get_template_directory()
-        user_default = template_dir / "default.json"
-
-        if user_default.exists():
-            try:
-                import json
-
-                user_data = json.loads(user_default.read_text(encoding="utf-8"))
-                self.current_style = (
-                    template_deserializer.deserialize_complete_template(user_data)
-                )
-                print(f"Loaded user default template: {self.current_style.name}")
-                print(f"  Roles: {list(self.current_style.role_styles.keys())}")
-            except Exception as e:
-                print(
-                    f"Failed to load user default template: {e}, falling back to built-in"
-                )
-                # Fallback to built-in template
-                builtin_data = template_loader.get_builtin_template("default")
-                if builtin_data:
-                    self.current_style = (
-                        template_deserializer.deserialize_complete_template(builtin_data)
-                    )
-                    # Save to user directory for future use
-                    template_loader.save_template_to_user_dir(builtin_data, "default")
-                    print("Loaded built-in default template and saved to user directory")
-                else:
-                    raise RuntimeError(
-                        "Failed to load any template. Built-in template is missing or corrupted."
-                    ) from None
-        else:
-            # User template doesn't exist, load built-in template
-            builtin_data = template_loader.get_builtin_template("default")
-            if builtin_data:
-                self.current_style = (
-                    template_deserializer.deserialize_complete_template(builtin_data)
-                )
-                # Save to user directory for future use
-                template_loader.save_template_to_user_dir(builtin_data, "default")
-                print("Loaded built-in default template and saved to user directory")
-            else:
-                raise RuntimeError(
-                    "Failed to load any template. Built-in template is missing or corrupted."
-                )
-
-        # Step 2: Load color scheme and apply colors to template (two-level fallback)
-        try:
-            color_scheme_data = color_scheme_loader.load_color_scheme_with_fallback("default")
-            # Apply branch_colors from color scheme to the loaded template
-            if "branch_colors" in color_scheme_data:
-                self.current_style.branch_colors = color_scheme_data["branch_colors"]
-                print(f"Applied color scheme '{color_scheme_data.get('name', 'default')}' to template")
-        except RuntimeError as e:
-            print(f"Warning: {e}")
-            print("Using template's embedded colors as fallback")
+        # Load default style configuration (template + color scheme)
+        self._load_default_style()
 
         # Apply global styles
         self._apply_global_styles()
@@ -369,13 +307,10 @@ class MainWindow(QMainWindow):
             }
         """)
 
-    def _reset_style_to_default(self):
-        """Reset style configuration to default using two-level fallback strategy.
+    def _load_default_style(self):
+        """Load default style configuration (template + color scheme) with two-level fallback.
 
-        Level 1: User's saved default template (~/Library/Application Support/cogist/templates/default.json)
-        Level 2: Built-in template (assets/templates/default.json)
-
-        If both fail, raises RuntimeError.
+        This method is called during initialization and when creating new files.
         """
         from cogist.infrastructure.utils import config_manager
         from cogist.infrastructure.utils.resources import (
@@ -398,7 +333,7 @@ class MainWindow(QMainWindow):
                 )
             except Exception as e:
                 print(
-                    f"[New File] Failed to load user default template: {e}, falling back to built-in"
+                    f"Failed to load user default template: {e}, falling back to built-in"
                 )
                 # Fallback to built-in template
                 builtin_data = template_loader.get_builtin_template("default")
@@ -408,9 +343,7 @@ class MainWindow(QMainWindow):
                     )
                     # Save to user directory for future use
                     template_loader.save_template_to_user_dir(builtin_data, "default")
-                    print(
-                        "[New File] Loaded built-in default template and saved to user directory"
-                    )
+                    print("Loaded built-in default template and saved to user directory")
                 else:
                     raise RuntimeError(
                         "Failed to load any template. Built-in template is missing or corrupted."
@@ -424,13 +357,11 @@ class MainWindow(QMainWindow):
                 )
                 # Save to user directory for future use
                 template_loader.save_template_to_user_dir(builtin_data, "default")
-                print(
-                    "[New File] Loaded built-in default template and saved to user directory"
-                )
+                print("Loaded built-in default template and saved to user directory")
             else:
                 raise RuntimeError(
                     "Failed to load any template. Built-in template is missing or corrupted."
-                ) from None
+                )
 
         # Step 2: Load color scheme and apply colors to template (two-level fallback)
         try:
@@ -438,10 +369,18 @@ class MainWindow(QMainWindow):
             # Apply branch_colors from color scheme to the loaded template
             if "branch_colors" in color_scheme_data:
                 self.current_style.branch_colors = color_scheme_data["branch_colors"]
-                print(f"[New File] Applied color scheme '{color_scheme_data.get('name', 'default')}' to template")
+                print(f"Applied color scheme '{color_scheme_data.get('name', 'default')}' to template")
         except RuntimeError as e:
             print(f"Warning: {e}")
             print("Using template's embedded colors as fallback")
+
+    def _reset_style_to_default(self):
+        """Reset style configuration to default (used when creating new files).
+
+        This method wraps _load_default_style() with additional logging.
+        """
+        print("[New File] Loading default style configuration...")
+        self._load_default_style()
 
         # Apply global styles
         self._apply_global_styles()
