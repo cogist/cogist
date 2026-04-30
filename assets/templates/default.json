@@ -228,7 +228,7 @@
     "description": "Default blue color scheme",
     "role_configs": {
       "root": {
-        "bg_color": "#ff0096ff",
+        "bg_color": "#ff5e5e5e",
         "border_color": "#00ffffff",
         "text_color": "#ffffffff",
         "rainbow_bg_enabled": true,
@@ -251,7 +251,7 @@
         "text_color": "#ff424242",
         "rainbow_bg_enabled": false,
         "rainbow_border_enabled": true,
-        "brightness_amount": 1.0,
+        "brightness_amount": 1.5,
         "opacity_amount": 255
       },
       "tertiary": {
@@ -260,19 +260,19 @@
         "text_color": "#ff424242",
         "rainbow_bg_enabled": false,
         "rainbow_border_enabled": true,
-        "brightness_amount": 1.04,
+        "brightness_amount": 1.41,
         "opacity_amount": 141
       }
     },
     "branch_colors": [
-      "#ffff2600",
-      "#FF4ECDC4",
-      "#FF45B7D1",
-      "#ff8efa00",
-      "#FF98D8C8",
-      "#FFF7DC6F",
-      "#FFBB8FCE",
-      "#FF85C1E2"
+      "#ffee3848",
+      "#fff48333",
+      "#fff1cf27",
+      "#ff18dc6a",
+      "#ff14d0c1",
+      "#ff2a9ced",
+      "#ff8540e7",
+      "#ffea2e8c"
     ],
     "use_rainbow_branches": true,
     "canvas_bg_color": "#fffffcf0",

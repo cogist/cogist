@@ -497,13 +497,13 @@ class NodeItem(QGraphicsRectItem):
         return f"#FF{blended_r:02X}{blended_g:02X}{blended_b:02X}"
 
     def _auto_contrast(self, bg_color: str) -> str:
-        """Automatically choose text color based on background brightness and complementary color.
+        """Automatically choose black or white text based on background brightness.
 
         Args:
             bg_color: Background color in hex format (#RRGGBB or #AARRGGBB)
 
         Returns:
-            Complementary color with adjusted brightness for optimal contrast
+            '#FFFFFFFF' for dark backgrounds, '#FF000000' for light backgrounds
         """
         # Parse hex color
         bg_color = bg_color.lstrip("#")
@@ -513,60 +513,20 @@ class NodeItem(QGraphicsRectItem):
             # 8-digit format: skip alpha channel, use RGB
             bg_color = bg_color[2:]  # Remove AA prefix
         elif len(bg_color) != 6:
-            return "#FF101010"  # Default to almost black
+            return "#FF000000"  # Default to black
 
         try:
             r = int(bg_color[0:2], 16)
             g = int(bg_color[2:4], 16)
             b = int(bg_color[4:6], 16)
         except ValueError:
-            return "#FF101010"
+            return "#FF000000"
 
         # Calculate luminance (0.0 = black, 1.0 = white)
         luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
 
-        # Calculate complementary color (invert RGB) - preserves hue contrast
-        complement_r = 255 - r
-        complement_g = 255 - g
-        complement_b = 255 - b
-
-        # Calculate complementary color luminance
-        complement_luminance = (0.299 * complement_r + 0.587 * complement_g + 0.114 * complement_b) / 255.0
-
-        # Determine target luminance with strong contrast
-        # Light background -> dark text; Dark background -> very light text
-        # Use exponential mapping for more extreme contrast at dark backgrounds
-        if luminance > 0.5:
-            # Light background: target dark text (0.1-0.3)
-            # Keep some color by not going too dark
-            target_luminance = 0.1 + (luminance - 0.5) * 0.4  # 0.1 to 0.3
-        else:
-            # Dark background: target very light text (0.85-0.98)
-            # Exponential increase for darker backgrounds
-            target_luminance = 0.85 + (0.5 - luminance) * 0.26  # 0.85 to 0.98
-
-        # Scale complementary color RGB to achieve target luminance
-        # This preserves the complementary hue while adjusting brightness
-        if complement_luminance > 0.01:
-            scale = target_luminance / complement_luminance
-        else:
-            # Complementary is almost black, use grayscale at target luminance
-            text_rgb = int(target_luminance * 255)
-            return f"#FF{text_rgb:02X}{text_rgb:02X}{text_rgb:02X}"
-
-        # Apply scale with reasonable limits
-        scale = max(0.15, min(5.0, scale))
-
-        text_r = int(complement_r * scale)
-        text_g = int(complement_g * scale)
-        text_b = int(complement_b * scale)
-
-        # Clamp values
-        text_r = max(0, min(255, text_r))
-        text_g = max(0, min(255, text_g))
-        text_b = max(0, min(255, text_b))
-
-        return f"#FF{text_r:02X}{text_g:02X}{text_b:02X}"
+        # Simple threshold: dark bg -> white text, light bg -> black text
+        return "#FFFFFFFF" if luminance < 0.5 else "#FF000000"
 
     def _find_level_1_ancestor(self):  # type: ignore
         """Find the Level 1 ancestor node (direct child of root).
