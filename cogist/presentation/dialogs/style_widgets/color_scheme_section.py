@@ -49,16 +49,14 @@ class ColorSchemeSection(CollapsiblePanel):
 
         # Default rainbow colors
         self._default_rainbow = [
-            "#FFFF6B6B",
-            "#FF4ECDC4",
-            "#FF45B7D1",
-            "#FFFFA07A",
-            "#FF98D8C8",
-            "#FFF7DC6F",
-            "#FFBB8FCE",
-            "#FF85C1E2",
-            "#FFF8B739",
-            "#FF52B788",
+            "#FFFF6B6B",  # Red
+            "#FF4ECDC4",  # Teal
+            "#FF45B7D1",  # Light Blue
+            "#FFFFA07A",  # Light Salmon
+            "#FF98D8C8",  # Mint
+            "#FFF7DC6F",  # Yellow
+            "#FFBB8FCE",  # Purple
+            "#FF85C1E2",  # Sky Blue
         ]
 
         # Rainbow controls
@@ -102,7 +100,7 @@ class ColorSchemeSection(CollapsiblePanel):
         switch_row.addStretch()
 
         self.rainbow_check = ToggleSwitch()
-        self.rainbow_check.toggled.connect(self._on_rainbow_changed)
+        self.rainbow_check.toggled.connect(self._on_rainbow_toggled)
         switch_row.addWidget(self.rainbow_check)
 
         layout.addLayout(switch_row, row, 0, 1, 2)
@@ -128,11 +126,11 @@ class ColorSchemeSection(CollapsiblePanel):
             btn_row_layout.setSpacing(0)
             btn_row_layout.setContentsMargins(0, 0, 0, 0)
 
-            for col_idx in range(5):  # 5 columns x 2 rows = 10 colors
-                i = row_idx * 5 + col_idx
+            for col_idx in range(4):  # 4 columns x 2 rows = 8 colors
+                i = row_idx * 4 + col_idx
                 btn = QPushButton()
                 btn.setFixedSize(32, 32)
-                btn.setToolTip(f"Branch {i + 1} color")
+                btn.setToolTip(f"Color {i + 1}")
                 color = self.rainbow_colors[i] if i < len(self.rainbow_colors) else "#FFCCCCCC"
                 btn.setStyleSheet(
                     f"background-color: {color}; "
@@ -142,7 +140,7 @@ class ColorSchemeSection(CollapsiblePanel):
                 self.rainbow_buttons.append(btn)
                 btn_row_layout.addWidget(btn)
 
-                if col_idx < 4:
+                if col_idx < 3:
                     btn_row_layout.addStretch()
 
             buttons_layout.addLayout(btn_row_layout)
@@ -153,19 +151,18 @@ class ColorSchemeSection(CollapsiblePanel):
 
         self.setLayout(layout)
 
-        # Initially hide color pool if rainbow is disabled
+        # Always show color pool (no hiding)
         self.rainbow_pool_widget = buttons_container
-        self.rainbow_pool_widget.setVisible(self._rainbow_visible)
+        # self.rainbow_pool_widget.setVisible(self._rainbow_visible)  # Removed: always visible
         if self.rainbow_check:
             self.rainbow_check.blockSignals(False)
 
-    def _on_rainbow_changed(self, checked: bool):
+    def _on_rainbow_toggled(self, checked: bool):
         """Handle rainbow branch mode toggle."""
         self._rainbow_visible = checked
 
-        # Show/hide color pool
-        if hasattr(self, 'rainbow_pool_widget') and self.rainbow_pool_widget:
-            self.rainbow_pool_widget.setVisible(checked)
+        # Note: Color pool is always visible (no show/hide)
+        # Rainbow switch now only controls whether branches use rainbow colors
 
         # Emit change
         # Note: Rainbow switch is now global, emitted signal will be handled by parent
