@@ -1,8 +1,8 @@
 # Style Refactoring Progress Report
 
 **Date**: 2026-04-30  
-**Status**: Core Structure Complete, Rendering & UI Pending  
-**Commits**: 2 commits on branch `develop/v0.5.0`
+**Status**: Core Structure & Rendering Complete, UI Panels Pending  
+**Commits**: 3 commits on branch `develop/v0.5.0`
 
 ---
 
@@ -65,6 +65,49 @@
 
 ---
 
+### Phase 3.2: Node & Edge Rendering (100%)
+
+#### Node Rendering ✅
+- Completely rewritten `_apply_style_from_template()` in node_item.py
+- Uses flat RoleStyle from `style_config.role_styles[role]`
+- Color resolution via indices:
+  - `bg_color_index` → `branch_colors[index]` + brightness + opacity
+  - `border_color_index` → `branch_colors[index]` + brightness + opacity
+  - `connector_color_index` → `branch_colors[index]` + brightness + opacity
+- Rainbow branch mode works with new structure
+- Text color auto-contrast based on background luminance
+- Added helper methods:
+  - `_get_color_from_index()`: Get color with adjustments
+  - `_auto_contrast()`: Calculate text contrast color
+  - `adjust_color_brightness()`: Adjust hex color brightness
+  - `apply_opacity_to_color()`: Apply opacity to hex color
+
+**File**: `cogist/presentation/items/node_item.py`
+
+#### Edge Rendering ✅
+- Updated connector style resolution in edge_item.py
+- Uses `role_style.connector_color_index` system
+- Rainbow branch mode updated for new structure
+- Added `_get_color_from_index()` helper method
+
+**File**: `cogist/presentation/items/edge_item.py`
+
+---
+
+### Phase 6.1: Code Cleanup (100%)
+
+#### Deprecated Code Removal ✅
+- Deleted `cogist/domain/colors/color_theme.py` (replaced by ColorScheme)
+- Updated `cogist/domain/colors/__init__.py` to mark as DEPRECATED
+- Fixed all ruff/pyright errors in rendering code
+- Removed unused imports (e.g., `get_rainbow_branch_color`)
+
+**Files**: 
+- `cogist/domain/colors/__init__.py`
+- `cogist/domain/colors/color_theme.py` (deleted)
+
+---
+
 ### Phase 5: Template Creation (100%)
 
 #### create_default_template() ✅
@@ -84,27 +127,30 @@
 
 ---
 
-## ⚠️  Pending Work (CRITICAL - Must Complete Before Testing)
+## ⚠️  Pending Work (UI Panels - Can Test Without These)
 
-### Phase 3.2: Node Rendering (0% - BLOCKING)
+### Phase 4.1: UI Panel Adaptation (0% - Non-blocking for core functionality)
 
-**Problem**: `node_item.py` still uses old architecture with `resolved_template` and `resolved_color_scheme`.
+**Status**: Core rendering is complete and functional. UI panels can be updated incrementally.
 
-**Required Changes**:
+**Files to Update**:
 
-1. **Replace role resolution logic** (lines ~160-270):
-   ```python
-   # OLD:
-   template_style = self.style_config.resolved_template.role_styles[role]
-   color_scheme = self.style_config.resolved_color_scheme
-   role_config = color_scheme.role_configs[role]
-   
-   # NEW:
-   role_style = self.style_config.role_styles[role]
-   branch_colors = self.style_config.branch_colors
-   ```
+1. **`cogist/presentation/dialogs/style_panel_advanced.py`**
+   - `_get_layer_data()`: Read from `style_config.role_styles` instead of `resolved_template`
+   - `_load_current_layer_style()`: Use flat RoleStyle fields
+   - `_apply_layer_changes()`: Write to flat RoleStyle with color indices
+   - Canvas panel: Use `branch_colors[8]` for background
 
-2. **Implement color index lookup**:
+2. **`cogist/presentation/dialogs/style_widgets/color_scheme_section.py`**
+   - Update color picker to work with 9-color pool
+   - Map canvas background to index 8
+
+3. **Other UI widgets** (if needed):
+   - Border selection panel
+   - Connector style panel
+   - Font settings panel
+
+**Note**: These are complex UI components that require careful testing. The core functionality (rendering, serialization) is already complete and testable.
    ```python
    # Get base color from index
    base_color = branch_colors[role_style.bg_color_index]
