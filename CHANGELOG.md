@@ -96,7 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Created `assets/templates/default.json` for built-in default template
   - Added `cogist/infrastructure/utils/resources/template_loader.py` for resource loading
   - Added `cogist/infrastructure/utils/resources/template_deserializer.py` for template deserialization
-  - Three-level fallback: user directory → built-in assets → hardcoded default
+  - Two-level fallback: user directory → built-in assets (raises error if both fail)
 - **Template save feature**: Save current style as reusable template
   - Added "Save as Template" menu item in File menu
   - Saves complete style data (node styles, colors, spacing, connectors) as single JSON file

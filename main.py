@@ -70,8 +70,6 @@ class MainWindow(QMainWindow):
         self.mindmap_service = MindMapService()
 
         # Initialize style system with fallback strategy
-        from cogist.domain.styles import templates
-
         # Strategy 1: Try user's saved default template
         from cogist.infrastructure.utils import config_manager
         from cogist.infrastructure.utils.resources import (
@@ -96,9 +94,21 @@ class MainWindow(QMainWindow):
                 print(
                     f"Failed to load user default template: {e}, falling back to built-in"
                 )
-                self.current_style = templates.create_default_template()
+                # Fallback to built-in template
+                builtin_data = template_loader.get_builtin_template("default")
+                if builtin_data:
+                    self.current_style = (
+                        template_deserializer.deserialize_complete_template(builtin_data)
+                    )
+                    # Save to user directory for future use
+                    template_loader.save_template_to_user_dir(builtin_data, "default")
+                    print("Loaded built-in default template and saved to user directory")
+                else:
+                    raise RuntimeError(
+                        "Failed to load any template. Built-in template is missing or corrupted."
+                    ) from None
         else:
-            # Strategy 2: Try built-in default template
+            # User template doesn't exist, load built-in template
             builtin_data = template_loader.get_builtin_template("default")
             if builtin_data:
                 self.current_style = (
@@ -108,9 +118,9 @@ class MainWindow(QMainWindow):
                 template_loader.save_template_to_user_dir(builtin_data, "default")
                 print("Loaded built-in default template and saved to user directory")
             else:
-                # Strategy 3: Fallback to hardcoded default
-                self.current_style = templates.create_default_template()
-                print("Using hardcoded default template")
+                raise RuntimeError(
+                    "Failed to load any template. Built-in template is missing or corrupted."
+                )
 
         # Apply global styles
         self._apply_global_styles()
@@ -348,8 +358,13 @@ class MainWindow(QMainWindow):
         """)
 
     def _reset_style_to_default(self):
-        """Reset style configuration to default using three-level fallback strategy."""
-        from cogist.domain.styles import templates
+        """Reset style configuration to default using two-level fallback strategy.
+
+        Level 1: User's saved default template (~/Library/Application Support/cogist/templates/default.json)
+        Level 2: Built-in template (assets/templates/default.json)
+
+        If both fail, raises RuntimeError.
+        """
         from cogist.infrastructure.utils import config_manager
         from cogist.infrastructure.utils.resources import (
             template_deserializer,
@@ -372,9 +387,23 @@ class MainWindow(QMainWindow):
                 print(
                     f"[New File] Failed to load user default template: {e}, falling back to built-in"
                 )
-                self.current_style = templates.create_default_template()
+                # Fallback to built-in template
+                builtin_data = template_loader.get_builtin_template("default")
+                if builtin_data:
+                    self.current_style = (
+                        template_deserializer.deserialize_complete_template(builtin_data)
+                    )
+                    # Save to user directory for future use
+                    template_loader.save_template_to_user_dir(builtin_data, "default")
+                    print(
+                        "[New File] Loaded built-in default template and saved to user directory"
+                    )
+                else:
+                    raise RuntimeError(
+                        "Failed to load any template. Built-in template is missing or corrupted."
+                    ) from None
         else:
-            # Strategy 2: Try built-in default template
+            # User template doesn't exist, load built-in template
             builtin_data = template_loader.get_builtin_template("default")
             if builtin_data:
                 self.current_style = (
@@ -386,9 +415,9 @@ class MainWindow(QMainWindow):
                     "[New File] Loaded built-in default template and saved to user directory"
                 )
             else:
-                # Strategy 3: Fallback to hardcoded default
-                self.current_style = templates.create_default_template()
-                print("[New File] Using hardcoded default template")
+                raise RuntimeError(
+                    "Failed to load any template. Built-in template is missing or corrupted."
+                )
 
         # Apply global styles
         self._apply_global_styles()
@@ -644,7 +673,7 @@ class MainWindow(QMainWindow):
                 else:
                     return  # Cancelled, abort
 
-        # CRITICAL: Reset style configuration to default (three-level fallback)
+        # CRITICAL: Reset style configuration to default (two-level fallback)
         self._reset_style_to_default()
 
         # Reinitialize the mind map view (same as __init__)

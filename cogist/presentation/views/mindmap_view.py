@@ -43,7 +43,13 @@ class MindMapView(QGraphicsView):
         # Store style configuration
         from cogist.domain.styles import templates
 
-        self.style_config = style_config or templates.create_default_template()
+        if style_config is None:
+            # This should never happen in normal usage (main.py always passes style_config)
+            # But we keep it as a defensive fallback for testing or direct instantiation
+            print("Warning: MindMapView initialized without style_config, using default template")
+            self.style_config = templates.create_default_template()
+        else:
+            self.style_config = style_config
 
         # Create scene
         self.scene = QGraphicsScene()
@@ -409,18 +415,6 @@ class MindMapView(QGraphicsView):
                 canvas_color = "#FFFFFFFF"  # Default white
             self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
 
-        # Define branch colors (light colors for background, black text)
-        branch_colors = [
-            "#FF6B6B",  # Red
-            "#4ECDC4",  # Teal
-            "#45B7D1",  # Blue
-            "#FFA07A",  # Salmon
-            "#98D8C8",  # Mint
-            "#F7DC6F",  # Yellow
-            "#BB8FCE",  # Purple
-            "#85C1E9",  # Light Blue
-        ]
-
         def create_items_recursive(
             node: Node,
             parent_item: NodeItem | None = None,
@@ -428,7 +422,7 @@ class MindMapView(QGraphicsView):
         ):
             # Get branch colors for rainbow mode
             branch_colors = self.style_config.branch_colors if hasattr(self.style_config, 'branch_colors') else []
-            
+
             # Use branch color if assigned, otherwise use root color
             current_color = branch_color if branch_color else node.color
 
@@ -483,9 +477,7 @@ class MindMapView(QGraphicsView):
 
                         # Get connector color using index system
                         color_index = role_style.connector_color_index if hasattr(role_style, 'connector_color_index') else 0
-                        brightness = role_style.connector_brightness if hasattr(role_style, 'connector_brightness') else 1.0
-                        opacity = role_style.connector_opacity if hasattr(role_style, 'connector_opacity') else 255
-                        
+
                         if branch_colors and color_index < len(branch_colors):
                             connector_color = branch_colors[color_index]
                             # Apply brightness and opacity adjustments (simplified)
