@@ -78,8 +78,6 @@ class EdgeItem(QGraphicsPathItem):
             }
             # Use source depth for connector style (edge inherits source node's connector config)
             connector_role = role_map.get(source_depth, NodeRole.TERTIARY)
-            # Use source depth for brightness/opacity adjustments (edge belongs to source node's layer)
-            adjustment_role = connector_role
 
             # Default values
             color_str = "#FF666666"
@@ -105,7 +103,6 @@ class EdgeItem(QGraphicsPathItem):
             color_scheme = self.style_config.resolved_color_scheme
             if color_scheme and color_scheme.use_rainbow_branches:
                 branch_idx = None
-                role_config = color_scheme.role_configs.get(adjustment_role)
 
                 # Case 1: Target is a Level 1 node (Root -> Level 1 edge)
                 if (hasattr(self.target_item, 'domain_node') and self.target_item.domain_node and
@@ -132,17 +129,6 @@ class EdgeItem(QGraphicsPathItem):
                         branch_idx,
                         color_scheme.branch_colors
                     )
-
-                    # Apply brightness and opacity adjustments for Level 2+
-                    if role_config and target_depth >= 2:
-                        # Apply brightness adjustment (0.0-2.0)
-                        brightness_factor = role_config.brightness_amount
-                        if brightness_factor != 1.0:
-                            branch_color = self._adjust_color_brightness(branch_color, brightness_factor)
-
-                        # Apply opacity adjustment (0-255)
-                        if role_config.opacity_amount < 255:
-                            branch_color = self._apply_opacity(branch_color, role_config.opacity_amount)
 
                     color_str = branch_color
 

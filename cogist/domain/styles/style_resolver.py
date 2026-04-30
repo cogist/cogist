@@ -301,26 +301,15 @@ def deserialize_color_scheme(data: dict) -> ColorScheme:
     for role_str, config_data in data.get("role_configs", {}).items():
         role = NodeRole(role_str)
         role_configs[role] = NodeColorConfig(
-            bg_color=config_data.get("bg_color", "#FFFFFFFF"),
-            border_color=config_data.get("border_color"),
             text_color=config_data.get("text_color"),
-            rainbow_bg_enabled=config_data.get("rainbow_bg_enabled", True),
-            rainbow_border_enabled=config_data.get("rainbow_border_enabled", True),
-            brightness_amount=config_data.get(
-                "brightness_amount", 1.0
-            ),  # 1.0 = no change
-            opacity_amount=config_data.get("opacity_amount", 255),  # 255 = fully opaque
+            connector_color=config_data.get("connector_color"),
         )
 
     # Fallback to old format if role_configs not present (backward compatibility)
     if not role_configs and "node_colors" in data:
-        for role_str, color in data.get("node_colors", {}).items():
+        for role_str, _ in data.get("node_colors", {}).items():
             role = NodeRole(role_str)
             role_configs[role] = NodeColorConfig(
-                bg_color=color,
-                border_color=data.get("border_colors", {}).get(role_str)
-                if data.get("border_colors")
-                else None,
                 text_color=data.get("text_colors", {}).get(role_str)
                 if data.get("text_colors")
                 else None,

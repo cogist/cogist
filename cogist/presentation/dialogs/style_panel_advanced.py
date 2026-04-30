@@ -134,16 +134,18 @@ class AdvancedStyleTab(QWidget):
             # Shape
             "shape": role_style.shape.basic_shape,
             "radius": role_style.shape.border_radius,
-            # Colors - role_configs contains all roles
-            "bg_color": color_scheme.role_configs[role].bg_color,
-            # text_color from role config or auto contrast
-            "text_color": (
-                color_scheme.role_configs[role].text_color
-                if color_scheme.role_configs[role].text_color
-                else self._auto_contrast(color_scheme.role_configs[role].bg_color)
-            ),
-            # border_color from role config (None if not set)
-            "border_color": color_scheme.role_configs[role].border_color,
+            # Background - from BackgroundStyle
+            "bg_enabled": role_style.background.enabled,
+            "bg_color_index": role_style.background.color_index,
+            "bg_brightness": role_style.background.brightness,
+            "bg_opacity": role_style.background.opacity,
+            # Border - from BorderStyle
+            "border_enabled": role_style.border.enabled,
+            "border_color_index": role_style.border.color_index,
+            "border_brightness": role_style.border.brightness,
+            "border_opacity": role_style.border.opacity,
+            # text_color from role config
+            "text_color": color_scheme.role_configs[role].text_color,
             # Font
             "font_family": role_style.font_family,
             "font_size": role_style.font_size,
@@ -157,7 +159,7 @@ class AdvancedStyleTab(QWidget):
             "shadow_offset_y": role_style.shadow_offset_y,
             "shadow_blur": role_style.shadow_blur,
             "shadow_color": role_style.shadow_color or "#000000",
-            # Border
+            # Border style (not color - color comes from border_color_index)
             "border_style": role_style.border.border_style,
             "border_width": role_style.border.border_width,
             # Padding
@@ -176,12 +178,6 @@ class AdvancedStyleTab(QWidget):
             # Rainbow branch - global ColorScheme properties (same for all layers)
             "use_rainbow": color_scheme.use_rainbow_branches,
             "rainbow_pool": color_scheme.branch_colors,
-            # Rainbow bg/border - per-role configuration
-            "rainbow_bg_enabled": color_scheme.role_configs[role].rainbow_bg_enabled,
-            "rainbow_border_enabled": color_scheme.role_configs[role].rainbow_border_enabled,
-            # Brightness and opacity - per-role configuration
-            "brightness_amount": color_scheme.role_configs[role].brightness_amount,
-            "opacity_amount": color_scheme.role_configs[role].opacity_amount,
         }
 
         return layer_data
@@ -1053,55 +1049,33 @@ class AdvancedStyleTab(QWidget):
         # Get style data directly from global style_config
         layer_data = self._get_layer_data(self.current_layer)
 
-        # Notify color_scheme_section of current layer role for proper UI visibility
-        self.color_scheme_section.set_role(self.current_layer)
+        # Note: ColorSchemeSection no longer needs role notification
+        # It only manages global color pool and rainbow mode
 
         if self.current_layer == "canvas":
             # Load canvas style into color_scheme_section
-            color_data = {"canvas_bg": layer_data["bg_color"]}
-            # Also pass global rainbow config (so checkbox state is synced)
-            if "use_rainbow" in layer_data:
-                color_data["use_rainbow"] = layer_data["use_rainbow"]
-            if "rainbow_pool" in layer_data:
-                color_data["rainbow_pool"] = layer_data["rainbow_pool"]
-            self.color_scheme_section.set_colors(color_data)
+            color_style = {
+                "canvas_bg": self.style_config.canvas_bg_color,
+                "use_rainbow_branches": layer_data.get("use_rainbow", False),
+                "branch_colors": layer_data.get("rainbow_pool", []),
+            }
+            self.color_scheme_section.set_style(color_style)
             # Hide shadow section for canvas
             self.shadow_section.setVisible(False)
         else:
-            # Load colors into color_scheme_section
-            color_data = {}
-            if "bg_color" in layer_data:
-                color_data["bg_color"] = layer_data["bg_color"]
-            if "text_color" in layer_data:
-                color_data["text_color"] = layer_data["text_color"]
-            if "border_color" in layer_data:
-                color_data["border_color"] = layer_data["border_color"]
-            if "connector_color" in layer_data:
-                color_data["connector_color"] = layer_data["connector_color"]
-
-            # Note: use_rainbow and rainbow_pool are global ColorScheme properties
-            # They should always be updated regardless of current layer
-            if "use_rainbow" in layer_data:
-                color_data["use_rainbow"] = layer_data["use_rainbow"]
-            if "rainbow_pool" in layer_data:
-                color_data["rainbow_pool"] = layer_data["rainbow_pool"]
-
-            # Per-role rainbow mode controls - load for root/level_1/2/3+
-            if self.current_layer in ["root", "level_1", "level_2", "level_3_plus"]:
-                if "rainbow_bg_enabled" in layer_data:
-                    color_data["rainbow_bg_enabled"] = layer_data["rainbow_bg_enabled"]
-                if "rainbow_border_enabled" in layer_data:
-                    color_data["rainbow_border_enabled"] = layer_data["rainbow_border_enabled"]
-                if "brightness_amount" in layer_data:
-                    color_data["brightness_amount"] = layer_data["brightness_amount"]
-                if "opacity_amount" in layer_data:
-                    color_data["opacity_amount"] = layer_data["opacity_amount"]
-
-            if color_data:
-                self.color_scheme_section.set_colors(color_data)
-
-            # Load node style (without colors - they're now in color_scheme_section)
+            # Load node/border style into respective sections
+            # Node style section handles background
             self.node_style_section.set_style(layer_data)
+
+            # Border section handles border
+            self.border_section.set_style(layer_data)
+
+            # Color scheme section only handles global color pool and rainbow mode
+            color_style = {
+                "use_rainbow_branches": layer_data.get("use_rainbow", False),
+                "branch_colors": layer_data.get("rainbow_pool", []),
+            }
+            self.color_scheme_section.set_style(color_style)
 
             # Load font style
             self.font_style_section.set_style(layer_data)
