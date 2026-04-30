@@ -7,19 +7,17 @@ from .extended_styles import (
     ColorScheme,
     EdgeConfig,
     EdgeStyle,
-    NodeColorConfig,
     NodeShape,
-    RoleBasedStyle,
+    RoleBasedStyle,  # DEPRECATED: Use RoleStyle
     RoleStyle,  # NEW: Flat role-based style
     SpacingConfig,
-    Template,
+    Template,  # DEPRECATED: Use MindMapStyle directly
 )
 from .style_config import MindMapStyle
 from .style_resolver import (
     deserialize_color_scheme,
     deserialize_style,
     deserialize_template,
-    resolve_style,
     serialize_color_scheme,
     serialize_style,
     serialize_template,
@@ -41,14 +39,12 @@ __all__ = [
     "BorderStyle",
     "EdgeStyle",
     "EdgeConfig",
-    "NodeColorConfig",
     "RoleBasedStyle",  # DEPRECATED: Use RoleStyle
     "RoleStyle",  # NEW: Flat role-based style (authoritative)
     "ColorScheme",
     "Template",  # DEPRECATED: Use MindMapStyle directly
 
     # Style resolver
-    "resolve_style",
     "serialize_style",
     "deserialize_style",
     "serialize_template",

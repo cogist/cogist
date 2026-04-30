@@ -222,8 +222,13 @@ class NodeItem(QGraphicsRectItem):
         # NEW: Get role style from MindMapStyle.role_styles (flat structure)
         if not hasattr(self.style_config, 'role_styles') or role not in self.style_config.role_styles:
             node_id = self.domain_node.id if self.domain_node else "unknown"
+            available_roles = list(self.style_config.role_styles.keys()) if hasattr(self.style_config, 'role_styles') else []
+            import sys
+            print(f"DEBUG: Role {role} not found. Available roles: {available_roles}", file=sys.stderr)
+            print(f"DEBUG: style_config type: {type(self.style_config)}", file=sys.stderr)
+            print(f"DEBUG: style_config.name: {self.style_config.name if hasattr(self.style_config, 'name') else 'N/A'}", file=sys.stderr)
             raise RuntimeError(
-                f"Role {role} not found in style_config.role_styles for node {node_id}"
+                f"Role {role} not found in style_config.role_styles for node {node_id}. Available: {available_roles}"
             )
 
         role_style = self.style_config.role_styles[role]
@@ -910,7 +915,8 @@ class NodeItem(QGraphicsRectItem):
 
         painter.setRenderHint(QPainter.Antialiasing, True)
 
-        shape_type = self.template_style.shape.basic_shape
+        # NEW: Use flat RoleStyle fields
+        shape_type = self.template_style.basic_shape if hasattr(self.template_style, 'basic_shape') else "rounded_rect"
         rect = self.rect()
 
         # Use cached colors from update_style (no recalculation needed)
@@ -921,9 +927,9 @@ class NodeItem(QGraphicsRectItem):
         style_config = {
             "bg_color": bg_color,
             "border_color": border_color,
-            "border_width": self.template_style.border.border_width,
-            "border_radius": self.template_style.shape.border_radius,
-            "border_style": self.template_style.border.border_style,
+            "border_width": self.template_style.border_width if hasattr(self.template_style, 'border_width') else 0,
+            "border_radius": self.template_style.border_radius if hasattr(self.template_style, 'border_radius') else 8,
+            "border_style": self.template_style.border_style if hasattr(self.template_style, 'border_style') else "solid",
             "padding_w": self.template_style.padding_w,
             "padding_h": self.template_style.padding_h,
             "is_right_side": self.is_right_side,  # For adaptive decorative lines

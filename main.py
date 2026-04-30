@@ -90,6 +90,8 @@ class MainWindow(QMainWindow):
                 self.current_style = (
                     template_deserializer.deserialize_complete_template(user_data)
                 )
+                print(f"Loaded user default template: {self.current_style.name}")
+                print(f"  Roles: {list(self.current_style.role_styles.keys())}")
             except Exception as e:
                 print(
                     f"Failed to load user default template: {e}, falling back to built-in"

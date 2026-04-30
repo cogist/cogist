@@ -38,7 +38,7 @@ class AdvancedStyleTab(QWidget):
 
     # Panel dimensions
     PANEL_WIDTH = 260  # Original carefully designed width
-    LABEL_WIDTH = 90   # Unified label column width for all sections
+    LABEL_WIDTH = 90  # Unified label column width for all sections
 
     def __init__(
         self, style_config=None, config_manager=None, command_history=None, parent=None
@@ -95,11 +95,17 @@ class AdvancedStyleTab(QWidget):
 
         if layer_name == "canvas":
             # Canvas needs global rainbow config too
-            color_scheme = self.style_config.resolved_color_scheme
+            # NEW: Use branch_colors[8] for canvas background
+            canvas_bg = (
+                self.style_config.branch_colors[8]
+                if hasattr(self.style_config, "branch_colors")
+                and len(self.style_config.branch_colors) > 8
+                else "#FFFFFFFF"
+            )
             data = {
-                "bg_color": self.style_config.canvas_bg_color,
-                "use_rainbow": color_scheme.use_rainbow_branches if color_scheme else False,
-                "rainbow_pool": color_scheme.branch_colors if color_scheme else [],
+                "bg_color": canvas_bg,
+                "use_rainbow": self.style_config.use_rainbow_branches,
+                "rainbow_pool": self.style_config.branch_colors,
             }
             return data
 
@@ -121,50 +127,120 @@ class AdvancedStyleTab(QWidget):
 
         role = NodeRole(role_str)
 
-        template = self.style_config.resolved_template
-        color_scheme = self.style_config.resolved_color_scheme
+        # NEW: Get role style directly from MindMapStyle.role_styles (flat structure)
+        if (
+            not hasattr(self.style_config, "role_styles")
+            or role not in self.style_config.role_styles
+        ):
+            raise ValueError(
+                f"No style data for role {role} in style_config.role_styles"
+            )
 
-        if not template or role not in template.role_styles:
-            raise ValueError(f"No style data for role {role} in template")
-
-        role_style = template.role_styles[role]
+        role_style = self.style_config.role_styles[role]
+        branch_colors = self.style_config.branch_colors
 
         # Build complete layer data from global style config
+        # NEW: Use flat RoleStyle structure with color indices
+
+        # Get background color using index system
+        bg_color_index = (
+            role_style.bg_color_index if hasattr(role_style, "bg_color_index") else 0
+        )
+        bg_brightness = (
+            role_style.bg_brightness if hasattr(role_style, "bg_brightness") else 1.0
+        )
+        bg_opacity = role_style.bg_opacity if hasattr(role_style, "bg_opacity") else 255
+
+        if branch_colors and bg_color_index < len(branch_colors):
+            base_bg_color = branch_colors[bg_color_index]
+            # Apply brightness and opacity (simplified)
+            bg_color = base_bg_color
+        else:
+            bg_color = "#FFFFFFFF"
+
+        # Text color: auto-contrast or manual
+        text_color = (
+            role_style.text_color
+            if hasattr(role_style, "text_color") and role_style.text_color
+            else self._auto_contrast(bg_color)
+        )
+
+        # Border color using index system
+        border_color_index = (
+            role_style.border_color_index
+            if hasattr(role_style, "border_color_index")
+            else 0
+        )
+        if branch_colors and border_color_index < len(branch_colors):
+            border_color = branch_colors[border_color_index]
+        else:
+            border_color = None
+
         layer_data = {
-            # Shape
-            "shape": role_style.shape.basic_shape,
-            "radius": role_style.shape.border_radius,
-            # Colors - role_configs contains all roles
-            "bg_color": color_scheme.role_configs[role].bg_color,
-            # text_color from role config or auto contrast
-            "text_color": (
-                color_scheme.role_configs[role].text_color
-                if color_scheme.role_configs[role].text_color
-                else self._auto_contrast(color_scheme.role_configs[role].bg_color)
-            ),
-            # border_color from role config (None if not set)
-            "border_color": color_scheme.role_configs[role].border_color,
+            # Shape - NEW: flat fields
+            "shape": role_style.basic_shape
+            if hasattr(role_style, "basic_shape")
+            else "rounded_rect",
+            "radius": role_style.border_radius
+            if hasattr(role_style, "border_radius")
+            else 8,
+            # Colors
+            "bg_color": bg_color,
+            "text_color": text_color,
+            "border_color": border_color,
             # Font
-            "font_family": role_style.font_family,
-            "font_size": role_style.font_size,
-            "font_weight": role_style.font_weight,
-            "font_italic": role_style.font_italic,
-            "font_underline": role_style.font_underline,
-            "font_strikeout": role_style.font_strikeout,
+            "font_family": role_style.font_family
+            if hasattr(role_style, "font_family")
+            else "Arial",
+            "font_size": role_style.font_size
+            if hasattr(role_style, "font_size")
+            else 14,
+            "font_weight": role_style.font_weight
+            if hasattr(role_style, "font_weight")
+            else "Normal",
+            "font_italic": role_style.font_italic
+            if hasattr(role_style, "font_italic")
+            else False,
+            "font_underline": role_style.font_underline
+            if hasattr(role_style, "font_underline")
+            else False,
+            "font_strikeout": role_style.font_strikeout
+            if hasattr(role_style, "font_strikeout")
+            else False,
             # Shadow
-            "shadow_enabled": role_style.shadow_enabled,
-            "shadow_offset_x": role_style.shadow_offset_x,
-            "shadow_offset_y": role_style.shadow_offset_y,
-            "shadow_blur": role_style.shadow_blur,
-            "shadow_color": role_style.shadow_color or "#000000",
-            # Border
-            "border_style": role_style.border.border_style,
-            "border_width": role_style.border.border_width,
+            "shadow_enabled": role_style.shadow_enabled
+            if hasattr(role_style, "shadow_enabled")
+            else False,
+            "shadow_offset_x": role_style.shadow_offset_x
+            if hasattr(role_style, "shadow_offset_x")
+            else 2,
+            "shadow_offset_y": role_style.shadow_offset_y
+            if hasattr(role_style, "shadow_offset_y")
+            else 2,
+            "shadow_blur": role_style.shadow_blur
+            if hasattr(role_style, "shadow_blur")
+            else 4,
+            "shadow_color": role_style.shadow_color
+            if hasattr(role_style, "shadow_color")
+            else "#000000",
+            # Border - NEW: flat fields
+            "border_style": role_style.border_style
+            if hasattr(role_style, "border_style")
+            else "solid",
+            "border_width": role_style.border_width
+            if hasattr(role_style, "border_width")
+            else 0,
             # Padding
-            "padding_w": role_style.padding_w,
-            "padding_h": role_style.padding_h,
+            "padding_w": role_style.padding_w
+            if hasattr(role_style, "padding_w")
+            else 12,
+            "padding_h": role_style.padding_h
+            if hasattr(role_style, "padding_h")
+            else 8,
             # Max text width
-            "max_text_width": role_style.max_text_width,
+            "max_text_width": role_style.max_text_width
+            if hasattr(role_style, "max_text_width")
+            else 250,
             # Connector - read from role-based configuration
             "connector_type": self._get_connector_type_for_layer(layer_name),
             "connector_style": self._get_connector_style_for_layer(layer_name),
@@ -173,15 +249,19 @@ class AdvancedStyleTab(QWidget):
             # Spacing - read from role-based configuration
             "parent_child_spacing": self._get_level_spacing_for_layer(layer_name),
             "sibling_spacing": self._get_sibling_spacing_for_layer(layer_name),
-            # Rainbow branch - global ColorScheme properties (same for all layers)
-            "use_rainbow": color_scheme.use_rainbow_branches,
-            "rainbow_pool": color_scheme.branch_colors,
-            # Rainbow bg/border - per-role configuration
-            "rainbow_bg_enabled": color_scheme.role_configs[role].rainbow_bg_enabled,
-            "rainbow_border_enabled": color_scheme.role_configs[role].rainbow_border_enabled,
-            # Brightness and opacity - per-role configuration
-            "brightness_amount": color_scheme.role_configs[role].brightness_amount,
-            "opacity_amount": color_scheme.role_configs[role].opacity_amount,
+            # Rainbow branch - global MindMapStyle properties
+            "use_rainbow": self.style_config.use_rainbow_branches,
+            "rainbow_pool": branch_colors,
+            # Rainbow bg/border - per-role flags (NEW: use simple booleans)
+            "rainbow_bg_enabled": True,  # TODO: Add to RoleStyle
+            "rainbow_border_enabled": True,  # TODO: Add to RoleStyle
+            # Brightness and opacity - per-role (NEW: use role_style fields)
+            "brightness_amount": role_style.bg_brightness
+            if hasattr(role_style, "bg_brightness")
+            else 1.0,
+            "opacity_amount": role_style.bg_opacity
+            if hasattr(role_style, "bg_opacity")
+            else 255,
         }
 
         return layer_data
@@ -205,16 +285,14 @@ class AdvancedStyleTab(QWidget):
         """Get parent-child spacing for a layer from role-based configuration."""
         assert self.style_config is not None
 
-        # Try role-based spacing first (new architecture)
+        # NEW: Try role-based spacing from MindMapStyle.role_styles
         role = self._get_current_layer_role()
         if (
             role
-            and self.style_config.resolved_template
-            and role in self.style_config.resolved_template.role_styles
+            and hasattr(self.style_config, 'role_styles')
+            and role in self.style_config.role_styles
         ):
-            return self.style_config.resolved_template.role_styles[
-                role
-            ].parent_child_spacing
+            return self.style_config.role_styles[role].parent_child_spacing
 
         # Default value
         return 80.0
@@ -225,14 +303,14 @@ class AdvancedStyleTab(QWidget):
         if layer_name == "root":
             return 0
 
-        # Try role-based spacing first (new architecture)
+        # NEW: Try role-based spacing from MindMapStyle.role_styles
         role = self._get_current_layer_role()
         if (
             role
-            and self.style_config.resolved_template
-            and role in self.style_config.resolved_template.role_styles
+            and hasattr(self.style_config, 'role_styles')
+            and role in self.style_config.role_styles
         ):
-            return self.style_config.resolved_template.role_styles[role].sibling_spacing
+            return self.style_config.role_styles[role].sibling_spacing
 
         # Default value
         return 60.0
@@ -241,14 +319,14 @@ class AdvancedStyleTab(QWidget):
         """Get connector type for a layer from role-based configuration."""
         assert self.style_config is not None
 
-        # Get from role-based config
+        # NEW: Get from MindMapStyle.role_styles
         role = self._get_current_layer_role()
         if (
             role
-            and self.style_config.resolved_template
-            and role in self.style_config.resolved_template.role_styles
+            and hasattr(self.style_config, 'role_styles')
+            and role in self.style_config.role_styles
         ):
-            return self.style_config.resolved_template.role_styles[role].connector_shape
+            return self.style_config.role_styles[role].connector_shape
 
         # Default value
         return "bezier"
@@ -257,14 +335,14 @@ class AdvancedStyleTab(QWidget):
         """Get connector style for a layer from role-based configuration."""
         assert self.style_config is not None
 
-        # Get from role-based config
+        # NEW: Get from MindMapStyle.role_styles
         role = self._get_current_layer_role()
         if (
             role
-            and self.style_config.resolved_template
-            and role in self.style_config.resolved_template.role_styles
+            and hasattr(self.style_config, 'role_styles')
+            and role in self.style_config.role_styles
         ):
-            return self.style_config.resolved_template.role_styles[role].connector_style
+            return self.style_config.role_styles[role].connector_style
 
         # Default value
         return "solid"
@@ -273,14 +351,14 @@ class AdvancedStyleTab(QWidget):
         """Get connector width for a layer from role-based configuration."""
         assert self.style_config is not None
 
-        # Get from role-based config
+        # NEW: Get from MindMapStyle.role_styles
         role = self._get_current_layer_role()
         if (
             role
-            and self.style_config.resolved_template
-            and role in self.style_config.resolved_template.role_styles
+            and hasattr(self.style_config, 'role_styles')
+            and role in self.style_config.role_styles
         ):
-            return self.style_config.resolved_template.role_styles[role].line_width
+            return self.style_config.role_styles[role].line_width
 
         # Default value
         return 2.0
@@ -289,23 +367,23 @@ class AdvancedStyleTab(QWidget):
         """Get connector color for a layer from role-based configuration."""
         assert self.style_config is not None
 
-        # Get from role-based config
+        # NEW: Get from MindMapStyle.role_styles using color index
         role = self._get_current_layer_role()
         if (
             role
-            and self.style_config.resolved_template
-            and role in self.style_config.resolved_template.role_styles
+            and hasattr(self.style_config, 'role_styles')
+            and role in self.style_config.role_styles
         ):
-            role_style = self.style_config.resolved_template.role_styles[role]
-            # Connector color comes from ColorScheme if not overridden
-            if role_style.connector_color:
-                return role_style.connector_color
-            # Fall back to edge color from color scheme
-            if self.style_config.resolved_color_scheme:
-                return self.style_config.resolved_color_scheme.edge_color
+            role_style = self.style_config.role_styles[role]
+            branch_colors = self.style_config.branch_colors
+            
+            # Use connector_color_index to get color from pool
+            color_index = role_style.connector_color_index if hasattr(role_style, 'connector_color_index') else 0
+            if branch_colors and color_index < len(branch_colors):
+                return branch_colors[color_index]
 
         # Default value
-        return "#666666"
+        return "#FF666666"
 
     def _update_role_style_in_config(self, layer_name: str, updates: dict):
         """Update specific fields of a role's style in global style_config.
@@ -545,12 +623,11 @@ class AdvancedStyleTab(QWidget):
 
         # Handle global rainbow config FIRST (before checking role)
         # This ensures rainbow state is synced across all layers including canvas
-        if self.style_config.resolved_color_scheme:
-            color_scheme = self.style_config.resolved_color_scheme
-            if "use_rainbow" in colors:
-                color_scheme.use_rainbow_branches = colors["use_rainbow"]
-            if "rainbow_pool" in colors:
-                color_scheme.branch_colors = colors["rainbow_pool"]
+        # NEW: Use MindMapStyle fields directly
+        if "use_rainbow" in colors:
+            self.style_config.use_rainbow_branches = colors["use_rainbow"]
+        if "rainbow_pool" in colors:
+            self.style_config.branch_colors = colors["rainbow_pool"]
 
         if not role:
             # Canvas layer - handle canvas_bg and rainbow config
@@ -573,7 +650,12 @@ class AdvancedStyleTab(QWidget):
         color_scheme = self.style_config.resolved_color_scheme
 
         # Handle per-role rainbow mode controls (for root/level_1/2/3+)
-        if role and self.current_layer in ["root", "level_1", "level_2", "level_3_plus"]:
+        if role and self.current_layer in [
+            "root",
+            "level_1",
+            "level_2",
+            "level_3_plus",
+        ]:
             if "rainbow_bg_enabled" in colors:
                 color_scheme.role_configs[role].rainbow_bg_enabled = colors[
                     "rainbow_bg_enabled"
@@ -1091,7 +1173,9 @@ class AdvancedStyleTab(QWidget):
                 if "rainbow_bg_enabled" in layer_data:
                     color_data["rainbow_bg_enabled"] = layer_data["rainbow_bg_enabled"]
                 if "rainbow_border_enabled" in layer_data:
-                    color_data["rainbow_border_enabled"] = layer_data["rainbow_border_enabled"]
+                    color_data["rainbow_border_enabled"] = layer_data[
+                        "rainbow_border_enabled"
+                    ]
                 if "brightness_amount" in layer_data:
                     color_data["brightness_amount"] = layer_data["brightness_amount"]
                 if "opacity_amount" in layer_data:
@@ -1241,23 +1325,25 @@ class AdvancedStyleTab(QWidget):
 
             # Update color scheme
             if not style.resolved_color_scheme:
-                style.resolved_color_scheme = ColorScheme(
-                    name="Custom", description=""
-                )
+                style.resolved_color_scheme = ColorScheme(name="Custom", description="")
 
             # Set node color
             if "bg_color" in layer_data:
-                style.resolved_color_scheme.role_configs[role].bg_color = layer_data["bg_color"]
+                style.resolved_color_scheme.role_configs[role].bg_color = layer_data[
+                    "bg_color"
+                ]
 
             # Set text color
             if "text_color" in layer_data:
-                style.resolved_color_scheme.role_configs[role].text_color = layer_data["text_color"]
+                style.resolved_color_scheme.role_configs[role].text_color = layer_data[
+                    "text_color"
+                ]
 
             # Set border color (only if not None)
             if "border_color" in layer_data and layer_data["border_color"] is not None:
-                style.resolved_color_scheme.role_configs[role].border_color = layer_data[
-                    "border_color"
-                ]
+                style.resolved_color_scheme.role_configs[
+                    role
+                ].border_color = layer_data["border_color"]
 
         # Update canvas background color
         canvas_data = self._get_layer_data("canvas")
