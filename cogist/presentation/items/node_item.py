@@ -460,9 +460,8 @@ class NodeItem(QGraphicsRectItem):
         template = self.style_config.resolved_template
         role_style = template.role_styles[role]
 
-        # Get text color from role config
-        role_config = color_scheme.role_configs[role]
-        text_color_config = role_config.text_color
+        # Get text color from role_style
+        text_color_config = role_style.text_color
 
         # Get background and border styles
         bg_style = role_style.background
@@ -473,7 +472,7 @@ class NodeItem(QGraphicsRectItem):
         border_color = None
 
         # Check if rainbow branches are enabled
-        if color_scheme.use_rainbow_branches and depth >= 1:
+        if self.style_config.use_rainbow_branches and depth >= 1:
             # Rainbow mode: use branch colors
             if depth == 1 and self.domain_node and self.domain_node.parent:
                 # Level 1: Get branch index from parent's children list
@@ -561,7 +560,8 @@ class NodeItem(QGraphicsRectItem):
             text_color = text_color_config
         else:
             # Auto-calculate based on background luminance
-            effective_bg_color = self._blend_with_canvas(bg_color, color_scheme.canvas_bg_color)
+            canvas_bg = self.style_config.canvas_bg_color if self.style_config else "#FFFFFFFF"
+            effective_bg_color = self._blend_with_canvas(bg_color, canvas_bg)
             text_color = self._auto_contrast(effective_bg_color)
 
         return bg_color, border_color, text_color

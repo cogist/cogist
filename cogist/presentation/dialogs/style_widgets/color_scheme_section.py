@@ -168,6 +168,7 @@ class ColorSchemeSection(CollapsiblePanel):
             self.rainbow_pool_widget.setVisible(checked)
 
         # Emit change
+        # Note: Rainbow switch is now global, emitted signal will be handled by parent
         self.color_changed.emit({"use_rainbow_branches": checked})
 
     def _edit_rainbow_color(self, index: int):

@@ -8,7 +8,6 @@ from .extended_styles import (
     BorderStyle,
     ColorScheme,
     EdgeConfig,
-    NodeColorConfig,
     NodeShape,
     RoleBasedStyle,
     SpacingConfig,
@@ -296,32 +295,10 @@ def serialize_color_scheme(scheme: ColorScheme) -> dict:
 
 def deserialize_color_scheme(data: dict) -> ColorScheme:
     """Deserialize ColorScheme from JSON-compatible dict."""
-    # Deserialize role_configs
-    role_configs = {}
-    for role_str, config_data in data.get("role_configs", {}).items():
-        role = NodeRole(role_str)
-        role_configs[role] = NodeColorConfig(
-            text_color=config_data.get("text_color"),
-        )
-
-    # Fallback to old format if role_configs not present (backward compatibility)
-    if not role_configs and "node_colors" in data:
-        for role_str, _ in data.get("node_colors", {}).items():
-            role = NodeRole(role_str)
-            role_configs[role] = NodeColorConfig(
-                text_color=data.get("text_colors", {}).get(role_str)
-                if data.get("text_colors")
-                else None,
-            )
-
     return ColorScheme(
         name=data["name"],
         description=data.get("description", ""),
-        role_configs=role_configs,
         branch_colors=data.get("branch_colors", []),
-        use_rainbow_branches=data.get("use_rainbow_branches", False),
-        canvas_bg_color=data.get("canvas_bg_color", "#FFFFFFFF"),
-        edge_color=data.get("edge_color", "#FF666666"),
     )
 
 

@@ -95,11 +95,10 @@ class AdvancedStyleTab(QWidget):
 
         if layer_name == "canvas":
             # Canvas needs global rainbow config too
-            color_scheme = self.style_config.resolved_color_scheme
             data = {
-                "bg_color": self.style_config.canvas_bg_color,
-                "use_rainbow": color_scheme.use_rainbow_branches if color_scheme else False,
-                "rainbow_pool": color_scheme.branch_colors if color_scheme else [],
+                "bg_color": self.style_config.canvas_bg_color if self.style_config else "#FFFFFFFF",
+                "use_rainbow": self.style_config.use_rainbow_branches if self.style_config else False,
+                "rainbow_pool": self.style_config.resolved_color_scheme.branch_colors if self.style_config and self.style_config.resolved_color_scheme else [],
             }
             return data
 
@@ -144,8 +143,8 @@ class AdvancedStyleTab(QWidget):
             "border_color_index": role_style.border.color_index,
             "border_brightness": role_style.border.brightness,
             "border_opacity": role_style.border.opacity,
-            # text_color from role config
-            "text_color": color_scheme.role_configs[role].text_color,
+            # text_color from role_style
+            "text_color": role_style.text_color,
             # Font
             "font_family": role_style.font_family,
             "font_size": role_style.font_size,
@@ -177,9 +176,9 @@ class AdvancedStyleTab(QWidget):
             # Spacing - read from role-based configuration
             "parent_child_spacing": self._get_level_spacing_for_layer(layer_name),
             "sibling_spacing": self._get_sibling_spacing_for_layer(layer_name),
-            # Rainbow branch - global ColorScheme properties (same for all layers)
-            "use_rainbow": color_scheme.use_rainbow_branches,
-            "rainbow_pool": color_scheme.branch_colors,
+            # Rainbow branch - global settings
+            "use_rainbow": self.style_config.use_rainbow_branches if self.style_config else False,
+            "rainbow_pool": color_scheme.branch_colors if color_scheme else [],
         }
 
         return layer_data

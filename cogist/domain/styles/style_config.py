@@ -30,5 +30,6 @@ class MindMapStyle:
     resolved_template: Template | None = None
     resolved_color_scheme: ColorScheme | None = None
 
-    # === Canvas background (synced from color_scheme) ===
-    canvas_bg_color: str = "#FFFFFFFF"
+    # === Global settings ===
+    canvas_bg_color: str = "#FFFFFFFF"  # Canvas background color
+    use_rainbow_branches: bool = False  # Enable rainbow branch mode

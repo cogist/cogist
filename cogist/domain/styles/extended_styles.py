@@ -196,6 +196,9 @@ class RoleBasedStyle:
     parent_child_spacing: float = 80.0  # Spacing to child nodes
     sibling_spacing: float = 60.0  # Spacing between sibling nodes
 
+    # === Text color (per-role) ===
+    text_color: str | None = None  # Auto-calculated if None (based on background luminance)
+    
     # === Connector configuration (per-role) ===
     connector_shape: str = (
         "bezier"  # bezier / straight / orthogonal / rounded_orthogonal
@@ -211,60 +214,40 @@ class RoleBasedStyle:
 
 @dataclass
 class NodeColorConfig:
-    """Unified color configuration for any node role.
-
-    Simplified: Only text_color remains.
-    Background/Border/Connector colors come from their respective style objects.
+    """Deprecated: Use RoleBasedStyle fields directly.
+    
+    This class is kept for backward compatibility only.
+    All color configuration has moved to:
+    - BackgroundStyle.color_index (background color)
+    - BorderStyle.color_index (border color)
+    - RoleBasedStyle.connector_color_index (connector color)
+    - RoleBasedStyle.text_color (text color)
     """
 
-    # Only text color remains here (auto-calculated if None)
+    # Deprecated - use RoleBasedStyle.text_color instead
     text_color: str | None = None
-
-    # Removed: bg_color, border_color (moved to BackgroundStyle/BorderStyle)
-    # Removed: connector_color (moved to RoleBasedStyle.connector_color_index)
-    # Removed: rainbow_bg_enabled, rainbow_border_enabled
-    # Removed: brightness_amount, opacity_amount
 
 
 @dataclass
 class ColorScheme:
-    """Color scheme (pure color definitions)."""
+    """Color scheme (pure color definitions only)."""
 
     name: str
     description: str
 
-    # Per-role color configurations (simplified)
-    role_configs: dict[NodeRole, NodeColorConfig] = field(
-        default_factory=lambda: {
-            NodeRole.ROOT: NodeColorConfig(text_color=None),
-            NodeRole.PRIMARY: NodeColorConfig(text_color=None),
-            NodeRole.SECONDARY: NodeColorConfig(text_color=None),
-            NodeRole.TERTIARY: NodeColorConfig(text_color=None),
-        }
-    )
-
-    # Branch color pool (for rainbow branches) (using HexArgb format)
+    # Branch color pool (8 colors for 2x4 grid) (using HexArgb format)
     branch_colors: list[str] = field(
         default_factory=lambda: [
-            "#FFFF6B6B",
-            "#FF4ECDC4",
-            "#FF45B7D1",
-            "#FFFFA07A",
-            "#FF98D8C8",
-            "#FFF7DC6F",
-            "#FFBB8FCE",
-            "#FF85C1E2",
-            "#FFF8B739",
-            "#FF52B788",
+            "#FFFF6B6B",  # Red
+            "#FF4ECDC4",  # Teal
+            "#FF45B7D1",  # Light Blue
+            "#FFFFA07A",  # Light Salmon
+            "#FF98D8C8",  # Mint
+            "#FFF7DC6F",  # Yellow
+            "#FFBB8FCE",  # Purple
+            "#FF85C1E2",  # Sky Blue
         ]
     )
-
-    # Enable rainbow branches
-    use_rainbow_branches: bool = False
-
-    # Base colors (using HexArgb format to support transparency)
-    canvas_bg_color: str = "#FFFFFFFF"
-    edge_color: str = "#FF666666"
 
 
 @dataclass
