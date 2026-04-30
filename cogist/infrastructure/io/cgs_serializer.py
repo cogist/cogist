@@ -250,10 +250,6 @@ class CGSSerializer:
         # Add style files if present
         if style_config:
             manifest['files']['style_config'] = 'style/config.json'
-            if style_config.resolved_template:
-                manifest['files']['template'] = 'style/template.json'
-            if style_config.resolved_color_scheme:
-                manifest['files']['color_scheme'] = 'style/color_scheme.json'
 
         # Add asset files if present
         if assets:

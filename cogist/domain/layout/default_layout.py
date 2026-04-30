@@ -59,7 +59,8 @@ class DefaultLayout(BaseLayout):
         Returns:
             Horizontal spacing for this parent-child relationship
         """
-        return self.config.get_level_spacing(depth)
+        # Use config's level_spacing directly (depth parameter ignored for now)
+        return self.config.level_spacing
 
     def _get_sibling_spacing_for_depth(self, depth: int) -> float:
         """
@@ -71,7 +72,8 @@ class DefaultLayout(BaseLayout):
         Returns:
             Sibling spacing for this depth
         """
-        return self.config.get_sibling_spacing(depth)
+        # Use config's sibling_spacing directly (depth parameter ignored for now)
+        return self.config.sibling_spacing
 
     def layout(
         self,

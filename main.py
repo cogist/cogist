@@ -567,9 +567,7 @@ class MainWindow(QMainWindow):
             import json
 
             from cogist.domain.styles import (
-                serialize_color_scheme,
                 serialize_style,
-                serialize_template,
             )
 
             # Build complete template data structure (same as CGS format)
@@ -578,24 +576,10 @@ class MainWindow(QMainWindow):
                 "description": f"Custom template: {template_name}",
             }
 
-            # Add MindMapStyle config (spacing, connectors, etc.)
+            # Add MindMapStyle config (contains all style data: role_styles, branch_colors, etc.)
             if self.current_style:
                 style_config_data = serialize_style(self.current_style)
                 template_data["style_config"] = style_config_data
-
-            # Add Template (node styles)
-            if self.current_style.resolved_template:
-                template_obj_data = serialize_template(
-                    self.current_style.resolved_template
-                )
-                template_data["template"] = template_obj_data
-
-            # Add ColorScheme (colors)
-            if self.current_style.resolved_color_scheme:
-                color_scheme_data = serialize_color_scheme(
-                    self.current_style.resolved_color_scheme
-                )
-                template_data["color_scheme"] = color_scheme_data
 
             # Save as single JSON file
             template_file = template_dir / f"{template_name}.json"
