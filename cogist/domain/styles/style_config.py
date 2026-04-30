@@ -12,19 +12,10 @@ from .extended_styles import RoleStyle
 # - SECONDARY: 200px
 # - TERTIARY: 0 (unlimited, no wrapping)
 
-# Default branch colors (10 colors: indices 0-7 for branches, index 8 for canvas background, index 9 for root node)
-DEFAULT_BRANCH_COLORS: list[str] = [
-    "#FFFF6B6B",  # [0] Red
-    "#FF4ECDC4",  # [1] Teal
-    "#FF45B7D1",  # [2] Light Blue
-    "#FFFFA07A",  # [3] Light Salmon
-    "#FF98D8C8",  # [4] Mint
-    "#FFF7DC6F",  # [5] Yellow
-    "#FFBB8FCE",  # [6] Purple
-    "#FF85C1E2",  # [7] Sky Blue
-    "#FFFFFFFF",  # [8] Canvas Background (White)
-    "#FF2D3436",  # [9] Root Node Background (Dark Gray)
-]
+# NOTE: Default branch colors are now loaded from assets/color_schemes/default.json
+# This constant is kept for backward compatibility but should not be used in new code.
+# The color scheme loader will override this during initialization.
+DEFAULT_BRANCH_COLORS: list[str] = []
 
 
 @dataclass
@@ -37,7 +28,8 @@ class MindMapStyle:
     Attributes:
         name: Style name
         use_rainbow_branches: Enable rainbow branch mode (PRIMARY nodes cycle through colors)
-        branch_colors: Color pool (9 colors: [0-7] branches, [8] canvas background)
+        branch_colors: Color pool (10 colors: indices 0-7 for branches, index 8 for canvas background, index 9 for root node)
+                      Loaded from color scheme JSON file during initialization
         role_styles: Complete role-based configurations (flat structure)
     """
 
@@ -45,7 +37,7 @@ class MindMapStyle:
 
     # === Global settings ===
     use_rainbow_branches: bool = False
-    branch_colors: list[str] = field(default_factory=lambda: DEFAULT_BRANCH_COLORS.copy())
+    branch_colors: list[str] = field(default_factory=list)
 
     # === Role configurations (flat structure) ===
     role_styles: dict[NodeRole, RoleStyle] = field(default_factory=dict)

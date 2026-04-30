@@ -154,7 +154,9 @@ class CanvasPanel(CollapsiblePanel):
                 len(parent.style_config.branch_colors) > 8):
                 current_color = parent.style_config.branch_colors[8]
             else:
-                current_color = "#FFFFFFFF"  # Default white
+                # No default - must be configured
+                print("Warning: branch_colors not properly initialized")
+                return
         else:
             # Should not happen - style_config is required
             return

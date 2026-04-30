@@ -39,8 +39,8 @@ def get_builtin_color_scheme(name: str = "default") -> dict[str, Any] | None:
 def load_color_scheme_with_fallback(name: str = "default") -> dict[str, Any]:
     """Load color scheme with two-level fallback strategy.
 
-    Level 1: User's saved color scheme
-    Level 2: Built-in color scheme (raises RuntimeError if both fail)
+    Level 1: User's customized color scheme (if exists)
+    Level 2: Built-in color scheme (read-only, no auto-copy)
 
     Args:
         name: Color scheme name
@@ -53,7 +53,7 @@ def load_color_scheme_with_fallback(name: str = "default") -> dict[str, Any]:
     """
     from cogist.infrastructure.utils import config_manager
 
-    # Level 1: Try user's saved color scheme
+    # Level 1: Try user's customized color scheme
     template_dir = config_manager.get_template_directory()
     color_schemes_dir = template_dir.parent / "color_schemes"
     user_scheme = color_schemes_dir / f"{name}.json"
@@ -64,20 +64,10 @@ def load_color_scheme_with_fallback(name: str = "default") -> dict[str, Any]:
         except Exception as e:
             print(f"Failed to load user color scheme: {e}, falling back to built-in")
 
-    # Level 2: Try built-in color scheme
+    # Level 2: Load built-in color scheme directly (read-only)
     builtin_data = get_builtin_color_scheme(name)
     if builtin_data:
-        # Save to user directory for future use
-        try:
-            color_schemes_dir.mkdir(parents=True, exist_ok=True)
-            user_scheme.write_text(
-                json.dumps(builtin_data, indent=2, ensure_ascii=False),
-                encoding='utf-8'
-            )
-            print(f"Loaded built-in color scheme '{name}' and saved to user directory")
-        except Exception as e:
-            print(f"Failed to save color scheme to user directory: {e}")
-
+        print(f"Loaded built-in color scheme '{name}'")
         return builtin_data
     else:
         raise RuntimeError(

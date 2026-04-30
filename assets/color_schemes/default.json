@@ -10,9 +10,11 @@
     "#FF14D0C1",
     "#FF2A9CED",
     "#FF8540E7",
-    "#FFEA2E8C"
+    "#FFEA2E8C",
+    "#FFF5F0E6",
+    "#FF2D3436"
   ],
   
-  "default_canvas_bg_color": "#FFFFFCF0",
+  "default_canvas_bg_color": "#FFF5F0E6",
   "default_use_rainbow_branches": true
 }

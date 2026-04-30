@@ -47,17 +47,8 @@ class ColorSchemeSection(CollapsiblePanel):
         self._initialized = False
         self._rainbow_visible = False
 
-        # Default rainbow colors
-        self._default_rainbow = [
-            "#FFFF6B6B",  # Red
-            "#FF4ECDC4",  # Teal
-            "#FF45B7D1",  # Light Blue
-            "#FFFFA07A",  # Light Salmon
-            "#FF98D8C8",  # Mint
-            "#FFF7DC6F",  # Yellow
-            "#FFBB8FCE",  # Purple
-            "#FF85C1E2",  # Sky Blue
-        ]
+        # No hardcoded colors - will be set by set_style()
+        self._default_rainbow = []
 
         # Rainbow controls
         self.rainbow_check: ToggleSwitch | None = None
@@ -76,6 +67,10 @@ class ColorSchemeSection(CollapsiblePanel):
         if expanded and not self._initialized:
             self._initialized = True
             self._init_content()
+            # After creating buttons, apply pending style if available
+            if hasattr(self, '_pending_style'):
+                self.set_style(self._pending_style)
+                del self._pending_style
 
     def _init_content(self):
         """Initialize content on first expand."""
@@ -119,7 +114,8 @@ class ColorSchemeSection(CollapsiblePanel):
         buttons_layout.setContentsMargins(0, 0, 0, 0)
 
         self.rainbow_buttons = []
-        self.rainbow_colors = self._default_rainbow.copy()
+        # Will be populated by set_style() before panel expansion
+        self.rainbow_colors = []
 
         for row_idx in range(2):
             btn_row_layout = QHBoxLayout()
@@ -131,6 +127,7 @@ class ColorSchemeSection(CollapsiblePanel):
                 btn = QPushButton()
                 btn.setFixedSize(32, 32)
                 btn.setToolTip(f"Color {i + 1}")
+                # Use placeholder color (will be updated by set_style)
                 color = self.rainbow_colors[i] if i < len(self.rainbow_colors) else "#FFCCCCCC"
                 btn.setStyleSheet(
                     f"background-color: {color}; "
@@ -157,6 +154,20 @@ class ColorSchemeSection(CollapsiblePanel):
         if self.rainbow_check:
             self.rainbow_check.blockSignals(False)
 
+        # CRITICAL: After creating buttons, update them with current colors
+        # This ensures colors are applied even if set_style was called before panel expansion
+        print(f"[_init_content] Created {len(self.rainbow_buttons)} buttons, rainbow_colors has {len(self.rainbow_colors)} colors")
+        for i, btn in enumerate(self.rainbow_buttons):
+            if i < len(self.rainbow_colors):
+                color = self.rainbow_colors[i]
+                print(f"  Initializing button {i} with color: {color}")
+                btn.setStyleSheet(
+                    f"background-color: {color}; "
+                    "border: none; border-radius: 4px;"
+                )
+            else:
+                print(f"  Warning: Button {i} has no color (rainbow_colors only has {len(self.rainbow_colors)})")
+
     def _on_rainbow_toggled(self, checked: bool):
         """Handle rainbow branch mode toggle."""
         self._rainbow_visible = checked
@@ -176,7 +187,7 @@ class ColorSchemeSection(CollapsiblePanel):
                 lambda color: self._on_rainbow_color_selected(index, color)
             )
 
-        # Set current color
+        # Use current color or placeholder
         current_color = self.rainbow_colors[index] if index < len(self.rainbow_colors) else "#FFCCCCCC"
         self._color_picker.set_current_color(current_color)
 
@@ -206,7 +217,7 @@ class ColorSchemeSection(CollapsiblePanel):
                 )
 
             # Emit change
-            self._emit_color_changed()
+            self.color_changed.emit({"branch_colors": self.rainbow_colors.copy()})
 
     def get_style(self) -> dict:
         """Get current color scheme style."""
@@ -217,17 +228,26 @@ class ColorSchemeSection(CollapsiblePanel):
 
     def set_style(self, style: dict):
         """Set color scheme style programmatically."""
+        # If buttons not created yet, save as pending
+        if not self._initialized:
+            self._pending_style = style
+            return
+
+        print(f"[ColorSchemeSection.set_style] Called with {len(style.get('branch_colors', []))} colors")
         if "use_rainbow_branches" in style:
             self._rainbow_visible = style["use_rainbow_branches"]
             if self.rainbow_check:
                 self.rainbow_check.setChecked(self._rainbow_visible)
 
         if "branch_colors" in style:
+            print(f"  Setting rainbow_colors: {style['branch_colors'][:3]}...")
             self.rainbow_colors = style["branch_colors"].copy()
             # Update button colors
+            print(f"  Updating {len(self.rainbow_buttons)} buttons")
             for i, btn in enumerate(self.rainbow_buttons):
                 if i < len(self.rainbow_colors):
                     color = self.rainbow_colors[i]
+                    print(f"    Button {i}: {color}")
                     btn.setStyleSheet(
                         f"background-color: {color}; "
                         "border: none; border-radius: 4px;"

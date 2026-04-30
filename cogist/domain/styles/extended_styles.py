@@ -262,6 +262,9 @@ class ColorScheme:
     Contains only the color palette. No style properties.
     Canvas background color is stored at index 8 of branch_colors.
     Root node background color is stored at index 9 of branch_colors.
+
+    NOTE: branch_colors should be loaded from JSON configuration files,
+    not hardcoded here. This default is only for backward compatibility.
     """
 
     name: str
@@ -271,20 +274,8 @@ class ColorScheme:
     # Indices [0-7]: Branch colors for rainbow mode
     # Index [8]: Canvas background color
     # Index [9]: Root node background color
-    branch_colors: list[str] = field(
-        default_factory=lambda: [
-            "#FFFF6B6B",  # [0] Red
-            "#FF4ECDC4",  # [1] Teal
-            "#FF45B7D1",  # [2] Light Blue
-            "#FFFFA07A",  # [3] Light Salmon
-            "#FF98D8C8",  # [4] Mint
-            "#FFF7DC6F",  # [5] Yellow
-            "#FFBB8FCE",  # [6] Purple
-            "#FF85C1E2",  # [7] Sky Blue
-            "#FFFFFFFF",  # [8] Canvas Background (White)
-            "#FF2D3436",  # [9] Root Node Background (Dark Gray)
-        ]
-    )
+    # NOTE: Colors are now loaded from assets/color_schemes/*.json
+    branch_colors: list[str] = field(default_factory=list)
 
     # Optional defaults
     default_use_rainbow_branches: bool | None = None

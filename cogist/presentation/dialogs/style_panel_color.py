@@ -76,6 +76,11 @@ class ColorSchemeTab(QWidget):
         # Apply custom styles
         self._apply_styles()
 
+        # Initialize color scheme section with current config (if available)
+        # This will be saved as pending if panel not yet expanded
+        if self.style_config:
+            self.set_style_config(self.style_config)
+
     def _apply_styles(self):
         """Apply custom QSS styles to the panel."""
         self.setStyleSheet("""
@@ -97,4 +102,7 @@ class ColorSchemeTab(QWidget):
                 "use_rainbow_branches": getattr(style_config, 'use_rainbow_branches', False),
                 "branch_colors": getattr(style_config, 'branch_colors', []),
             }
+            print(f"[ColorSchemeTab] Setting style: {len(color_style['branch_colors'])} colors")
+            if color_style['branch_colors']:
+                print(f"  First 3 colors: {color_style['branch_colors'][:3]}")
             self.color_scheme_section.set_style(color_style)

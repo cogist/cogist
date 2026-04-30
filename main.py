@@ -152,6 +152,10 @@ class MainWindow(QMainWindow):
             # Refresh UI controls to match new style config
             self.style_panel.advanced_tab.refresh_current_layer()
 
+        # Also update color scheme tab
+        if hasattr(self, "style_panel") and hasattr(self.style_panel, "color_scheme_tab"):
+            self.style_panel.color_scheme_tab.set_style_config(self.mindmap_view.style_config)
+
         # Enable document mode to reduce decorations
         self.setDocumentMode(True)
 
@@ -311,6 +315,11 @@ class MainWindow(QMainWindow):
         """Load default style configuration (template + color scheme) with two-level fallback.
 
         This method is called during initialization and when creating new files.
+
+        Architecture:
+        - Template: Defines node styles, spacing, fonts (structure)
+        - Color Scheme: Defines color pool (colors only)
+        - They are loaded independently and merged
         """
         from cogist.infrastructure.utils import config_manager
         from cogist.infrastructure.utils.resources import (
@@ -319,7 +328,7 @@ class MainWindow(QMainWindow):
             template_loader,
         )
 
-        # Step 1: Load template (two-level fallback)
+        # Step 1: Load template (structure only, no colors)
         template_dir = config_manager.get_template_directory()
         user_default = template_dir / "default.json"
 
@@ -331,6 +340,7 @@ class MainWindow(QMainWindow):
                 self.current_style = (
                     template_deserializer.deserialize_complete_template(user_data)
                 )
+                print("Loaded user default template")
             except Exception as e:
                 print(
                     f"Failed to load user default template: {e}, falling back to built-in"
@@ -341,38 +351,40 @@ class MainWindow(QMainWindow):
                     self.current_style = (
                         template_deserializer.deserialize_complete_template(builtin_data)
                     )
-                    # Save to user directory for future use
-                    template_loader.save_template_to_user_dir(builtin_data, "default")
-                    print("Loaded built-in default template and saved to user directory")
+                    print("Loaded built-in default template")
                 else:
                     raise RuntimeError(
                         "Failed to load any template. Built-in template is missing or corrupted."
                     ) from None
         else:
-            # User template doesn't exist, load built-in template
+            # User template doesn't exist, load built-in template directly (read-only)
             builtin_data = template_loader.get_builtin_template("default")
             if builtin_data:
                 self.current_style = (
                     template_deserializer.deserialize_complete_template(builtin_data)
                 )
-                # Save to user directory for future use
-                template_loader.save_template_to_user_dir(builtin_data, "default")
-                print("Loaded built-in default template and saved to user directory")
+                print("Loaded built-in default template")
             else:
                 raise RuntimeError(
                     "Failed to load any template. Built-in template is missing or corrupted."
                 )
 
-        # Step 2: Load color scheme and apply colors to template (two-level fallback)
+        # Step 2: Load color scheme INDEPENDENTLY (colors only)
+        # Color scheme completely overrides template's branch_colors
         try:
             color_scheme_data = color_scheme_loader.load_color_scheme_with_fallback("default")
-            # Apply branch_colors from color scheme to the loaded template
+            # Override branch_colors from color scheme (ignore template's colors)
             if "branch_colors" in color_scheme_data:
                 self.current_style.branch_colors = color_scheme_data["branch_colors"]
-                print(f"Applied color scheme '{color_scheme_data.get('name', 'default')}' to template")
+                print(f"Applied color scheme '{color_scheme_data.get('name', 'default')}' ({len(color_scheme_data['branch_colors'])} colors)")
+                # Debug: Print first 3 colors
+                for i, color in enumerate(color_scheme_data['branch_colors'][:3]):
+                    print(f"  Color {i}: {color}")
+            else:
+                print(f"Warning: Color scheme '{color_scheme_data.get('name', 'default')}' has no branch_colors")
         except RuntimeError as e:
             print(f"Warning: {e}")
-            print("Using template's embedded colors as fallback")
+            print("Using empty color pool (nodes will use default colors)")
 
     def _reset_style_to_default(self):
         """Reset style configuration to default (used when creating new files).

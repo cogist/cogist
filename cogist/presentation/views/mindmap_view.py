@@ -216,22 +216,14 @@ class MindMapView(QGraphicsView):
 
         Optimized for text editing scenarios where only one node changes.
         """
-        branch_colors = [
-            "#FFFF6B6B",
-            "#FF4ECDC4",
-            "#FF45B7D1",
-            "#FFFFA07A",
-            "#FF98D8C8",
-            "#FFF7DC6F",
-            "#FFBB8FCE",
-            "#FF85C1E9",
-        ]
+        # Get branch colors from style config
+        branch_colors = self.style_config.branch_colors if hasattr(self.style_config, 'branch_colors') else []
 
         # Determine branch color
         branch_color = None
         if node.parent and node.parent.is_root:
-            idx = node.parent.children.index(node) % len(branch_colors)
-            branch_color = branch_colors[idx]
+            idx = node.parent.children.index(node) % len(branch_colors) if branch_colors else 0
+            branch_color = branch_colors[idx] if branch_colors else node.color
         elif node.parent:
             # Inherit from parent's branch
             # For simplicity, use node's own color
@@ -260,16 +252,8 @@ class MindMapView(QGraphicsView):
         Create temporary NodeItems to measure actual rendered sizes,
         then sync back to domain nodes.
         """
-        branch_colors = [
-            "#FFFF6B6B",
-            "#FF4ECDC4",
-            "#FF45B7D1",
-            "#FFFFA07A",
-            "#FF98D8C8",
-            "#FFF7DC6F",
-            "#FFBB8FCE",
-            "#FF85C1E9",
-        ]
+        # Get branch colors from style config
+        branch_colors = self.style_config.branch_colors if hasattr(self.style_config, 'branch_colors') else []
 
         def measure_recursive(node: Node, branch_color: str | None = None):
             current_color = branch_color if branch_color else node.color
