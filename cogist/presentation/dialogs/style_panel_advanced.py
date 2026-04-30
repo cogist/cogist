@@ -1143,61 +1143,34 @@ class AdvancedStyleTab(QWidget):
         # Get style data directly from global style_config
         layer_data = self._get_layer_data(self.current_layer)
 
-        # Notify color_scheme_section of current layer role for proper UI visibility
-        self.color_scheme_section.set_role(self.current_layer)
-
         if self.current_layer == "canvas":
-            # Load canvas style into color_scheme_section
-            color_data = {"canvas_bg": layer_data["bg_color"]}
-            # Also pass global rainbow config (so checkbox state is synced)
-            if "use_rainbow" in layer_data:
-                color_data["use_rainbow"] = layer_data["use_rainbow"]
-            if "rainbow_pool" in layer_data:
-                color_data["rainbow_pool"] = layer_data["rainbow_pool"]
-            self.color_scheme_section.set_colors(color_data)
+            # Load canvas background color into CanvasPanel
+            canvas_style = {"bg_color": layer_data["bg_color"]}
+            self.canvas_panel.set_style(canvas_style)
 
-            # NEW: Load canvas background color into CanvasPanel
-            self.canvas_panel.set_style({"bg_color": layer_data["bg_color"]})
+            # Load global rainbow config into color_scheme_section
+            color_style = {
+                "use_rainbow_branches": layer_data.get("use_rainbow", False),
+                "branch_colors": layer_data.get("rainbow_pool", []),
+            }
+            self.color_scheme_section.set_style(color_style)
 
             # Hide shadow section for canvas
             self.shadow_section.setVisible(False)
         else:
-            # Load colors into color_scheme_section
-            color_data = {}
-            if "bg_color" in layer_data:
-                color_data["bg_color"] = layer_data["bg_color"]
-            if "text_color" in layer_data:
-                color_data["text_color"] = layer_data["text_color"]
-            if "border_color" in layer_data:
-                color_data["border_color"] = layer_data["border_color"]
-            if "connector_color" in layer_data:
-                color_data["connector_color"] = layer_data["connector_color"]
-
-            # Note: use_rainbow and rainbow_pool are global ColorScheme properties
-            # They should always be updated regardless of current layer
-            if "use_rainbow" in layer_data:
-                color_data["use_rainbow"] = layer_data["use_rainbow"]
-            if "rainbow_pool" in layer_data:
-                color_data["rainbow_pool"] = layer_data["rainbow_pool"]
-
-            # Per-role rainbow mode controls - load for root/level_1/2/3+
-            if self.current_layer in ["root", "level_1", "level_2", "level_3_plus"]:
-                if "rainbow_bg_enabled" in layer_data:
-                    color_data["rainbow_bg_enabled"] = layer_data["rainbow_bg_enabled"]
-                if "rainbow_border_enabled" in layer_data:
-                    color_data["rainbow_border_enabled"] = layer_data[
-                        "rainbow_border_enabled"
-                    ]
-                if "brightness_amount" in layer_data:
-                    color_data["brightness_amount"] = layer_data["brightness_amount"]
-                if "opacity_amount" in layer_data:
-                    color_data["opacity_amount"] = layer_data["opacity_amount"]
-
-            if color_data:
-                self.color_scheme_section.set_colors(color_data)
-
-            # Load node style (without colors - they're now in color_scheme_section)
+            # Load node/border style into respective sections
+            # Node style section handles background
             self.node_style_section.set_style(layer_data)
+
+            # Border section handles border
+            self.border_section.set_style(layer_data)
+
+            # Color scheme section only handles global color pool and rainbow mode
+            color_style = {
+                "use_rainbow_branches": layer_data.get("use_rainbow", False),
+                "branch_colors": layer_data.get("rainbow_pool", []),
+            }
+            self.color_scheme_section.set_style(color_style)
 
             # Load font style
             self.font_style_section.set_style(layer_data)
@@ -1215,8 +1188,6 @@ class AdvancedStyleTab(QWidget):
             }
             self.shadow_section.set_shadow(shadow_config)
 
-            # Load border style
-            self.border_section.set_style(layer_data)
             # Sync border section visibility with rainbow_border_enabled state
             if "rainbow_border_enabled" in layer_data:
                 self.border_section.setVisible(layer_data["rainbow_border_enabled"])
