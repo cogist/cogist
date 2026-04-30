@@ -8,6 +8,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QCheckBox, QGridLayout, QLabel, QMenu, QSlider, QSpinBox
 
 from .collapsible_panel import CollapsiblePanel
+from .color_picker import create_color_picker
+from .dialog_utils import position_color_dialog
 from .menu_button import MenuButton
 
 
@@ -46,6 +48,9 @@ class BorderSection(CollapsiblePanel):
             "border_width": 2,
         }
 
+        # Color picker (lazy creation)
+        self._color_picker = None
+
         # Connect toggle signal for lazy initialization
         self.toggled.connect(self._on_toggled)
 
@@ -80,6 +85,7 @@ class BorderSection(CollapsiblePanel):
 
         self.color_btn = MenuButton("Color 1", self.WIDGET_HEIGHT)
         self.color_btn.setStyleSheet(self._button_style())
+        self.color_btn.clicked.connect(self._on_color_clicked)
         layout.addWidget(self.color_btn, row, 1)
         row += 1
 
@@ -245,3 +251,27 @@ class BorderSection(CollapsiblePanel):
                 self.border_style_combo.setText(display_style)
             if "border_width" in style:
                 self.border_width_spin.setValue(style["border_width"])
+
+    def _on_color_clicked(self):
+        """Handle border color button click."""
+        if self._color_picker is None:
+            self._color_picker = create_color_picker(self)
+            self._color_picker.color_selected.connect(self._on_color_selected)
+
+        # Set current color
+        color_index = self.current_style.get("color_index", 0)
+        color_text = f"Color {color_index + 1}"
+        self.color_btn.setText(color_text)
+
+        # Show color picker
+        self._color_picker.show()
+        self._color_picker.raise_()
+        self._color_picker.activateWindow()
+
+        # Position dialog
+        position_color_dialog(self._color_picker, self.color_btn)
+
+    def _on_color_selected(self, hex_color: str):
+        """Handle color selection from picker."""
+        self.color_btn.setText("Custom")
+        self._emit_style_changed()

@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
 from cogist.presentation.widgets import ToggleSwitch
 
 from .collapsible_panel import CollapsiblePanel
+from .color_picker import create_color_picker
+from .dialog_utils import position_color_dialog
 
 
 class ColorSchemeSection(CollapsiblePanel):
@@ -64,6 +66,10 @@ class ColorSchemeSection(CollapsiblePanel):
         self.rainbow_buttons: list[QPushButton] = []
         self.rainbow_colors: list[str] = []
         self.rainbow_pool_widget: QWidget | None = None
+
+        # Color picker (shared for all buttons)
+        self._color_picker: type[create_color_picker] | None = None
+        self._current_color_button: QPushButton | None = None
 
         self.toggled.connect(self._on_toggled)
 
@@ -166,8 +172,43 @@ class ColorSchemeSection(CollapsiblePanel):
 
     def _edit_rainbow_color(self, index: int):
         """Handle rainbow color button click."""
-        # TODO: Implement color picker dialog
-        pass
+        if self._color_picker is None:
+            self._color_picker = create_color_picker(self)
+            self._color_picker.color_selected.connect(
+                lambda color: self._on_rainbow_color_selected(index, color)
+            )
+
+        # Set current color
+        current_color = self.rainbow_colors[index] if index < len(self.rainbow_colors) else "#FFCCCCCC"
+        self._color_picker.set_current_color(current_color)
+
+        # Store current button reference
+        self._current_color_button = self.rainbow_buttons[index]
+
+        # Show color picker
+        self._color_picker.show()
+        self._color_picker.raise_()
+        self._color_picker.activateWindow()
+
+        # Position dialog
+        if self._current_color_button:
+            position_color_dialog(self._color_picker, self._current_color_button)
+
+    def _on_rainbow_color_selected(self, index: int, hex_color: str):
+        """Handle color selection from picker."""
+        if index < len(self.rainbow_colors):
+            self.rainbow_colors[index] = hex_color
+
+            # Update button color
+            if index < len(self.rainbow_buttons):
+                btn = self.rainbow_buttons[index]
+                btn.setStyleSheet(
+                    f"background-color: {hex_color}; "
+                    "border: none; border-radius: 4px;"
+                )
+
+            # Emit change
+            self._emit_color_changed()
 
     def get_style(self) -> dict:
         """Get current color scheme style."""

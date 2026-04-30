@@ -22,6 +22,8 @@ from cogist.presentation.widgets.node_shape_previews import (
 )
 
 from .collapsible_panel import CollapsiblePanel
+from .color_picker import create_color_picker
+from .dialog_utils import position_color_dialog
 from .menu_button import MenuButton
 
 
@@ -61,6 +63,9 @@ class NodeStyleSection(CollapsiblePanel):
             "max_text_width": 250,  # Default max text width
         }
         self.last_emitted_style = None  # Track last emitted style to detect changes
+
+        # Color picker (lazy creation)
+        self._color_picker = None
 
         # Connect toggle signal for lazy initialization
         self.toggled.connect(self._on_toggled)
@@ -107,6 +112,7 @@ class NodeStyleSection(CollapsiblePanel):
 
         self.bg_color_btn = MenuButton("Color 1", self.WIDGET_HEIGHT)
         self.bg_color_btn.setStyleSheet(self._button_style())
+        self.bg_color_btn.clicked.connect(self._on_bg_color_clicked)
         layout.addWidget(self.bg_color_btn, row, 1)
         row += 1
 
@@ -380,3 +386,30 @@ class NodeStyleSection(CollapsiblePanel):
 
             if "max_text_width" in style:
                 self.max_text_width_spin.setValue(style["max_text_width"])
+
+    def _on_bg_color_clicked(self):
+        """Handle background color button click."""
+        if self._color_picker is None:
+            self._color_picker = create_color_picker(self)
+            self._color_picker.color_selected.connect(self._on_bg_color_selected)
+
+        # Set current color
+        color_index = self.current_style.get("color_index", 0)
+        # Get color from parent's color pool if available
+        color_text = f"Color {color_index + 1}"
+        self.bg_color_btn.setText(color_text)
+
+        # Show color picker
+        self._color_picker.show()
+        self._color_picker.raise_()
+        self._color_picker.activateWindow()
+
+        # Position dialog
+        position_color_dialog(self._color_picker, self.bg_color_btn)
+
+    def _on_bg_color_selected(self, hex_color: str):
+        """Handle color selection from picker."""
+        # For now, just update button text
+        # In the future, this will update the color_index or store custom color
+        self.bg_color_btn.setText("Custom")
+        self._emit_style_changed()

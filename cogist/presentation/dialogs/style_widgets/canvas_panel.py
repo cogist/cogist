@@ -8,6 +8,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QGridLayout, QLabel
 
 from .collapsible_panel import CollapsiblePanel
+from .color_picker import create_color_picker
+from .dialog_utils import position_color_dialog
 from .menu_button import MenuButton
 
 
@@ -37,6 +39,9 @@ class CanvasPanel(CollapsiblePanel):
             "bg_color": "#FFFFFFFF",  # Default canvas background color
         }
 
+        # Color picker (lazy creation)
+        self._color_picker = None
+
         # Connect toggle signal for lazy initialization
         self.toggled.connect(self._on_toggled)
 
@@ -62,10 +67,9 @@ class CanvasPanel(CollapsiblePanel):
         bg_color_label.setFixedWidth(self._label_width)
         layout.addWidget(bg_color_label, row, 0)
 
-        # Placeholder button - will be implemented later
         self.bg_color_btn = MenuButton("White", self.WIDGET_HEIGHT)
         self.bg_color_btn.setStyleSheet(self._button_style())
-        # TODO: Connect to color picker dialog
+        self.bg_color_btn.clicked.connect(self._on_bg_color_clicked)
         layout.addWidget(self.bg_color_btn, row, 1)
         row += 1
 
@@ -112,5 +116,42 @@ class CanvasPanel(CollapsiblePanel):
 
         # Update UI if initialized
         if self._initialized and "bg_color" in style:
-            # TODO: Update button text based on color
-            pass
+            # Update button text based on color
+            color = style["bg_color"]
+            if color.upper() == "#FFFFFFFF":
+                self.bg_color_btn.setText("White")
+            elif color.upper() == "#FF000000":
+                self.bg_color_btn.setText("Black")
+            else:
+                self.bg_color_btn.setText("Custom")
+
+    def _on_bg_color_clicked(self):
+        """Handle background color button click."""
+        if self._color_picker is None:
+            self._color_picker = create_color_picker(self)
+            self._color_picker.color_selected.connect(self._on_bg_color_selected)
+
+        # Set current color
+        current_color = self.current_style.get("bg_color", "#FFFFFFFF")
+        self._color_picker.set_current_color(current_color)
+
+        # Show color picker
+        self._color_picker.show()
+        self._color_picker.raise_()
+        self._color_picker.activateWindow()
+
+        # Position dialog
+        position_color_dialog(self._color_picker, self.bg_color_btn)
+
+    def _on_bg_color_selected(self, hex_color: str):
+        """Handle color selection from picker."""
+        self.current_style["bg_color"] = hex_color
+        self._emit_style_changed()
+
+        # Update button text
+        if hex_color.upper() == "#FFFFFFFF":
+            self.bg_color_btn.setText("White")
+        elif hex_color.upper() == "#FF000000":
+            self.bg_color_btn.setText("Black")
+        else:
+            self.bg_color_btn.setText("Custom")
