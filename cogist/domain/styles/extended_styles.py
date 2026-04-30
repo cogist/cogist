@@ -52,7 +52,11 @@ class BackgroundStyle:
 
     bg_type: str = "solid"  # solid / gradient / texture / image
 
-    # Solid color (from ColorScheme.node_colors[role])
+    # New fields for color pool reference and adjustment
+    enabled: bool = True  # Whether to show background
+    color_index: int = 0  # Index into ColorScheme.branch_colors
+    brightness: float = 1.0  # Brightness adjustment (0.5-1.5)
+    opacity: int = 255  # Opacity adjustment (0-255)
 
     # Gradient background
     gradient_type: str | None = None  # linear / radial
@@ -77,6 +81,12 @@ class BorderStyle:
     border_type: str = "simple"  # simple / svg / image / gradient
     border_width: int = 0
     border_radius: int = 8
+
+    # New fields for color pool reference and adjustment
+    enabled: bool = True  # Whether to show border
+    color_index: int = 0  # Index into ColorScheme.branch_colors
+    brightness: float = 1.0  # Brightness adjustment (0.5-1.5)
+    opacity: int = 255  # Opacity adjustment (0-255)
 
     # Simple border style
     border_style: str = "solid"  # solid / dashed / dotted / dash_dot
@@ -146,6 +156,7 @@ class RoleBasedStyle:
 
     Colors come from ColorScheme, this only defines geometry and appearance.
     """
+
     role: NodeRole
 
     # === Node shape ===
@@ -162,7 +173,9 @@ class RoleBasedStyle:
     padding_h: int = 8
 
     # === Text constraints ===
-    max_text_width: int = 250  # Maximum text width before wrapping (can vary by role/depth)
+    max_text_width: int = (
+        250  # Maximum text width before wrapping (can vary by role/depth)
+    )
 
     # === Font properties (without colors) ===
     font_size: int = 14
@@ -181,11 +194,13 @@ class RoleBasedStyle:
 
     # === Spacing configuration (per-role) ===
     parent_child_spacing: float = 80.0  # Spacing to child nodes
-    sibling_spacing: float = 60.0       # Spacing between sibling nodes
+    sibling_spacing: float = 60.0  # Spacing between sibling nodes
 
     # === Connector configuration (per-role) ===
-    connector_shape: str = "bezier"     # bezier / straight / orthogonal / rounded_orthogonal
-    connector_style: str = "solid"      # solid / dashed / dotted
+    connector_shape: str = (
+        "bezier"  # bezier / straight / orthogonal / rounded_orthogonal
+    )
+    connector_style: str = "solid"  # solid / dashed / dotted
     line_width: float = 2.0
     connector_color: str | None = None  # From ColorScheme, optional override
 
@@ -196,20 +211,16 @@ class RoleBasedStyle:
 class NodeColorConfig:
     """Unified color configuration for any node role.
 
-    All roles share the same structure, with optional fields that may not be
-    meaningful for all roles (e.g., rainbow settings only apply to Level 1).
+    Simplified: colors now come from BackgroundStyle and BorderStyle.
+    This only keeps text_color and connector_color.
     """
-    bg_color: str = "#FFFFFFFF"
-    border_color: str | None = None
+
+    # Removed: bg_color, border_color (moved to BackgroundStyle/BorderStyle)
     text_color: str | None = None
+    connector_color: str | None = None
 
-    # Rainbow branch settings (only meaningful for PRIMARY/Level 1)
-    rainbow_bg_enabled: bool = True
-    rainbow_border_enabled: bool = True
-
-    # Brightness and opacity adjustment (only meaningful for SECONDARY/TERTIARY)
-    brightness_amount: float = 1.0  # 0.0-2.0, 1.0 = no change
-    opacity_amount: int = 255  # 0-255, 255 = fully opaque
+    # Removed: rainbow_bg_enabled, rainbow_border_enabled
+    # Removed: brightness_amount, opacity_amount
 
 
 @dataclass
@@ -219,43 +230,43 @@ class ColorScheme:
     name: str
     description: str
 
-    # Per-role color configurations (following Template pattern)
-    role_configs: dict[NodeRole, NodeColorConfig] = field(default_factory=lambda: {
-        NodeRole.ROOT: NodeColorConfig(
-            bg_color="#FF2196F3",
-            rainbow_bg_enabled=False,
-            rainbow_border_enabled=False,
-            brightness_amount=1.0,
-            opacity_amount=255,
-        ),
-        NodeRole.PRIMARY: NodeColorConfig(
-            bg_color="#FF4CAF50",
-            rainbow_bg_enabled=True,
-            rainbow_border_enabled=True,
-            brightness_amount=1.0,
-            opacity_amount=255,
-        ),
-        NodeRole.SECONDARY: NodeColorConfig(
-            bg_color="#FFFF9800",
-            rainbow_bg_enabled=False,
-            rainbow_border_enabled=False,
-            brightness_amount=1.0,  # Default: no change
-            opacity_amount=255,  # Default: fully opaque
-        ),
-        NodeRole.TERTIARY: NodeColorConfig(
-            bg_color="#FF9E9E9E",
-            rainbow_bg_enabled=False,
-            rainbow_border_enabled=False,
-            brightness_amount=1.0,  # Default: no change
-            opacity_amount=255,  # Default: fully opaque
-        ),
-    })
+    # Per-role color configurations (simplified)
+    role_configs: dict[NodeRole, NodeColorConfig] = field(
+        default_factory=lambda: {
+            NodeRole.ROOT: NodeColorConfig(
+                text_color=None,
+                connector_color=None,
+            ),
+            NodeRole.PRIMARY: NodeColorConfig(
+                text_color=None,
+                connector_color=None,
+            ),
+            NodeRole.SECONDARY: NodeColorConfig(
+                text_color=None,
+                connector_color=None,
+            ),
+            NodeRole.TERTIARY: NodeColorConfig(
+                text_color=None,
+                connector_color=None,
+            ),
+        }
+    )
 
     # Branch color pool (for rainbow branches) (using HexArgb format)
-    branch_colors: list[str] = field(default_factory=lambda: [
-        "#FFFF6B6B", "#FF4ECDC4", "#FF45B7D1", "#FFFFA07A", "#FF98D8C8",
-        "#FFF7DC6F", "#FFBB8FCE", "#FF85C1E2", "#FFF8B739", "#FF52B788",
-    ])
+    branch_colors: list[str] = field(
+        default_factory=lambda: [
+            "#FFFF6B6B",
+            "#FF4ECDC4",
+            "#FF45B7D1",
+            "#FFFFA07A",
+            "#FF98D8C8",
+            "#FFF7DC6F",
+            "#FFBB8FCE",
+            "#FF85C1E2",
+            "#FFF8B739",
+            "#FF52B788",
+        ]
+    )
 
     # Enable rainbow branches
     use_rainbow_branches: bool = False
