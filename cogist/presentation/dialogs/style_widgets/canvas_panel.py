@@ -35,9 +35,7 @@ class CanvasPanel(CollapsiblePanel):
 
         # State
         self._initialized = False
-        self.current_style = {
-            "bg_color": "#FFFFFFFF",  # Default canvas background color
-        }
+        self.current_style: dict = {}  # Will be populated by set_style() from global config
 
         # Color picker (lazy creation)
         self._color_picker = None
@@ -50,6 +48,9 @@ class CanvasPanel(CollapsiblePanel):
         if checked and not self._initialized:
             self._init_content()
             self._initialized = True
+            # Apply saved style to newly created button
+            if self.current_style:
+                self.set_style(self.current_style)
 
     def _init_content(self):
         """Initialize content on first expand (lazy initialization)."""
@@ -67,10 +68,10 @@ class CanvasPanel(CollapsiblePanel):
         bg_color_label.setFixedWidth(self._label_width)
         layout.addWidget(bg_color_label, row, 0)
 
-        self.bg_color_btn = MenuButton("White", self.WIDGET_HEIGHT)
-        self.bg_color_btn.setStyleSheet(self._button_style())
+        self.bg_color_btn = MenuButton("", self.WIDGET_HEIGHT)
         self.bg_color_btn.clicked.connect(self._on_bg_color_clicked)
         layout.addWidget(self.bg_color_btn, row, 1)
+        # Note: Button stylesheet is set by set_style() - no hardcoded colors here
         row += 1
 
         # Placeholder for future features
@@ -84,7 +85,6 @@ class CanvasPanel(CollapsiblePanel):
         """Get standard button stylesheet."""
         return """
             QPushButton {
-                background-color: #FFFFFF;
                 border: 1px solid #C8C8C8;
                 border-radius: 6px;
                 padding: 4px 24px 4px 12px;
@@ -92,7 +92,6 @@ class CanvasPanel(CollapsiblePanel):
                 text-align: left;
             }
             QPushButton:hover {
-                background-color: #F0F0F0;
                 border-color: #A0A0A0;
             }
             QPushButton::menu-indicator {
@@ -114,16 +113,25 @@ class CanvasPanel(CollapsiblePanel):
         """Set canvas style programmatically."""
         self.current_style.update(style)
 
-        # Update UI if initialized
-        if self._initialized and "bg_color" in style:
-            # Update button text based on color
-            color = style["bg_color"]
-            if color.upper() == "#FFFFFFFF":
-                self.bg_color_btn.setText("White")
-            elif color.upper() == "#FF000000":
-                self.bg_color_btn.setText("Black")
-            else:
-                self.bg_color_btn.setText("Custom")
+        # Update button background color if button exists
+        if hasattr(self, 'bg_color_btn') and "bg_color" in style:
+            # Set button background color from style data object
+            bg_color = style["bg_color"]
+            # Convert #AARRGGBB to rgba() format for Qt (9 chars: # + 8 hex)
+            if len(bg_color) == 9 and bg_color.startswith("#"):
+                # #AARRGGBB format
+                alpha = int(bg_color[1:3], 16)
+                red = int(bg_color[3:5], 16)
+                green = int(bg_color[5:7], 16)
+                blue = int(bg_color[7:9], 16)
+                self.bg_color_btn.setStyleSheet(
+                    f"background-color: rgba({red}, {green}, {blue}, {alpha});"
+                    " border: 1px solid #C8C8C8;"
+                    " border-radius: 6px;"
+                    " padding: 4px 24px 4px 12px;"
+                    " font-size: 13px;"
+                    " text-align: left;"
+                )
 
     def _on_bg_color_clicked(self):
         """Handle background color button click."""
@@ -131,8 +139,14 @@ class CanvasPanel(CollapsiblePanel):
             self._color_picker = create_color_picker(self)
             self._color_picker.color_selected.connect(self._on_bg_color_selected)
 
-        # Set current color
-        current_color = self.current_style.get("bg_color", "#FFFFFFFF")
+        # Set current color from style data object (no fallback)
+        parent = self.parent()
+        if parent and hasattr(parent, 'style_config') and parent.style_config:
+            current_color = parent.style_config.canvas_bg_color
+        else:
+            # Should not happen - style_config is required
+            return
+        
         self._color_picker.set_current_color(current_color)
 
         # Show color picker
@@ -147,11 +161,4 @@ class CanvasPanel(CollapsiblePanel):
         """Handle color selection from picker."""
         self.current_style["bg_color"] = hex_color
         self._emit_style_changed()
-
-        # Update button text
-        if hex_color.upper() == "#FFFFFFFF":
-            self.bg_color_btn.setText("White")
-        elif hex_color.upper() == "#FF000000":
-            self.bg_color_btn.setText("Black")
-        else:
-            self.bg_color_btn.setText("Custom")
+        # No text update needed (button shows color only)

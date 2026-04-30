@@ -19,21 +19,21 @@ class ColorPicker(QColorDialog):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
 
-        # Configure dialog
+        # Configure dialog for real-time preview
         self.setOptions(
             QColorDialog.ShowAlphaChannel
-            | QColorDialog.NoButtons
+            | QColorDialog.NoButtons  # No OK/Cancel - apply immediately
             | QColorDialog.DontUseNativeDialog
         )
 
-        # Connect signals
+        # Connect signals - emit on color change for real-time preview
         self.currentColorChanged.connect(self._on_color_changed)
 
         # Recent colors (max 16)
         self._recent_colors: list[str] = []
 
     def _on_color_changed(self, color: QColor):
-        """Handle color change."""
+        """Handle color change for real-time preview."""
         # Convert to hex string with alpha
         hex_color = color.name(QColor.NameFormat.HexArgb)
         self.color_selected.emit(hex_color)
