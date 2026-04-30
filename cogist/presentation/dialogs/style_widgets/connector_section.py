@@ -24,6 +24,8 @@ from cogist.presentation.widgets import (
 
 from .collapsible_panel import CollapsiblePanel
 from .menu_button import MenuButton
+from .color_picker import create_color_picker
+from .dialog_utils import position_color_dialog
 
 
 class ConnectorSection(CollapsiblePanel):
@@ -35,13 +37,16 @@ class ConnectorSection(CollapsiblePanel):
 
     style_changed = Signal(dict)
 
-    # UI constants
-    LABEL_WIDTH = 75
+    # UI constants (fallback value, will use parent's LABEL_WIDTH if available)
+    LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
 
     def __init__(self, parent=None):
         super().__init__("Connector Style", collapsed=True, parent=parent)
+
+        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
         # State
         self._initialized = False
@@ -49,7 +54,13 @@ class ConnectorSection(CollapsiblePanel):
             "connector_shape": "bezier",
             "connector_style": "solid",
             "line_width": 2,
+            "connector_color_index": 0,
+            "connector_brightness": 1.0,
+            "connector_opacity": 255,
         }
+        
+        # Color picker (lazy creation)
+        self._color_picker = None
 
         # Connect toggle signal for lazy initialization
         self.toggled.connect(self._on_toggled)
@@ -64,14 +75,14 @@ class ConnectorSection(CollapsiblePanel):
         """Initialize content on first expand (lazy initialization)."""
         layout = QGridLayout()
         layout.setSpacing(6)
-        layout.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
+        layout.setContentsMargins(self.GROUP_MARGIN, 6, self.GROUP_MARGIN, 16)
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
 
         # Connector shape selector - using reusable VisualPreviewButton
         shape_label = QLabel("Shape:")
         shape_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        shape_label.setMinimumWidth(self.LABEL_WIDTH)
+        shape_label.setFixedWidth(self._label_width)
         layout.addWidget(shape_label, 0, 0)
 
         # Create visual options for popup
@@ -101,7 +112,7 @@ class ConnectorSection(CollapsiblePanel):
         # Connector style
         style_label = QLabel("Style:")
         style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        style_label.setMinimumWidth(self.LABEL_WIDTH)
+        style_label.setFixedWidth(self._label_width)
         layout.addWidget(style_label, 1, 0)
 
         # Get initial connector style from current_style
@@ -131,7 +142,7 @@ class ConnectorSection(CollapsiblePanel):
         # Connector width
         width_label = QLabel("Width:")
         width_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        width_label.setMinimumWidth(self.LABEL_WIDTH)
+        width_label.setFixedWidth(self._label_width)
         layout.addWidget(width_label, 2, 0)
 
         self.connector_width_spin = QSpinBox()
@@ -141,6 +152,45 @@ class ConnectorSection(CollapsiblePanel):
         self.connector_width_spin.setAlignment(Qt.AlignLeft)
         self.connector_width_spin.valueChanged.connect(self._on_width_changed)
         layout.addWidget(self.connector_width_spin, 2, 1)
+        
+        # Connector color
+        color_label = QLabel("Color:")
+        color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        color_label.setFixedWidth(self._label_width)
+        layout.addWidget(color_label, 3, 0)
+        
+        self.connector_color_btn = MenuButton("Color 1", self.WIDGET_HEIGHT)
+        self.connector_color_btn.setStyleSheet(self._button_style())
+        self.connector_color_btn.clicked.connect(self._on_color_clicked)
+        layout.addWidget(self.connector_color_btn, 3, 1)
+        
+        # Connector brightness
+        brightness_label = QLabel("Brightness:")
+        brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        brightness_label.setFixedWidth(self._label_width)
+        layout.addWidget(brightness_label, 4, 0)
+        
+        from PySide6.QtWidgets import QSlider
+        self.connector_brightness_slider = QSlider(Qt.Horizontal)
+        self.connector_brightness_slider.setFixedHeight(24)
+        self.connector_brightness_slider.setRange(50, 150)  # 0.5-1.5
+        self.connector_brightness_slider.setValue(int(self.current_style["connector_brightness"] * 100))
+        self.connector_brightness_slider.valueChanged.connect(self._on_brightness_changed)
+        layout.addWidget(self.connector_brightness_slider, 4, 1)
+        
+        # Connector opacity
+        opacity_label = QLabel("Opacity:")
+        opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        opacity_label.setFixedWidth(self._label_width)
+        layout.addWidget(opacity_label, 5, 0)
+        
+        from PySide6.QtWidgets import QSlider
+        self.connector_opacity_slider = QSlider(Qt.Horizontal)
+        self.connector_opacity_slider.setFixedHeight(24)
+        self.connector_opacity_slider.setRange(0, 255)
+        self.connector_opacity_slider.setValue(self.current_style["connector_opacity"])
+        self.connector_opacity_slider.valueChanged.connect(self._on_opacity_changed)
+        layout.addWidget(self.connector_opacity_slider, 5, 1)
 
         self.setLayout(layout)
 
@@ -183,6 +233,40 @@ class ConnectorSection(CollapsiblePanel):
         self.current_style["line_width"] = value
         self._emit_style_changed()
 
+    def _on_color_clicked(self):
+        """Handle connector color button click."""
+        if self._color_picker is None:
+            self._color_picker = create_color_picker(self)
+            self._color_picker.color_selected.connect(self._on_color_selected)
+        
+        # Set current color
+        color_index = self.current_style.get("connector_color_index", 0)
+        color_text = f"Color {color_index + 1}"
+        self.connector_color_btn.setText(color_text)
+        
+        # Show color picker
+        self._color_picker.show()
+        self._color_picker.raise_()
+        self._color_picker.activateWindow()
+        
+        # Position dialog
+        position_color_dialog(self._color_picker, self.connector_color_btn)
+
+    def _on_color_selected(self, hex_color: str):
+        """Handle color selection from picker."""
+        self.connector_color_btn.setText("Custom")
+        self._emit_style_changed()
+
+    def _on_brightness_changed(self, value: int):
+        """Handle connector brightness change."""
+        self.current_style["connector_brightness"] = value / 100.0
+        self._emit_style_changed()
+
+    def _on_opacity_changed(self, value: int):
+        """Handle connector opacity change."""
+        self.current_style["connector_opacity"] = value
+        self._emit_style_changed()
+
     def _emit_style_changed(self):
         """Emit style changed signal."""
         self.style_changed.emit(self.current_style.copy())
@@ -211,3 +295,13 @@ class ConnectorSection(CollapsiblePanel):
 
             if "line_width" in style:
                 self.connector_width_spin.setValue(style["line_width"])
+            
+            if "connector_color_index" in style:
+                color_index = style["connector_color_index"]
+                self.connector_color_btn.setText(f"Color {color_index + 1}")
+            
+            if "connector_brightness" in style:
+                self.connector_brightness_slider.setValue(int(style["connector_brightness"] * 100))
+            
+            if "connector_opacity" in style:
+                self.connector_opacity_slider.setValue(style["connector_opacity"])

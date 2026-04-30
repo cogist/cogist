@@ -19,13 +19,16 @@ class SpacingSection(CollapsiblePanel):
 
     spacing_changed = Signal(dict)
 
-    # UI constants
-    LABEL_WIDTH = 75
+    # UI constants (fallback value, will use parent's LABEL_WIDTH if available)
+    LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
 
     def __init__(self, parent=None):
         super().__init__("Spacing", collapsed=True, parent=parent)
+
+        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
         # State - will be initialized from style_config when loaded
         self._initialized = False
@@ -52,16 +55,16 @@ class SpacingSection(CollapsiblePanel):
         """Initialize content on first expand (lazy initialization)."""
         layout = QGridLayout()
         layout.setSpacing(6)
-        layout.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
+        layout.setContentsMargins(self.GROUP_MARGIN, 6, self.GROUP_MARGIN, 16)
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
 
         row = 0
 
-        # Parent-child spacing
-        pc_label = QLabel("Parent-Child:")
+        # Horizontal spacing (Parent-Child)
+        pc_label = QLabel("H-Spacing:")
         pc_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        pc_label.setMinimumWidth(self.LABEL_WIDTH)
+        pc_label.setFixedWidth(self._label_width)
         layout.addWidget(pc_label, row, 0)
 
         self.parent_child_spin = QSpinBox()
@@ -72,10 +75,10 @@ class SpacingSection(CollapsiblePanel):
         layout.addWidget(self.parent_child_spin, row, 1)
         row += 1
 
-        # Sibling spacing
-        sib_label = QLabel("Sibling:")
+        # Vertical spacing (Sibling)
+        sib_label = QLabel("V-Spacing:")
         sib_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        sib_label.setMinimumWidth(self.LABEL_WIDTH)
+        sib_label.setFixedWidth(self._label_width)
         layout.addWidget(sib_label, row, 0)
 
         self.sibling_spin = QSpinBox()
@@ -139,6 +142,6 @@ class SpacingSection(CollapsiblePanel):
                 for i in range(content_layout.count()):
                     item = content_layout.itemAt(i)
                     widget = item.widget() if item else None
-                    if widget and (widget == self.sibling_spin or (isinstance(widget, QLabel) and "Sibling" in widget.text())):
+                    if widget and (widget == self.sibling_spin or (isinstance(widget, QLabel) and "V-Spacing" in widget.text())):
                         # Check if it's the sibling spin or its label
                         widget.setVisible(not hide)

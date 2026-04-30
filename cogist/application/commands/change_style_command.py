@@ -202,18 +202,9 @@ class ChangeStyleCommand(Command):
                                     # Backup border radius
                                     if hasattr(role_style, 'shape'):
                                         backup[key] = role_style.shape.border_radius
-                                elif key == "bg_color":
-                                    # Background color from color_scheme
-                                    if self.style_config.resolved_color_scheme:
-                                        backup[key] = self.style_config.resolved_color_scheme.node_colors.get(role)
                                 elif key == "text_color":
-                                    # Text color from color_scheme
-                                    if self.style_config.resolved_color_scheme and self.style_config.resolved_color_scheme.text_colors:
-                                        backup[key] = self.style_config.resolved_color_scheme.text_colors.get(role)
-                                elif key == "border_color":
-                                    # Border color from color_scheme
-                                    if self.style_config.resolved_color_scheme and self.style_config.resolved_color_scheme.border_colors:
-                                        backup[key] = self.style_config.resolved_color_scheme.border_colors.get(role)
+                                    # Text color from role_style
+                                    backup[key] = role_style.text_color
                                 elif key == "font_italic":
                                     # Direct boolean backup
                                     if hasattr(role_style, 'font_italic'):
@@ -238,17 +229,6 @@ class ChangeStyleCommand(Command):
         if layer == "canvas":
             if "bg_color" in style_updates:
                 self.style_config.canvas_bg_color = style_updates["bg_color"]
-            # Also restore resolved_color_scheme if it was backed up
-            if "resolved_canvas_bg_color" in style_updates:
-                if self.style_config.resolved_color_scheme:
-                    self.style_config.resolved_color_scheme.canvas_bg_color = (
-                        style_updates["resolved_canvas_bg_color"]
-                    )
-            # Sync canvas_bg_color to resolved_color_scheme if only bg_color is present
-            elif "bg_color" in style_updates and self.style_config.resolved_color_scheme:
-                self.style_config.resolved_color_scheme.canvas_bg_color = (
-                    style_updates["bg_color"]
-                )
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}
@@ -298,8 +278,8 @@ class ChangeStyleCommand(Command):
                         role_style.connector_style = style_updates["connector_style"]
                     if "line_width" in style_updates:
                         role_style.line_width = style_updates["line_width"]
-                    if "connector_color" in style_updates:
-                        role_style.connector_color = style_updates["connector_color"]
+                    if "connector_color_index" in style_updates:
+                        role_style.connector_color_index = style_updates["connector_color_index"]
             else:
                 # For node layers, access the resolved template
                 if self.style_config.resolved_template:
@@ -330,22 +310,9 @@ class ChangeStyleCommand(Command):
                                     # Handle border radius update
                                     if hasattr(role_style, 'shape'):
                                         role_style.shape.border_radius = value
-                                elif key == "bg_color":
-                                    # Background color goes to color_scheme
-                                    if self.style_config.resolved_color_scheme:
-                                        self.style_config.resolved_color_scheme.node_colors[role] = value
                                 elif key == "text_color":
-                                    # Text color goes to color_scheme
-                                    if self.style_config.resolved_color_scheme:
-                                        if not self.style_config.resolved_color_scheme.text_colors:
-                                            self.style_config.resolved_color_scheme.text_colors = {}
-                                        self.style_config.resolved_color_scheme.text_colors[role] = value
-                                elif key == "border_color":
-                                    # Border color goes to color_scheme
-                                    if self.style_config.resolved_color_scheme:
-                                        if not self.style_config.resolved_color_scheme.border_colors:
-                                            self.style_config.resolved_color_scheme.border_colors = {}
-                                        self.style_config.resolved_color_scheme.border_colors[role] = value
+                                    # Text color goes to role_style
+                                    role_style.text_color = value
                                 elif key == "font_italic":
                                     # Direct boolean assignment
                                     if hasattr(role_style, 'font_italic'):

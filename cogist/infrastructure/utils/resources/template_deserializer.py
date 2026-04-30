@@ -36,8 +36,4 @@ def deserialize_complete_template(data: dict[str, Any]) -> MindMapStyle:
         color_scheme_data = data['color_scheme']
         style.resolved_color_scheme = deserialize_color_scheme(color_scheme_data)
 
-        # Sync canvas background color
-        if style.resolved_color_scheme:
-            style.canvas_bg_color = style.resolved_color_scheme.canvas_bg_color
-
     return style

@@ -8,7 +8,6 @@ from .extended_styles import (
     BackgroundStyle,
     BorderStyle,
     ColorScheme,
-    NodeColorConfig,
     NodeRole,
     NodeShape,
     RoleBasedStyle,
@@ -62,7 +61,10 @@ def create_default_template() -> MindMapStyle:
             connector_shape="bezier",
             connector_style="solid",
             line_width=2.0,
-            connector_color=None,
+            connector_color_index=0,
+            connector_brightness=1.0,
+            connector_opacity=255,
+            text_color=None,
         ),
         NodeRole.PRIMARY: RoleBasedStyle(
             role=NodeRole.PRIMARY,
@@ -99,7 +101,10 @@ def create_default_template() -> MindMapStyle:
             connector_shape="bezier",
             connector_style="solid",
             line_width=2.0,
-            connector_color=None,
+            connector_color_index=0,
+            connector_brightness=1.0,
+            connector_opacity=255,
+            text_color=None,
         ),
         NodeRole.SECONDARY: RoleBasedStyle(
             role=NodeRole.SECONDARY,
@@ -136,7 +141,10 @@ def create_default_template() -> MindMapStyle:
             connector_shape="bezier",
             connector_style="solid",
             line_width=2.0,
-            connector_color=None,
+            connector_color_index=0,
+            connector_brightness=1.0,
+            connector_opacity=255,
+            text_color=None,
         ),
         NodeRole.TERTIARY: RoleBasedStyle(
             role=NodeRole.TERTIARY,
@@ -173,7 +181,10 @@ def create_default_template() -> MindMapStyle:
             connector_shape="bezier",
             connector_style="solid",
             line_width=2.0,
-            connector_color=None,
+            connector_color_index=0,
+            connector_brightness=1.0,
+            connector_opacity=255,
+            text_color=None,
         ),
     }
 
@@ -191,15 +202,7 @@ def create_default_template() -> MindMapStyle:
     # Create a default color scheme
     color_scheme = ColorScheme(
         name="default",
-        description="Default blue color scheme",
-        role_configs={
-            NodeRole.ROOT: NodeColorConfig(bg_color="#FF2196F3", border_color="#FF2196F3"),
-            NodeRole.PRIMARY: NodeColorConfig(bg_color="#FF4CAF50", border_color="#FF4CAF50"),
-            NodeRole.SECONDARY: NodeColorConfig(bg_color="#FFFF9800", border_color="#FFFF9800"),
-            NodeRole.TERTIARY: NodeColorConfig(bg_color="#FF9E9E9E", border_color="#FF9E9E9E"),
-        },
-        canvas_bg_color="#FFFFFFFF",
-        edge_color="#FF666666",
+        description="Default 8-color scheme",
     )
 
     # Create MindMapStyle with all style data explicitly initialized

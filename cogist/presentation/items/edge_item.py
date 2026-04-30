@@ -4,6 +4,7 @@ Edge Item - Presentation Layer
 Connector edge between nodes with strategy pattern support.
 """
 
+import colorsys
 import contextlib
 
 from PySide6.QtCore import QPointF, Qt
@@ -67,6 +68,7 @@ class EdgeItem(QGraphicsPathItem):
             )
 
             source_depth = self.source_item.depth
+            target_depth = self.target_item.depth
 
             # Get connector config from role-based style
             role_map = {
@@ -74,7 +76,8 @@ class EdgeItem(QGraphicsPathItem):
                 1: NodeRole.PRIMARY,
                 2: NodeRole.SECONDARY,
             }
-            role = role_map.get(source_depth, NodeRole.TERTIARY)
+            # Use source depth for connector style (edge inherits source node's connector config)
+            connector_role = role_map.get(source_depth, NodeRole.TERTIARY)
 
             # Default values
             color_str = "#FF666666"
@@ -84,25 +87,42 @@ class EdgeItem(QGraphicsPathItem):
             enable_gradient = True
 
             if (self.style_config.resolved_template and
-                role in self.style_config.resolved_template.role_styles):
-                role_style = self.style_config.resolved_template.role_styles[role]
-                color_str = role_style.connector_color or (self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666")
+                connector_role in self.style_config.resolved_template.role_styles):
+                role_style = self.style_config.resolved_template.role_styles[connector_role]
+                color_scheme = self.style_config.resolved_color_scheme
+                
+                # Get connector color from color pool using connector_color_index
+                if color_scheme and role_style.connector_color_index < len(color_scheme.branch_colors):
+                    base_color = color_scheme.branch_colors[role_style.connector_color_index]
+                    # Apply brightness adjustment
+                    if role_style.connector_brightness != 1.0:
+                        base_color = self._adjust_color_brightness(base_color, role_style.connector_brightness)
+                    # Apply opacity adjustment
+                    if role_style.connector_opacity < 255:
+                        base_color = self._apply_opacity(base_color, role_style.connector_opacity)
+                    color_str = base_color
+                else:
+                    # Fallback to default color
+                    color_str = "#666666"
+                
                 line_width = role_style.line_width
                 connector_style_str = role_style.connector_style
                 connector_shape = role_style.connector_shape
                 enable_gradient = (connector_shape == "bezier")
 
-            # Rainbow branch handling for Level 1 edges
+            # Rainbow branch handling
             # Apply rainbow color to:
             # 1. Root -> Level 1 edges (target is Level 1)
             # 2. Level 1 -> Level 2+ edges (source is Level 1)
+            # 3. Level 2+ -> Level 2+ edges (inherit from Level 1 ancestor)
             color_scheme = self.style_config.resolved_color_scheme
-            if color_scheme and color_scheme.use_rainbow_branches:
+            use_rainbow = self.style_config.use_rainbow_branches if self.style_config else False
+            if use_rainbow:
                 branch_idx = None
 
                 # Case 1: Target is a Level 1 node (Root -> Level 1 edge)
                 if (hasattr(self.target_item, 'domain_node') and self.target_item.domain_node and
-                        self.target_item.domain_node.parent and self.target_item.depth == 1):
+                        self.target_item.domain_node.parent and target_depth == 1):
                     with contextlib.suppress(ValueError, AttributeError):
                         branch_idx = self.target_item.domain_node.parent.children.index(self.target_item.domain_node)
 
@@ -112,12 +132,20 @@ class EdgeItem(QGraphicsPathItem):
                     with contextlib.suppress(ValueError, AttributeError):
                         branch_idx = self.source_item.domain_node.parent.children.index(self.source_item.domain_node)
 
+                # Case 3: Level 2+ -> Level 2+ edges (inherit from Level 1 ancestor)
+                elif target_depth >= 2 and hasattr(self.target_item, '_find_level_1_ancestor'):
+                    level_1_ancestor = self.target_item._find_level_1_ancestor()
+                    if level_1_ancestor and level_1_ancestor.parent:
+                        with contextlib.suppress(ValueError, AttributeError):
+                            branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
+
                 # Apply rainbow color if branch index found
                 if branch_idx is not None:
                     branch_color = get_rainbow_branch_color(
                         branch_idx,
                         color_scheme.branch_colors
                     )
+
                     color_str = branch_color
 
             # Extract style values directly from config
@@ -182,6 +210,72 @@ class EdgeItem(QGraphicsPathItem):
                 # For dashed/dotted/dash-dot lines: use manual dash implementation
                 # This ensures consistent dash patterns across all connector shapes
                 self._draw_dashed_line(painter, color, line_style)
+
+    def _adjust_color_brightness(self, color_hex: str, brightness_factor: float) -> str:
+        """Adjust color brightness using HLS color space.
+
+        Args:
+            color_hex: Color in hex format (#AARRGGBB or #RRGGBB)
+            brightness_factor: Brightness multiplier (0.0-2.0, 1.0 = no change)
+
+        Returns:
+            Adjusted color in #AARRGGBB format
+        """
+        color_hex = color_hex.lstrip("#")
+
+        # Extract alpha and RGB components
+        if len(color_hex) == 8:
+            alpha = int(color_hex[0:2], 16)
+            r = int(color_hex[2:4], 16) / 255.0
+            g = int(color_hex[4:6], 16) / 255.0
+            b = int(color_hex[6:8], 16) / 255.0
+        elif len(color_hex) == 6:
+            alpha = 255
+            r = int(color_hex[0:2], 16) / 255.0
+            g = int(color_hex[2:4], 16) / 255.0
+            b = int(color_hex[4:6], 16) / 255.0
+        else:
+            return color_hex
+
+        # Convert to HLS
+        h, lightness, s = colorsys.rgb_to_hls(r, g, b)
+
+        # Apply brightness adjustment
+        new_lightness = lightness * brightness_factor
+        new_lightness = max(0.0, min(1.0, new_lightness))  # Clamp to [0, 1]
+
+        # Convert back to RGB
+        new_r, new_g, new_b = colorsys.hls_to_rgb(h, new_lightness, s)
+
+        # Convert to hex
+        r_int = int(new_r * 255)
+        g_int = int(new_g * 255)
+        b_int = int(new_b * 255)
+
+        return f"#{alpha:02X}{r_int:02X}{g_int:02X}{b_int:02X}"
+
+    def _apply_opacity(self, color_hex: str, opacity: int) -> str:
+        """Apply opacity to a color by modifying the alpha channel.
+
+        Args:
+            color_hex: Color in hex format (#AARRGGBB or #RRGGBB)
+            opacity: Opacity value (0-255), 255 = fully opaque
+
+        Returns:
+            Color with modified alpha channel in #AARRGGBB format
+        """
+        color_hex = color_hex.lstrip("#")
+
+        # Extract RGB components
+        if len(color_hex) == 8:
+            rgb_hex = color_hex[2:]
+        elif len(color_hex) == 6:
+            rgb_hex = color_hex
+        else:
+            return color_hex
+
+        # Apply new opacity
+        return f"#{opacity:02X}{rgb_hex}"
 
     def _draw_dashed_line(self, painter, color, line_style):
         """Draw dashed/dotted/dash-dot lines with precise pattern control.

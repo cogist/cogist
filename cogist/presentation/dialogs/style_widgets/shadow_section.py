@@ -20,13 +20,16 @@ class ShadowSection(CollapsiblePanel):
 
     shadow_changed = Signal(dict)
 
-    # UI constants
-    LABEL_WIDTH = 75
+    # UI constants (fallback value, will use parent's LABEL_WIDTH if available)
+    LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
 
     def __init__(self, parent=None):
         super().__init__("Font Shadow", collapsed=True, parent=parent)
+
+        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
         # State
         self._initialized = False
@@ -42,20 +45,27 @@ class ShadowSection(CollapsiblePanel):
             "offset_x": 2,
             "offset_y": 2,
             "blur": 4,
-            "color": "#000000",
+            "color": None,  # Will be set from global style config
         }
 
     def _on_toggled(self, checked: bool):
         """Handle expand/collapse events."""
         if checked and not self._initialized:
+            # Hide content widget before initialization to prevent flicker
+            self._content_widget.setVisible(False)
+
+            # Initialize content
             self._init_content()
             self._initialized = True
+
+            # Show content widget after initialization is complete
+            self._content_widget.setVisible(True)
 
     def _init_content(self):
         """Initialize content on first expand (lazy initialization)."""
         layout = QGridLayout()
         layout.setSpacing(6)
-        layout.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
+        layout.setContentsMargins(self.GROUP_MARGIN, 6, self.GROUP_MARGIN, 16)
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
 
@@ -64,7 +74,7 @@ class ShadowSection(CollapsiblePanel):
         # Offset X
         offset_x_label = QLabel("Offset X:")
         offset_x_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        offset_x_label.setMinimumWidth(self.LABEL_WIDTH)
+        offset_x_label.setFixedWidth(self._label_width)
         offset_x_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
         layout.addWidget(offset_x_label, row, 0)
 
@@ -80,7 +90,7 @@ class ShadowSection(CollapsiblePanel):
         # Offset Y
         offset_y_label = QLabel("Offset Y:")
         offset_y_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        offset_y_label.setMinimumWidth(self.LABEL_WIDTH)
+        offset_y_label.setFixedWidth(self._label_width)
         offset_y_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
         layout.addWidget(offset_y_label, row, 0)
 
@@ -96,7 +106,7 @@ class ShadowSection(CollapsiblePanel):
         # Blur
         blur_label = QLabel("Blur:")
         blur_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        blur_label.setMinimumWidth(self.LABEL_WIDTH)
+        blur_label.setFixedWidth(self._label_width)
         blur_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
         layout.addWidget(blur_label, row, 0)
 
@@ -112,7 +122,7 @@ class ShadowSection(CollapsiblePanel):
         # Color
         color_label = QLabel("Color:")
         color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        color_label.setMinimumWidth(self.LABEL_WIDTH)
+        color_label.setFixedWidth(self._label_width)
         color_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
         layout.addWidget(color_label, row, 0)
 
@@ -143,7 +153,23 @@ class ShadowSection(CollapsiblePanel):
         """Open color picker dialog for shadow color."""
         from PySide6.QtWidgets import QColorDialog
 
-        current_color = self.current_shadow.get("color", "#000000")
+        # Get current color from style data object (no fallback)
+        current_color = self.current_shadow.get("color")
+        if not current_color:
+            # Get from parent's style_config if available
+            parent = self.parent()
+            if parent and hasattr(parent, 'style_config') and parent.style_config:
+                from cogist.domain.styles import NodeRole
+                role = self._get_current_role()
+                if role and parent.style_config.resolved_template:
+                    role_style = parent.style_config.resolved_template.role_styles.get(role)
+                    if role_style:
+                        current_color = role_style.shadow_color
+        
+        # If still no color, use black as last resort
+        if not current_color:
+            current_color = "#FF000000"
+        
         color = QColorDialog.getColor(QColor(current_color), self, "Select Shadow Color", QColorDialog.ShowAlphaChannel)
 
         if color.isValid():
