@@ -1057,7 +1057,9 @@ class AdvancedStyleTab(QWidget):
                 "connector_shape": layer_data["connector_type"],
                 "connector_style": layer_data["connector_style"],
                 "line_width": layer_data["connector_width"],
-                "connector_color": layer_data["connector_color"],
+                "connector_color_index": layer_data["connector_color_index"],
+                "connector_brightness": layer_data["connector_brightness"],
+                "connector_opacity": layer_data["connector_opacity"],
             }
             self.connector_section.set_style(connector_style)
 

@@ -480,7 +480,7 @@ class MindMapView(QGraphicsView):
                                 # For now, use base color
                                 pass
                         else:
-                            connector_color = color_scheme.edge_color if color_scheme else "#666666"
+                            connector_color = "#666666"
                         
                         edge_style_config = {
                             "connector_color": connector_color,
@@ -491,7 +491,7 @@ class MindMapView(QGraphicsView):
                     else:
                         # Fallback to default values
                         edge_style_config = {
-                            "connector_color": self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666",
+                            "connector_color": "#666666",
                             "line_width": 2.0,
                             "connector_style": "solid",
                             "connector_shape": "bezier",
@@ -2332,7 +2332,7 @@ class MindMapView(QGraphicsView):
                     if color_scheme and role_style.connector_color_index < len(color_scheme.branch_colors):
                         color = color_scheme.branch_colors[role_style.connector_color_index]
                     else:
-                        color = color_scheme.edge_color if color_scheme else "#999999"
+                        color = "#999999"
                     
                     connector_shape = role_style.connector_shape
 
