@@ -135,7 +135,7 @@ class MainWindow(QMainWindow):
 
     def _on_panel_activated(self, panel_name: str):
         """Handle panel switch from activity bar."""
-        if panel_name in ["simple", "advanced"]:
+        if panel_name in ["color_scheme", "advanced"]:
             # Show style panel
             self.style_panel.setVisible(True)
             # Switch to the selected mode
@@ -1020,8 +1020,8 @@ class MainWindow(QMainWindow):
 
         # Update activity bar button state
         if not is_visible:
-            # If showing, activate advanced mode by default
-            self.activity_bar.activate_panel("advanced")
+            # If showing, activate color scheme by default
+            self.activity_bar.activate_panel("color_scheme")
         else:
             # If hiding, uncheck all buttons
             for btn in self.activity_bar.buttons.values():
@@ -1029,8 +1029,8 @@ class MainWindow(QMainWindow):
 
     def _open_style_panel(self):
         """Open the style panel via activity bar."""
-        # Activate the advanced mode button by default
-        self.activity_bar.activate_panel("advanced")
+        # Activate the color scheme button by default
+        self.activity_bar.activate_panel("color_scheme")
 
 
 def main():

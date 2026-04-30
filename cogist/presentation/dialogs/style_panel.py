@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from .style_panel_advanced import AdvancedStyleTab
+from .style_panel_color import ColorSchemeTab
 
 
 class StylePanel(QWidget):
@@ -41,20 +42,20 @@ class StylePanel(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # Create simple tab (default)
-        self.simple_tab = SimpleStyleTab()
+        # Create tabs
+        self.color_scheme_tab = ColorSchemeTab(style_config=self.style_config)
         self.advanced_tab = AdvancedStyleTab(
             style_config=self.style_config,
             config_manager=self.config_manager,
             command_history=self.command_history,
         )
 
-        # Initially show advanced tab
-        main_layout.addWidget(self.simple_tab)
-        self.current_panel = "simple"
+        # Initially show color scheme tab (first)
+        main_layout.addWidget(self.color_scheme_tab)
+        self.current_panel = "color_scheme"
 
     def switch_panel(self, panel_name: str):
-        """Switch between simple and advanced panels."""
+        """Switch between color scheme and advanced panels."""
         if panel_name == self.current_panel:
             return
 
@@ -70,8 +71,8 @@ class StylePanel(QWidget):
                 widget.setParent(None)
 
         # Add new panel
-        if panel_name == "simple":
-            layout.addWidget(self.simple_tab)
+        if panel_name == "color_scheme":
+            layout.addWidget(self.color_scheme_tab)
         elif panel_name == "advanced":
             layout.addWidget(self.advanced_tab)
 

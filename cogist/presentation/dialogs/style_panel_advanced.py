@@ -13,7 +13,6 @@ from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 from .style_widgets import (
     BorderSection,
     CanvasPanel,
-    ColorSchemeSection,
     ConnectorSection,
     FontStyleSection,
     LayerSelector,
@@ -498,7 +497,7 @@ class AdvancedStyleTab(QWidget):
         # Add modular components
         self.layer_selector = LayerSelector()
         self.canvas_panel = CanvasPanel(self)  # NEW: Canvas panel for background color
-        self.color_scheme_section = ColorSchemeSection()
+        # ColorSchemeSection removed - now in separate ColorSchemeTab
         self.spacing_section = SpacingSection()
         self.node_style_section = NodeStyleSection()
         self.font_style_section = FontStyleSection()
@@ -507,7 +506,6 @@ class AdvancedStyleTab(QWidget):
         self.connector_section = ConnectorSection()
 
         layout.addWidget(self.layer_selector)
-        layout.addWidget(self.color_scheme_section)  # Color scheme at top
         layout.addWidget(self.canvas_panel)  # NEW: Canvas panel
         layout.addWidget(self.spacing_section)
         layout.addWidget(self.node_style_section)
@@ -561,8 +559,7 @@ class AdvancedStyleTab(QWidget):
         # Layer selection
         self.layer_selector.layer_changed.connect(self._on_layer_changed)
 
-        # Color scheme
-        self.color_scheme_section.color_changed.connect(self._on_color_scheme_changed)
+        # ColorSchemeSection removed - now in separate ColorSchemeTab
 
         # Spacing configuration
         self.spacing_section.spacing_changed.connect(self._on_spacing_changed)
@@ -1148,13 +1145,6 @@ class AdvancedStyleTab(QWidget):
             canvas_style = {"bg_color": layer_data["bg_color"]}
             self.canvas_panel.set_style(canvas_style)
 
-            # Load global rainbow config into color_scheme_section
-            color_style = {
-                "use_rainbow_branches": layer_data.get("use_rainbow", False),
-                "branch_colors": layer_data.get("rainbow_pool", []),
-            }
-            self.color_scheme_section.set_style(color_style)
-
             # Hide shadow section for canvas
             self.shadow_section.setVisible(False)
         else:
@@ -1164,13 +1154,6 @@ class AdvancedStyleTab(QWidget):
 
             # Border section handles border
             self.border_section.set_style(layer_data)
-
-            # Color scheme section only handles global color pool and rainbow mode
-            color_style = {
-                "use_rainbow_branches": layer_data.get("use_rainbow", False),
-                "branch_colors": layer_data.get("rainbow_pool", []),
-            }
-            self.color_scheme_section.set_style(color_style)
 
             # Load font style
             self.font_style_section.set_style(layer_data)

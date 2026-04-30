@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 from cogist.presentation.widgets import ToggleSwitch
 
 from .collapsible_panel import CollapsiblePanel
-from .color_picker import create_color_picker
+from .color_picker import ColorPicker, create_color_picker
 from .dialog_utils import position_color_dialog
 
 
@@ -66,7 +66,7 @@ class ColorSchemeSection(CollapsiblePanel):
         self.rainbow_pool_widget: QWidget | None = None
 
         # Color picker (shared for all buttons)
-        self._color_picker: type[create_color_picker] | None = None
+        self._color_picker: ColorPicker | None = None
         self._current_color_button: QPushButton | None = None
 
         self.toggled.connect(self._on_toggled)
