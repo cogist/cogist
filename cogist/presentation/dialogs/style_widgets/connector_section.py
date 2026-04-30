@@ -145,6 +145,45 @@ class ConnectorSection(CollapsiblePanel):
         self.connector_width_spin.valueChanged.connect(self._on_width_changed)
         layout.addWidget(self.connector_width_spin, 2, 1)
 
+        # Connector color
+        color_label = QLabel("Color:")
+        color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        color_label.setFixedWidth(self._label_width)
+        layout.addWidget(color_label, 3, 0)
+
+        self.connector_color_btn = MenuButton("Color 1", self.WIDGET_HEIGHT)
+        self.connector_color_btn.setStyleSheet(self._button_style())
+        self.connector_color_btn.clicked.connect(self._on_color_clicked)
+        layout.addWidget(self.connector_color_btn, 3, 1)
+
+        # Connector brightness
+        brightness_label = QLabel("Brightness:")
+        brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        brightness_label.setFixedWidth(self._label_width)
+        layout.addWidget(brightness_label, 4, 0)
+
+        from PySide6.QtWidgets import QSlider
+        self.connector_brightness_slider = QSlider(Qt.Horizontal)
+        self.connector_brightness_slider.setFixedHeight(24)
+        self.connector_brightness_slider.setRange(50, 150)  # 0.5-1.5
+        self.connector_brightness_slider.setValue(int(self.current_style["connector_brightness"] * 100))
+        self.connector_brightness_slider.valueChanged.connect(self._on_brightness_changed)
+        layout.addWidget(self.connector_brightness_slider, 4, 1)
+
+        # Connector opacity
+        opacity_label = QLabel("Opacity:")
+        opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        opacity_label.setFixedWidth(self._label_width)
+        layout.addWidget(opacity_label, 5, 0)
+
+        from PySide6.QtWidgets import QSlider
+        self.connector_opacity_slider = QSlider(Qt.Horizontal)
+        self.connector_opacity_slider.setFixedHeight(24)
+        self.connector_opacity_slider.setRange(0, 255)
+        self.connector_opacity_slider.setValue(self.current_style["connector_opacity"])
+        self.connector_opacity_slider.valueChanged.connect(self._on_opacity_changed)
+        layout.addWidget(self.connector_opacity_slider, 5, 1)
+
         self.setLayout(layout)
 
     def _button_style(self) -> str:

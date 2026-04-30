@@ -5,7 +5,7 @@ Implements lazy initialization for better performance.
 """
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QGridLayout, QLabel, QMenu, QSpinBox
+from PySide6.QtWidgets import QCheckBox, QGridLayout, QLabel, QMenu, QSlider, QSpinBox
 
 from .collapsible_panel import CollapsiblePanel
 from .menu_button import MenuButton
@@ -55,11 +55,60 @@ class BorderSection(CollapsiblePanel):
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
 
+        row = 0
+
+        # Border enabled (first control)
+        self.enabled_check = QCheckBox()
+        self.enabled_check.setChecked(self.current_style.get("enabled", True))
+        self.enabled_check.stateChanged.connect(self._on_enabled_changed)
+        layout.addWidget(self.enabled_check, row, 1, alignment=Qt.AlignLeft)
+        row += 1
+
+        # Border color (placeholder - will be implemented later)
+        color_label = QLabel("Color:")
+        color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        color_label.setFixedWidth(self._label_width)
+        layout.addWidget(color_label, row, 0)
+
+        self.color_btn = MenuButton("Color 1", self.WIDGET_HEIGHT)
+        self.color_btn.setStyleSheet(self._button_style())
+        self.color_btn.clicked.connect(self._on_color_clicked)
+        layout.addWidget(self.color_btn, row, 1)
+        row += 1
+
+        # Brightness slider
+        brightness_label = QLabel("Brightness:")
+        brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        brightness_label.setFixedWidth(self._label_width)
+        layout.addWidget(brightness_label, row, 0)
+
+        self.brightness_slider = QSlider(Qt.Horizontal)
+        self.brightness_slider.setRange(50, 150)  # 0.5-1.5
+        self.brightness_slider.setValue(
+            int(self.current_style.get("brightness", 1.0) * 100)
+        )
+        self.brightness_slider.valueChanged.connect(self._on_brightness_changed)
+        layout.addWidget(self.brightness_slider, row, 1)
+        row += 1
+
+        # Opacity slider
+        opacity_label = QLabel("Opacity:")
+        opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        opacity_label.setFixedWidth(self._label_width)
+        layout.addWidget(opacity_label, row, 0)
+
+        self.opacity_slider = QSlider(Qt.Horizontal)
+        self.opacity_slider.setRange(0, 255)
+        self.opacity_slider.setValue(self.current_style.get("opacity", 255))
+        self.opacity_slider.valueChanged.connect(self._on_opacity_changed)
+        layout.addWidget(self.opacity_slider, row, 1)
+        row += 1
+
         # Border style
         style_label = QLabel("Style:")
         style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         style_label.setFixedWidth(self._label_width)
-        layout.addWidget(style_label, 0, 0)
+        layout.addWidget(style_label, row, 0)
 
         # Get initial border style from current_style
         border_style_map = {
@@ -67,7 +116,9 @@ class BorderSection(CollapsiblePanel):
             "dashed": "Dashed",
             "dotted": "Dotted",
         }
-        initial_border_style = border_style_map.get(self.current_style.get("border_style", "solid"), "Solid")
+        initial_border_style = border_style_map.get(
+            self.current_style.get("border_style", "solid"), "Solid"
+        )
 
         self.border_style_menu = QMenu()
         border_styles = ["Solid", "Dashed", "Dotted", "Dash-Dot"]
@@ -79,13 +130,14 @@ class BorderSection(CollapsiblePanel):
         self.border_style_combo = MenuButton(initial_border_style, self.WIDGET_HEIGHT)
         self.border_style_combo.setStyleSheet(self._button_style())
         self.border_style_combo.set_menu(self.border_style_menu)
-        layout.addWidget(self.border_style_combo, 0, 1)
+        layout.addWidget(self.border_style_combo, row, 1)
+        row += 1
 
         # Border width
         width_label = QLabel("Width:")
         width_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         width_label.setFixedWidth(self._label_width)
-        layout.addWidget(width_label, 1, 0)
+        layout.addWidget(width_label, row, 0)
 
         self.border_width_spin = QSpinBox()
         self.border_width_spin.setFixedHeight(self.WIDGET_HEIGHT)
@@ -93,7 +145,7 @@ class BorderSection(CollapsiblePanel):
         self.border_width_spin.setValue(self.current_style["border_width"])
         self.border_width_spin.setAlignment(Qt.AlignLeft)
         self.border_width_spin.valueChanged.connect(self._on_width_changed)
-        layout.addWidget(self.border_width_spin, 1, 1)
+        layout.addWidget(self.border_width_spin, row, 1)
 
         self.setLayout(layout)
 
