@@ -708,7 +708,7 @@ class AdvancedStyleTab(QWidget):
             # Get role_style from new architecture
             if role in self.style_config.role_styles:
                 role_style = self.style_config.role_styles[role]
-                
+
                 # TODO: rainbow_bg_enabled and rainbow_border_enabled will be handled later
                 # if "rainbow_bg_enabled" in colors:
                 #     role_style.bg_enabled = colors["rainbow_bg_enabled"]
@@ -716,7 +716,7 @@ class AdvancedStyleTab(QWidget):
                 #     role_style.border_enabled = colors["rainbow_border_enabled"]
                 #     # Control border section visibility based on rainbow_border_enabled
                 #     self.border_section.setVisible(colors["rainbow_border_enabled"])
-                
+
                 # Brightness and opacity adjustments
                 if "brightness_amount" in colors:
                     role_style.bg_brightness = colors["brightness_amount"]
@@ -761,7 +761,7 @@ class AdvancedStyleTab(QWidget):
             # Get role_style from new architecture
             if role in self.style_config.role_styles:
                 role_style = self.style_config.role_styles[role]
-                
+
                 # Handle node background color
                 if "bg_color" in colors:
                     # Find color index in branch_colors
