@@ -294,12 +294,11 @@ class AdvancedStyleTab(QWidget):
             and role in self.style_config.resolved_template.role_styles
         ):
             role_style = self.style_config.resolved_template.role_styles[role]
-            # Connector color comes from ColorScheme if not overridden
-            if role_style.connector_color:
-                return role_style.connector_color
-            # Fall back to edge color from color scheme
+            # Connector color comes from color pool using connector_color_index
             if self.style_config.resolved_color_scheme:
-                return self.style_config.resolved_color_scheme.edge_color
+                color_scheme = self.style_config.resolved_color_scheme
+                if role_style.connector_color_index < len(color_scheme.branch_colors):
+                    return color_scheme.branch_colors[role_style.connector_color_index]
 
         # Default value
         return "#666666"
@@ -314,13 +313,9 @@ class AdvancedStyleTab(QWidget):
         assert self.style_config is not None
 
         if layer_name == "canvas":
-            # Handle canvas background color separately
+            # Handle canvas background color
             if "bg_color" in updates:
                 self.style_config.canvas_bg_color = updates["bg_color"]
-                if self.style_config.resolved_color_scheme:
-                    self.style_config.resolved_color_scheme.canvas_bg_color = updates[
-                        "bg_color"
-                    ]
             return  # Canvas doesn't have role styles
 
         # Map layer to role
@@ -342,14 +337,13 @@ class AdvancedStyleTab(QWidget):
         role = NodeRole(role_str)
 
         template = self.style_config.resolved_template
-        color_scheme = self.style_config.resolved_color_scheme
 
         if not template or role not in template.role_styles:
             return
 
         role_style = template.role_styles[role]
 
-        # Apply updates to role_style and color_scheme
+        # Apply updates to role_style
         for key, value in updates.items():
             if key == "shape":
                 # Handle shape type update
@@ -359,18 +353,9 @@ class AdvancedStyleTab(QWidget):
                 # Handle border radius update
                 if hasattr(role_style, "shape"):
                     role_style.shape.border_radius = value
-            elif key == "bg_color":
-                # Background color goes to color_scheme
-                if color_scheme:
-                    color_scheme.role_configs[role].bg_color = value
             elif key == "text_color":
-                # Text color goes to color_scheme
-                if color_scheme:
-                    color_scheme.role_configs[role].text_color = value
-            elif key == "border_color":
-                # Border color goes to color_scheme
-                if color_scheme:
-                    color_scheme.role_configs[role].border_color = value
+                # Text color goes to role_style
+                role_style.text_color = value
             elif key == "font_italic":
                 # Direct boolean assignment
                 if hasattr(role_style, "font_italic"):
@@ -552,12 +537,8 @@ class AdvancedStyleTab(QWidget):
         if not role:
             # Canvas layer - handle canvas_bg and rainbow config
             if "canvas_bg" in colors:
-                # Update both style_config and resolved_color_scheme
+                # Update canvas background color
                 self.style_config.canvas_bg_color = colors["canvas_bg"]
-                if self.style_config.resolved_color_scheme:
-                    self.style_config.resolved_color_scheme.canvas_bg_color = colors[
-                        "canvas_bg"
-                    ]
 
             # Apply styles to mindmap after updating canvas/rainbow config
             self._apply_styles_to_mindmap()
@@ -567,30 +548,11 @@ class AdvancedStyleTab(QWidget):
         if not self.style_config.resolved_color_scheme:
             return
 
-        color_scheme = self.style_config.resolved_color_scheme
+        # Note: Rainbow mode controls are now global (use_rainbow_branches)
+        # Background/Border enabled and brightness/opacity are in RoleBasedStyle
+        # These are handled by NodeStyleSection and BorderSection directly
 
-        # Handle per-role rainbow mode controls (for root/level_1/2/3+)
-        if role and self.current_layer in ["root", "level_1", "level_2", "level_3_plus"]:
-            if "rainbow_bg_enabled" in colors:
-                color_scheme.role_configs[role].rainbow_bg_enabled = colors[
-                    "rainbow_bg_enabled"
-                ]
-            if "rainbow_border_enabled" in colors:
-                color_scheme.role_configs[role].rainbow_border_enabled = colors[
-                    "rainbow_border_enabled"
-                ]
-                # Control border section visibility based on rainbow_border_enabled
-                self.border_section.setVisible(colors["rainbow_border_enabled"])
-            if "brightness_amount" in colors:
-                color_scheme.role_configs[role].brightness_amount = colors[
-                    "brightness_amount"
-                ]
-            if "opacity_amount" in colors:
-                color_scheme.role_configs[role].opacity_amount = colors[
-                    "opacity_amount"
-                ]
-
-        # Apply styles to mindmap after updating role configs
+        # Apply styles to mindmap
         self._apply_styles_to_mindmap()
 
         # Use command system if available
@@ -621,29 +583,8 @@ class AdvancedStyleTab(QWidget):
                 )
                 command.execute()
                 self.command_history.push(command)
-        else:
-            # Fallback: direct update without undo/redo
-            # Handle node background color
-            if "bg_color" in colors:
-                color_scheme.role_configs[role].bg_color = colors["bg_color"]
-
-            # Handle text/foreground color
-            if "text_color" in colors:
-                color_scheme.role_configs[role].text_color = colors["text_color"]
-
-            # Handle border color
-            if "border_color" in colors:
-                color_scheme.role_configs[role].border_color = colors["border_color"]
-
-            # Handle connector color
-            if (
-                "connector_color" in colors
-                and self.style_config.resolved_template
-                and role in self.style_config.resolved_template.role_styles
-            ):
-                role_style = self.style_config.resolved_template.role_styles[role]
-                role_style.connector_color = colors["connector_color"]
-
+        # Note: Color changes are now handled by UI sections directly
+        # This method is kept for backward compatibility
         self._apply_styles_to_mindmap()
 
     def _on_spacing_changed(self, spacing: dict):
