@@ -507,8 +507,8 @@ class AdvancedStyleTab(QWidget):
         self.connector_section = ConnectorSection()
 
         layout.addWidget(self.layer_selector)
+        layout.addWidget(self.color_scheme_section)  # Color scheme at top
         layout.addWidget(self.canvas_panel)  # NEW: Canvas panel
-        layout.addWidget(self.color_scheme_section)
         layout.addWidget(self.spacing_section)
         layout.addWidget(self.node_style_section)
         layout.addWidget(self.font_style_section)
