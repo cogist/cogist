@@ -82,7 +82,7 @@ class AdvancedStyleTab(QWidget):
     def _get_layer_data(self, layer_name: str) -> dict:
         """Get style data for a layer directly from global style_config.
 
-        This method reads from style_config.resolved_template and resolved_color_scheme,
+        This method reads from style_config.role_styles and branch_colors,
         ensuring panel always uses the authoritative data source.
 
         Args:
@@ -422,15 +422,12 @@ class AdvancedStyleTab(QWidget):
 
         role = NodeRole(role_str)
 
-        template = self.style_config.resolved_template
-        color_scheme = self.style_config.resolved_color_scheme
-
-        if not template or role not in template.role_styles:
+        if role not in self.style_config.role_styles:
             return
 
-        role_style = template.role_styles[role]
+        role_style = self.style_config.role_styles[role]
 
-        # Apply updates to role_style and color_scheme
+        # Apply updates to role_style
         for key, value in updates.items():
             if key == "shape":
                 # Handle shape type update
@@ -441,17 +438,27 @@ class AdvancedStyleTab(QWidget):
                 if hasattr(role_style, "shape"):
                     role_style.shape.border_radius = value
             elif key == "bg_color":
-                # Background color goes to color_scheme
-                if color_scheme:
-                    color_scheme.role_configs[role].bg_color = value
+                # Background color goes to role_style
+                if hasattr(role_style, "bg_color_index"):
+                    # For new architecture, we need to find the color index in branch_colors
+                    if value in self.style_config.branch_colors:
+                        role_style.bg_color_index = self.style_config.branch_colors.index(value)
+                    else:
+                        # If color not in pool, add it or use default
+                        role_style.bg_color_index = 0
             elif key == "text_color":
-                # Text color goes to color_scheme
-                if color_scheme:
-                    color_scheme.role_configs[role].text_color = value
+                # Text color goes to role_style
+                if hasattr(role_style, "text_color"):
+                    role_style.text_color = value
             elif key == "border_color":
-                # Border color goes to color_scheme
-                if color_scheme:
-                    color_scheme.role_configs[role].border_color = value
+                # Border color goes to role_style
+                if hasattr(role_style, "border_color_index"):
+                    # For new architecture, we need to find the color index in branch_colors
+                    if value in self.style_config.branch_colors:
+                        role_style.border_color_index = self.style_config.branch_colors.index(value)
+                    else:
+                        # If color not in pool, add it or use default
+                        role_style.border_color_index = 0
             elif key == "font_italic":
                 # Direct boolean assignment
                 if hasattr(role_style, "font_italic"):
@@ -691,12 +698,6 @@ class AdvancedStyleTab(QWidget):
             self._apply_styles_to_mindmap()
             return
 
-        # Get color_scheme
-        if not self.style_config.resolved_color_scheme:
-            return
-
-        color_scheme = self.style_config.resolved_color_scheme
-
         # Handle per-role rainbow mode controls (for root/level_1/2/3+)
         if role and self.current_layer in [
             "root",
@@ -704,24 +705,25 @@ class AdvancedStyleTab(QWidget):
             "level_2",
             "level_3_plus",
         ]:
-            if "rainbow_bg_enabled" in colors:
-                color_scheme.role_configs[role].rainbow_bg_enabled = colors[
-                    "rainbow_bg_enabled"
-                ]
-            if "rainbow_border_enabled" in colors:
-                color_scheme.role_configs[role].rainbow_border_enabled = colors[
-                    "rainbow_border_enabled"
-                ]
-                # Control border section visibility based on rainbow_border_enabled
-                self.border_section.setVisible(colors["rainbow_border_enabled"])
-            if "brightness_amount" in colors:
-                color_scheme.role_configs[role].brightness_amount = colors[
-                    "brightness_amount"
-                ]
-            if "opacity_amount" in colors:
-                color_scheme.role_configs[role].opacity_amount = colors[
-                    "opacity_amount"
-                ]
+            # Get role_style from new architecture
+            if role in self.style_config.role_styles:
+                role_style = self.style_config.role_styles[role]
+                
+                # TODO: rainbow_bg_enabled and rainbow_border_enabled will be handled later
+                # if "rainbow_bg_enabled" in colors:
+                #     role_style.bg_enabled = colors["rainbow_bg_enabled"]
+                # if "rainbow_border_enabled" in colors:
+                #     role_style.border_enabled = colors["rainbow_border_enabled"]
+                #     # Control border section visibility based on rainbow_border_enabled
+                #     self.border_section.setVisible(colors["rainbow_border_enabled"])
+                
+                # Brightness and opacity adjustments
+                if "brightness_amount" in colors:
+                    role_style.bg_brightness = colors["brightness_amount"]
+                    role_style.border_brightness = colors["brightness_amount"]
+                if "opacity_amount" in colors:
+                    role_style.bg_opacity = colors["opacity_amount"]
+                    role_style.border_opacity = colors["opacity_amount"]
 
         # Apply styles to mindmap after updating role configs
         self._apply_styles_to_mindmap()
@@ -756,26 +758,40 @@ class AdvancedStyleTab(QWidget):
                 self.command_history.push(command)
         else:
             # Fallback: direct update without undo/redo
-            # Handle node background color
-            if "bg_color" in colors:
-                color_scheme.role_configs[role].bg_color = colors["bg_color"]
+            # Get role_style from new architecture
+            if role in self.style_config.role_styles:
+                role_style = self.style_config.role_styles[role]
+                
+                # Handle node background color
+                if "bg_color" in colors:
+                    # Find color index in branch_colors
+                    if colors["bg_color"] in self.style_config.branch_colors:
+                        role_style.bg_color_index = self.style_config.branch_colors.index(colors["bg_color"])
+                    else:
+                        # If color not in pool, use default index
+                        role_style.bg_color_index = 0
 
-            # Handle text/foreground color
-            if "text_color" in colors:
-                color_scheme.role_configs[role].text_color = colors["text_color"]
+                # Handle text/foreground color
+                if "text_color" in colors:
+                    role_style.text_color = colors["text_color"]
 
-            # Handle border color
-            if "border_color" in colors:
-                color_scheme.role_configs[role].border_color = colors["border_color"]
+                # Handle border color
+                if "border_color" in colors:
+                    # Find color index in branch_colors
+                    if colors["border_color"] in self.style_config.branch_colors:
+                        role_style.border_color_index = self.style_config.branch_colors.index(colors["border_color"])
+                    else:
+                        # If color not in pool, use default index
+                        role_style.border_color_index = 0
 
-            # Handle connector color
-            if (
-                "connector_color" in colors
-                and self.style_config.resolved_template
-                and role in self.style_config.resolved_template.role_styles
-            ):
-                role_style = self.style_config.resolved_template.role_styles[role]
-                role_style.connector_color = colors["connector_color"]
+                # Handle connector color
+                if "connector_color" in colors:
+                    # Find color index in branch_colors
+                    if colors["connector_color"] in self.style_config.branch_colors:
+                        role_style.connector_color_index = self.style_config.branch_colors.index(colors["connector_color"])
+                    else:
+                        # If color not in pool, use default index
+                        role_style.connector_color_index = 0
 
         self._apply_styles_to_mindmap()
 
@@ -800,11 +816,10 @@ class AdvancedStyleTab(QWidget):
             if (
                 self._updating_from_undo_redo
                 and style_updates
-                and self.style_config.resolved_template
-                and role in self.style_config.resolved_template.role_styles
+                and role in self.style_config.role_styles
             ):
                 # Direct update to role-based config
-                role_style = self.style_config.resolved_template.role_styles[role]
+                role_style = self.style_config.role_styles[role]
                 if "parent_child" in spacing:
                     role_style.parent_child_spacing = spacing["parent_child"]
                 if "sibling" in spacing:
@@ -825,11 +840,8 @@ class AdvancedStyleTab(QWidget):
                 self.command_history.push(command)
             elif style_updates:
                 # Fallback: direct update to role-based config without undo/redo
-                if (
-                    self.style_config.resolved_template
-                    and role in self.style_config.resolved_template.role_styles
-                ):
-                    role_style = self.style_config.resolved_template.role_styles[role]
+                if role in self.style_config.role_styles:
+                    role_style = self.style_config.role_styles[role]
                     if "parent_child" in spacing:
                         role_style.parent_child_spacing = spacing["parent_child"]
                     if "sibling" in spacing:
@@ -1086,11 +1098,10 @@ class AdvancedStyleTab(QWidget):
             if (
                 self._updating_from_undo_redo
                 and connector_updates
-                and self.style_config.resolved_template
-                and role in self.style_config.resolved_template.role_styles
+                and role in self.style_config.role_styles
             ):
                 # Direct update to role-based config without creating a command
-                role_style = self.style_config.resolved_template.role_styles[role]
+                role_style = self.style_config.role_styles[role]
 
                 if "connector_shape" in style:
                     role_style.connector_shape = style["connector_shape"]
@@ -1099,7 +1110,11 @@ class AdvancedStyleTab(QWidget):
                 if "line_width" in style:
                     role_style.line_width = style["line_width"]
                 if "connector_color" in style:
-                    role_style.connector_color = style["connector_color"]
+                    # Find color index in branch_colors
+                    if style["connector_color"] in self.style_config.branch_colors:
+                        role_style.connector_color_index = self.style_config.branch_colors.index(style["connector_color"])
+                    else:
+                        role_style.connector_color_index = 0
             elif self.command_history and connector_updates:
                 from cogist.application.commands import ChangeStyleCommand
                 from cogist.application.commands.change_style_command import StyleChange
@@ -1116,11 +1131,8 @@ class AdvancedStyleTab(QWidget):
                 self.command_history.push(command)
             elif connector_updates:
                 # Fallback: direct update to role-based config without undo/redo
-                if (
-                    self.style_config.resolved_template
-                    and role in self.style_config.resolved_template.role_styles
-                ):
-                    role_style = self.style_config.resolved_template.role_styles[role]
+                if role in self.style_config.role_styles:
+                    role_style = self.style_config.role_styles[role]
 
                     if "connector_shape" in style:
                         role_style.connector_shape = style["connector_shape"]
@@ -1129,7 +1141,11 @@ class AdvancedStyleTab(QWidget):
                     if "line_width" in style:
                         role_style.line_width = style["line_width"]
                     if "connector_color" in style:
-                        role_style.connector_color = style["connector_color"]
+                        # Find color index in branch_colors
+                        if style["connector_color"] in self.style_config.branch_colors:
+                            role_style.connector_color_index = self.style_config.branch_colors.index(style["connector_color"])
+                        else:
+                            role_style.connector_color_index = 0
 
             self._apply_styles_to_mindmap()
 
@@ -1381,11 +1397,8 @@ class AdvancedStyleTab(QWidget):
             role = role_map.get(source_depth, NodeRole.TERTIARY)
 
             connector_shape = "bezier"  # Default
-            if (
-                self.style_config.resolved_template
-                and role in self.style_config.resolved_template.role_styles
-            ):
-                role_style = self.style_config.resolved_template.role_styles[role]
+            if role in self.style_config.role_styles:
+                role_style = self.style_config.role_styles[role]
                 connector_shape = role_style.connector_shape
 
             # Build connector style dict (only shape is needed for update_style)

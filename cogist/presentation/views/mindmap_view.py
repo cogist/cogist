@@ -1791,10 +1791,8 @@ class MindMapView(QGraphicsView):
         # Step 2: Re-apply layout, passing selected node to preserve its side
         from cogist.domain.layout import DefaultLayoutConfig
 
-        # Create layout config - spacing will be read from role_styles
-        layout_config = DefaultLayoutConfig(
-            resolved_template=self.style_config,  # NEW: Pass MindMapStyle directly
-        )
+        # Create layout config with default spacing values
+        layout_config = DefaultLayoutConfig()
 
         # Use LayoutRegistry to create layout instance (demonstrates proper architecture)
         layout = layout_registry.get_layout("default", layout_config)
@@ -2305,14 +2303,12 @@ class MindMapView(QGraphicsView):
                 color = "#999999"
                 connector_shape = "bezier"
 
-                if (self.style_config.resolved_template and
-                    role in self.style_config.resolved_template.role_styles):
-                    role_style = self.style_config.resolved_template.role_styles[role]
-                    color_scheme = self.style_config.resolved_color_scheme
+                if role in self.style_config.role_styles:
+                    role_style = self.style_config.role_styles[role]
 
                     # Get connector color from color pool
-                    if color_scheme and role_style.connector_color_index < len(color_scheme.branch_colors):
-                        color = color_scheme.branch_colors[role_style.connector_color_index]
+                    if role_style.connector_color_index < len(self.style_config.branch_colors):
+                        color = self.style_config.branch_colors[role_style.connector_color_index]
                     else:
                         color = "#999999"
 

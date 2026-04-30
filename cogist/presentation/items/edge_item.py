@@ -402,9 +402,8 @@ class EdgeItem(QGraphicsPathItem):
                 connector_shape = "bezier"
                 enable_gradient = True
 
-                if (self.style_config.resolved_template and
-                    role in self.style_config.resolved_template.role_styles):
-                    role_style = self.style_config.resolved_template.role_styles[role]
+                if role in self.style_config.role_styles:
+                    role_style = self.style_config.role_styles[role]
                     line_width = role_style.line_width
                     connector_shape = role_style.connector_shape
                     enable_gradient = (connector_shape == "bezier")
