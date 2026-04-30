@@ -516,9 +516,7 @@ class AdvancedStyleTab(QWidget):
         layout.addStretch()
 
         # Connect signals
-        self.canvas_panel.style_changed.connect(
-            lambda style: self._apply_style_updates_to_layer("canvas", style)
-        )
+        # CanvasPanel signal handling removed - canvas background is managed in ColorSchemeTab
 
         scroll.setWidget(content_widget)
 
@@ -561,6 +559,9 @@ class AdvancedStyleTab(QWidget):
 
         # ColorSchemeSection removed - now in separate ColorSchemeTab
 
+        # NEW: Connect CanvasPanel signal for background color changes
+        self.canvas_panel.style_changed.connect(self._on_canvas_bg_color_changed)
+
         # Spacing configuration
         self.spacing_section.spacing_changed.connect(self._on_spacing_changed)
 
@@ -584,6 +585,45 @@ class AdvancedStyleTab(QWidget):
 
         # Connector style
         self.connector_section.style_changed.connect(self._on_connector_style_changed)
+
+    def _on_canvas_bg_color_changed(self, style: dict):
+        """Handle canvas background color change from CanvasPanel.
+
+        Args:
+            style: Dictionary with 'bg_color' key containing the new color
+        """
+        assert self.style_config is not None
+
+        if "bg_color" not in style:
+            return
+
+        new_color = style["bg_color"]
+
+        # Update MindMapStyle.branch_colors[8] (canvas background color)
+        if hasattr(self.style_config, "branch_colors"):
+            # Ensure we have at least 9 colors (indices 0-8)
+            while len(self.style_config.branch_colors) < 9:
+                self.style_config.branch_colors.append("#FFFFFFFF")
+            self.style_config.branch_colors[8] = new_color
+
+        # Apply styles to mindmap
+        self._apply_styles_to_mindmap()
+
+        # Use command system if available
+        if self.command_history:
+            from cogist.application.commands import ChangeStyleCommand
+            from cogist.application.commands.change_style_command import StyleChange
+
+            change = StyleChange(
+                layer="canvas",
+                style_updates={"bg_color": new_color},
+            )
+            command = ChangeStyleCommand(
+                style_config=self.style_config,
+                changes=[change],
+            )
+            command.execute()
+            self.command_history.push(command)
 
     def _on_layer_changed(self, layer_name: str):
         """Handle layer selection change."""

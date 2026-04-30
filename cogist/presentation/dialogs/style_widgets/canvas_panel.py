@@ -5,12 +5,11 @@ Implements lazy initialization for better performance.
 """
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QGridLayout, QLabel
+from PySide6.QtWidgets import QGridLayout, QLabel, QPushButton
 
 from .collapsible_panel import CollapsiblePanel
 from .color_picker import create_color_picker
 from .dialog_utils import position_color_dialog
-from .menu_button import MenuButton
 
 
 class CanvasPanel(CollapsiblePanel):
@@ -32,6 +31,10 @@ class CanvasPanel(CollapsiblePanel):
 
         # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
+
+        # Store reference to AdvancedStyleTab for accessing style_config
+        # Note: parent() returns _content_widget, so we need to store the actual parent
+        self._advanced_tab = parent
 
         # State
         self._initialized = False
@@ -68,7 +71,8 @@ class CanvasPanel(CollapsiblePanel):
         bg_color_label.setFixedWidth(self._label_width)
         layout.addWidget(bg_color_label, row, 0)
 
-        self.bg_color_btn = MenuButton("", self.WIDGET_HEIGHT)
+        self.bg_color_btn = QPushButton()
+        self.bg_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
         self.bg_color_btn.clicked.connect(self._on_bg_color_clicked)
         layout.addWidget(self.bg_color_btn, row, 1)
         # Note: Button stylesheet is set by set_style() - no hardcoded colors here
@@ -139,8 +143,10 @@ class CanvasPanel(CollapsiblePanel):
             self._color_picker = create_color_picker(self)
             self._color_picker.color_selected.connect(self._on_bg_color_selected)
 
-        # Set current color from style data object (no fallback)
-        parent = self.parent()
+        # Get current color from style data object (no fallback)
+        # Use stored reference to AdvancedStyleTab instead of parent()
+        parent = self._advanced_tab
+
         if parent and hasattr(parent, 'style_config') and parent.style_config:
             # NEW: Use branch_colors[8] for canvas background
             if (hasattr(parent.style_config, 'branch_colors') and
@@ -153,6 +159,7 @@ class CanvasPanel(CollapsiblePanel):
             # Should not happen - style_config is required
             return
 
+        # Set current color (MUST call before show!)
         self._color_picker.set_current_color(current_color)
 
         # Show color picker
@@ -166,5 +173,16 @@ class CanvasPanel(CollapsiblePanel):
     def _on_bg_color_selected(self, hex_color: str):
         """Handle color selection from picker."""
         self.current_style["bg_color"] = hex_color
+
+        # Update button color directly (like color pool)
+        if hasattr(self, 'bg_color_btn'):
+            self.bg_color_btn.setStyleSheet(
+                f"background-color: {hex_color}; "
+                "border: 1px solid #C8C8C8; "
+                "border-radius: 6px; "
+                "padding: 4px 24px 4px 12px; "
+                "font-size: 13px; "
+                "text-align: left;"
+            )
+
         self._emit_style_changed()
-        # No text update needed (button shows color only)
