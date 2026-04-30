@@ -171,7 +171,9 @@ class AdvancedStyleTab(QWidget):
             "connector_type": self._get_connector_type_for_layer(layer_name),
             "connector_style": self._get_connector_style_for_layer(layer_name),
             "connector_width": self._get_connector_width_for_layer(layer_name),
-            "connector_color": self._get_connector_color_for_layer(layer_name),
+            "connector_color_index": role_style.connector_color_index,
+            "connector_brightness": role_style.connector_brightness,
+            "connector_opacity": role_style.connector_opacity,
             # Spacing - read from role-based configuration
             "parent_child_spacing": self._get_level_spacing_for_layer(layer_name),
             "sibling_spacing": self._get_sibling_spacing_for_layer(layer_name),

@@ -464,8 +464,26 @@ class MindMapView(QGraphicsView):
                         role_style = self.style_config.resolved_template.role_styles[role]
 
                         # Build edge style config from role-based values
+                        color_scheme = self.style_config.resolved_color_scheme
+                        
+                        # Get connector color from color pool
+                        if color_scheme and role_style.connector_color_index < len(color_scheme.branch_colors):
+                            connector_color = color_scheme.branch_colors[role_style.connector_color_index]
+                            # Apply brightness
+                            if role_style.connector_brightness != 1.0:
+                                # Note: brightness adjustment would need helper method
+                                # For now, use base color
+                                pass
+                            # Apply opacity
+                            if role_style.connector_opacity < 255:
+                                # Note: opacity adjustment would need helper method
+                                # For now, use base color
+                                pass
+                        else:
+                            connector_color = color_scheme.edge_color if color_scheme else "#666666"
+                        
                         edge_style_config = {
-                            "connector_color": role_style.connector_color or (self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666"),
+                            "connector_color": connector_color,
                             "line_width": role_style.line_width,
                             "connector_style": role_style.connector_style,
                             "connector_shape": role_style.connector_shape,
@@ -2308,7 +2326,14 @@ class MindMapView(QGraphicsView):
                 if (self.style_config.resolved_template and
                     role in self.style_config.resolved_template.role_styles):
                     role_style = self.style_config.resolved_template.role_styles[role]
-                    color = role_style.connector_color or "#999999"
+                    color_scheme = self.style_config.resolved_color_scheme
+                    
+                    # Get connector color from color pool
+                    if color_scheme and role_style.connector_color_index < len(color_scheme.branch_colors):
+                        color = color_scheme.branch_colors[role_style.connector_color_index]
+                    else:
+                        color = color_scheme.edge_color if color_scheme else "#999999"
+                    
                     connector_shape = role_style.connector_shape
 
                 # Create a temporary EdgeItem with proper styling

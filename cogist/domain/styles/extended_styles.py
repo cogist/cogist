@@ -202,23 +202,26 @@ class RoleBasedStyle:
     )
     connector_style: str = "solid"  # solid / dashed / dotted
     line_width: float = 2.0
-    connector_color: str | None = None  # From ColorScheme, optional override
-
-    # ❌ Does NOT contain any colors (colors come from ColorScheme)
+    
+    # Connector color reference and adjustment (follows role layer)
+    connector_color_index: int = 0  # Index into ColorScheme.branch_colors
+    connector_brightness: float = 1.0  # Brightness adjustment (0.5-1.5)
+    connector_opacity: int = 255  # Opacity adjustment (0-255)
 
 
 @dataclass
 class NodeColorConfig:
     """Unified color configuration for any node role.
 
-    Simplified: colors now come from BackgroundStyle and BorderStyle.
-    This only keeps text_color and connector_color.
+    Simplified: Only text_color remains.
+    Background/Border/Connector colors come from their respective style objects.
     """
 
-    # Removed: bg_color, border_color (moved to BackgroundStyle/BorderStyle)
+    # Only text color remains here (auto-calculated if None)
     text_color: str | None = None
-    connector_color: str | None = None
 
+    # Removed: bg_color, border_color (moved to BackgroundStyle/BorderStyle)
+    # Removed: connector_color (moved to RoleBasedStyle.connector_color_index)
     # Removed: rainbow_bg_enabled, rainbow_border_enabled
     # Removed: brightness_amount, opacity_amount
 
@@ -233,22 +236,10 @@ class ColorScheme:
     # Per-role color configurations (simplified)
     role_configs: dict[NodeRole, NodeColorConfig] = field(
         default_factory=lambda: {
-            NodeRole.ROOT: NodeColorConfig(
-                text_color=None,
-                connector_color=None,
-            ),
-            NodeRole.PRIMARY: NodeColorConfig(
-                text_color=None,
-                connector_color=None,
-            ),
-            NodeRole.SECONDARY: NodeColorConfig(
-                text_color=None,
-                connector_color=None,
-            ),
-            NodeRole.TERTIARY: NodeColorConfig(
-                text_color=None,
-                connector_color=None,
-            ),
+            NodeRole.ROOT: NodeColorConfig(text_color=None),
+            NodeRole.PRIMARY: NodeColorConfig(text_color=None),
+            NodeRole.SECONDARY: NodeColorConfig(text_color=None),
+            NodeRole.TERTIARY: NodeColorConfig(text_color=None),
         }
     )
 

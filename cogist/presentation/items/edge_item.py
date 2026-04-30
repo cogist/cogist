@@ -89,7 +89,22 @@ class EdgeItem(QGraphicsPathItem):
             if (self.style_config.resolved_template and
                 connector_role in self.style_config.resolved_template.role_styles):
                 role_style = self.style_config.resolved_template.role_styles[connector_role]
-                color_str = role_style.connector_color or (self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666")
+                color_scheme = self.style_config.resolved_color_scheme
+                
+                # Get connector color from color pool using connector_color_index
+                if color_scheme and role_style.connector_color_index < len(color_scheme.branch_colors):
+                    base_color = color_scheme.branch_colors[role_style.connector_color_index]
+                    # Apply brightness adjustment
+                    if role_style.connector_brightness != 1.0:
+                        base_color = self._adjust_color_brightness(base_color, role_style.connector_brightness)
+                    # Apply opacity adjustment
+                    if role_style.connector_opacity < 255:
+                        base_color = self._apply_opacity(base_color, role_style.connector_opacity)
+                    color_str = base_color
+                else:
+                    # Fallback to edge_color from ColorScheme
+                    color_str = color_scheme.edge_color if color_scheme else "#666666"
+                
                 line_width = role_style.line_width
                 connector_style_str = role_style.connector_style
                 connector_shape = role_style.connector_shape

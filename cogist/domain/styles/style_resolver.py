@@ -302,7 +302,6 @@ def deserialize_color_scheme(data: dict) -> ColorScheme:
         role = NodeRole(role_str)
         role_configs[role] = NodeColorConfig(
             text_color=config_data.get("text_color"),
-            connector_color=config_data.get("connector_color"),
         )
 
     # Fallback to old format if role_configs not present (backward compatibility)
@@ -382,7 +381,9 @@ def serialize_role_based_style(style: RoleBasedStyle) -> dict:
         "connector_shape": style.connector_shape,
         "connector_style": style.connector_style,
         "line_width": style.line_width,
-        "connector_color": style.connector_color,
+        "connector_color_index": style.connector_color_index,
+        "connector_brightness": style.connector_brightness,
+        "connector_opacity": style.connector_opacity,
     }
 
 
@@ -444,7 +445,9 @@ def deserialize_role_based_style(role: NodeRole, data: dict) -> RoleBasedStyle:
         connector_shape=data.get("connector_shape", "bezier"),
         connector_style=data.get("connector_style", "solid"),
         line_width=data.get("line_width", 2.0),
-        connector_color=data.get("connector_color"),
+        connector_color_index=data.get("connector_color_index", 0),
+        connector_brightness=data.get("connector_brightness", 1.0),
+        connector_opacity=data.get("connector_opacity", 255),
     )
 
 

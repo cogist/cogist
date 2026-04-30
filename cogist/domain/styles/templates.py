@@ -62,7 +62,9 @@ def create_default_template() -> MindMapStyle:
             connector_shape="bezier",
             connector_style="solid",
             line_width=2.0,
-            connector_color=None,
+            connector_color_index=0,
+            connector_brightness=1.0,
+            connector_opacity=255,
         ),
         NodeRole.PRIMARY: RoleBasedStyle(
             role=NodeRole.PRIMARY,
