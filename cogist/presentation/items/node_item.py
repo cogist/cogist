@@ -496,6 +496,41 @@ class NodeItem(QGraphicsRectItem):
 
         return f"#FF{blended_r:02X}{blended_g:02X}{blended_b:02X}"
 
+    def _calculate_final_color(
+        self,
+        color_index: int,
+        brightness: float,
+        opacity: int,
+        color_scheme,
+    ) -> str:
+        """Calculate final color from color pool index with adjustments.
+
+        Args:
+            color_index: Index into color_scheme.branch_colors
+            brightness: Brightness adjustment (0.5-1.5)
+            opacity: Opacity adjustment (0-255)
+            color_scheme: ColorScheme with branch_colors list
+
+        Returns:
+            Final color in #AARRGGBB format
+        """
+        # Get base color from color pool
+        if color_index < len(color_scheme.branch_colors):
+            base_color = color_scheme.branch_colors[color_index]
+        else:
+            # Fallback to first color if index out of range
+            base_color = color_scheme.branch_colors[0] if color_scheme.branch_colors else "#FF5E5E5E"
+
+        # Apply brightness adjustment
+        if brightness != 1.0:
+            base_color = self._adjust_color_brightness(base_color, brightness)
+
+        # Apply opacity adjustment
+        if opacity != 255:
+            base_color = self._apply_opacity(base_color, opacity)
+
+        return base_color
+
     def _auto_contrast(self, bg_color: str) -> str:
         """Automatically choose black or white text based on background brightness.
 
