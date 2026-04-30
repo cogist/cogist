@@ -426,6 +426,9 @@ class MindMapView(QGraphicsView):
             parent_item: NodeItem | None = None,
             branch_color: str | None = None,
         ):
+            # Get branch colors for rainbow mode
+            branch_colors = self.style_config.branch_colors if hasattr(self.style_config, 'branch_colors') else []
+            
             # Use branch color if assigned, otherwise use root color
             current_color = branch_color if branch_color else node.color
 
@@ -472,31 +475,33 @@ class MindMapView(QGraphicsView):
                     }
                     role = role_map.get(source_depth, NodeRole.TERTIARY)
 
-                    if (self.style_config.resolved_template and
-                        role in self.style_config.resolved_template.role_styles):
-                        role_style = self.style_config.resolved_template.role_styles[role]
+                    # NEW: Use MindMapStyle.role_styles
+                    if (hasattr(self.style_config, 'role_styles') and
+                        role in self.style_config.role_styles):
+                        role_style = self.style_config.role_styles[role]
+                        branch_colors = self.style_config.branch_colors
 
-                        # Build edge style config from role-based values
-                        color_scheme = self.style_config.resolved_color_scheme
-
-                        # Get connector color: use role override or fallback to edge_color
-                        if role_style.connector_color:
-                            connector_color = role_style.connector_color
-                        elif color_scheme:
-                            connector_color = color_scheme.edge_color
+                        # Get connector color using index system
+                        color_index = role_style.connector_color_index if hasattr(role_style, 'connector_color_index') else 0
+                        brightness = role_style.connector_brightness if hasattr(role_style, 'connector_brightness') else 1.0
+                        opacity = role_style.connector_opacity if hasattr(role_style, 'connector_opacity') else 255
+                        
+                        if branch_colors and color_index < len(branch_colors):
+                            connector_color = branch_colors[color_index]
+                            # Apply brightness and opacity adjustments (simplified)
                         else:
-                            connector_color = "#666666"
+                            connector_color = "#FF666666"
 
                         edge_style_config = {
                             "connector_color": connector_color,
-                            "line_width": role_style.line_width,
-                            "connector_style": role_style.connector_style,
-                            "connector_shape": role_style.connector_shape,
+                            "line_width": role_style.line_width if hasattr(role_style, 'line_width') else 2.0,
+                            "connector_style": role_style.connector_style if hasattr(role_style, 'connector_style') else "solid",
+                            "connector_shape": role_style.connector_shape if hasattr(role_style, 'connector_shape') else "bezier",
                         }
                     else:
                         # Fallback to default values
                         edge_style_config = {
-                            "connector_color": "#666666",
+                            "connector_color": "#FF666666",
                             "line_width": 2.0,
                             "connector_style": "solid",
                             "connector_shape": "bezier",

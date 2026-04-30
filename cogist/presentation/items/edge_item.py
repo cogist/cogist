@@ -486,9 +486,10 @@ class EdgeItem(QGraphicsPathItem):
             role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
             role = role_map.get(source_depth, NodeRole.TERTIARY)
 
-            if (self.style_config.resolved_template and
-                role in self.style_config.resolved_template.role_styles):
-                role_style = self.style_config.resolved_template.role_styles[role]
+            # NEW: Use MindMapStyle.role_styles
+            if (hasattr(self.style_config, 'role_styles') and
+                role in self.style_config.role_styles):
+                role_style = self.style_config.role_styles[role]
                 connector_width = role_style.line_width
 
         # For mind map: always use left/right edge based on horizontal direction

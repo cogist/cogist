@@ -282,7 +282,7 @@ class ColorScheme:
             "#FFBB8FCE",  # [6] Purple
             "#FF85C1E2",  # [7] Sky Blue
             "#FFFFFFFF",  # [8] Canvas Background (White)
-            "#FF6C5CE7",  # [9] Root Node Background (Purple)
+            "#FF2D3436",  # [9] Root Node Background (Dark Gray)
         ]
     )
 

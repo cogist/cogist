@@ -33,7 +33,7 @@ def create_default_template() -> MindMapStyle:
         bg_opacity=255,
         border_enabled=True,
         border_width=3,
-        border_color_index=0,
+        border_color_index=9,  # Same as background (dark gray)
         border_brightness=1.0,
         border_opacity=255,
         border_style="solid",
