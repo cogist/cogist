@@ -146,10 +146,6 @@ class AdvancedStyleTab(QWidget):
         bg_color_index = (
             role_style.bg_color_index if hasattr(role_style, "bg_color_index") else 0
         )
-        bg_brightness = (
-            role_style.bg_brightness if hasattr(role_style, "bg_brightness") else 1.0
-        )
-        bg_opacity = role_style.bg_opacity if hasattr(role_style, "bg_opacity") else 255
 
         if branch_colors and bg_color_index < len(branch_colors):
             base_bg_color = branch_colors[bg_color_index]
@@ -376,7 +372,7 @@ class AdvancedStyleTab(QWidget):
         ):
             role_style = self.style_config.role_styles[role]
             branch_colors = self.style_config.branch_colors
-            
+
             # Use connector_color_index to get color from pool
             color_index = role_style.connector_color_index if hasattr(role_style, 'connector_color_index') else 0
             if branch_colors and color_index < len(branch_colors):

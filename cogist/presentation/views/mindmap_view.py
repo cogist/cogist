@@ -41,15 +41,13 @@ class MindMapView(QGraphicsView):
         self.mindmap_service: MindMapService = mindmap_service or MindMapService()
 
         # Store style configuration
-        from cogist.domain.styles import templates
-
         if style_config is None:
             # This should never happen in normal usage (main.py always passes style_config)
-            # But we keep it as a defensive fallback for testing or direct instantiation
-            print("Warning: MindMapView initialized without style_config, using default template")
-            self.style_config = templates.create_default_template()
-        else:
-            self.style_config = style_config
+            raise ValueError(
+                "MindMapView must be initialized with a style_config. "
+                "Production code should always load templates from JSON files."
+            )
+        self.style_config = style_config
 
         # Create scene
         self.scene = QGraphicsScene()

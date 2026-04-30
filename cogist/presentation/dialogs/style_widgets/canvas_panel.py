@@ -143,7 +143,7 @@ class CanvasPanel(CollapsiblePanel):
         parent = self.parent()
         if parent and hasattr(parent, 'style_config') and parent.style_config:
             # NEW: Use branch_colors[8] for canvas background
-            if (hasattr(parent.style_config, 'branch_colors') and 
+            if (hasattr(parent.style_config, 'branch_colors') and
                 parent.style_config.branch_colors and
                 len(parent.style_config.branch_colors) > 8):
                 current_color = parent.style_config.branch_colors[8]
@@ -152,7 +152,7 @@ class CanvasPanel(CollapsiblePanel):
         else:
             # Should not happen - style_config is required
             return
-        
+
         self._color_picker.set_current_color(current_color)
 
         # Show color picker

@@ -22,9 +22,10 @@ from .style_resolver import (
     serialize_style,
     serialize_template,
 )
-from .templates import (
-    create_default_template,
-)
+
+# Note: create_default_template() has been removed.
+# - Production code should load templates from JSON files (template_loader.py)
+# - Test code should use _create_test_template() helper in test files
 
 __all__ = [
     # Enums
@@ -54,7 +55,4 @@ __all__ = [
 
     # Main style configuration
     "MindMapStyle",
-
-    # Default template creator
-    "create_default_template",
 ]
