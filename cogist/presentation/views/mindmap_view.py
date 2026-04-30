@@ -176,8 +176,10 @@ class MindMapView(QGraphicsView):
         # Step 2: Apply layout with actual sizes
         from cogist.domain.layout import DefaultLayoutConfig
 
-        # Create layout config with default spacing values
-        layout_config = DefaultLayoutConfig()
+        # Create layout config with style_config for dynamic spacing lookup
+        layout_config = DefaultLayoutConfig(
+            style_config=self.style_config,  # Pass style_config for role-based spacing
+        )
 
         # Update service layout config
         self.mindmap_service.set_layout_config(layout_config)
@@ -1791,8 +1793,10 @@ class MindMapView(QGraphicsView):
         # Step 2: Re-apply layout, passing selected node to preserve its side
         from cogist.domain.layout import DefaultLayoutConfig
 
-        # Create layout config with default spacing values
-        layout_config = DefaultLayoutConfig()
+        # Create layout config with style_config for dynamic spacing lookup
+        layout_config = DefaultLayoutConfig(
+            style_config=self.style_config,  # Pass style_config for role-based spacing
+        )
 
         # Use LayoutRegistry to create layout instance (demonstrates proper architecture)
         layout = layout_registry.get_layout("default", layout_config)

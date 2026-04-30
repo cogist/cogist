@@ -24,11 +24,17 @@ class BaseLayoutConfig:
 class DefaultLayoutConfig(BaseLayoutConfig):
     """Default layout configuration (left-right balanced)
 
-    All spacing values should be provided by StyleConfig via main.py.
-    These fields are just containers - they have no meaningful defaults.
+    Spacing values can be provided directly or read from MindMapStyle.role_styles.
+    If style_config is provided, spacing will be dynamically read based on node depth/role.
+
+    Attributes:
+        level_spacing: Default horizontal spacing (fallback if style_config not provided)
+        sibling_spacing: Default vertical spacing (fallback if style_config not provided)
+        style_config: Optional MindMapStyle for dynamic spacing lookup
     """
     level_spacing: float = 80.0  # Default horizontal spacing
     sibling_spacing: float = 60.0  # Default vertical spacing
+    style_config: Any = None  # Optional MindMapStyle for dynamic spacing
 
 
 # === Type Union for all layout configs ===

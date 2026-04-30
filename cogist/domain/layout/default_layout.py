@@ -59,7 +59,20 @@ class DefaultLayout(BaseLayout):
         Returns:
             Horizontal spacing for this parent-child relationship
         """
-        # Use config's level_spacing directly (depth parameter ignored for now)
+        # If style_config is provided, read spacing from role_styles based on parent's role
+        if self.config.style_config and hasattr(self.config.style_config, 'role_styles'):
+            from cogist.domain.styles import NodeRole
+            
+            # Map parent depth to role
+            role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
+            parent_role = role_map.get(depth, NodeRole.TERTIARY)
+            
+            # Get spacing from parent's role style
+            if parent_role in self.config.style_config.role_styles:
+                role_style = self.config.style_config.role_styles[parent_role]
+                return role_style.parent_child_spacing
+        
+        # Fallback to config's level_spacing
         return self.config.level_spacing
 
     def _get_sibling_spacing_for_depth(self, depth: int) -> float:
@@ -72,7 +85,20 @@ class DefaultLayout(BaseLayout):
         Returns:
             Sibling spacing for this depth
         """
-        # Use config's sibling_spacing directly (depth parameter ignored for now)
+        # If style_config is provided, read spacing from role_styles based on node's role
+        if self.config.style_config and hasattr(self.config.style_config, 'role_styles'):
+            from cogist.domain.styles import NodeRole
+            
+            # Map node depth to role
+            role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
+            node_role = role_map.get(depth, NodeRole.TERTIARY)
+            
+            # Get spacing from node's role style
+            if node_role in self.config.style_config.role_styles:
+                role_style = self.config.style_config.role_styles[node_role]
+                return role_style.sibling_spacing
+        
+        # Fallback to config's sibling_spacing
         return self.config.sibling_spacing
 
     def layout(
