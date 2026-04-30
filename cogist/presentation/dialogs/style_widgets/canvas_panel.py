@@ -28,7 +28,7 @@ class CanvasPanel(CollapsiblePanel):
     GROUP_MARGIN = 10
 
     def __init__(self, parent=None):
-        super().__init__("Canvas", collapsed=True, parent=parent)
+        super().__init__("Background", collapsed=True, parent=parent)
 
         # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
@@ -63,7 +63,7 @@ class CanvasPanel(CollapsiblePanel):
         row = 0
 
         # Background color
-        bg_color_label = QLabel("Background:")
+        bg_color_label = QLabel("Color:")
         bg_color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         bg_color_label.setFixedWidth(self._label_width)
         layout.addWidget(bg_color_label, row, 0)
