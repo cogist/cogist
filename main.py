@@ -70,13 +70,14 @@ class MainWindow(QMainWindow):
         self.mindmap_service = MindMapService()
 
         # Initialize style system with fallback strategy
-        # Strategy 1: Try user's saved default template
         from cogist.infrastructure.utils import config_manager
         from cogist.infrastructure.utils.resources import (
+            color_scheme_loader,
             template_deserializer,
             template_loader,
         )
 
+        # Step 1: Load template (two-level fallback)
         template_dir = config_manager.get_template_directory()
         user_default = template_dir / "default.json"
 
@@ -121,6 +122,17 @@ class MainWindow(QMainWindow):
                 raise RuntimeError(
                     "Failed to load any template. Built-in template is missing or corrupted."
                 )
+
+        # Step 2: Load color scheme and apply colors to template (two-level fallback)
+        try:
+            color_scheme_data = color_scheme_loader.load_color_scheme_with_fallback("default")
+            # Apply branch_colors from color scheme to the loaded template
+            if "branch_colors" in color_scheme_data:
+                self.current_style.branch_colors = color_scheme_data["branch_colors"]
+                print(f"Applied color scheme '{color_scheme_data.get('name', 'default')}' to template")
+        except RuntimeError as e:
+            print(f"Warning: {e}")
+            print("Using template's embedded colors as fallback")
 
         # Apply global styles
         self._apply_global_styles()
@@ -367,11 +379,12 @@ class MainWindow(QMainWindow):
         """
         from cogist.infrastructure.utils import config_manager
         from cogist.infrastructure.utils.resources import (
+            color_scheme_loader,
             template_deserializer,
             template_loader,
         )
 
-        # Strategy 1: Try user's saved default template
+        # Step 1: Load template (two-level fallback)
         template_dir = config_manager.get_template_directory()
         user_default = template_dir / "default.json"
 
@@ -417,7 +430,18 @@ class MainWindow(QMainWindow):
             else:
                 raise RuntimeError(
                     "Failed to load any template. Built-in template is missing or corrupted."
-                )
+                ) from None
+
+        # Step 2: Load color scheme and apply colors to template (two-level fallback)
+        try:
+            color_scheme_data = color_scheme_loader.load_color_scheme_with_fallback("default")
+            # Apply branch_colors from color scheme to the loaded template
+            if "branch_colors" in color_scheme_data:
+                self.current_style.branch_colors = color_scheme_data["branch_colors"]
+                print(f"[New File] Applied color scheme '{color_scheme_data.get('name', 'default')}' to template")
+        except RuntimeError as e:
+            print(f"Warning: {e}")
+            print("Using template's embedded colors as fallback")
 
         # Apply global styles
         self._apply_global_styles()
