@@ -17,7 +17,7 @@ This refactoring plan restructures the style system to align with the new archit
 
 ### Key Design Decisions
 
-1. **Color Pool Expansion**: `branch_colors` now contains **9 colors** (indices 0-7 for branches, index 8 for canvas background)
+1. **Color Pool Expansion**: `branch_colors` now contains **10 colors** (indices 0-7 for branches, index 8 for canvas background, index 9 for root node background)
 2. **Flat RoleStyle Structure**: All style fields at the same level (no nested BackgroundStyle/BorderStyle objects)
 3. **Index-Based Color References**: Roles reference colors via `*_color_index` pointing to the color pool
 4. **Text Color Auto-Calculation**: Text color automatically calculated based on background luminance (threshold 0.5)
@@ -61,7 +61,7 @@ This refactoring plan restructures the style system to align with the new archit
 class MindMapStyle:
     name: str = "Default"
     use_rainbow_branches: bool = False
-    branch_colors: list[str]  # 9 colors: [0-7] branches, [8] canvas bg
+    branch_colors: list[str]  # 10 colors: [0-7] branches, [8] canvas bg, [9] root node
     role_styles: dict[NodeRole, RoleStyle]  # Flat structure
     
 @dataclass
@@ -119,7 +119,7 @@ class RoleStyle:
 class ColorScheme:
     name: str
     description: str
-    branch_colors: list[str]  # 9 colors (index 8 = canvas bg)
+    branch_colors: list[str]  # 10 colors (index 8 = canvas bg, index 9 = root node)
     default_use_rainbow_branches: bool | None = None
 ```
 
@@ -321,7 +321,7 @@ class ColorScheme:
     name: str
     description: str
     
-    # Branch color pool (9 colors)
+    # Branch color pool (10 colors)
     branch_colors: list[str] = field(default_factory=lambda: [
         "#FFFF6B6B",  # [0] Red
         "#FF4ECDC4",  # [1] Teal

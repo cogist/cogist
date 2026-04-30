@@ -21,15 +21,16 @@
 #### 1.2 MindMapStyle - Simplified ✅
 - Removed `canvas_bg_color` field (now uses `branch_colors[8]`)
 - Removed `resolved_template` and `resolved_color_scheme` fields
-- Added `branch_colors` list (9 colors)
+- Added `branch_colors` list (10 colors)
 - Added `role_styles` dict with flat RoleStyle objects
 
 **File**: `cogist/domain/styles/style_config.py`
 
 #### 1.3 ColorScheme - Pure Color Pool ✅
-- Simplified to only contain `branch_colors` (9 colors)
+- Simplified to only contain `branch_colors` (10 colors)
 - Index [0-7]: Branch colors for rainbow mode
 - Index [8]: Canvas background color
+- Index [9]: Root node background color
 - Removed: `role_configs`, `canvas_bg_color`, `edge_color`, `use_rainbow_branches`
 
 **File**: `cogist/domain/styles/extended_styles.py`

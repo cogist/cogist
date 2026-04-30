@@ -68,9 +68,10 @@ RoleStyle(
 
 ### 2. Color Pool System
 
-- **9 colors total** in `branch_colors` array
+- **10 colors total** in `branch_colors` array
 - Indices [0-7]: Branch colors for rainbow mode
 - Index [8]: Canvas background color
+- Index [9]: Root node background color
 - Roles reference colors via indices + adjustments
 
 ### 3. Self-Contained MindMapStyle
@@ -88,7 +89,7 @@ MindMapStyle(
 ```python
 MindMapStyle(
     use_rainbow_branches=False,
-    branch_colors=["#FFFF6B6B", ...],  # 9 colors
+    branch_colors=["#FFFF6B6B", ...],  # 10 colors
     role_styles={                      # Embedded roles
         NodeRole.ROOT: RoleStyle(...),
         NodeRole.PRIMARY: RoleStyle(...),
