@@ -28,7 +28,7 @@ def create_default_template() -> MindMapStyle:
         basic_shape="rounded_rect",
         border_radius=12,
         bg_enabled=True,
-        bg_color_index=0,  # Use branch_colors[0]
+        bg_color_index=9,  # Use branch_colors[9] (Root Node Background - Purple)
         bg_brightness=1.0,
         bg_opacity=255,
         border_enabled=True,

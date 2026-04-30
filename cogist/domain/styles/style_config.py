@@ -12,7 +12,7 @@ from .extended_styles import RoleStyle
 # - SECONDARY: 200px
 # - TERTIARY: 0 (unlimited, no wrapping)
 
-# Default branch colors (9 colors: indices 0-7 for branches, index 8 for canvas background)
+# Default branch colors (10 colors: indices 0-7 for branches, index 8 for canvas background, index 9 for root node)
 DEFAULT_BRANCH_COLORS: list[str] = [
     "#FFFF6B6B",  # [0] Red
     "#FF4ECDC4",  # [1] Teal
@@ -23,6 +23,7 @@ DEFAULT_BRANCH_COLORS: list[str] = [
     "#FFBB8FCE",  # [6] Purple
     "#FF85C1E2",  # [7] Sky Blue
     "#FFFFFFFF",  # [8] Canvas Background (White)
+    "#FF6C5CE7",  # [9] Root Node Background (Purple)
 ]
 
 

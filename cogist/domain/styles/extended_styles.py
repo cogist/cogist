@@ -261,14 +261,16 @@ class ColorScheme:
 
     Contains only the color palette. No style properties.
     Canvas background color is stored at index 8 of branch_colors.
+    Root node background color is stored at index 9 of branch_colors.
     """
 
     name: str
     description: str
 
-    # Branch color pool (9 colors using HexArgb format)
+    # Branch color pool (10 colors using HexArgb format)
     # Indices [0-7]: Branch colors for rainbow mode
     # Index [8]: Canvas background color
+    # Index [9]: Root node background color
     branch_colors: list[str] = field(
         default_factory=lambda: [
             "#FFFF6B6B",  # [0] Red
@@ -280,6 +282,7 @@ class ColorScheme:
             "#FFBB8FCE",  # [6] Purple
             "#FF85C1E2",  # [7] Sky Blue
             "#FFFFFFFF",  # [8] Canvas Background (White)
+            "#FF6C5CE7",  # [9] Root Node Background (Purple)
         ]
     )
 

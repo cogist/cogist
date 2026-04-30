@@ -10,7 +10,8 @@
     "#FFF7DC6F",
     "#FFBB8FCE",
     "#FF85C1E2",
-    "#FFFFFFFF"
+    "#FFFFFFFF",
+    "#FF6C5CE7"
   ],
   "role_styles": {
     "root": {
@@ -19,7 +20,7 @@
       "basic_shape": "rounded_rect",
       "border_radius": 12,
       "bg_enabled": true,
-      "bg_color_index": 0,
+      "bg_color_index": 9,
       "bg_brightness": 1.0,
       "bg_opacity": 255,
       "border_enabled": true,

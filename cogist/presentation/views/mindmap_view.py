@@ -1812,9 +1812,9 @@ class MindMapView(QGraphicsView):
         # Step 2: Re-apply layout, passing selected node to preserve its side
         from cogist.domain.layout import DefaultLayoutConfig
 
-        # Create layout config - spacing will be read from resolved_template.role_styles
+        # Create layout config - spacing will be read from role_styles
         layout_config = DefaultLayoutConfig(
-            resolved_template=self.style_config.resolved_template,  # For role-based spacing
+            resolved_template=self.style_config,  # NEW: Pass MindMapStyle directly
         )
 
         # Use LayoutRegistry to create layout instance (demonstrates proper architecture)
