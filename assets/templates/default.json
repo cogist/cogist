@@ -1,18 +1,7 @@
 {
   "name": "Default",
+  "description": "Default template with balanced node styles",
   "use_rainbow_branches": false,
-  "branch_colors": [
-    "#FFFF6B6B",
-    "#FF4ECDC4",
-    "#FF45B7D1",
-    "#FFFFA07A",
-    "#FF98D8C8",
-    "#FFF7DC6F",
-    "#FFBB8FCE",
-    "#FF85C1E2",
-    "#FFFFFFFF",
-    "#FF2D3436"
-  ],
   "role_styles": {
     "root": {
       "role": "root",
