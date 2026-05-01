@@ -156,17 +156,13 @@ class ColorSchemeSection(CollapsiblePanel):
 
         # CRITICAL: After creating buttons, update them with current colors
         # This ensures colors are applied even if set_style was called before panel expansion
-        print(f"[_init_content] Created {len(self.rainbow_buttons)} buttons, rainbow_colors has {len(self.rainbow_colors)} colors")
         for i, btn in enumerate(self.rainbow_buttons):
             if i < len(self.rainbow_colors):
                 color = self.rainbow_colors[i]
-                print(f"  Initializing button {i} with color: {color}")
                 btn.setStyleSheet(
                     f"background-color: {color}; "
                     "border: none; border-radius: 4px;"
                 )
-            else:
-                print(f"  Warning: Button {i} has no color (rainbow_colors only has {len(self.rainbow_colors)})")
 
     def _on_rainbow_toggled(self, checked: bool):
         """Handle rainbow branch mode toggle."""
@@ -233,21 +229,17 @@ class ColorSchemeSection(CollapsiblePanel):
             self._pending_style = style
             return
 
-        print(f"[ColorSchemeSection.set_style] Called with {len(style.get('branch_colors', []))} colors")
         if "use_rainbow_branches" in style:
             self._rainbow_visible = style["use_rainbow_branches"]
             if self.rainbow_check:
                 self.rainbow_check.setChecked(self._rainbow_visible)
 
         if "branch_colors" in style:
-            print(f"  Setting rainbow_colors: {style['branch_colors'][:3]}...")
             self.rainbow_colors = style["branch_colors"].copy()
             # Update button colors
-            print(f"  Updating {len(self.rainbow_buttons)} buttons")
             for i, btn in enumerate(self.rainbow_buttons):
                 if i < len(self.rainbow_colors):
                     color = self.rainbow_colors[i]
-                    print(f"    Button {i}: {color}")
                     btn.setStyleSheet(
                         f"background-color: {color}; "
                         "border: none; border-radius: 4px;"
