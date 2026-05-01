@@ -2,16 +2,10 @@
 
 from .enums import NodeRole
 from .extended_styles import (
-    BackgroundStyle,
-    BorderStyle,
     ColorScheme,
     EdgeConfig,
-    NodeShape,
-    RoleBasedStyle,
-    RoleStyle,  # NEW: Flat role-based style
-    SpacingConfig,
-    Template,
-)
+    RoleStyle,  # Flat role-based style
+    )
 from .style_config import MindMapStyle
 
 
@@ -166,49 +160,6 @@ def deserialize_style(data: dict) -> MindMapStyle:
     return style
 
 
-def serialize_template(template: Template) -> dict:
-    """Serialize Template to JSON-compatible dict."""
-    return {
-        "name": template.name,
-        "description": template.description,
-        "role_styles": {
-            role.value: serialize_role_based_style(style)
-            for role, style in template.role_styles.items()
-        },
-        "spacing": {
-            "parent_child_spacing": template.spacing.parent_child_spacing.value,
-            "sibling_spacing": template.spacing.sibling_spacing.value,
-        },
-        "default_color_scheme": template.default_color_scheme,
-        "recommended_layout": template.recommended_layout,
-    }
-
-
-def deserialize_template(data: dict) -> Template:
-    """Deserialize Template from JSON-compatible dict."""
-    from .enums import SpacingLevel
-
-    role_styles = {
-        NodeRole(role): deserialize_role_based_style(role, style_data)
-        for role, style_data in data["role_styles"].items()
-    }
-
-    spacing_data = data.get("spacing", {})
-    spacing = SpacingConfig(
-        parent_child_spacing=SpacingLevel(spacing_data.get("parent_child_spacing", "normal")),
-        sibling_spacing=SpacingLevel(spacing_data.get("sibling_spacing", "normal")),
-    )
-
-    return Template(
-        name=data["name"],
-        description=data.get("description", ""),
-        role_styles=role_styles,
-        spacing=spacing,
-        default_color_scheme=data.get("default_color_scheme", "default"),
-        recommended_layout=data.get("recommended_layout"),
-    )
-
-
 def serialize_color_scheme(scheme: ColorScheme) -> dict:
     """Serialize ColorScheme to JSON-compatible dict."""
     return {
@@ -244,129 +195,6 @@ def deserialize_color_scheme(data: dict) -> ColorScheme:
         description=data.get("description", ""),
         branch_colors=data.get("branch_colors", []),
         default_use_rainbow_branches=data.get("default_use_rainbow_branches"),
-    )
-
-
-# Helper functions for nested structures
-
-def serialize_role_based_style(style: RoleBasedStyle) -> dict:
-    """Serialize RoleBasedStyle to dict."""
-    return {
-        "shape": {
-            "shape_type": style.shape.shape_type,
-            "basic_shape": style.shape.basic_shape,
-            "border_radius": style.shape.border_radius,
-            "svg_path": style.shape.svg_path,
-            "custom_params": style.shape.custom_params,
-        },
-        "background": {
-            "bg_type": style.background.bg_type,
-            "gradient_type": style.background.gradient_type,
-            "gradient_colors": style.background.gradient_colors,
-            "gradient_angle": style.background.gradient_angle,
-            "texture_type": style.background.texture_type,
-            "texture_opacity": style.background.texture_opacity,
-            "image_path": style.background.image_path,
-            "image_scale": style.background.image_scale,
-            "image_opacity": style.background.image_opacity,
-        },
-        "border": {
-            "border_type": style.border.border_type,
-            "border_width": style.border.border_width,
-            "border_radius": style.border.border_radius,
-            "border_style": style.border.border_style,
-            "svg_path": style.border.svg_path,
-            "svg_repeat": style.border.svg_repeat,
-            "image_path": style.border.image_path,
-            "image_scale": style.border.image_scale,
-            "gradient_type": style.border.gradient_type,
-            "gradient_colors": style.border.gradient_colors,
-            "gradient_angle": style.border.gradient_angle,
-        },
-        "padding_w": style.padding_w,
-        "padding_h": style.padding_h,
-        "max_text_width": style.max_text_width,
-        "font_size": style.font_size,
-        "font_weight": style.font_weight,
-        "font_italic": style.font_italic,
-        "font_family": style.font_family,
-        "shadow_enabled": style.shadow_enabled,
-        "shadow_offset_x": style.shadow_offset_x,
-        "shadow_offset_y": style.shadow_offset_y,
-        "shadow_blur": style.shadow_blur,
-        "shadow_color": style.shadow_color,
-        # Spacing configuration (per-role)
-        "parent_child_spacing": style.parent_child_spacing,
-        "sibling_spacing": style.sibling_spacing,
-        # Connector configuration (per-role)
-        "connector_shape": style.connector_shape,
-        "connector_style": style.connector_style,
-        "line_width": style.line_width,
-        "connector_color": style.connector_color,
-    }
-
-
-def deserialize_role_based_style(role: NodeRole, data: dict) -> RoleBasedStyle:
-    """Deserialize RoleBasedStyle from dict."""
-    shape_data = data.get("shape", {})
-    background_data = data.get("background", {})
-    border_data = data.get("border", {})
-
-    return RoleBasedStyle(
-        role=role,
-        shape=NodeShape(
-            shape_type=shape_data.get("shape_type", "basic"),
-            basic_shape=shape_data.get("basic_shape", "rounded_rect"),
-            border_radius=shape_data.get("border_radius", 8),
-            svg_path=shape_data.get("svg_path"),
-            custom_params=shape_data.get("custom_params", {}),
-        ),
-        background=BackgroundStyle(
-            bg_type=background_data.get("bg_type", "solid"),
-            gradient_type=background_data.get("gradient_type"),
-            gradient_colors=background_data.get("gradient_colors"),
-            gradient_angle=background_data.get("gradient_angle", 0.0),
-            texture_type=background_data.get("texture_type"),
-            texture_opacity=background_data.get("texture_opacity", 0.3),
-            image_path=background_data.get("image_path"),
-            image_scale=background_data.get("image_scale", 1.0),
-            image_opacity=background_data.get("image_opacity", 1.0),
-        ),
-        border=BorderStyle(
-            border_type=border_data.get("border_type", "simple"),
-            border_width=border_data.get("border_width", 0),
-            border_radius=border_data.get("border_radius", 8),
-            border_style=border_data.get("border_style", "solid"),
-            svg_path=border_data.get("svg_path"),
-            svg_repeat=border_data.get("svg_repeat", False),
-            image_path=border_data.get("image_path"),
-            image_scale=border_data.get("image_scale", 1.0),
-            gradient_type=border_data.get("gradient_type"),
-            gradient_colors=border_data.get("gradient_colors"),
-            gradient_angle=border_data.get("gradient_angle", 0.0),
-        ),
-        padding_w=data.get("padding_w", 12),
-        padding_h=data.get("padding_h", 8),
-        max_text_width=data.get("max_text_width", 250),
-        font_size=data.get("font_size", 14),
-        font_weight=data.get("font_weight", "Normal"),
-        font_italic=data.get("font_italic", False),
-        font_family=data.get("font_family", "Arial"),
-        shadow_enabled=data.get("shadow_enabled", False),
-        shadow_offset_x=data.get("shadow_offset_x", 2),
-        shadow_offset_y=data.get("shadow_offset_y", 2),
-        shadow_blur=data.get("shadow_blur", 4),
-        shadow_color=data.get("shadow_color"),
-        # Spacing configuration (per-role)
-        parent_child_spacing=data.get("parent_child_spacing", 80.0),
-        sibling_spacing=data.get("sibling_spacing", 60.0),
-        # Connector configuration (per-role)
-        connector_shape=data.get("connector_shape", "bezier"),
-        connector_style=data.get("connector_style", "solid"),
-        line_width=data.get("line_width", 2.0),
-        connector_color_index=data.get("connector_color_index", 0),
-        connector_brightness=data.get("connector_brightness", 1.0),
-        connector_opacity=data.get("connector_opacity", 255),
     )
 
 

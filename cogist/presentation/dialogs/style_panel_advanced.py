@@ -431,12 +431,12 @@ class AdvancedStyleTab(QWidget):
         for key, value in updates.items():
             if key == "shape":
                 # Handle shape type update
-                if hasattr(role_style, "shape"):
-                    role_style.shape.basic_shape = value
+                if hasattr(role_style, "basic_shape"):
+                    role_style.basic_shape = value
             elif key == "radius":
                 # Handle border radius update
-                if hasattr(role_style, "shape"):
-                    role_style.shape.border_radius = value
+                if hasattr(role_style, "border_radius"):
+                    role_style.border_radius = value
             elif key == "bg_color":
                 # Background color goes to role_style
                 if hasattr(role_style, "bg_color_index"):

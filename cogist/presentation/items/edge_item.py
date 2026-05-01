@@ -541,7 +541,7 @@ class EdgeItem(QGraphicsPathItem):
             Border shape type string (e.g., 'rounded_rect', 'bottom_line')
         """
         try:
-            return node_item.template_style.shape.basic_shape
+            return node_item.template_style.basic_shape
         except AttributeError:
             # Fallback to default if template_style is not available
             return "rounded_rect"

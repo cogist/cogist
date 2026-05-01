@@ -194,12 +194,12 @@ class ChangeStyleCommand(Command):
                         for key in keys:
                             if key == "shape":
                                 # Backup shape type
-                                if hasattr(role_style, 'shape'):
-                                    backup[key] = role_style.shape.basic_shape
+                                if hasattr(role_style, 'basic_shape'):
+                                    backup[key] = role_style.basic_shape
                             elif key == "radius":
                                 # Backup border radius
-                                if hasattr(role_style, 'shape'):
-                                    backup[key] = role_style.shape.border_radius
+                                if hasattr(role_style, 'border_radius'):
+                                    backup[key] = role_style.border_radius
                             elif key == "bg_color":
                                 # Background color from role_style
                                 backup[key] = role_style.bg_color
@@ -310,12 +310,12 @@ class ChangeStyleCommand(Command):
                         for key, value in style_updates.items():
                             if key == "shape":
                                 # Handle shape type update
-                                if hasattr(role_style, 'shape'):
-                                    role_style.shape.basic_shape = value
+                                if hasattr(role_style, 'basic_shape'):
+                                    role_style.basic_shape = value
                             elif key == "radius":
                                 # Handle border radius update
-                                if hasattr(role_style, 'shape'):
-                                    role_style.shape.border_radius = value
+                                if hasattr(role_style, 'border_radius'):
+                                    role_style.border_radius = value
                             elif key == "bg_color":
                                 # Background color goes to role_style
                                 role_style.bg_color = value
