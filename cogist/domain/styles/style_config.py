@@ -38,6 +38,7 @@ class MindMapStyle:
     # === Global settings ===
     use_rainbow_branches: bool = False
     color_pool: list[str] = field(default_factory=list)  # Renamed from branch_colors
+    special_colors: dict[str, str] = field(default_factory=dict)  # Special role colors and canvas_bg
 
     # === Role configurations (flat structure) ===
     role_styles: dict[NodeRole, RoleStyle] = field(default_factory=dict)

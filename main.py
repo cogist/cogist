@@ -373,12 +373,16 @@ class MainWindow(QMainWindow):
                 )
 
         # Step 2: Load color scheme INDEPENDENTLY (colors only)
-        # Color scheme completely overrides template's branch_colors
+        # Color scheme completely overrides template's color_pool
         try:
             color_scheme_data = color_scheme_loader.load_color_scheme_with_fallback("default")
-            # Override branch_colors from color scheme (ignore template's colors)
-            if "branch_colors" in color_scheme_data:
-                self.current_style.branch_colors = color_scheme_data["branch_colors"]
+            # Override color_pool from color scheme (ignore template's colors)
+            if "color_pool" in color_scheme_data:
+                self.current_style.color_pool = color_scheme_data["color_pool"]
+
+            # Override special_colors from color scheme
+            if "special_colors" in color_scheme_data:
+                self.current_style.special_colors = color_scheme_data["special_colors"]
         except RuntimeError as e:
             print(f"Warning: {e}")
             print("Using empty color pool (nodes will use default colors)")

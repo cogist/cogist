@@ -127,6 +127,7 @@ def serialize_style(style_config: MindMapStyle) -> dict:
         "name": style_config.name,
         "use_rainbow_branches": style_config.use_rainbow_branches,
         "color_pool": style_config.color_pool,  # Renamed from branch_colors
+        "special_colors": style_config.special_colors,
         "role_styles": {
             role.value: serialize_role_style(role_style)
             for role, role_style in style_config.role_styles.items()
@@ -149,6 +150,7 @@ def deserialize_style(data: dict) -> MindMapStyle:
         name=data.get("name", "Default"),
         use_rainbow_branches=data.get("use_rainbow_branches", False),
         color_pool=data.get("color_pool", []),  # Renamed from branch_colors
+        special_colors=data.get("special_colors", {}),
     )
 
     # Deserialize role styles
