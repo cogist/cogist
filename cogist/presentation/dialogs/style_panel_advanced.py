@@ -647,6 +647,9 @@ class AdvancedStyleTab(QWidget):
         is_canvas = layer_name == "canvas"
         is_priority = layer_name in ["critical", "minor"]
 
+        # Canvas panel: only show for canvas layer
+        self.canvas_panel.setVisible(is_canvas)
+
         # Spacing: only show for non-canvas layers (not a global setting)
         self.spacing_section.setVisible(not is_canvas)
 
