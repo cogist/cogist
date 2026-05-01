@@ -361,8 +361,12 @@ class NodeStyleSection(CollapsiblePanel):
         if self.is_root_mode:
             # Root mode: show color picker for branch_colors[9] (same as CanvasPanel)
             if self._color_picker is None:
-                self._color_picker = create_color_picker(self)
+                # Get the top-level window to ensure proper dialog lifecycle
+                top_level = self.window() if self.window() else parent
+                self._color_picker = create_color_picker(top_level)
                 self._color_picker.color_selected.connect(self._on_bg_color_selected)
+                # Ensure dialog closes when parent window closes
+                self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
             # Get current color from branch_colors[9]
             if (hasattr(parent.style_config, 'branch_colors') and

@@ -120,8 +120,13 @@ class CanvasPanel(CollapsiblePanel):
     def _on_bg_color_clicked(self):
         """Handle background color button click."""
         if self._color_picker is None:
-            self._color_picker = create_color_picker(self)
+            # Get the top-level window to ensure proper dialog lifecycle
+            from PySide6.QtCore import Qt
+            top_level = self.window() if self.window() else self._advanced_tab
+            self._color_picker = create_color_picker(top_level)
             self._color_picker.color_selected.connect(self._on_bg_color_selected)
+            # Ensure dialog closes when parent window closes
+            self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
         # Get current color from style data object (no fallback)
         # Use stored reference to AdvancedStyleTab instead of parent()
