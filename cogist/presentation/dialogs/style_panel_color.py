@@ -102,7 +102,4 @@ class ColorSchemeTab(QWidget):
                 "use_rainbow_branches": getattr(style_config, 'use_rainbow_branches', False),
                 "branch_colors": getattr(style_config, 'branch_colors', []),
             }
-            print(f"[ColorSchemeTab] Setting style: {len(color_style['branch_colors'])} colors")
-            if color_style['branch_colors']:
-                print(f"  First 3 colors: {color_style['branch_colors'][:3]}")
             self.color_scheme_section.set_style(color_style)

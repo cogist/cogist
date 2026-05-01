@@ -599,14 +599,12 @@ class AdvancedStyleTab(QWidget):
         Args:
             style: Dictionary with 'bg_color' key containing the new color
         """
-        print(f"[_on_canvas_bg_color_changed] Received: {style}")
         assert self.style_config is not None
 
         if "bg_color" not in style:
             return
 
         new_color = style["bg_color"]
-        print(f"  New color: {new_color}")
 
         # Update MindMapStyle.branch_colors[8] (canvas background color)
         if hasattr(self.style_config, "branch_colors"):
@@ -614,12 +612,9 @@ class AdvancedStyleTab(QWidget):
             while len(self.style_config.branch_colors) < 9:
                 self.style_config.branch_colors.append("#FFFFFFFF")
             self.style_config.branch_colors[8] = new_color
-            print(f"  Updated branch_colors[8] to: {self.style_config.branch_colors[8]}")
 
         # Apply styles to mindmap
-        print("  Calling _apply_styles_to_mindmap()...")
         self._apply_styles_to_mindmap()
-        print("  _apply_styles_to_mindmap() completed")
 
         # Use command system if available
         if self.command_history:
@@ -1343,24 +1338,17 @@ class AdvancedStyleTab(QWidget):
 
         # Update canvas background color
         canvas_data = self._get_layer_data("canvas")
-        print(f"[_apply_node_styles] canvas_data: {canvas_data}")
         if "bg_color" in canvas_data:
             canvas_color = canvas_data["bg_color"]
-            print(f"  Canvas bg_color from layer_data: {canvas_color}")
             # Update branch_colors[8] for canvas background
             if hasattr(style, 'branch_colors'):
                 while len(style.branch_colors) < 9:
                     style.branch_colors.append("#FFFFFFFF")
                 style.branch_colors[8] = canvas_color
-                print(f"  Updated style.branch_colors[8]: {style.branch_colors[8]}")
 
             # Use mindmap_view's method to update scene background
-            print("  Checking if mindmap_view has _update_canvas_background...")
             if hasattr(mindmap_view, '_update_canvas_background'):
-                print("  Calling _update_canvas_background()...")
                 mindmap_view._update_canvas_background()
-            else:
-                print("  ERROR: mindmap_view does NOT have _update_canvas_background!")
 
         # Update all existing node items with new style
         if hasattr(mindmap_view, "node_items"):

@@ -67,7 +67,6 @@ def load_color_scheme_with_fallback(name: str = "default") -> dict[str, Any]:
     # Level 2: Load built-in color scheme directly (read-only)
     builtin_data = get_builtin_color_scheme(name)
     if builtin_data:
-        print(f"Loaded built-in color scheme '{name}'")
         return builtin_data
     else:
         raise RuntimeError(

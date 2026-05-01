@@ -375,10 +375,8 @@ class MindMapView(QGraphicsView):
                 and len(self.style_config.branch_colors) > 8
             ):
                 canvas_color = self.style_config.branch_colors[8]
-                print(f"[_update_canvas_background] Setting scene background to: {canvas_color}")
             else:
                 canvas_color = "#FFFFFFFF"  # Default white
-                print("[_update_canvas_background] Using default white (branch_colors not available)")
             self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
 
     def _create_ui_items(self, root: Node):

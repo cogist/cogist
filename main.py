@@ -351,7 +351,6 @@ class MainWindow(QMainWindow):
                     self.current_style = (
                         template_deserializer.deserialize_complete_template(builtin_data)
                     )
-                    print("Loaded built-in default template")
                 else:
                     raise RuntimeError(
                         "Failed to load any template. Built-in template is missing or corrupted."
@@ -363,7 +362,6 @@ class MainWindow(QMainWindow):
                 self.current_style = (
                     template_deserializer.deserialize_complete_template(builtin_data)
                 )
-                print("Loaded built-in default template")
             else:
                 raise RuntimeError(
                     "Failed to load any template. Built-in template is missing or corrupted."
@@ -376,12 +374,6 @@ class MainWindow(QMainWindow):
             # Override branch_colors from color scheme (ignore template's colors)
             if "branch_colors" in color_scheme_data:
                 self.current_style.branch_colors = color_scheme_data["branch_colors"]
-                print(f"Applied color scheme '{color_scheme_data.get('name', 'default')}' ({len(color_scheme_data['branch_colors'])} colors)")
-                # Debug: Print first 3 colors
-                for i, color in enumerate(color_scheme_data['branch_colors'][:3]):
-                    print(f"  Color {i}: {color}")
-            else:
-                print(f"Warning: Color scheme '{color_scheme_data.get('name', 'default')}' has no branch_colors")
         except RuntimeError as e:
             print(f"Warning: {e}")
             print("Using empty color pool (nodes will use default colors)")
