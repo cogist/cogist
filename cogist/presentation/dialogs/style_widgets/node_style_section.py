@@ -541,12 +541,14 @@ class NodeStyleSection(CollapsiblePanel):
 
     def _on_brightness_changed(self, value: int):
         """Handle background brightness change."""
-        self.current_style["brightness"] = value / 100.0
+        # Use bg_brightness for role-based style (RoleStyle field name)
+        self.current_style["bg_brightness"] = value / 100.0
         self._emit_style_changed()
 
     def _on_opacity_changed(self, value: int):
         """Handle background opacity change."""
-        self.current_style["opacity"] = value
+        # Use bg_opacity for role-based style (RoleStyle field name)
+        self.current_style["bg_opacity"] = value
         self._emit_style_changed()
 
     def _emit_style_changed(self):
@@ -637,6 +639,22 @@ class NodeStyleSection(CollapsiblePanel):
 
             if "max_text_width" in style:
                 self.max_text_width_spin.setValue(style["max_text_width"])
+
+            # Update brightness slider (support multiple field names)
+            if "brightness" in style and hasattr(self, 'brightness_slider'):
+                self.brightness_slider.setValue(int(style["brightness"] * 100))
+            elif "brightness_amount" in style and hasattr(self, 'brightness_slider'):
+                self.brightness_slider.setValue(int(style["brightness_amount"] * 100))
+            elif "bg_brightness" in style and hasattr(self, 'brightness_slider'):
+                self.brightness_slider.setValue(int(style["bg_brightness"] * 100))
+
+            # Update opacity slider (support multiple field names)
+            if "opacity" in style and hasattr(self, 'opacity_slider'):
+                self.opacity_slider.setValue(style["opacity"])
+            elif "opacity_amount" in style and hasattr(self, 'opacity_slider'):
+                self.opacity_slider.setValue(style["opacity_amount"])
+            elif "bg_opacity" in style and hasattr(self, 'opacity_slider'):
+                self.opacity_slider.setValue(style["bg_opacity"])
 
             # Update background color button
             if "bg_color" in style and hasattr(self, 'bg_color_btn'):
