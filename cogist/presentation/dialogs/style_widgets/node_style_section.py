@@ -657,6 +657,10 @@ class NodeStyleSection(CollapsiblePanel):
             if "max_text_width" in style:
                 self.max_text_width_spin.setValue(style["max_text_width"])
 
+            # Update background enabled toggle
+            if "bg_enabled" in style and hasattr(self, 'bg_enabled_toggle'):
+                self.bg_enabled_toggle.set_checked(style["bg_enabled"])
+
             # Update brightness slider (support multiple field names)
             if "brightness" in style and hasattr(self, 'brightness_slider'):
                 self.brightness_slider.setValue(int(style["brightness"] * 100))

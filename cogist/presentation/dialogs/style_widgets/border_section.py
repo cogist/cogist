@@ -82,10 +82,10 @@ class BorderSection(CollapsiblePanel):
         row += 1
 
         # Border style
-        style_label = QLabel("Style:")
-        style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        style_label.setFixedWidth(self._label_width)
-        layout.addWidget(style_label, row, 0)
+        self.style_label = QLabel("Style:")
+        self.style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.style_label.setFixedWidth(self._label_width)
+        layout.addWidget(self.style_label, row, 0)
 
         # Get initial border style from current_style
         border_style_map = {
@@ -166,6 +166,9 @@ class BorderSection(CollapsiblePanel):
         self.opacity_slider.valueChanged.connect(self._on_opacity_changed)
         layout.addWidget(self.opacity_slider, row, 1, alignment=Qt.AlignVCenter)
 
+        # Initialize visibility based on enabled state
+        self._update_border_controls_visibility()
+
         self.setLayout(layout)
 
     def _button_style(self) -> str:
@@ -205,7 +208,66 @@ class BorderSection(CollapsiblePanel):
     def _on_enabled_changed(self, checked: bool):
         """Handle border enabled toggle change."""
         self.current_style["enabled"] = checked
+
+        # Update visibility of all border controls
+        self._update_border_controls_visibility()
+
+        # Emit style changed event
         self._emit_style_changed()
+
+    def _update_border_controls_visibility(self):
+        """Show/hide border controls based on enabled state."""
+        enabled = self.current_style.get("enabled", True)
+
+        # Show/hide all controls except Enabled toggle and its label
+        if hasattr(self, 'style_label'):
+            self.style_label.setVisible(enabled)
+        if hasattr(self, 'border_style_combo'):
+            self.border_style_combo.setVisible(enabled)
+        if hasattr(self, 'border_width_spin'):
+            # Find and hide/show width label
+            layout = self._content_widget.layout()
+            if layout:
+                for i in range(layout.count()):
+                    item = layout.itemAt(i)
+                    widget = item.widget() if item else None
+                    if widget and isinstance(widget, QLabel) and widget.text() == "Width:":
+                        widget.setVisible(enabled)
+                        break
+            self.border_width_spin.setVisible(enabled)
+        if hasattr(self, 'color_btn'):
+            # Find and hide/show color label
+            layout = self._content_widget.layout()
+            if layout:
+                for i in range(layout.count()):
+                    item = layout.itemAt(i)
+                    widget = item.widget() if item else None
+                    if widget and isinstance(widget, QLabel) and widget.text() == "Color:":
+                        widget.setVisible(enabled)
+                        break
+            self.color_btn.setVisible(enabled)
+        if hasattr(self, 'brightness_slider'):
+            # Find and hide/show brightness label
+            layout = self._content_widget.layout()
+            if layout:
+                for i in range(layout.count()):
+                    item = layout.itemAt(i)
+                    widget = item.widget() if item else None
+                    if widget and isinstance(widget, QLabel) and widget.text() == "Brightness:":
+                        widget.setVisible(enabled)
+                        break
+            self.brightness_slider.setVisible(enabled)
+        if hasattr(self, 'opacity_slider'):
+            # Find and hide/show opacity label
+            layout = self._content_widget.layout()
+            if layout:
+                for i in range(layout.count()):
+                    item = layout.itemAt(i)
+                    widget = item.widget() if item else None
+                    if widget and isinstance(widget, QLabel) and widget.text() == "Opacity:":
+                        widget.setVisible(enabled)
+                        break
+            self.opacity_slider.setVisible(enabled)
 
     def _on_color_clicked(self):
         """Handle border color button click (placeholder)."""
@@ -251,3 +313,7 @@ class BorderSection(CollapsiblePanel):
 
             if "border_width" in style:
                 self.border_width_spin.setValue(style["border_width"])
+
+            # Update controls visibility based on enabled state
+            if "enabled" in style:
+                self._update_border_controls_visibility()
