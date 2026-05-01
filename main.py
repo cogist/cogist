@@ -97,6 +97,11 @@ class MainWindow(QMainWindow):
         )
         self.style_panel.setVisible(False)  # Hidden by default
 
+        # Connect color scheme tab signals to advanced tab handlers
+        self.style_panel.color_scheme_tab.style_changed.connect(
+            self.style_panel.advanced_tab._on_color_scheme_changed
+        )
+
         # Create horizontal layout: ActivityBar | StylePanel | MindMapView
         main_widget = QWidget()
         main_layout = QHBoxLayout(main_widget)

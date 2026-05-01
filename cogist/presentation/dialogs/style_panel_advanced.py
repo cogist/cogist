@@ -104,8 +104,8 @@ class AdvancedStyleTab(QWidget):
             )
             data = {
                 "bg_color": canvas_bg,
-                "use_rainbow": self.style_config.use_rainbow_branches,
-                "rainbow_pool": self.style_config.branch_colors,
+                "use_rainbow_branches": self.style_config.use_rainbow_branches,
+                "branch_colors": self.style_config.branch_colors,
             }
             return data
 
@@ -679,10 +679,10 @@ class AdvancedStyleTab(QWidget):
         # Handle global rainbow config FIRST (before checking role)
         # This ensures rainbow state is synced across all layers including canvas
         # NEW: Use MindMapStyle fields directly
-        if "use_rainbow" in colors:
-            self.style_config.use_rainbow_branches = colors["use_rainbow"]
-        if "rainbow_pool" in colors:
-            self.style_config.branch_colors = colors["rainbow_pool"]
+        if "use_rainbow_branches" in colors:
+            self.style_config.use_rainbow_branches = colors["use_rainbow_branches"]
+        if "branch_colors" in colors:
+            self.style_config.branch_colors = colors["branch_colors"]
 
         if not role:
             # Canvas layer - handle canvas_bg and rainbow config
