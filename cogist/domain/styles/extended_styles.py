@@ -314,7 +314,7 @@ def get_rainbow_branch_color(branch_idx: int, branch_colors: list[str]) -> str:
 
     Args:
         branch_idx: Index of the branch (0-based)
-        branch_colors: List of available branch colors
+        branch_colors: List of available branch colors (may include canvas and root colors at indices 8-9)
 
     Returns:
         Color string in hex format
@@ -322,5 +322,9 @@ def get_rainbow_branch_color(branch_idx: int, branch_colors: list[str]) -> str:
     if not branch_colors:
         return "#FF666666"  # Default gray color
 
-    # Cycle through colors if more branches than colors
-    return branch_colors[branch_idx % len(branch_colors)]
+    # Rainbow branches only use indices 0-7 (first 8 colors)
+    # Indices 8-9 are reserved for canvas background and root background
+    branch_color_count = min(8, len(branch_colors))
+
+    # Cycle through branch colors if more branches than colors
+    return branch_colors[branch_idx % branch_color_count]
