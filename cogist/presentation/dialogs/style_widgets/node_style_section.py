@@ -8,6 +8,7 @@ from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
+    QPushButton,
     QSlider,
     QSpinBox,
     QWidget,
@@ -22,7 +23,8 @@ from cogist.presentation.widgets.node_shape_previews import (
 )
 
 from .collapsible_panel import CollapsiblePanel
-from .menu_button import MenuButton
+from .color_picker import create_color_picker
+from .dialog_utils import position_color_dialog
 
 
 class NodeStyleSection(CollapsiblePanel):
@@ -47,10 +49,18 @@ class NodeStyleSection(CollapsiblePanel):
         # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
+        # Store reference to AdvancedStyleTab for accessing style_config
+        # Note: parent() returns _content_widget, so we need to store the actual parent
+        self._advanced_tab = parent
+
         # State
         self._initialized = False
         self.current_style = self._get_default_style()
         self.last_emitted_style = None  # Track last emitted style to detect changes
+        self.is_root_mode = False  # True for root layer, False for level1/2/3+
+
+        # Color picker (lazy creation)
+        self._color_picker = None
 
         # Connect toggle signal for lazy initialization
         self.toggled.connect(self._on_toggled)
@@ -59,7 +69,7 @@ class NodeStyleSection(CollapsiblePanel):
         """Get default node style - used only during initialization before real data is loaded."""
         # This should be overwritten by set_style() before any UI interaction
         return {
-            "enabled": True,
+            "bg_enabled": True,
             "shape": "rounded_rect",
             "radius": 10,
             "padding_w": 20,
@@ -75,6 +85,18 @@ class NodeStyleSection(CollapsiblePanel):
         if checked and not self._initialized:
             self._init_content()
             self._initialized = True
+            # Apply saved style to newly created button (same as CanvasPanel)
+            if self.current_style:
+                self.set_style(self.current_style)
+
+    def set_root_mode(self, is_root: bool):
+        """Set whether this section is in root mode.
+
+        In root mode, background color uses branch_colors[9] directly.
+        In normal mode, background color uses bg_color_index to reference the pool.
+        """
+        self.is_root_mode = is_root
+        # No need to update button - it only shows color, no text
 
     def _init_content(self):
         """Initialize content on first expand (lazy initialization)."""
@@ -198,7 +220,7 @@ class NodeStyleSection(CollapsiblePanel):
         bg_switch_row.addStretch()
 
         self.bg_enabled_toggle = ToggleSwitch()
-        self.bg_enabled_toggle.set_checked(self.current_style.get("enabled", True))
+        self.bg_enabled_toggle.set_checked(self.current_style.get("bg_enabled", True))
         self.bg_enabled_toggle.toggled.connect(self._on_bg_enabled_changed)
         bg_switch_row.addWidget(self.bg_enabled_toggle)
 
@@ -210,16 +232,18 @@ class NodeStyleSection(CollapsiblePanel):
         layout.addWidget(bg_switch_container, row, 0, 1, 2)
         row += 1
 
-        # Background color (placeholder - will be implemented later)
+        # Background color - same as CanvasPanel
         self.bg_color_label = QLabel("Color:")
         self.bg_color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.bg_color_label.setFixedWidth(self._label_width)
         layout.addWidget(self.bg_color_label, row, 0)
 
-        self.bg_color_btn = MenuButton("Color 1", self.WIDGET_HEIGHT)
-        self.bg_color_btn.setStyleSheet(self._button_style())
+        # Use QPushButton without text (like CanvasPanel) - shows only color
+        self.bg_color_btn = QPushButton()
+        self.bg_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
         self.bg_color_btn.clicked.connect(self._on_bg_color_clicked)
         layout.addWidget(self.bg_color_btn, row, 1)
+        # Note: Button stylesheet is set by set_style() - no text, no hardcoded colors
         row += 1
 
         # Brightness slider
@@ -253,28 +277,6 @@ class NodeStyleSection(CollapsiblePanel):
         self._update_background_controls_visibility()
 
         self.setLayout(layout)
-
-    def _button_style(self) -> str:
-        """Get standard button stylesheet."""
-        return """
-            QPushButton {
-                background-color: #FFFFFF;
-                border: 1px solid #C8C8C8;
-                border-radius: 6px;
-                padding: 4px 24px 4px 12px;
-                font-size: 13px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background-color: #F0F0F0;
-                border-color: #A0A0A0;
-            }
-            QPushButton::menu-indicator {
-                image: none;
-                width: 0;
-                height: 0;
-            }
-        """
 
     def _on_shape_changed(self, shape_name: str):
         """Handle shape selection change."""
@@ -318,7 +320,7 @@ class NodeStyleSection(CollapsiblePanel):
 
     def _update_background_controls_visibility(self):
         """Show/hide background controls based on enabled state."""
-        enabled = self.current_style.get("enabled", True)
+        enabled = self.current_style.get("bg_enabled", True)
 
         # Show/hide color button and label
         if hasattr(self, 'bg_color_label'):
@@ -340,7 +342,7 @@ class NodeStyleSection(CollapsiblePanel):
 
     def _on_bg_enabled_changed(self, checked: bool):
         """Handle background enabled toggle change."""
-        self.current_style["enabled"] = checked
+        self.current_style["bg_enabled"] = checked
 
         # Update visibility of background controls
         self._update_background_controls_visibility()
@@ -349,9 +351,189 @@ class NodeStyleSection(CollapsiblePanel):
         self._emit_style_changed()
 
     def _on_bg_color_clicked(self):
-        """Handle background color button click (placeholder)."""
-        # TODO: Implement color picker dialog
-        pass
+        """Handle background color button click."""
+        # Use stored reference to AdvancedStyleTab instead of parent()
+        parent = self._advanced_tab
+
+        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
+            return
+
+        if self.is_root_mode:
+            # Root mode: show color picker for branch_colors[9] (same as CanvasPanel)
+            if self._color_picker is None:
+                self._color_picker = create_color_picker(self)
+                self._color_picker.color_selected.connect(self._on_bg_color_selected)
+
+            # Get current color from branch_colors[9]
+            if (hasattr(parent.style_config, 'branch_colors') and
+                parent.style_config.branch_colors and
+                len(parent.style_config.branch_colors) > 9):
+                current_color = parent.style_config.branch_colors[9]
+            else:
+                print("Warning: branch_colors not properly initialized or index 9 out of range")
+                return
+
+            # Set current color (MUST call before show!)
+            self._color_picker.set_current_color(current_color)
+
+            # Show color picker
+            self._color_picker.show()
+            self._color_picker.raise_()
+            self._color_picker.activateWindow()
+
+            # Position dialog
+            position_color_dialog(self._color_picker, self.bg_color_btn)
+        else:
+            # Normal mode (level 1/2/3+): show color pool selector dialog
+            self._show_color_pool_selector()
+
+    def _show_color_pool_selector(self):
+        """Show color pool selector dialog for level 1/2/3+ layers.
+
+        Displays a dialog with 8 color buttons (indices 0-7) for user to select.
+        """
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QDialog, QGridLayout, QLabel, QPushButton
+
+        parent = self._advanced_tab
+        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
+            return
+
+        branch_colors = parent.style_config.branch_colors
+        if not branch_colors or len(branch_colors) < 8:
+            print("Warning: branch_colors not properly initialized")
+            return
+
+        # Create dialog
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Select Color from Pool")
+        dialog.setFixedSize(280, 180)
+
+        # Create layout
+        layout = QGridLayout(dialog)
+        layout.setSpacing(8)
+        layout.setContentsMargins(16, 16, 16, 16)
+
+        # Add label
+        label = QLabel("Choose a color (indices 0-7):")
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label, 0, 0, 1, 4)
+
+        # Create 8 color buttons (2 rows x 4 columns)
+        buttons = []
+        for i in range(8):
+            btn = QPushButton()
+            btn.setFixedSize(50, 50)
+            color = branch_colors[i] if i < len(branch_colors) else "#FFCCCCCC"
+            btn.setStyleSheet(
+                f"background-color: {color}; "
+                "border: 2px solid #C8C8C8; "
+                "border-radius: 6px;"
+            )
+            btn.setToolTip(f"Color Index {i}")
+
+            # Store index for callback
+            btn.setProperty("color_index", i)
+            btn.clicked.connect(lambda _, b=btn: self._on_color_pool_selected(b, dialog))
+
+            row = 1 + (i // 4)
+            col = i % 4
+            layout.addWidget(btn, row, col)
+            buttons.append(btn)
+
+        # Show dialog
+        dialog.exec()
+
+    def _on_color_pool_selected(self, button, dialog):
+        """Handle color selection from pool selector dialog.
+
+        Args:
+            button: The clicked color button
+            dialog: The selector dialog to close
+        """
+        color_index = button.property("color_index")
+
+        # Update bg_color_index in current_style
+        self.current_style["bg_color_index"] = color_index
+
+        # Update button display color
+        parent = self._advanced_tab
+        if parent and hasattr(parent, 'style_config') and parent.style_config:
+            branch_colors = parent.style_config.branch_colors
+            if color_index < len(branch_colors):
+                selected_color = branch_colors[color_index]
+                if hasattr(self, 'bg_color_btn'):
+                    self.bg_color_btn.setStyleSheet(
+                        f"background-color: {selected_color}; "
+                        "border: 1px solid #C8C8C8; "
+                        "border-radius: 6px; "
+                        "padding: 4px 24px 4px 12px; "
+                        "font-size: 13px; "
+                        "text-align: left;"
+                    )
+
+        # Close dialog
+        dialog.accept()
+
+        # Emit style changed
+        self._emit_style_changed()
+
+    def _on_bg_color_selected(self, hex_color: str):
+        """Handle color selection from picker (root mode only)."""
+        # Update the color in branch_colors
+        # Use stored reference to AdvancedStyleTab instead of parent()
+        parent = self._advanced_tab
+
+        if parent and hasattr(parent, 'style_config') and parent.style_config:
+            if self.is_root_mode:
+                # Root mode: update branch_colors[9] directly (like CanvasPanel uses index 8)
+                if (hasattr(parent.style_config, 'branch_colors') and
+                    parent.style_config.branch_colors and
+                    len(parent.style_config.branch_colors) > 9):
+                    parent.style_config.branch_colors[9] = hex_color
+
+                    # CRITICAL: Update current_style to match CanvasPanel behavior
+                    self.current_style["bg_color"] = hex_color
+
+                    # Update button color directly (like CanvasPanel)
+                    if hasattr(self, 'bg_color_btn'):
+                        self.bg_color_btn.setStyleSheet(
+                            f"background-color: {hex_color}; "
+                            "border: 1px solid #C8C8C8; "
+                            "border-radius: 6px; "
+                            "padding: 4px 24px 4px 12px; "
+                            "font-size: 13px; "
+                            "text-align: left;"
+                        )
+
+                    # Emit style changed to trigger redraw
+                    self._emit_style_changed()
+                else:
+                    print("Warning: branch_colors not properly initialized or index 9 out of range")
+            else:
+                # Normal mode: update branch_colors at bg_color_index
+                color_index = self.current_style.get("bg_color_index", 0)
+
+                if (hasattr(parent.style_config, 'branch_colors') and
+                    parent.style_config.branch_colors and
+                    color_index < len(parent.style_config.branch_colors)):
+                    parent.style_config.branch_colors[color_index] = hex_color
+
+                    # Update button color directly
+                    if hasattr(self, 'bg_color_btn'):
+                        self.bg_color_btn.setStyleSheet(
+                            f"background-color: {hex_color}; "
+                            "border: 1px solid #C8C8C8; "
+                            "border-radius: 6px; "
+                            "padding: 4px 24px 4px 12px; "
+                            "font-size: 13px; "
+                            "text-align: left;"
+                        )
+
+                    # Emit style changed to trigger redraw
+                    self._emit_style_changed()
+                else:
+                    print(f"Warning: branch_colors not properly initialized or index {color_index} out of range")
 
     def _on_brightness_changed(self, value: int):
         """Handle background brightness change."""
@@ -394,6 +576,24 @@ class NodeStyleSection(CollapsiblePanel):
         Args:
             style: Dictionary containing node style properties
         """
+        # If bg_color is not in style but we can get it from parent, add it
+        if "bg_color" not in style and self._advanced_tab:
+            parent = self._advanced_tab
+            if hasattr(parent, 'style_config') and parent.style_config:
+                branch_colors = parent.style_config.branch_colors
+                if branch_colors:
+                    if self.is_root_mode:
+                        # Root mode: use branch_colors[9]
+                        if len(branch_colors) > 9:
+                            style = dict(style)  # Create a copy to avoid modifying original
+                            style["bg_color"] = branch_colors[9]
+                    else:
+                        # Normal mode: use bg_color_index
+                        color_index = style.get("bg_color_index", 0)
+                        if color_index < len(branch_colors):
+                            style = dict(style)  # Create a copy to avoid modifying original
+                            style["bg_color"] = branch_colors[color_index]
+
         self.current_style.update(style)
 
         # Update last_emitted_style to match current state
@@ -433,3 +633,22 @@ class NodeStyleSection(CollapsiblePanel):
 
             if "max_text_width" in style:
                 self.max_text_width_spin.setValue(style["max_text_width"])
+
+            # Update background color button
+            if "bg_color" in style and hasattr(self, 'bg_color_btn'):
+                bg_color = style["bg_color"]
+                # Convert #AARRGGBB to rgba() format for Qt (9 chars: # + 8 hex)
+                if len(bg_color) == 9 and bg_color.startswith("#"):
+                    # #AARRGGBB format
+                    alpha = int(bg_color[1:3], 16)
+                    red = int(bg_color[3:5], 16)
+                    green = int(bg_color[5:7], 16)
+                    blue = int(bg_color[7:9], 16)
+                    self.bg_color_btn.setStyleSheet(
+                        f"background-color: rgba({red}, {green}, {blue}, {alpha});"
+                        " border: 1px solid #C8C8C8;"
+                        " border-radius: 6px;"
+                        " padding: 4px 24px 4px 12px;"
+                        " font-size: 13px;"
+                        " text-align: left;"
+                    )

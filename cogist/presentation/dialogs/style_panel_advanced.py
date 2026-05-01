@@ -142,17 +142,25 @@ class AdvancedStyleTab(QWidget):
         # Build complete layer data from global style config
         # NEW: Use flat RoleStyle structure with color indices
 
-        # Get background color using index system
-        bg_color_index = (
-            role_style.bg_color_index if hasattr(role_style, "bg_color_index") else 0
-        )
-
-        if branch_colors and bg_color_index < len(branch_colors):
-            base_bg_color = branch_colors[bg_color_index]
-            # Apply brightness and opacity (simplified)
-            bg_color = base_bg_color
+        # Get background color
+        if layer_name == "root":
+            # Root layer: use branch_colors[9] directly (like canvas uses index 8)
+            if branch_colors and len(branch_colors) > 9:
+                bg_color = branch_colors[9]
+            else:
+                bg_color = "#FFFFFFFF"
         else:
-            bg_color = "#FFFFFFFF"
+            # Other layers: use bg_color_index to reference the pool
+            bg_color_index = (
+                role_style.bg_color_index if hasattr(role_style, "bg_color_index") else 0
+            )
+
+            if branch_colors and bg_color_index < len(branch_colors):
+                base_bg_color = branch_colors[bg_color_index]
+                # Apply brightness and opacity (simplified)
+                bg_color = base_bg_color
+            else:
+                bg_color = "#FFFFFFFF"
 
         # Text color: auto-contrast or manual
         text_color = (
@@ -180,6 +188,10 @@ class AdvancedStyleTab(QWidget):
             "radius": role_style.border_radius
             if hasattr(role_style, "border_radius")
             else 8,
+            # Background enabled
+            "bg_enabled": role_style.bg_enabled
+            if hasattr(role_style, "bg_enabled")
+            else True,
             # Colors
             "bg_color": bg_color,
             "text_color": text_color,
@@ -506,7 +518,7 @@ class AdvancedStyleTab(QWidget):
         self.canvas_panel = CanvasPanel(self)  # NEW: Canvas panel for background color
         # ColorSchemeSection removed - now in separate ColorSchemeTab
         self.spacing_section = SpacingSection()
-        self.node_style_section = NodeStyleSection()
+        self.node_style_section = NodeStyleSection(parent=self)
         self.font_style_section = FontStyleSection()
         self.shadow_section = ShadowSection()
         self.border_section = BorderSection()
@@ -650,6 +662,11 @@ class AdvancedStyleTab(QWidget):
 
         # Node/Border/Connector: only show for non-canvas layers
         self.node_style_section.setVisible(not is_canvas)
+
+        # Set root mode for node style section
+        is_root = layer_name == "root"
+        self.node_style_section.set_root_mode(is_root)
+
         self.font_style_section.setVisible(not is_canvas)
         # Shadow section visibility is controlled by shadow_enabled state in _load_current_layer_style
         self.border_section.setVisible(not is_canvas)

@@ -85,26 +85,6 @@ class CanvasPanel(CollapsiblePanel):
 
         self.setLayout(layout)
 
-    def _button_style(self) -> str:
-        """Get standard button stylesheet."""
-        return """
-            QPushButton {
-                border: 1px solid #C8C8C8;
-                border-radius: 6px;
-                padding: 4px 24px 4px 12px;
-                font-size: 13px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                border-color: #A0A0A0;
-            }
-            QPushButton::menu-indicator {
-                image: none;
-                width: 0;
-                height: 0;
-            }
-        """
-
     def _emit_style_changed(self):
         """Emit style changed signal."""
         self.style_changed.emit(dict(self.current_style))

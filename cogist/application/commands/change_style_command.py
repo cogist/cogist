@@ -201,8 +201,9 @@ class ChangeStyleCommand(Command):
                                 if hasattr(role_style, 'border_radius'):
                                     backup[key] = role_style.border_radius
                             elif key == "bg_color":
-                                # Background color from role_style
-                                backup[key] = role_style.bg_color
+                                # Background color: root layer uses branch_colors[9] directly
+                                # For other layers, this shouldn't happen (they use bg_color_index)
+                                backup[key] = None  # Skip backup for bg_color
                             elif key == "text_color":
                                 # Text color from role_style
                                 backup[key] = role_style.text_color
