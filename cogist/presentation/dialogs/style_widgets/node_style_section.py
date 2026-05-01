@@ -211,10 +211,10 @@ class NodeStyleSection(CollapsiblePanel):
         row += 1
 
         # Background color (placeholder - will be implemented later)
-        bg_color_label = QLabel("Color:")
-        bg_color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        bg_color_label.setFixedWidth(self._label_width)
-        layout.addWidget(bg_color_label, row, 0)
+        self.bg_color_label = QLabel("Color:")
+        self.bg_color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.bg_color_label.setFixedWidth(self._label_width)
+        layout.addWidget(self.bg_color_label, row, 0)
 
         self.bg_color_btn = MenuButton("Color 1", self.WIDGET_HEIGHT)
         self.bg_color_btn.setStyleSheet(self._button_style())
@@ -223,10 +223,10 @@ class NodeStyleSection(CollapsiblePanel):
         row += 1
 
         # Brightness slider
-        brightness_label = QLabel("Brightness:")
-        brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        brightness_label.setFixedWidth(self._label_width)
-        layout.addWidget(brightness_label, row, 0)
+        self.brightness_label = QLabel("Brightness:")
+        self.brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.brightness_label.setFixedWidth(self._label_width)
+        layout.addWidget(self.brightness_label, row, 0)
 
         self.brightness_slider = QSlider(Qt.Horizontal)
         self.brightness_slider.setRange(50, 150)  # 0.5-1.5
@@ -237,10 +237,10 @@ class NodeStyleSection(CollapsiblePanel):
         row += 1
 
         # Opacity slider
-        opacity_label = QLabel("Opacity:")
-        opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        opacity_label.setFixedWidth(self._label_width)
-        layout.addWidget(opacity_label, row, 0)
+        self.opacity_label = QLabel("Opacity:")
+        self.opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.opacity_label.setFixedWidth(self._label_width)
+        layout.addWidget(self.opacity_label, row, 0)
 
         self.opacity_slider = QSlider(Qt.Horizontal)
         self.opacity_slider.setRange(0, 255)
@@ -248,6 +248,9 @@ class NodeStyleSection(CollapsiblePanel):
         self.opacity_slider.setFixedHeight(self.WIDGET_HEIGHT)
         self.opacity_slider.valueChanged.connect(self._on_opacity_changed)
         layout.addWidget(self.opacity_slider, row, 1, alignment=Qt.AlignVCenter)
+
+        # Initialize visibility based on enabled state
+        self._update_background_controls_visibility()
 
         self.setLayout(layout)
 
@@ -313,9 +316,36 @@ class NodeStyleSection(CollapsiblePanel):
         self.current_style["max_text_width"] = value
         self._emit_style_changed()
 
+    def _update_background_controls_visibility(self):
+        """Show/hide background controls based on enabled state."""
+        enabled = self.current_style.get("enabled", True)
+
+        # Show/hide color button and label
+        if hasattr(self, 'bg_color_label'):
+            self.bg_color_label.setVisible(enabled)
+        if hasattr(self, 'bg_color_btn'):
+            self.bg_color_btn.setVisible(enabled)
+
+        # Show/hide brightness slider and label
+        if hasattr(self, 'brightness_label'):
+            self.brightness_label.setVisible(enabled)
+        if hasattr(self, 'brightness_slider'):
+            self.brightness_slider.setVisible(enabled)
+
+        # Show/hide opacity slider and label
+        if hasattr(self, 'opacity_label'):
+            self.opacity_label.setVisible(enabled)
+        if hasattr(self, 'opacity_slider'):
+            self.opacity_slider.setVisible(enabled)
+
     def _on_bg_enabled_changed(self, checked: bool):
         """Handle background enabled toggle change."""
         self.current_style["enabled"] = checked
+
+        # Update visibility of background controls
+        self._update_background_controls_visibility()
+
+        # Emit style changed event
         self._emit_style_changed()
 
     def _on_bg_color_clicked(self):
