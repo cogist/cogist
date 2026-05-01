@@ -288,6 +288,7 @@ class BorderSection(CollapsiblePanel):
         """Emit style changed signal with only border-related fields."""
         # Only emit border-related fields to avoid overwriting other style properties
         border_only_style = {
+            "border_enabled": self.current_style.get("enabled", True),
             "border_style": self.current_style["border_style"],
             "border_width": self.current_style["border_width"],
         }
