@@ -662,6 +662,9 @@ class NodeStyleSection(CollapsiblePanel):
             # Update background enabled toggle
             if "bg_enabled" in style and hasattr(self, 'bg_enabled_toggle'):
                 self.bg_enabled_toggle.set_checked(style["bg_enabled"])
+                # Update controls visibility based on new enabled state
+                if not self.use_rainbow or self.is_root_mode:
+                    self._update_background_controls_visibility()
 
             # Update brightness slider (support multiple field names)
             if "brightness" in style and hasattr(self, 'brightness_slider'):
