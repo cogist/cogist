@@ -58,6 +58,7 @@ class NodeStyleSection(CollapsiblePanel):
         self.current_style = self._get_default_style()
         self.last_emitted_style = None  # Track last emitted style to detect changes
         self.is_root_mode = False  # True for root layer, False for level1/2/3+
+        self.use_rainbow = False  # Rainbow branch mode state
 
         # Color picker (lazy creation)
         self._color_picker = None
@@ -345,7 +346,19 @@ class NodeStyleSection(CollapsiblePanel):
         self.current_style["bg_enabled"] = checked
 
         # Update visibility of background controls
-        self._update_background_controls_visibility()
+        if self.use_rainbow and not self.is_root_mode:
+            # Rainbow mode: only show/hide brightness & opacity sliders
+            if hasattr(self, 'brightness_label'):
+                self.brightness_label.setVisible(checked)
+            if hasattr(self, 'brightness_slider'):
+                self.brightness_slider.setVisible(checked)
+            if hasattr(self, 'opacity_label'):
+                self.opacity_label.setVisible(checked)
+            if hasattr(self, 'opacity_slider'):
+                self.opacity_slider.setVisible(checked)
+        else:
+            # Non-rainbow mode or root layer: normal behavior
+            self._update_background_controls_visibility()
 
         # Emit style changed event
         self._emit_style_changed()
@@ -582,6 +595,10 @@ class NodeStyleSection(CollapsiblePanel):
         Args:
             style: Dictionary containing node style properties
         """
+        # Update rainbow mode state
+        if "use_rainbow" in style:
+            self.use_rainbow = style["use_rainbow"]
+
         # If bg_color is not in style but we can get it from parent, add it
         if "bg_color" not in style and self._advanced_tab:
             parent = self._advanced_tab
@@ -674,3 +691,26 @@ class NodeStyleSection(CollapsiblePanel):
                         " font-size: 13px;"
                         " text-align: left;"
                     )
+
+            # Hide/show color controls based on rainbow mode (only for non-root layers)
+            if self._initialized and not self.is_root_mode:
+                if self.use_rainbow:
+                    # Rainbow mode: hide color button, show/hide brightness & opacity based on bg_enabled
+                    if hasattr(self, 'bg_color_label'):
+                        self.bg_color_label.setVisible(False)
+                    if hasattr(self, 'bg_color_btn'):
+                        self.bg_color_btn.setVisible(False)
+
+                    # Brightness and opacity visibility controlled by background enabled state
+                    bg_enabled = self.current_style.get("bg_enabled", True)
+                    if hasattr(self, 'brightness_label'):
+                        self.brightness_label.setVisible(bg_enabled)
+                    if hasattr(self, 'brightness_slider'):
+                        self.brightness_slider.setVisible(bg_enabled)
+                    if hasattr(self, 'opacity_label'):
+                        self.opacity_label.setVisible(bg_enabled)
+                    if hasattr(self, 'opacity_slider'):
+                        self.opacity_slider.setVisible(bg_enabled)
+                else:
+                    # Non-rainbow mode: normal behavior - all controls follow bg_enabled
+                    self._update_background_controls_visibility()

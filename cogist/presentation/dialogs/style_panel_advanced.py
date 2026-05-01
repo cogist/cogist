@@ -698,6 +698,8 @@ class AdvancedStyleTab(QWidget):
         # NEW: Use MindMapStyle fields directly
         if "use_rainbow_branches" in colors:
             self.style_config.use_rainbow_branches = colors["use_rainbow_branches"]
+            # Refresh UI to update node style section controls visibility
+            self._load_current_layer_style()
         if "branch_colors" in colors:
             self.style_config.branch_colors = colors["branch_colors"]
 
