@@ -79,6 +79,56 @@ def apply_opacity_to_color(hex_color: str, opacity: int) -> str:
     return f"#{opacity:02X}{rgb}"
 
 
+def blend_colors(fg_color: str, bg_color: str, fg_alpha: int = 255) -> str:
+    """Blend foreground color over background color using alpha compositing.
+
+    This implements the standard alpha blending formula:
+        result = fg * alpha + bg * (1 - alpha)
+
+    Args:
+        fg_color: Foreground color in #AARRGGBB or #RRGGBB format
+        bg_color: Background color in #AARRGGBB or #RRGGBB format
+        fg_alpha: Foreground alpha (0-255). If fg_color has alpha, this is ignored.
+
+    Returns:
+        Blended color in #FFRRGGBB format (fully opaque)
+    """
+    def parse_color(color: str) -> tuple:
+        """Parse color to (r, g, b, a) tuple."""
+        color = color.lstrip("#")
+        if len(color) == 8:
+            a = int(color[0:2], 16)
+            r = int(color[2:4], 16)
+            g = int(color[4:6], 16)
+            b = int(color[6:8], 16)
+        elif len(color) == 6:
+            r = int(color[0:2], 16)
+            g = int(color[2:4], 16)
+            b = int(color[4:6], 16)
+            a = 255
+        else:
+            raise ValueError(f"Invalid color format: {color}")
+        return r, g, b, a
+
+    try:
+        fg_r, fg_g, fg_b, fg_a = parse_color(fg_color)
+        bg_r, bg_g, bg_b, bg_a = parse_color(bg_color)
+
+        # Use fg_color's alpha if it has one, otherwise use provided alpha
+        alpha = fg_a if len(fg_color.lstrip("#")) == 8 else fg_alpha
+        alpha_factor = alpha / 255.0
+
+        # Alpha blending formula
+        r = int(fg_r * alpha_factor + bg_r * (1 - alpha_factor))
+        g = int(fg_g * alpha_factor + bg_g * (1 - alpha_factor))
+        b = int(fg_b * alpha_factor + bg_b * (1 - alpha_factor))
+
+        return f"#FF{r:02X}{g:02X}{b:02X}"
+    except (ValueError, IndexError):
+        # Fallback to foreground color if parsing fails
+        return fg_color
+
+
 class NodeStyle:
     """
     Unified node style configuration based on depth.
@@ -335,7 +385,37 @@ class NodeItem(QGraphicsRectItem):
                                                      role_style.border_enabled)
 
         # Text color: auto-contrast or manual
-        text_color = role_style.text_color if role_style.text_color else self._auto_contrast(bg_color)
+        if role_style.text_color:
+            text_color = role_style.text_color
+        else:
+            # Calculate effective background color for text contrast
+            # If node background is disabled or transparent, blend with canvas background
+            if bg_color is None:
+                # Background disabled: use canvas background directly
+                canvas_bg = self.style_config.branch_colors[8] if (
+                    self.style_config and
+                    hasattr(self.style_config, 'branch_colors') and
+                    len(self.style_config.branch_colors) > 8
+                ) else "#FFFFFFFF"
+                text_color = self._auto_contrast(canvas_bg)
+            else:
+                # Background enabled: check if it's transparent or semi-transparent
+                bg_alpha = int(bg_color[1:3], 16) if len(bg_color) == 9 else 255
+
+                if bg_alpha < 255:
+                    # Semi-transparent: blend node bg with canvas bg
+                    canvas_bg = self.style_config.branch_colors[8] if (
+                        self.style_config and
+                        hasattr(self.style_config, 'branch_colors') and
+                        len(self.style_config.branch_colors) > 8
+                    ) else "#FFFFFFFF"
+
+                    # Blend node background over canvas background
+                    effective_bg = blend_colors(bg_color, canvas_bg, bg_alpha)
+                    text_color = self._auto_contrast(effective_bg)
+                else:
+                    # Fully opaque: use node background directly
+                    text_color = self._auto_contrast(bg_color)
 
         # Store for rendering
         self.template_style = role_style  # Keep same attribute name for compatibility
@@ -813,7 +893,34 @@ class NodeItem(QGraphicsRectItem):
 
                     # text_color from role_style or auto contrast
                     if not text_color:
-                        text_color = self._auto_contrast(bg_color)
+                        # Calculate effective background color for text contrast
+                        # If node background is disabled or transparent, blend with canvas background
+                        if bg_color is None:
+                            # Background disabled: use canvas background directly
+                            canvas_bg = self.style_config.branch_colors[8] if (
+                                self.style_config and
+                                hasattr(self.style_config, 'branch_colors') and
+                                len(self.style_config.branch_colors) > 8
+                            ) else "#FFFFFFFF"
+                            text_color = self._auto_contrast(canvas_bg)
+                        else:
+                            # Background enabled: check if it's transparent or semi-transparent
+                            bg_alpha = int(bg_color[1:3], 16) if len(bg_color) == 9 else 255
+
+                            if bg_alpha < 255:
+                                # Semi-transparent: blend node bg with canvas bg
+                                canvas_bg = self.style_config.branch_colors[8] if (
+                                    self.style_config and
+                                    hasattr(self.style_config, 'branch_colors') and
+                                    len(self.style_config.branch_colors) > 8
+                                ) else "#FFFFFFFF"
+
+                                # Blend node background over canvas background
+                                effective_bg = blend_colors(bg_color, canvas_bg, bg_alpha)
+                                text_color = self._auto_contrast(effective_bg)
+                            else:
+                                # Fully opaque: use node background directly
+                                text_color = self._auto_contrast(bg_color)
                 else:
                     # CRITICAL: color_scheme must be available - no fallback allowed
                     node_id = self.domain_node.id if self.domain_node else "unknown"
