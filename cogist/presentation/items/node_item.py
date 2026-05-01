@@ -705,21 +705,9 @@ class NodeItem(QGraphicsRectItem):
             # Get role style directly from role_styles (flat structure)
             if role in self.style_config.role_styles:
                 role_style = self.style_config.role_styles[role]
+                branch_colors = self.style_config.branch_colors
 
                 if role_style:
-                    # Background color: calculate from role_style fields
-                    bg_enabled = role_style.bg_enabled
-                    bg_color_index = role_style.bg_color_index
-                    bg_brightness = role_style.bg_brightness
-                    bg_opacity = role_style.bg_opacity
-
-                    # Border color: calculate from role_style fields
-                    border_enabled = role_style.border_enabled
-                    border_width = role_style.border_width
-                    border_color_index = role_style.border_color_index
-                    border_brightness = role_style.border_brightness
-                    border_opacity = role_style.border_opacity
-
                     # text_color from role_style or auto contrast
                     text_color = role_style.text_color
 
@@ -811,9 +799,13 @@ class NodeItem(QGraphicsRectItem):
                             bg_color = "#FFFFFFFF"
                             border_color = "#FF000000"
                     else:
-                        # Rainbow disabled: use default colors
-                        bg_color = "#FFFFFFFF"
-                        border_color = "#FF000000"
+                        # Rainbow disabled: use color indices from role_style
+                        bg_color = self._get_color_from_index(role_style.bg_color_index, branch_colors,
+                                                             role_style.bg_brightness, role_style.bg_opacity,
+                                                             role_style.bg_enabled)
+                        border_color = self._get_color_from_index(role_style.border_color_index, branch_colors,
+                                                                 role_style.border_brightness, role_style.border_opacity,
+                                                                 role_style.border_enabled)
 
                     # text_color from role_style or auto contrast
                     if not text_color:

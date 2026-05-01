@@ -704,26 +704,24 @@ class AdvancedStyleTab(QWidget):
             "level_1",
             "level_2",
             "level_3_plus",
-        ]:
-            # Get role_style from new architecture
-            if role in self.style_config.role_styles:
-                role_style = self.style_config.role_styles[role]
+        ] and role in self.style_config.role_styles:
+            role_style = self.style_config.role_styles[role]
 
-                # TODO: rainbow_bg_enabled and rainbow_border_enabled will be handled later
-                # if "rainbow_bg_enabled" in colors:
-                #     role_style.bg_enabled = colors["rainbow_bg_enabled"]
-                # if "rainbow_border_enabled" in colors:
-                #     role_style.border_enabled = colors["rainbow_border_enabled"]
-                #     # Control border section visibility based on rainbow_border_enabled
-                #     self.border_section.setVisible(colors["rainbow_border_enabled"])
+            # TODO: rainbow_bg_enabled and rainbow_border_enabled will be handled later
+            # if "rainbow_bg_enabled" in colors:
+            #     role_style.bg_enabled = colors["rainbow_bg_enabled"]
+            # if "rainbow_border_enabled" in colors:
+            #     role_style.border_enabled = colors["rainbow_border_enabled"]
+            #     # Control border section visibility based on rainbow_border_enabled
+            #     self.border_section.setVisible(colors["rainbow_border_enabled"])
 
-                # Brightness and opacity adjustments
-                if "brightness_amount" in colors:
-                    role_style.bg_brightness = colors["brightness_amount"]
-                    role_style.border_brightness = colors["brightness_amount"]
-                if "opacity_amount" in colors:
-                    role_style.bg_opacity = colors["opacity_amount"]
-                    role_style.border_opacity = colors["opacity_amount"]
+            # Brightness and opacity adjustments
+            if "brightness_amount" in colors:
+                role_style.bg_brightness = colors["brightness_amount"]
+                role_style.border_brightness = colors["brightness_amount"]
+            if "opacity_amount" in colors:
+                role_style.bg_opacity = colors["opacity_amount"]
+                role_style.border_opacity = colors["opacity_amount"]
 
         # Apply styles to mindmap after updating role configs
         self._apply_styles_to_mindmap()
