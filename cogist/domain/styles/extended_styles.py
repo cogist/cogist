@@ -273,6 +273,9 @@ class ColorScheme:
     # NOTE: Colors are now loaded from assets/color_schemes/*.json
     color_pool: list[str] = field(default_factory=list)  # Renamed from branch_colors
 
+    # Special colors dictionary
+    special_colors: dict[str, str] = field(default_factory=dict)
+
     # Optional defaults
     default_use_rainbow_branches: bool | None = None
 

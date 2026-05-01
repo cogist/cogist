@@ -166,6 +166,7 @@ def serialize_color_scheme(scheme: ColorScheme) -> dict:
         "name": scheme.name,
         "description": scheme.description,
         "color_pool": scheme.color_pool,  # Renamed from branch_colors
+        "special_colors": scheme.special_colors,
     }
 
 
@@ -176,10 +177,12 @@ def deserialize_color_scheme(data: dict) -> ColorScheme:
     """
     # Support backward compatibility: check for old field name
     color_pool = data.get("color_pool") or data.get("branch_colors", [])
+    special_colors = data.get("special_colors", {})
     return ColorScheme(
         name=data["name"],
         description=data.get("description", ""),
         color_pool=color_pool,
+        special_colors=special_colors,
     )
 
 
