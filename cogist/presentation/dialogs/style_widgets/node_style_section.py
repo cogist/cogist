@@ -249,9 +249,6 @@ class NodeStyleSection(CollapsiblePanel):
         self.opacity_slider.valueChanged.connect(self._on_opacity_changed)
         layout.addWidget(self.opacity_slider, row, 1, alignment=Qt.AlignVCenter)
 
-        # Add vertical stretch to push content up and reduce bottom spacing
-        layout.setRowStretch(row + 1, 1)
-
         self.setLayout(layout)
 
     def _button_style(self) -> str:

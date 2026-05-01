@@ -167,11 +167,11 @@ class ConnectorSection(CollapsiblePanel):
 
         from PySide6.QtWidgets import QSlider
         self.connector_brightness_slider = QSlider(Qt.Horizontal)
-        self.connector_brightness_slider.setFixedHeight(24)
+        self.connector_brightness_slider.setFixedHeight(self.WIDGET_HEIGHT)
         self.connector_brightness_slider.setRange(50, 150)  # 0.5-1.5
         self.connector_brightness_slider.setValue(int(self.current_style["connector_brightness"] * 100))
         self.connector_brightness_slider.valueChanged.connect(self._on_brightness_changed)
-        layout.addWidget(self.connector_brightness_slider, 4, 1)
+        layout.addWidget(self.connector_brightness_slider, 4, 1, alignment=Qt.AlignVCenter)
 
         # Connector opacity
         opacity_label = QLabel("Opacity:")
@@ -181,11 +181,11 @@ class ConnectorSection(CollapsiblePanel):
 
         from PySide6.QtWidgets import QSlider
         self.connector_opacity_slider = QSlider(Qt.Horizontal)
-        self.connector_opacity_slider.setFixedHeight(24)
+        self.connector_opacity_slider.setFixedHeight(self.WIDGET_HEIGHT)
         self.connector_opacity_slider.setRange(0, 255)
         self.connector_opacity_slider.setValue(self.current_style["connector_opacity"])
         self.connector_opacity_slider.valueChanged.connect(self._on_opacity_changed)
-        layout.addWidget(self.connector_opacity_slider, 5, 1)
+        layout.addWidget(self.connector_opacity_slider, 5, 1, alignment=Qt.AlignVCenter)
 
         self.setLayout(layout)
 
