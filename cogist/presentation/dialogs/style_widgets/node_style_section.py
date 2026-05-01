@@ -59,11 +59,15 @@ class NodeStyleSection(CollapsiblePanel):
         """Get default node style - used only during initialization before real data is loaded."""
         # This should be overwritten by set_style() before any UI interaction
         return {
+            "enabled": True,
             "shape": "rounded_rect",
             "radius": 10,
             "padding_w": 20,
             "padding_h": 16,
             "max_text_width": 250,  # Default max text width
+            "bg_color_index": 0,
+            "brightness": 1.0,
+            "opacity": 255,
         }
 
     def _on_toggled(self, checked: bool):
@@ -285,6 +289,26 @@ class NodeStyleSection(CollapsiblePanel):
     def _on_max_text_width_changed(self, value: int):
         """Handle max text width change."""
         self.current_style["max_text_width"] = value
+        self._emit_style_changed()
+
+    def _on_bg_enabled_changed(self, state: int):
+        """Handle background enabled checkbox change."""
+        self.current_style["enabled"] = state == Qt.Checked
+        self._emit_style_changed()
+
+    def _on_bg_color_clicked(self):
+        """Handle background color button click (placeholder)."""
+        # TODO: Implement color picker dialog
+        pass
+
+    def _on_brightness_changed(self, value: int):
+        """Handle background brightness change."""
+        self.current_style["brightness"] = value / 100.0
+        self._emit_style_changed()
+
+    def _on_opacity_changed(self, value: int):
+        """Handle background opacity change."""
+        self.current_style["opacity"] = value
         self._emit_style_changed()
 
     def _emit_style_changed(self):

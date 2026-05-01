@@ -34,8 +34,12 @@ class BorderSection(CollapsiblePanel):
         # State
         self._initialized = False
         self.current_style = {
+            "enabled": True,
             "border_style": "solid",
             "border_width": 2,
+            "border_color_index": 0,
+            "brightness": 1.0,
+            "opacity": 255,
         }
 
         # Connect toggle signal for lazy initialization
@@ -181,6 +185,26 @@ class BorderSection(CollapsiblePanel):
     def _on_width_changed(self, value: int):
         """Handle border width change."""
         self.current_style["border_width"] = value
+        self._emit_style_changed()
+
+    def _on_enabled_changed(self, state: int):
+        """Handle border enabled checkbox change."""
+        self.current_style["enabled"] = state == Qt.Checked
+        self._emit_style_changed()
+
+    def _on_color_clicked(self):
+        """Handle border color button click (placeholder)."""
+        # TODO: Implement color picker dialog
+        pass
+
+    def _on_brightness_changed(self, value: int):
+        """Handle border brightness change."""
+        self.current_style["brightness"] = value / 100.0
+        self._emit_style_changed()
+
+    def _on_opacity_changed(self, value: int):
+        """Handle border opacity change."""
+        self.current_style["opacity"] = value
         self._emit_style_changed()
 
     def _emit_style_changed(self):

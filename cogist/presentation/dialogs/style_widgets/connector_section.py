@@ -52,6 +52,9 @@ class ConnectorSection(CollapsiblePanel):
             "connector_shape": "bezier",
             "connector_style": "solid",
             "line_width": 2,
+            "connector_color_index": 0,
+            "connector_brightness": 1.0,
+            "connector_opacity": 255,
         }
 
         # Connect toggle signal for lazy initialization
@@ -223,6 +226,21 @@ class ConnectorSection(CollapsiblePanel):
     def _on_width_changed(self, value: int):
         """Handle connector width change."""
         self.current_style["line_width"] = value
+        self._emit_style_changed()
+
+    def _on_color_clicked(self):
+        """Handle connector color button click (placeholder)."""
+        # TODO: Implement color picker dialog
+        pass
+
+    def _on_brightness_changed(self, value: int):
+        """Handle connector brightness change."""
+        self.current_style["connector_brightness"] = value / 100.0
+        self._emit_style_changed()
+
+    def _on_opacity_changed(self, value: int):
+        """Handle connector opacity change."""
+        self.current_style["connector_opacity"] = value
         self._emit_style_changed()
 
     def _emit_style_changed(self):
