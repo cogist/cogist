@@ -368,7 +368,7 @@ class MindMapView(QGraphicsView):
         if hasattr(self, "style_config") and self.style_config:
             from PySide6.QtGui import QBrush, QColor
 
-            # NEW: Use branch_colors[8] for canvas background
+            # NEW: Use color_pool[8] for canvas background
             if (
                 hasattr(self.style_config, "color_pool")
                 and self.style_config.color_pool
@@ -386,7 +386,7 @@ class MindMapView(QGraphicsView):
         if hasattr(self, "style_config") and self.style_config:
             from PySide6.QtGui import QBrush, QColor
 
-            # NEW: Use branch_colors[8] for canvas background
+            # NEW: Use color_pool[8] for canvas background
             if (
                 hasattr(self.style_config, "color_pool")
                 and self.style_config.color_pool
@@ -455,13 +455,13 @@ class MindMapView(QGraphicsView):
                     if (hasattr(self.style_config, 'role_styles') and
                         role in self.style_config.role_styles):
                         role_style = self.style_config.role_styles[role]
-                        branch_colors = self.style_config.color_pool
+                        color_pool = self.style_config.color_pool
 
                         # Get connector color using index system
                         color_index = role_style.connector_color_index if hasattr(role_style, 'connector_color_index') else 0
 
-                        if branch_colors and color_index < len(branch_colors):
-                            connector_color = branch_colors[color_index]
+                        if color_pool and color_index < len(color_pool):
+                            connector_color = color_pool[color_index]
                             # Apply brightness and opacity adjustments (simplified)
                         else:
                             connector_color = "#FF666666"

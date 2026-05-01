@@ -1,6 +1,6 @@
 """Style configuration data structures for mind map styling."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from .enums import NodeRole
 from .extended_styles import RoleStyle
@@ -25,20 +25,23 @@ class MindMapStyle:
     Self-contained style with embedded color pool and role configurations.
     No external dependencies on Template or ColorScheme.
 
+    IMPORTANT: NO hardcoded default values! All defaults must come from template files.
+
     Attributes:
         name: Style name
         use_rainbow_branches: Enable rainbow branch mode (PRIMARY nodes cycle through colors)
         color_pool: Color pool (8 branch colors + special colors like canvas_bg, root_background, etc.)
                    Loaded from color scheme JSON file during initialization
+        special_colors: Special role colors dictionary (canvas_bg, root_background, etc.)
         role_styles: Complete role-based configurations (flat structure)
     """
 
-    name: str = "Default"
+    name: str
 
     # === Global settings ===
-    use_rainbow_branches: bool = False
-    color_pool: list[str] = field(default_factory=list)  # Renamed from branch_colors
-    special_colors: dict[str, str] = field(default_factory=dict)  # Special role colors and canvas_bg
+    use_rainbow_branches: bool
+    color_pool: list[str]
+    special_colors: dict[str, str]
 
     # === Role configurations (flat structure) ===
-    role_styles: dict[NodeRole, RoleStyle] = field(default_factory=dict)
+    role_styles: dict[NodeRole, RoleStyle]

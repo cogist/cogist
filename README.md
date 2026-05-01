@@ -193,17 +193,23 @@ class CustomNodeItem(NodeItem):
 ### Extend Style Templates
 
 ```python
-from cogist.domain.styles import Template, RoleBasedStyle, NodeRole
+from cogist.domain.styles import MindMapStyle, RoleStyle, NodeRole
 
-# Create custom template
-template = Template(
-    name="my_template",
-    description="My custom template",
-    role_styles={
-        NodeRole.ROOT: RoleBasedStyle(...),
-        NodeRole.PRIMARY: RoleBasedStyle(...),
-        # ...
-    }
+# Load template from JSON file
+import json
+template_data = json.loads(open('assets/templates/default.json').read())
+
+# Create custom role style
+custom_role = RoleStyle(
+    role=NodeRole.PRIMARY,
+    shape_type="basic",
+    basic_shape="rounded_rect",
+    border_radius=8,
+    bg_enabled=True,
+    bg_color_index=0,
+    bg_brightness=1.0,
+    bg_opacity=255,
+    # ... more fields
 )
 ```
 

@@ -94,7 +94,7 @@ class NodeStyleSection(CollapsiblePanel):
     def set_root_mode(self, is_root: bool):
         """Set whether this section is in root mode.
 
-        In root mode, background color uses branch_colors[9] directly.
+        In root mode, background color uses color_pool[9] directly.
         In normal mode, background color uses bg_color_index to reference the pool.
         """
         self.is_root_mode = is_root
@@ -373,7 +373,7 @@ class NodeStyleSection(CollapsiblePanel):
             return
 
         if self.is_root_mode:
-            # Root mode: show color picker for branch_colors[9] (same as CanvasPanel)
+            # Root mode: show color picker for color_pool[9] (same as CanvasPanel)
             # Check if color picker still exists (may have been deleted by WA_DeleteOnClose)
             if self._color_picker is None or not isValid(self._color_picker):
                 # Get the top-level window to ensure proper dialog lifecycle
@@ -389,7 +389,7 @@ class NodeStyleSection(CollapsiblePanel):
                 len(parent.style_config.color_pool) > 9):
                 current_color = parent.style_config.color_pool[9]
             else:
-                print("Warning: branch_colors not properly initialized or index 9 out of range")
+                print("Warning: color_pool not properly initialized or index 9 out of range")
                 return
 
             # Set current color (MUST call before show!)
@@ -418,9 +418,9 @@ class NodeStyleSection(CollapsiblePanel):
         if not (parent and hasattr(parent, 'style_config') and parent.style_config):
             return
 
-        branch_colors = parent.style_config.color_pool
-        if not branch_colors or len(branch_colors) < 8:
-            print("Warning: branch_colors not properly initialized")
+        color_pool = parent.style_config.color_pool
+        if not color_pool or len(color_pool) < 8:
+            print("Warning: color_pool not properly initialized")
             return
 
         # Create dialog
@@ -443,7 +443,7 @@ class NodeStyleSection(CollapsiblePanel):
         for i in range(8):
             btn = QPushButton()
             btn.setFixedSize(50, 50)
-            color = branch_colors[i] if i < len(branch_colors) else "#FFCCCCCC"
+            color = color_pool[i] if i < len(color_pool) else "#FFCCCCCC"
             btn.setStyleSheet(
                 f"background-color: {color}; "
                 "border: 2px solid #C8C8C8; "
@@ -478,9 +478,9 @@ class NodeStyleSection(CollapsiblePanel):
         # Update button display color
         parent = self._advanced_tab
         if parent and hasattr(parent, 'style_config') and parent.style_config:
-            branch_colors = parent.style_config.color_pool
-            if color_index < len(branch_colors):
-                selected_color = branch_colors[color_index]
+            color_pool = parent.style_config.color_pool
+            if color_index < len(color_pool):
+                selected_color = color_pool[color_index]
                 if hasattr(self, 'bg_color_btn'):
                     self.bg_color_btn.setStyleSheet(
                         f"background-color: {selected_color}; "
@@ -528,7 +528,7 @@ class NodeStyleSection(CollapsiblePanel):
                     # Emit style changed to trigger redraw
                     self._emit_style_changed()
                 else:
-                    print("Warning: branch_colors not properly initialized or index 9 out of range")
+                    print("Warning: color_pool not properly initialized or index 9 out of range")
             else:
                 # Normal mode: update color_pool at bg_color_index
                 color_index = self.current_style.get("bg_color_index", 0)
@@ -552,7 +552,7 @@ class NodeStyleSection(CollapsiblePanel):
                     # Emit style changed to trigger redraw
                     self._emit_style_changed()
                 else:
-                    print(f"Warning: branch_colors not properly initialized or index {color_index} out of range")
+                    print(f"Warning: color_pool not properly initialized or index {color_index} out of range")
 
     def _on_brightness_changed(self, value: int):
         """Handle background brightness change."""
@@ -605,19 +605,19 @@ class NodeStyleSection(CollapsiblePanel):
         if "bg_color" not in style and self._advanced_tab:
             parent = self._advanced_tab
             if hasattr(parent, 'style_config') and parent.style_config:
-                branch_colors = parent.style_config.color_pool
-                if branch_colors:
+                color_pool = parent.style_config.color_pool
+                if color_pool:
                     if self.is_root_mode:
-                        # Root mode: use branch_colors[9]
-                        if len(branch_colors) > 9:
+                        # Root mode: use color_pool[9]
+                        if len(color_pool) > 9:
                             style = dict(style)  # Create a copy to avoid modifying original
-                            style["bg_color"] = branch_colors[9]
+                            style["bg_color"] = color_pool[9]
                     else:
                         # Normal mode: use bg_color_index
                         color_index = style.get("bg_color_index", 0)
-                        if color_index < len(branch_colors):
+                        if color_index < len(color_pool):
                             style = dict(style)  # Create a copy to avoid modifying original
-                            style["bg_color"] = branch_colors[color_index]
+                            style["bg_color"] = color_pool[color_index]
 
         self.current_style.update(style)
 

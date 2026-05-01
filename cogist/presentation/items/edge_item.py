@@ -91,10 +91,10 @@ class EdgeItem(QGraphicsPathItem):
                 role_style = self.style_config.role_styles[connector_role]
 
                 # Get connector color using index system
-                branch_colors = self.style_config.color_pool
+                color_pool = self.style_config.color_pool
                 color_str = self._get_color_from_index(
                     role_style.connector_color_index,
-                    branch_colors,
+                    color_pool,
                     role_style.connector_brightness,
                     role_style.connector_opacity,
                     True  # connector is always enabled
@@ -280,13 +280,13 @@ class EdgeItem(QGraphicsPathItem):
         # Apply new opacity
         return f"#{opacity:02X}{rgb_hex}"
 
-    def _get_color_from_index(self, color_index: int, branch_colors: list,
+    def _get_color_from_index(self, color_index: int, color_pool: list,
                               brightness: float, opacity: int, enabled: bool) -> str | None:
-        """Get color from branch_colors index with adjustments.
+        """Get color from color_pool index with adjustments.
 
         Args:
-            color_index: Index into branch_colors array
-            branch_colors: List of colors
+            color_index: Index into color_pool array
+            color_pool: List of colors
             brightness: Brightness factor (0.5-1.5)
             opacity: Opacity value (0-255)
             enabled: Whether the element is enabled
@@ -297,10 +297,10 @@ class EdgeItem(QGraphicsPathItem):
         if not enabled:
             return None
 
-        if not branch_colors or color_index >= len(branch_colors):
+        if not color_pool or color_index >= len(color_pool):
             return None
 
-        base_color = branch_colors[color_index]
+        base_color = color_pool[color_index]
 
         # Apply brightness adjustment
         if brightness != 1.0:

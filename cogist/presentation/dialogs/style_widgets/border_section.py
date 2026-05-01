@@ -315,7 +315,7 @@ class BorderSection(CollapsiblePanel):
                 border_color_index < len(parent.style_config.color_pool)):
                 current_color = parent.style_config.color_pool[border_color_index]
             else:
-                print("Warning: branch_colors not properly initialized")
+                print("Warning: color_pool not properly initialized")
                 return
 
             # Set current color (MUST call before show!)
@@ -344,9 +344,9 @@ class BorderSection(CollapsiblePanel):
         if not (parent and hasattr(parent, 'style_config') and parent.style_config):
             return
 
-        branch_colors = parent.style_config.color_pool
-        if not branch_colors or len(branch_colors) < 8:
-            print("Warning: branch_colors not properly initialized")
+        color_pool = parent.style_config.color_pool
+        if not color_pool or len(color_pool) < 8:
+            print("Warning: color_pool not properly initialized")
             return
 
         # Create dialog
@@ -369,7 +369,7 @@ class BorderSection(CollapsiblePanel):
         for i in range(8):
             btn = QPushButton()
             btn.setFixedSize(50, 50)
-            color = branch_colors[i] if i < len(branch_colors) else "#FFCCCCCC"
+            color = color_pool[i] if i < len(color_pool) else "#FFCCCCCC"
             btn.setStyleSheet(
                 f"background-color: {color}; "
                 "border: 2px solid #C8C8C8; "
@@ -404,9 +404,9 @@ class BorderSection(CollapsiblePanel):
         # Update button display color
         parent = self._advanced_tab
         if parent and hasattr(parent, 'style_config') and parent.style_config:
-            branch_colors = parent.style_config.color_pool
-            if color_index < len(branch_colors):
-                selected_color = branch_colors[color_index]
+            color_pool = parent.style_config.color_pool
+            if color_index < len(color_pool):
+                selected_color = color_pool[color_index]
                 if hasattr(self, 'color_btn'):
                     self.color_btn.setText(f"Color {color_index + 1}")
                     self.color_btn.setStyleSheet(
@@ -526,10 +526,10 @@ class BorderSection(CollapsiblePanel):
             if "border_color_index" in style and hasattr(self, 'color_btn'):
                 parent = self._advanced_tab
                 if parent and hasattr(parent, 'style_config') and parent.style_config:
-                    branch_colors = parent.style_config.color_pool
+                    color_pool = parent.style_config.color_pool
                     color_index = style["border_color_index"]
-                    if color_index < len(branch_colors):
-                        selected_color = branch_colors[color_index]
+                    if color_index < len(color_pool):
+                        selected_color = color_pool[color_index]
                         if self.is_root_mode:
                             # Root mode: show "Custom" for arbitrary colors
                             self.color_btn.setText("Custom")

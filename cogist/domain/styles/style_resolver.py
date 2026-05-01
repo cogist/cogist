@@ -3,9 +3,8 @@
 from .enums import NodeRole
 from .extended_styles import (
     ColorScheme,
-    EdgeConfig,
     RoleStyle,  # Flat role-based style
-    )
+)
 from .style_config import MindMapStyle
 
 
@@ -61,53 +60,56 @@ def serialize_role_style(role_style: RoleStyle) -> dict:
 
 
 def deserialize_role_style(data: dict) -> RoleStyle:
-    """Deserialize RoleStyle from dict (flat structure)."""
+    """Deserialize RoleStyle from dict (flat structure).
+
+    All fields are required - no defaults. Values must come from template files.
+    """
     return RoleStyle(
-        role=NodeRole(data.get("role", "root")),
+        role=NodeRole(data["role"]),
         # Shape
-        shape_type=data.get("shape_type", "basic"),
-        basic_shape=data.get("basic_shape", "rounded_rect"),
-        border_radius=data.get("border_radius", 8),
+        shape_type=data["shape_type"],
+        basic_shape=data["basic_shape"],
+        border_radius=data["border_radius"],
         # Background
-        bg_enabled=data.get("bg_enabled", True),
-        bg_color_index=data.get("bg_color_index", 0),
-        bg_brightness=data.get("bg_brightness", 1.0),
-        bg_opacity=data.get("bg_opacity", 255),
+        bg_enabled=data["bg_enabled"],
+        bg_color_index=data["bg_color_index"],
+        bg_brightness=data["bg_brightness"],
+        bg_opacity=data["bg_opacity"],
         # Border
-        border_enabled=data.get("border_enabled", True),
-        border_width=data.get("border_width", 0),
-        border_color_index=data.get("border_color_index", 0),
-        border_brightness=data.get("border_brightness", 1.0),
-        border_opacity=data.get("border_opacity", 255),
-        border_style=data.get("border_style", "solid"),
+        border_enabled=data["border_enabled"],
+        border_width=data["border_width"],
+        border_color_index=data["border_color_index"],
+        border_brightness=data["border_brightness"],
+        border_opacity=data["border_opacity"],
+        border_style=data["border_style"],
         # Connector
-        connector_shape=data.get("connector_shape", "bezier"),
-        connector_color_index=data.get("connector_color_index", 0),
-        connector_brightness=data.get("connector_brightness", 1.0),
-        connector_opacity=data.get("connector_opacity", 255),
-        line_width=data.get("line_width", 2.0),
-        connector_style=data.get("connector_style", "solid"),
+        connector_shape=data["connector_shape"],
+        connector_color_index=data["connector_color_index"],
+        connector_brightness=data["connector_brightness"],
+        connector_opacity=data["connector_opacity"],
+        line_width=data["line_width"],
+        connector_style=data["connector_style"],
         # Text
-        text_color=data.get("text_color"),
-        font_size=data.get("font_size", 14),
-        font_weight=data.get("font_weight", "Normal"),
-        font_italic=data.get("font_italic", False),
-        font_family=data.get("font_family", "Arial"),
-        font_underline=data.get("font_underline", False),
-        font_strikeout=data.get("font_strikeout", False),
+        text_color=data.get("text_color"),  # Optional
+        font_size=data["font_size"],
+        font_weight=data["font_weight"],
+        font_italic=data["font_italic"],
+        font_family=data["font_family"],
+        font_underline=data["font_underline"],
+        font_strikeout=data["font_strikeout"],
         # Shadow
-        shadow_enabled=data.get("shadow_enabled", False),
-        shadow_offset_x=data.get("shadow_offset_x", 2),
-        shadow_offset_y=data.get("shadow_offset_y", 2),
-        shadow_blur=data.get("shadow_blur", 4),
-        shadow_color=data.get("shadow_color"),
+        shadow_enabled=data["shadow_enabled"],
+        shadow_offset_x=data["shadow_offset_x"],
+        shadow_offset_y=data["shadow_offset_y"],
+        shadow_blur=data["shadow_blur"],
+        shadow_color=data.get("shadow_color"),  # Optional
         # Spacing
-        parent_child_spacing=data.get("parent_child_spacing", 80.0),
-        sibling_spacing=data.get("sibling_spacing", 60.0),
+        parent_child_spacing=data["parent_child_spacing"],
+        sibling_spacing=data["sibling_spacing"],
         # Padding
-        padding_w=data.get("padding_w", 12),
-        padding_h=data.get("padding_h", 8),
-        max_text_width=data.get("max_text_width", 250),
+        padding_w=data["padding_w"],
+        padding_h=data["padding_h"],
+        max_text_width=data["max_text_width"],
     )
 
 
@@ -139,6 +141,10 @@ def deserialize_style(data: dict) -> MindMapStyle:
     """Deserialize MindMapStyle from JSON-compatible dict.
 
     New architecture: Self-contained structure with all data embedded.
+    All fields are required - no defaults. Values must come from template files.
+
+    NOTE: Template files may not include color_pool and special_colors.
+    These will be loaded separately from color scheme files.
 
     Args:
         data: Dictionary representation from JSON
@@ -147,10 +153,11 @@ def deserialize_style(data: dict) -> MindMapStyle:
         MindMapStyle instance
     """
     style = MindMapStyle(
-        name=data.get("name", "Default"),
+        name=data["name"],
         use_rainbow_branches=data.get("use_rainbow_branches", False),
-        color_pool=data.get("color_pool", []),  # Renamed from branch_colors
-        special_colors=data.get("special_colors", {}),
+        color_pool=data.get("color_pool", []),  # May be empty in template files
+        special_colors=data.get("special_colors", {}),  # May be empty in template files
+        role_styles={},  # Will be populated below
     )
 
     # Deserialize role styles
@@ -175,42 +182,18 @@ def serialize_color_scheme(scheme: ColorScheme) -> dict:
 def deserialize_color_scheme(data: dict) -> ColorScheme:
     """Deserialize ColorScheme from JSON-compatible dict.
 
-    Supports both old format (branch_colors) and new format (color_pool).
+    All fields are required - no defaults. Values must come from JSON files.
     """
-    # Support backward compatibility: check for old field name
-    color_pool = data.get("color_pool") or data.get("branch_colors", [])
-    special_colors = data.get("special_colors", {})
     return ColorScheme(
         name=data["name"],
-        description=data.get("description", ""),
-        color_pool=color_pool,
-        special_colors=special_colors,
+        description=data["description"],
+        color_pool=data["color_pool"],
+        special_colors=data["special_colors"],
     )
 
 
-def serialize_edge_config(edge: EdgeConfig) -> dict:
-    """Serialize EdgeConfig to dict."""
-    return {
-        "default_style": serialize_edge_style(edge.default_style),
-        "role_styles": {
-            role.value: serialize_edge_style(style)
-            for role, style in edge.role_styles.items()
-        },
-    }
-
-
-def deserialize_edge_config(data: dict) -> EdgeConfig:
-    """Deserialize EdgeConfig from dict."""
-    default_style = deserialize_edge_style(data.get("default_style", {}))
-    role_styles = {
-        NodeRole(role): deserialize_edge_style(style_data)
-        for role, style_data in data.get("role_styles", {}).items()
-    }
-
-    return EdgeConfig(
-        default_style=default_style,
-        role_styles=role_styles,
-    )
+# DEPRECATED: EdgeConfig serialization removed (not used in current architecture)
+# Use RoleStyle.connector_* fields instead.
 
 
 def serialize_edge_style(style) -> dict:
@@ -235,25 +218,28 @@ def serialize_edge_style(style) -> dict:
 
 
 def deserialize_edge_style(data: dict):
-    """Deserialize EdgeStyle from dict."""
+    """Deserialize EdgeStyle from dict.
+
+    All fields are required - no defaults. Values must come from template files.
+    """
     from .extended_styles import EdgeStyle
 
     return EdgeStyle(
-        connector_shape=data.get("connector_shape", "bezier"),
-        line_width=data.get("line_width", 2.0),
-        line_style=data.get("line_style", "solid"),
-        enable_gradient=data.get("enable_gradient", True),
-        gradient_ratio=data.get("gradient_ratio", 0.5),
-        gradient_enabled=data.get("gradient_enabled", False),
-        gradient_start_color=data.get("gradient_start_color"),
-        gradient_end_color=data.get("gradient_end_color"),
-        brush_effect=data.get("brush_effect", False),
-        brush_pressure=data.get("brush_pressure", 1.0),
-        brush_texture=data.get("brush_texture"),
-        arrow_start=data.get("arrow_start"),
-        arrow_end=data.get("arrow_end"),
-        arrow_svg=data.get("arrow_svg"),
-        dash_pattern=data.get("dash_pattern"),
+        connector_shape=data["connector_shape"],
+        line_width=data["line_width"],
+        line_style=data["line_style"],
+        enable_gradient=data["enable_gradient"],
+        gradient_ratio=data["gradient_ratio"],
+        gradient_enabled=data["gradient_enabled"],
+        gradient_start_color=data.get("gradient_start_color"),  # Optional
+        gradient_end_color=data.get("gradient_end_color"),  # Optional
+        brush_effect=data["brush_effect"],
+        brush_pressure=data["brush_pressure"],
+        brush_texture=data.get("brush_texture"),  # Optional
+        arrow_start=data.get("arrow_start"),  # Optional
+        arrow_end=data.get("arrow_end"),  # Optional
+        arrow_svg=data.get("arrow_svg"),  # Optional
+        dash_pattern=data.get("dash_pattern"),  # Optional
     )
 
 

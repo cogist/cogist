@@ -282,7 +282,7 @@ class NodeItem(QGraphicsRectItem):
             )
 
         role_style = self.style_config.role_styles[role]
-        branch_colors = self.style_config.color_pool
+        color_pool = self.style_config.color_pool
 
         # Extract font properties from role style
         font_size = role_style.font_size
@@ -291,12 +291,12 @@ class NodeItem(QGraphicsRectItem):
 
         # === Color Resolution ===
         # Check if rainbow branches are enabled
-        if self.style_config.use_rainbow_branches and len(branch_colors) >= 8:
+        if self.style_config.use_rainbow_branches and len(color_pool) >= 8:
             # Level 1: Use rainbow colors
             if depth == 1 and self.domain_node and self.domain_node.parent:
                 try:
                     branch_idx = self.domain_node.parent.children.index(self.domain_node)
-                    base_color = branch_colors[branch_idx % 8]  # Cycle through 8 colors
+                    base_color = color_pool[branch_idx % 8]  # Cycle through 8 colors
 
                     # Apply background color with adjustments
                     if role_style.bg_enabled:
@@ -315,10 +315,10 @@ class NodeItem(QGraphicsRectItem):
                         border_color = None
                 except (ValueError, AttributeError):
                     # Fallback to default color index
-                    bg_color = self._get_color_from_index(role_style.bg_color_index, branch_colors,
+                    bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
                                                           role_style.bg_brightness, role_style.bg_opacity,
                                                           role_style.bg_enabled)
-                    border_color = self._get_color_from_index(role_style.border_color_index, branch_colors,
+                    border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
                                                              role_style.border_brightness, role_style.border_opacity,
                                                              role_style.border_enabled)
 
@@ -329,7 +329,7 @@ class NodeItem(QGraphicsRectItem):
                     try:
                         if level_1_ancestor.parent:
                             branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
-                            ancestor_color = branch_colors[branch_idx % 8]
+                            ancestor_color = color_pool[branch_idx % 8]
 
                             # Background
                             if role_style.bg_enabled:
@@ -347,40 +347,40 @@ class NodeItem(QGraphicsRectItem):
                             else:
                                 border_color = None
                         else:
-                            bg_color = self._get_color_from_index(role_style.bg_color_index, branch_colors,
+                            bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
                                                                  role_style.bg_brightness, role_style.bg_opacity,
                                                                  role_style.bg_enabled)
-                            border_color = self._get_color_from_index(role_style.border_color_index, branch_colors,
+                            border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
                                                                      role_style.border_brightness, role_style.border_opacity,
                                                                      role_style.border_enabled)
                     except (ValueError, AttributeError):
-                        bg_color = self._get_color_from_index(role_style.bg_color_index, branch_colors,
+                        bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
                                                              role_style.bg_brightness, role_style.bg_opacity,
                                                              role_style.bg_enabled)
-                        border_color = self._get_color_from_index(role_style.border_color_index, branch_colors,
+                        border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
                                                                  role_style.border_brightness, role_style.border_opacity,
                                                                  role_style.border_enabled)
                 else:
-                    bg_color = self._get_color_from_index(role_style.bg_color_index, branch_colors,
+                    bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
                                                          role_style.bg_brightness, role_style.bg_opacity,
                                                          role_style.bg_enabled)
-                    border_color = self._get_color_from_index(role_style.border_color_index, branch_colors,
+                    border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
                                                              role_style.border_brightness, role_style.border_opacity,
                                                              role_style.border_enabled)
             else:
                 # Root node (depth == 0): use color index from role_style
-                bg_color = self._get_color_from_index(role_style.bg_color_index, branch_colors,
+                bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
                                                      role_style.bg_brightness, role_style.bg_opacity,
                                                      role_style.bg_enabled)
-                border_color = self._get_color_from_index(role_style.border_color_index, branch_colors,
+                border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
                                                          role_style.border_brightness, role_style.border_opacity,
                                                          role_style.border_enabled)
         else:
             # Rainbow disabled: use color indices directly
-            bg_color = self._get_color_from_index(role_style.bg_color_index, branch_colors,
+            bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
                                                  role_style.bg_brightness, role_style.bg_opacity,
                                                  role_style.bg_enabled)
-            border_color = self._get_color_from_index(role_style.border_color_index, branch_colors,
+            border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
                                                      role_style.border_brightness, role_style.border_opacity,
                                                      role_style.border_enabled)
 
@@ -611,13 +611,13 @@ class NodeItem(QGraphicsRectItem):
         # Return white for dark backgrounds, black for light
         return "#FFFFFFFF" if luminance < 0.5 else "#FF000000"
 
-    def _get_color_from_index(self, color_index: int, branch_colors: list,
+    def _get_color_from_index(self, color_index: int, color_pool: list,
                               brightness: float, opacity: int, enabled: bool) -> str | None:
-        """Get color from branch_colors index with adjustments.
+        """Get color from color_pool index with adjustments.
 
         Args:
-            color_index: Index into branch_colors array
-            branch_colors: List of colors
+            color_index: Index into color_pool array
+            color_pool: List of colors
             brightness: Brightness adjustment factor
             opacity: Opacity value (0-255)
             enabled: Whether the element is enabled
@@ -628,10 +628,10 @@ class NodeItem(QGraphicsRectItem):
         if not enabled:
             return None
 
-        if not branch_colors or color_index >= len(branch_colors):
+        if not color_pool or color_index >= len(color_pool):
             return "#FF000000"  # Default black
 
-        base_color = branch_colors[color_index]
+        base_color = color_pool[color_index]
         adjusted = adjust_color_brightness(base_color, brightness)
         if opacity < 255:
             adjusted = apply_opacity_to_color(adjusted, opacity)
@@ -785,7 +785,7 @@ class NodeItem(QGraphicsRectItem):
             # Get role style directly from role_styles (flat structure)
             if role in self.style_config.role_styles:
                 role_style = self.style_config.role_styles[role]
-                branch_colors = self.style_config.color_pool
+                color_pool = self.style_config.color_pool
 
                 if role_style:
                     # text_color from role_style or auto contrast
@@ -876,18 +876,18 @@ class NodeItem(QGraphicsRectItem):
                                 border_color = "#FF000000"
                         else:
                             # Root node (depth == 0): use color index from role_style
-                            bg_color = self._get_color_from_index(role_style.bg_color_index, branch_colors,
+                            bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
                                                                  role_style.bg_brightness, role_style.bg_opacity,
                                                                  role_style.bg_enabled)
-                            border_color = self._get_color_from_index(role_style.border_color_index, branch_colors,
+                            border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
                                                                      role_style.border_brightness, role_style.border_opacity,
                                                                      role_style.border_enabled)
                     else:
                         # Rainbow disabled: use color indices from role_style
-                        bg_color = self._get_color_from_index(role_style.bg_color_index, branch_colors,
+                        bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
                                                              role_style.bg_brightness, role_style.bg_opacity,
                                                              role_style.bg_enabled)
-                        border_color = self._get_color_from_index(role_style.border_color_index, branch_colors,
+                        border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
                                                                  role_style.border_brightness, role_style.border_opacity,
                                                                  role_style.border_enabled)
 

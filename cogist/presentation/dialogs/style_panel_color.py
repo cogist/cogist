@@ -100,6 +100,6 @@ class ColorSchemeTab(QWidget):
         if style_config:
             color_style = {
                 "use_rainbow_branches": getattr(style_config, 'use_rainbow_branches', False),
-                "branch_colors": getattr(style_config, 'branch_colors', []),
+                "color_pool": getattr(style_config, 'color_pool', []),
             }
             self.color_scheme_section.set_style(color_style)

@@ -213,13 +213,13 @@ class ColorSchemeSection(CollapsiblePanel):
                 )
 
             # Emit change
-            self.color_changed.emit({"branch_colors": self.rainbow_colors.copy()})
+            self.color_changed.emit({"color_pool": self.rainbow_colors.copy()})
 
     def get_style(self) -> dict:
         """Get current color scheme style."""
         return {
             "use_rainbow_branches": self._rainbow_visible,
-            "branch_colors": self.rainbow_colors.copy(),
+            "color_pool": self.rainbow_colors.copy(),
         }
 
     def set_style(self, style: dict):
@@ -234,8 +234,8 @@ class ColorSchemeSection(CollapsiblePanel):
             if self.rainbow_check:
                 self.rainbow_check.setChecked(self._rainbow_visible)
 
-        if "branch_colors" in style:
-            self.rainbow_colors = style["branch_colors"].copy()
+        if "color_pool" in style:
+            self.rainbow_colors = style["color_pool"].copy()
             # Update button colors
             for i, btn in enumerate(self.rainbow_buttons):
                 if i < len(self.rainbow_colors):
