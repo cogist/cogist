@@ -133,15 +133,7 @@ class CanvasPanel(CollapsiblePanel):
         parent = self._advanced_tab
 
         if parent and hasattr(parent, 'style_config') and parent.style_config:
-            # NEW: Use color_pool[8] for canvas background
-            if (hasattr(parent.style_config, 'color_pool') and
-                parent.style_config.color_pool and
-                len(parent.style_config.color_pool) > 8):
-                current_color = parent.style_config.color_pool[8]
-            else:
-                # No default - must be configured
-                print("Warning: color_pool not properly initialized")
-                return
+            current_color = parent.style_config.special_colors["canvas_bg"]
         else:
             # Should not happen - style_config is required
             return

@@ -368,15 +368,7 @@ class MindMapView(QGraphicsView):
         if hasattr(self, "style_config") and self.style_config:
             from PySide6.QtGui import QBrush, QColor
 
-            # NEW: Use color_pool[8] for canvas background
-            if (
-                hasattr(self.style_config, "color_pool")
-                and self.style_config.color_pool
-                and len(self.style_config.color_pool) > 8
-            ):
-                canvas_color = self.style_config.color_pool[8]
-            else:
-                canvas_color = "#FFFFFFFF"  # Default white
+            canvas_color = self.style_config.special_colors["canvas_bg"]
             self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
 
     def _create_ui_items(self, root: Node):
@@ -386,15 +378,7 @@ class MindMapView(QGraphicsView):
         if hasattr(self, "style_config") and self.style_config:
             from PySide6.QtGui import QBrush, QColor
 
-            # NEW: Use color_pool[8] for canvas background
-            if (
-                hasattr(self.style_config, "color_pool")
-                and self.style_config.color_pool
-                and len(self.style_config.color_pool) > 8
-            ):
-                canvas_color = self.style_config.color_pool[8]
-            else:
-                canvas_color = "#FFFFFFFF"  # Default white
+            canvas_color = self.style_config.special_colors["canvas_bg"]
             self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
 
         def create_items_recursive(

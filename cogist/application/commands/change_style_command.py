@@ -122,11 +122,7 @@ class ChangeStyleCommand(Command):
         if layer == "canvas":
             for key in keys:
                 if key == "bg_color":
-                    # Read from color_pool[8]
-                    if hasattr(self.style_config, 'color_pool') and len(self.style_config.color_pool) > 8:
-                        backup[key] = self.style_config.color_pool[8]
-                    else:
-                        backup[key] = "#FFFFFFFF"  # Default white
+                    backup[key] = self.style_config.special_colors["canvas_bg"]
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}
@@ -201,7 +197,7 @@ class ChangeStyleCommand(Command):
                                 if hasattr(role_style, 'border_radius'):
                                     backup[key] = role_style.border_radius
                             elif key == "bg_color":
-                                # Background color: root layer uses color_pool[9] directly
+                                # Background color: root layer uses special_colors["root_background"] directly
                                 # For other layers, this shouldn't happen (they use bg_color_index)
                                 backup[key] = None  # Skip backup for bg_color
                             elif key == "text_color":
@@ -232,11 +228,8 @@ class ChangeStyleCommand(Command):
             style_updates: Dictionary of style properties to update
         """
         if layer == "canvas":
-            if "bg_color" in style_updates and hasattr(self.style_config, 'color_pool'):
-                # Update color_pool[8]
-                while len(self.style_config.color_pool) < 9:
-                    self.style_config.color_pool.append("#FFFFFFFF")
-                self.style_config.color_pool[8] = style_updates["bg_color"]
+            if "bg_color" in style_updates:
+                self.style_config.special_colors["canvas_bg"] = style_updates["bg_color"]
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}

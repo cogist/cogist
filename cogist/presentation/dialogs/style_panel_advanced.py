@@ -95,13 +95,7 @@ class AdvancedStyleTab(QWidget):
 
         if layer_name == "canvas":
             # Canvas needs global rainbow config too
-            # NEW: Use color_pool[8] for canvas background
-            canvas_bg = (
-                self.style_config.color_pool[8]
-                if hasattr(self.style_config, "color_pool")
-                and len(self.style_config.color_pool) > 8
-                else "#FFFFFFFF"
-            )
+            canvas_bg = self.style_config.special_colors["canvas_bg"]
             data = {
                 "bg_color": canvas_bg,
                 "use_rainbow_branches": self.style_config.use_rainbow_branches,
@@ -144,11 +138,7 @@ class AdvancedStyleTab(QWidget):
 
         # Get background color
         if layer_name == "root":
-            # Root layer: use color_pool[9] directly (like canvas uses index 8)
-            if color_pool and len(color_pool) > 9:
-                bg_color = color_pool[9]
-            else:
-                bg_color = "#FFFFFFFF"
+            bg_color = self.style_config.special_colors["root_background"]
         else:
             # Other layers: use bg_color_index to reference the pool
             bg_color_index = (
@@ -404,16 +394,7 @@ class AdvancedStyleTab(QWidget):
 
         if layer_name == "canvas":
             # Handle canvas background color separately
-            # NEW: Use color_pool[8] for canvas background
-            if (
-                "bg_color" in updates
-                and hasattr(self.style_config, "color_pool")
-                and self.style_config.color_pool
-            ):
-                # Ensure we have at least 9 colors (indices 0-8)
-                while len(self.style_config.color_pool) < 9:
-                    self.style_config.color_pool.append("#FFFFFFFF")
-                self.style_config.color_pool[8] = updates["bg_color"]
+            self.style_config.special_colors["canvas_bg"] = updates["bg_color"]
             return  # Canvas doesn't have role styles
 
         # Map layer to role
@@ -618,12 +599,8 @@ class AdvancedStyleTab(QWidget):
 
         new_color = style["bg_color"]
 
-        # Update MindMapStyle.color_pool[8] (canvas background color)
-        if hasattr(self.style_config, "color_pool"):
-            # Ensure we have at least 9 colors (indices 0-8)
-            while len(self.style_config.color_pool) < 9:
-                self.style_config.color_pool.append("#FFFFFFFF")
-            self.style_config.color_pool[8] = new_color
+        # Update canvas background in special_colors
+        self.style_config.special_colors["canvas_bg"] = new_color
 
         # Apply styles to mindmap
         self._apply_styles_to_mindmap()
@@ -704,12 +681,9 @@ class AdvancedStyleTab(QWidget):
             self.style_config.color_pool = colors["color_pool"]
 
         if not role:
-            # Canvas layer - handle canvas_bg and rainbow config
-            if "canvas_bg" in colors and hasattr(self.style_config, 'color_pool'):
-                # Update color_pool[8]
-                while len(self.style_config.color_pool) < 9:
-                    self.style_config.color_pool.append("#FFFFFFFF")
-                self.style_config.color_pool[8] = colors["canvas_bg"]
+            # Canvas layer - handle canvas_bg if present
+            if "canvas_bg" in colors:
+                self.style_config.special_colors["canvas_bg"] = colors["canvas_bg"]
 
             # Apply styles to mindmap after updating canvas/rainbow config
             self._apply_styles_to_mindmap()
@@ -1364,11 +1338,7 @@ class AdvancedStyleTab(QWidget):
         canvas_data = self._get_layer_data("canvas")
         if "bg_color" in canvas_data:
             canvas_color = canvas_data["bg_color"]
-            # Update color_pool[8] for canvas background
-            if hasattr(style, 'color_pool'):
-                while len(style.color_pool) < 9:
-                    style.color_pool.append("#FFFFFFFF")
-                style.color_pool[8] = canvas_color
+            style.special_colors["canvas_bg"] = canvas_color
 
             # Use mindmap_view's method to update scene background
             if hasattr(mindmap_view, '_update_canvas_background'):

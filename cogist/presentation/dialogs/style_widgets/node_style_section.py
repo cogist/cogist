@@ -94,7 +94,7 @@ class NodeStyleSection(CollapsiblePanel):
     def set_root_mode(self, is_root: bool):
         """Set whether this section is in root mode.
 
-        In root mode, background color uses color_pool[9] directly.
+        In root mode, background color uses special_colors["root_background"] directly.
         In normal mode, background color uses bg_color_index to reference the pool.
         """
         self.is_root_mode = is_root
@@ -373,7 +373,7 @@ class NodeStyleSection(CollapsiblePanel):
             return
 
         if self.is_root_mode:
-            # Root mode: show color picker for color_pool[9] (same as CanvasPanel)
+            # Root mode: show color picker for special_colors["root_background"] (same as CanvasPanel)
             # Check if color picker still exists (may have been deleted by WA_DeleteOnClose)
             if self._color_picker is None or not isValid(self._color_picker):
                 # Get the top-level window to ensure proper dialog lifecycle
@@ -383,14 +383,7 @@ class NodeStyleSection(CollapsiblePanel):
                 # Ensure dialog closes when parent window closes
                 self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
-            # Get current color from color_pool[9]
-            if (hasattr(parent.style_config, 'color_pool') and
-                parent.style_config.color_pool and
-                len(parent.style_config.color_pool) > 9):
-                current_color = parent.style_config.color_pool[9]
-            else:
-                print("Warning: color_pool not properly initialized or index 9 out of range")
-                return
+            current_color = parent.style_config.special_colors["root_background"]
 
             # Set current color (MUST call before show!)
             self._color_picker.set_current_color(current_color)
@@ -505,30 +498,24 @@ class NodeStyleSection(CollapsiblePanel):
 
         if parent and hasattr(parent, 'style_config') and parent.style_config:
             if self.is_root_mode:
-                # Root mode: update color_pool[9] directly (like CanvasPanel uses index 8)
-                if (hasattr(parent.style_config, 'color_pool') and
-                    parent.style_config.color_pool and
-                    len(parent.style_config.color_pool) > 9):
-                    parent.style_config.color_pool[9] = hex_color
+                parent.style_config.special_colors["root_background"] = hex_color
 
-                    # CRITICAL: Update current_style to match CanvasPanel behavior
-                    self.current_style["bg_color"] = hex_color
+                # CRITICAL: Update current_style to match CanvasPanel behavior
+                self.current_style["bg_color"] = hex_color
 
-                    # Update button color directly (like CanvasPanel)
-                    if hasattr(self, 'bg_color_btn'):
-                        self.bg_color_btn.setStyleSheet(
-                            f"background-color: {hex_color}; "
-                            "border: 1px solid #C8C8C8; "
-                            "border-radius: 6px; "
-                            "padding: 4px 24px 4px 12px; "
-                            "font-size: 13px; "
-                            "text-align: left;"
-                        )
+                # Update button color directly (like CanvasPanel)
+                if hasattr(self, 'bg_color_btn'):
+                    self.bg_color_btn.setStyleSheet(
+                        f"background-color: {hex_color}; "
+                        "border: 1px solid #C8C8C8; "
+                        "border-radius: 6px; "
+                        "padding: 4px 24px 4px 12px; "
+                        "font-size: 13px; "
+                        "text-align: left;"
+                    )
 
-                    # Emit style changed to trigger redraw
-                    self._emit_style_changed()
-                else:
-                    print("Warning: color_pool not properly initialized or index 9 out of range")
+                # Emit style changed to trigger redraw
+                self._emit_style_changed()
             else:
                 # Normal mode: update color_pool at bg_color_index
                 color_index = self.current_style.get("bg_color_index", 0)
@@ -608,10 +595,9 @@ class NodeStyleSection(CollapsiblePanel):
                 color_pool = parent.style_config.color_pool
                 if color_pool:
                     if self.is_root_mode:
-                        # Root mode: use color_pool[9]
-                        if len(color_pool) > 9:
-                            style = dict(style)  # Create a copy to avoid modifying original
-                            style["bg_color"] = color_pool[9]
+                        # Root mode: use special_colors["root_background"]
+                        style = dict(style)  # Create a copy to avoid modifying original
+                        style["bg_color"] = parent.style_config.special_colors["root_background"]
                     else:
                         # Normal mode: use bg_color_index
                         color_index = style.get("bg_color_index", 0)

@@ -392,11 +392,7 @@ class NodeItem(QGraphicsRectItem):
             # If node background is disabled or transparent, blend with canvas background
             if bg_color is None:
                 # Background disabled: use canvas background directly
-                canvas_bg = self.style_config.color_pool[8] if (
-                    self.style_config and
-                    hasattr(self.style_config, 'color_pool') and
-                    len(self.style_config.color_pool) > 8
-                ) else "#FFFFFFFF"
+                canvas_bg = self.style_config.special_colors["canvas_bg"]
                 text_color = self._auto_contrast(canvas_bg)
             else:
                 # Background enabled: check if it's transparent or semi-transparent
@@ -404,11 +400,7 @@ class NodeItem(QGraphicsRectItem):
 
                 if bg_alpha < 255:
                     # Semi-transparent: blend node bg with canvas bg
-                    canvas_bg = self.style_config.color_pool[8] if (
-                        self.style_config and
-                        hasattr(self.style_config, 'color_pool') and
-                        len(self.style_config.color_pool) > 8
-                    ) else "#FFFFFFFF"
+                    canvas_bg = self.style_config.special_colors["canvas_bg"]
 
                     # Blend node background over canvas background
                     effective_bg = blend_colors(bg_color, canvas_bg, bg_alpha)
@@ -897,11 +889,7 @@ class NodeItem(QGraphicsRectItem):
                         # If node background is disabled or transparent, blend with canvas background
                         if bg_color is None:
                             # Background disabled: use canvas background directly
-                            canvas_bg = self.style_config.color_pool[8] if (
-                                self.style_config and
-                                hasattr(self.style_config, 'color_pool') and
-                                len(self.style_config.color_pool) > 8
-                            ) else "#FFFFFFFF"
+                            canvas_bg = self.style_config.special_colors["canvas_bg"]
                             text_color = self._auto_contrast(canvas_bg)
                         else:
                             # Background enabled: check if it's transparent or semi-transparent
@@ -909,11 +897,7 @@ class NodeItem(QGraphicsRectItem):
 
                             if bg_alpha < 255:
                                 # Semi-transparent: blend node bg with canvas bg
-                                canvas_bg = self.style_config.color_pool[8] if (
-                                    self.style_config and
-                                    hasattr(self.style_config, 'color_pool') and
-                                    len(self.style_config.color_pool) > 8
-                                ) else "#FFFFFFFF"
+                                canvas_bg = self.style_config.special_colors["canvas_bg"]
 
                                 # Blend node background over canvas background
                                 effective_bg = blend_colors(bg_color, canvas_bg, bg_alpha)
