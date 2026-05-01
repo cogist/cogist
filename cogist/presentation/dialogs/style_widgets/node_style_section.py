@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QSlider,
     QSpinBox,
+    QWidget,
 )
 
 from cogist.presentation.widgets import ToggleSwitch, VisualPreviewButton
@@ -79,7 +80,7 @@ class NodeStyleSection(CollapsiblePanel):
         """Initialize content on first expand (lazy initialization)."""
         layout = QGridLayout()
         layout.setSpacing(6)
-        layout.setContentsMargins(self.GROUP_MARGIN, 6, self.GROUP_MARGIN, 16)
+        layout.setContentsMargins(self.GROUP_MARGIN, 6, self.GROUP_MARGIN, 6)
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
 
@@ -182,15 +183,8 @@ class NodeStyleSection(CollapsiblePanel):
         layout.addWidget(self.max_text_width_spin, row, 1)
         row += 1
 
-        # Add separator before Background section
-        from PySide6.QtWidgets import QFrame, QHBoxLayout
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        layout.addWidget(separator, row, 0, 1, 2)
-        row += 1
-
         # Background enabled - Toggle Switch with label on same row (right-aligned like rainbow switch)
+        from PySide6.QtWidgets import QHBoxLayout
         bg_switch_row = QHBoxLayout()
         bg_switch_row.setContentsMargins(0, 0, 0, 0)
         bg_switch_row.setSpacing(0)
@@ -208,7 +202,12 @@ class NodeStyleSection(CollapsiblePanel):
         self.bg_enabled_toggle.toggled.connect(self._on_bg_enabled_changed)
         bg_switch_row.addWidget(self.bg_enabled_toggle)
 
-        layout.addLayout(bg_switch_row, row, 0, 1, 2)
+        # Create a container widget to ensure proper height in grid layout
+        bg_switch_container = QWidget()
+        bg_switch_container.setLayout(bg_switch_row)
+        bg_switch_container.setFixedHeight(self.WIDGET_HEIGHT)  # Match other widgets height
+
+        layout.addWidget(bg_switch_container, row, 0, 1, 2)
         row += 1
 
         # Background color (placeholder - will be implemented later)
@@ -232,8 +231,9 @@ class NodeStyleSection(CollapsiblePanel):
         self.brightness_slider = QSlider(Qt.Horizontal)
         self.brightness_slider.setRange(50, 150)  # 0.5-1.5
         self.brightness_slider.setValue(int(self.current_style.get("brightness", 1.0) * 100))
+        self.brightness_slider.setFixedHeight(self.WIDGET_HEIGHT)
         self.brightness_slider.valueChanged.connect(self._on_brightness_changed)
-        layout.addWidget(self.brightness_slider, row, 1)
+        layout.addWidget(self.brightness_slider, row, 1, alignment=Qt.AlignVCenter)
         row += 1
 
         # Opacity slider
@@ -245,8 +245,12 @@ class NodeStyleSection(CollapsiblePanel):
         self.opacity_slider = QSlider(Qt.Horizontal)
         self.opacity_slider.setRange(0, 255)
         self.opacity_slider.setValue(self.current_style.get("opacity", 255))
+        self.opacity_slider.setFixedHeight(self.WIDGET_HEIGHT)
         self.opacity_slider.valueChanged.connect(self._on_opacity_changed)
-        layout.addWidget(self.opacity_slider, row, 1)
+        layout.addWidget(self.opacity_slider, row, 1, alignment=Qt.AlignVCenter)
+
+        # Add vertical stretch to push content up and reduce bottom spacing
+        layout.setRowStretch(row + 1, 1)
 
         self.setLayout(layout)
 
