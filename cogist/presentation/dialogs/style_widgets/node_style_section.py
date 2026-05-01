@@ -6,14 +6,13 @@ padding, and font properties. Implements lazy initialization for better performa
 
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox,
     QGridLayout,
     QLabel,
     QSlider,
     QSpinBox,
 )
 
-from cogist.presentation.widgets import VisualPreviewButton
+from cogist.presentation.widgets import ToggleSwitch, VisualPreviewButton
 from cogist.presentation.widgets.node_shape_previews import (
     generate_bottom_line_preview,
     generate_circle_preview,
@@ -85,51 +84,6 @@ class NodeStyleSection(CollapsiblePanel):
         layout.setColumnStretch(1, 1)
 
         row = 0
-
-        # Background enabled
-        self.bg_enabled_check = QCheckBox()
-        self.bg_enabled_check.setChecked(self.current_style.get("enabled", True))
-        self.bg_enabled_check.stateChanged.connect(self._on_bg_enabled_changed)
-        layout.addWidget(self.bg_enabled_check, row, 1, alignment=Qt.AlignLeft)
-        row += 1
-
-        # Background color (placeholder - will be implemented later)
-        bg_color_label = QLabel("Color:")
-        bg_color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        bg_color_label.setFixedWidth(self._label_width)
-        layout.addWidget(bg_color_label, row, 0)
-
-        self.bg_color_btn = MenuButton("Color 1", self.WIDGET_HEIGHT)
-        self.bg_color_btn.setStyleSheet(self._button_style())
-        self.bg_color_btn.clicked.connect(self._on_bg_color_clicked)
-        layout.addWidget(self.bg_color_btn, row, 1)
-        row += 1
-
-        # Brightness slider
-        brightness_label = QLabel("Brightness:")
-        brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        brightness_label.setFixedWidth(self._label_width)
-        layout.addWidget(brightness_label, row, 0)
-
-        self.brightness_slider = QSlider(Qt.Horizontal)
-        self.brightness_slider.setRange(50, 150)  # 0.5-1.5
-        self.brightness_slider.setValue(int(self.current_style.get("brightness", 1.0) * 100))
-        self.brightness_slider.valueChanged.connect(self._on_brightness_changed)
-        layout.addWidget(self.brightness_slider, row, 1)
-        row += 1
-
-        # Opacity slider
-        opacity_label = QLabel("Opacity:")
-        opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        opacity_label.setFixedWidth(self._label_width)
-        layout.addWidget(opacity_label, row, 0)
-
-        self.opacity_slider = QSlider(Qt.Horizontal)
-        self.opacity_slider.setRange(0, 255)
-        self.opacity_slider.setValue(self.current_style.get("opacity", 255))
-        self.opacity_slider.valueChanged.connect(self._on_opacity_changed)
-        layout.addWidget(self.opacity_slider, row, 1)
-        row += 1
 
         # Style selector - using reusable VisualPreviewButton
         style_label = QLabel("Style:")
@@ -226,6 +180,73 @@ class NodeStyleSection(CollapsiblePanel):
         self.max_text_width_spin.setSpecialValueText("Unlimited")  # Show "Unlimited" when value is 0
         self.max_text_width_spin.valueChanged.connect(self._on_max_text_width_changed)
         layout.addWidget(self.max_text_width_spin, row, 1)
+        row += 1
+
+        # Add separator before Background section
+        from PySide6.QtWidgets import QFrame, QHBoxLayout
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(separator, row, 0, 1, 2)
+        row += 1
+
+        # Background enabled - Toggle Switch with label on same row (right-aligned like rainbow switch)
+        bg_switch_row = QHBoxLayout()
+        bg_switch_row.setContentsMargins(0, 0, 0, 0)
+        bg_switch_row.setSpacing(0)
+
+        bg_header_label = QLabel("Background:")
+        bg_header_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        bg_header_label.setFixedWidth(self._label_width)
+        # Removed bold style - use normal font weight
+        bg_switch_row.addWidget(bg_header_label)
+
+        bg_switch_row.addStretch()
+
+        self.bg_enabled_toggle = ToggleSwitch()
+        self.bg_enabled_toggle.set_checked(self.current_style.get("enabled", True))
+        self.bg_enabled_toggle.toggled.connect(self._on_bg_enabled_changed)
+        bg_switch_row.addWidget(self.bg_enabled_toggle)
+
+        layout.addLayout(bg_switch_row, row, 0, 1, 2)
+        row += 1
+
+        # Background color (placeholder - will be implemented later)
+        bg_color_label = QLabel("Color:")
+        bg_color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        bg_color_label.setFixedWidth(self._label_width)
+        layout.addWidget(bg_color_label, row, 0)
+
+        self.bg_color_btn = MenuButton("Color 1", self.WIDGET_HEIGHT)
+        self.bg_color_btn.setStyleSheet(self._button_style())
+        self.bg_color_btn.clicked.connect(self._on_bg_color_clicked)
+        layout.addWidget(self.bg_color_btn, row, 1)
+        row += 1
+
+        # Brightness slider
+        brightness_label = QLabel("Brightness:")
+        brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        brightness_label.setFixedWidth(self._label_width)
+        layout.addWidget(brightness_label, row, 0)
+
+        self.brightness_slider = QSlider(Qt.Horizontal)
+        self.brightness_slider.setRange(50, 150)  # 0.5-1.5
+        self.brightness_slider.setValue(int(self.current_style.get("brightness", 1.0) * 100))
+        self.brightness_slider.valueChanged.connect(self._on_brightness_changed)
+        layout.addWidget(self.brightness_slider, row, 1)
+        row += 1
+
+        # Opacity slider
+        opacity_label = QLabel("Opacity:")
+        opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        opacity_label.setFixedWidth(self._label_width)
+        layout.addWidget(opacity_label, row, 0)
+
+        self.opacity_slider = QSlider(Qt.Horizontal)
+        self.opacity_slider.setRange(0, 255)
+        self.opacity_slider.setValue(self.current_style.get("opacity", 255))
+        self.opacity_slider.valueChanged.connect(self._on_opacity_changed)
+        layout.addWidget(self.opacity_slider, row, 1)
 
         self.setLayout(layout)
 
@@ -291,9 +312,9 @@ class NodeStyleSection(CollapsiblePanel):
         self.current_style["max_text_width"] = value
         self._emit_style_changed()
 
-    def _on_bg_enabled_changed(self, state: int):
-        """Handle background enabled checkbox change."""
-        self.current_style["enabled"] = state == Qt.Checked
+    def _on_bg_enabled_changed(self, checked: bool):
+        """Handle background enabled toggle change."""
+        self.current_style["enabled"] = checked
         self._emit_style_changed()
 
     def _on_bg_color_clicked(self):
