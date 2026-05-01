@@ -54,7 +54,7 @@ class BackgroundStyle:
 
     # New fields for color pool reference and adjustment
     enabled: bool = True  # Whether to show background
-    color_index: int = 0  # Index into ColorScheme.branch_colors
+    color_index: int = 0  # Index into ColorScheme.color_pool
     brightness: float = 1.0  # Brightness adjustment (0.5-1.5)
     opacity: int = 255  # Opacity adjustment (0-255)
 
@@ -84,7 +84,7 @@ class BorderStyle:
 
     # New fields for color pool reference and adjustment
     enabled: bool = True  # Whether to show border
-    color_index: int = 0  # Index into ColorScheme.branch_colors
+    color_index: int = 0  # Index into ColorScheme.color_pool
     brightness: float = 1.0  # Brightness adjustment (0.5-1.5)
     opacity: int = 255  # Opacity adjustment (0-255)
 
@@ -154,7 +154,7 @@ class EdgeConfig:
 class RoleStyle:
     """Flat role-based style configuration (NEW ARCHITECTURE).
 
-    All style fields at the same level. Colors reference ColorScheme.branch_colors
+    All style fields at the same level. Colors reference ColorScheme.color_pool
     via index, with brightness and opacity adjustments.
 
     This replaces the old nested structure (RoleBasedStyle with BackgroundStyle,
@@ -170,21 +170,21 @@ class RoleStyle:
 
     # === Background (flat fields) ===
     bg_enabled: bool = True
-    bg_color_index: int = 0  # Index into branch_colors
+    bg_color_index: int = 0  # Index into color_pool
     bg_brightness: float = 1.0  # 0.5-1.5
     bg_opacity: int = 255  # 0-255
 
     # === Border (flat fields) ===
     border_enabled: bool = True
     border_width: int = 0
-    border_color_index: int = 0  # Index into branch_colors
+    border_color_index: int = 0  # Index into color_pool
     border_brightness: float = 1.0
     border_opacity: int = 255
     border_style: str = "solid"  # solid / dashed / dotted / dash_dot
 
     # === Connector (flat fields) ===
     connector_shape: str = "bezier"  # bezier / straight / orthogonal / rounded_orthogonal
-    connector_color_index: int = 0  # Index into branch_colors
+    connector_color_index: int = 0  # Index into color_pool
     connector_brightness: float = 1.0
     connector_opacity: int = 255
     line_width: float = 2.0
@@ -260,22 +260,18 @@ class ColorScheme:
     """Color scheme (pure color pool only).
 
     Contains only the color palette. No style properties.
-    Canvas background color is stored at index 8 of branch_colors.
-    Root node background color is stored at index 9 of branch_colors.
 
-    NOTE: branch_colors should be loaded from JSON configuration files,
+    NOTE: Colors should be loaded from JSON configuration files,
     not hardcoded here. This default is only for backward compatibility.
     """
 
     name: str
     description: str
 
-    # Branch color pool (10 colors using HexArgb format)
+    # Color pool (8 branch colors using HexArgb format)
     # Indices [0-7]: Branch colors for rainbow mode
-    # Index [8]: Canvas background color
-    # Index [9]: Root node background color
     # NOTE: Colors are now loaded from assets/color_schemes/*.json
-    branch_colors: list[str] = field(default_factory=list)
+    color_pool: list[str] = field(default_factory=list)  # Renamed from branch_colors
 
     # Optional defaults
     default_use_rainbow_branches: bool | None = None
@@ -309,22 +305,21 @@ class Template:
 # MindMapStyle will be updated to use template_name and color_scheme_name
 
 
-def get_rainbow_branch_color(branch_idx: int, branch_colors: list[str]) -> str:
+def get_rainbow_branch_color(branch_idx: int, color_pool: list[str]) -> str:
     """Get color for a rainbow branch by index.
 
     Args:
         branch_idx: Index of the branch (0-based)
-        branch_colors: List of available branch colors (may include canvas and root colors at indices 8-9)
+        color_pool: List of available colors
 
     Returns:
         Color string in hex format
     """
-    if not branch_colors:
+    if not color_pool:
         return "#FF666666"  # Default gray color
 
     # Rainbow branches only use indices 0-7 (first 8 colors)
-    # Indices 8-9 are reserved for canvas background and root background
-    branch_color_count = min(8, len(branch_colors))
+    pool_size = min(8, len(color_pool))
 
-    # Cycle through branch colors if more branches than colors
-    return branch_colors[branch_idx % branch_color_count]
+    # Cycle through colors if more branches than colors
+    return color_pool[branch_idx % pool_size]

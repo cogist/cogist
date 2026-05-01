@@ -2,7 +2,7 @@
   "name": "pastel",
   "description": "Soft pastel colors for gentle and calming mind maps",
   
-  "branch_colors": [
+  "color_pool": [
     "#FFFFB3BA",
     "#FFFFDFBA",
     "#FFFFFFBA",
@@ -13,6 +13,13 @@
     "#FFBAFFFF"
   ],
   
-  "default_canvas_bg_color": "#FFFFFFFF",
-  "default_use_rainbow_branches": false
+  "special_colors": {
+    "canvas_bg": "#FFFFFFFF",
+    "root_background": "#FFFFFFFF",
+    "root_border": "#FF555555",
+    "critical_node_bg": "#FFFFF0F0",
+    "critical_node_border": "#FFDD8888",
+    "minor_node_bg": "#FFF9F9F9",
+    "minor_node_border": "#FFBBBBBB"
+  }
 }

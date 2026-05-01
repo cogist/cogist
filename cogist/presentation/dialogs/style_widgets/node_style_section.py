@@ -383,11 +383,11 @@ class NodeStyleSection(CollapsiblePanel):
                 # Ensure dialog closes when parent window closes
                 self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
-            # Get current color from branch_colors[9]
-            if (hasattr(parent.style_config, 'branch_colors') and
-                parent.style_config.branch_colors and
-                len(parent.style_config.branch_colors) > 9):
-                current_color = parent.style_config.branch_colors[9]
+            # Get current color from color_pool[9]
+            if (hasattr(parent.style_config, 'color_pool') and
+                parent.style_config.color_pool and
+                len(parent.style_config.color_pool) > 9):
+                current_color = parent.style_config.color_pool[9]
             else:
                 print("Warning: branch_colors not properly initialized or index 9 out of range")
                 return
@@ -418,7 +418,7 @@ class NodeStyleSection(CollapsiblePanel):
         if not (parent and hasattr(parent, 'style_config') and parent.style_config):
             return
 
-        branch_colors = parent.style_config.branch_colors
+        branch_colors = parent.style_config.color_pool
         if not branch_colors or len(branch_colors) < 8:
             print("Warning: branch_colors not properly initialized")
             return
@@ -478,7 +478,7 @@ class NodeStyleSection(CollapsiblePanel):
         # Update button display color
         parent = self._advanced_tab
         if parent and hasattr(parent, 'style_config') and parent.style_config:
-            branch_colors = parent.style_config.branch_colors
+            branch_colors = parent.style_config.color_pool
             if color_index < len(branch_colors):
                 selected_color = branch_colors[color_index]
                 if hasattr(self, 'bg_color_btn'):
@@ -499,17 +499,17 @@ class NodeStyleSection(CollapsiblePanel):
 
     def _on_bg_color_selected(self, hex_color: str):
         """Handle color selection from picker (root mode only)."""
-        # Update the color in branch_colors
+        # Update the color in color_pool
         # Use stored reference to AdvancedStyleTab instead of parent()
         parent = self._advanced_tab
 
         if parent and hasattr(parent, 'style_config') and parent.style_config:
             if self.is_root_mode:
-                # Root mode: update branch_colors[9] directly (like CanvasPanel uses index 8)
-                if (hasattr(parent.style_config, 'branch_colors') and
-                    parent.style_config.branch_colors and
-                    len(parent.style_config.branch_colors) > 9):
-                    parent.style_config.branch_colors[9] = hex_color
+                # Root mode: update color_pool[9] directly (like CanvasPanel uses index 8)
+                if (hasattr(parent.style_config, 'color_pool') and
+                    parent.style_config.color_pool and
+                    len(parent.style_config.color_pool) > 9):
+                    parent.style_config.color_pool[9] = hex_color
 
                     # CRITICAL: Update current_style to match CanvasPanel behavior
                     self.current_style["bg_color"] = hex_color
@@ -530,13 +530,13 @@ class NodeStyleSection(CollapsiblePanel):
                 else:
                     print("Warning: branch_colors not properly initialized or index 9 out of range")
             else:
-                # Normal mode: update branch_colors at bg_color_index
+                # Normal mode: update color_pool at bg_color_index
                 color_index = self.current_style.get("bg_color_index", 0)
 
-                if (hasattr(parent.style_config, 'branch_colors') and
-                    parent.style_config.branch_colors and
-                    color_index < len(parent.style_config.branch_colors)):
-                    parent.style_config.branch_colors[color_index] = hex_color
+                if (hasattr(parent.style_config, 'color_pool') and
+                    parent.style_config.color_pool and
+                    color_index < len(parent.style_config.color_pool)):
+                    parent.style_config.color_pool[color_index] = hex_color
 
                     # Update button color directly
                     if hasattr(self, 'bg_color_btn'):
@@ -605,7 +605,7 @@ class NodeStyleSection(CollapsiblePanel):
         if "bg_color" not in style and self._advanced_tab:
             parent = self._advanced_tab
             if hasattr(parent, 'style_config') and parent.style_config:
-                branch_colors = parent.style_config.branch_colors
+                branch_colors = parent.style_config.color_pool
                 if branch_colors:
                     if self.is_root_mode:
                         # Root mode: use branch_colors[9]

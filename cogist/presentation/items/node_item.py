@@ -282,7 +282,7 @@ class NodeItem(QGraphicsRectItem):
             )
 
         role_style = self.style_config.role_styles[role]
-        branch_colors = self.style_config.branch_colors
+        branch_colors = self.style_config.color_pool
 
         # Extract font properties from role style
         font_size = role_style.font_size
@@ -392,10 +392,10 @@ class NodeItem(QGraphicsRectItem):
             # If node background is disabled or transparent, blend with canvas background
             if bg_color is None:
                 # Background disabled: use canvas background directly
-                canvas_bg = self.style_config.branch_colors[8] if (
+                canvas_bg = self.style_config.color_pool[8] if (
                     self.style_config and
-                    hasattr(self.style_config, 'branch_colors') and
-                    len(self.style_config.branch_colors) > 8
+                    hasattr(self.style_config, 'color_pool') and
+                    len(self.style_config.color_pool) > 8
                 ) else "#FFFFFFFF"
                 text_color = self._auto_contrast(canvas_bg)
             else:
@@ -404,10 +404,10 @@ class NodeItem(QGraphicsRectItem):
 
                 if bg_alpha < 255:
                     # Semi-transparent: blend node bg with canvas bg
-                    canvas_bg = self.style_config.branch_colors[8] if (
+                    canvas_bg = self.style_config.color_pool[8] if (
                         self.style_config and
-                        hasattr(self.style_config, 'branch_colors') and
-                        len(self.style_config.branch_colors) > 8
+                        hasattr(self.style_config, 'color_pool') and
+                        len(self.style_config.color_pool) > 8
                     ) else "#FFFFFFFF"
 
                     # Blend node background over canvas background
@@ -785,7 +785,7 @@ class NodeItem(QGraphicsRectItem):
             # Get role style directly from role_styles (flat structure)
             if role in self.style_config.role_styles:
                 role_style = self.style_config.role_styles[role]
-                branch_colors = self.style_config.branch_colors
+                branch_colors = self.style_config.color_pool
 
                 if role_style:
                     # text_color from role_style or auto contrast
@@ -801,7 +801,7 @@ class NodeItem(QGraphicsRectItem):
                                 from cogist.domain.styles.extended_styles import (
                                     get_rainbow_branch_color,
                                 )
-                                branch_color = get_rainbow_branch_color(branch_idx, self.style_config.branch_colors)
+                                branch_color = get_rainbow_branch_color(branch_idx, self.style_config.color_pool)
 
                                 # In rainbow mode: switches control whether to draw color (rainbow) or not (transparent)
                                 # Background: if enabled, draw rainbow color; if disabled, no background
@@ -845,7 +845,7 @@ class NodeItem(QGraphicsRectItem):
                                             get_rainbow_branch_color,
                                         )
                                         ancestor_branch_color = get_rainbow_branch_color(
-                                            branch_idx, self.style_config.branch_colors
+                                            branch_idx, self.style_config.color_pool
                                         )
 
                                         # Background: if enabled, draw rainbow color; if disabled, no background
@@ -897,10 +897,10 @@ class NodeItem(QGraphicsRectItem):
                         # If node background is disabled or transparent, blend with canvas background
                         if bg_color is None:
                             # Background disabled: use canvas background directly
-                            canvas_bg = self.style_config.branch_colors[8] if (
+                            canvas_bg = self.style_config.color_pool[8] if (
                                 self.style_config and
-                                hasattr(self.style_config, 'branch_colors') and
-                                len(self.style_config.branch_colors) > 8
+                                hasattr(self.style_config, 'color_pool') and
+                                len(self.style_config.color_pool) > 8
                             ) else "#FFFFFFFF"
                             text_color = self._auto_contrast(canvas_bg)
                         else:
@@ -909,10 +909,10 @@ class NodeItem(QGraphicsRectItem):
 
                             if bg_alpha < 255:
                                 # Semi-transparent: blend node bg with canvas bg
-                                canvas_bg = self.style_config.branch_colors[8] if (
+                                canvas_bg = self.style_config.color_pool[8] if (
                                     self.style_config and
-                                    hasattr(self.style_config, 'branch_colors') and
-                                    len(self.style_config.branch_colors) > 8
+                                    hasattr(self.style_config, 'color_pool') and
+                                    len(self.style_config.color_pool) > 8
                                 ) else "#FFFFFFFF"
 
                                 # Blend node background over canvas background

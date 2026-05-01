@@ -2,7 +2,7 @@
   "name": "vibrant",
   "description": "Vibrant and energetic colors for creative mind maps",
   
-  "branch_colors": [
+  "color_pool": [
     "#FFFF0000",
     "#FFFF6600",
     "#FFFFFF00",
@@ -13,6 +13,13 @@
     "#FFFF0080"
   ],
   
-  "default_canvas_bg_color": "#FFFAFAFA",
-  "default_use_rainbow_branches": true
+  "special_colors": {
+    "canvas_bg": "#FFFAFAFA",
+    "root_background": "#FFFFFFFF",
+    "root_border": "#FF222222",
+    "critical_node_bg": "#FFFFEEEE",
+    "critical_node_border": "#FFCC0000",
+    "minor_node_bg": "#FFF8F8F8",
+    "minor_node_border": "#FFAAAAAA"
+  }
 }

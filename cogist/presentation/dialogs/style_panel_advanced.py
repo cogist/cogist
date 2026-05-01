@@ -82,7 +82,7 @@ class AdvancedStyleTab(QWidget):
     def _get_layer_data(self, layer_name: str) -> dict:
         """Get style data for a layer directly from global style_config.
 
-        This method reads from style_config.role_styles and branch_colors,
+        This method reads from style_config.role_styles and color_pool,
         ensuring panel always uses the authoritative data source.
 
         Args:
@@ -95,17 +95,17 @@ class AdvancedStyleTab(QWidget):
 
         if layer_name == "canvas":
             # Canvas needs global rainbow config too
-            # NEW: Use branch_colors[8] for canvas background
+            # NEW: Use color_pool[8] for canvas background
             canvas_bg = (
-                self.style_config.branch_colors[8]
-                if hasattr(self.style_config, "branch_colors")
-                and len(self.style_config.branch_colors) > 8
+                self.style_config.color_pool[8]
+                if hasattr(self.style_config, "color_pool")
+                and len(self.style_config.color_pool) > 8
                 else "#FFFFFFFF"
             )
             data = {
                 "bg_color": canvas_bg,
                 "use_rainbow_branches": self.style_config.use_rainbow_branches,
-                "branch_colors": self.style_config.branch_colors,
+                "branch_colors": self.style_config.color_pool,
             }
             return data
 
@@ -137,14 +137,14 @@ class AdvancedStyleTab(QWidget):
             )
 
         role_style = self.style_config.role_styles[role]
-        branch_colors = self.style_config.branch_colors
+        branch_colors = self.style_config.color_pool
 
         # Build complete layer data from global style config
         # NEW: Use flat RoleStyle structure with color indices
 
         # Get background color
         if layer_name == "root":
-            # Root layer: use branch_colors[9] directly (like canvas uses index 8)
+            # Root layer: use color_pool[9] directly (like canvas uses index 8)
             if branch_colors and len(branch_colors) > 9:
                 bg_color = branch_colors[9]
             else:
@@ -232,12 +232,12 @@ class AdvancedStyleTab(QWidget):
             if hasattr(role_style, "shadow_color")
             else "#000000",
             # Border - NEW: flat fields
-            "border_style": role_style.border_style
-            if hasattr(role_style, "border_style")
-            else "solid",
-            "border_width": role_style.border_width
-            if hasattr(role_style, "border_width")
-            else 0,
+            "border_enabled": role_style.border_enabled,
+            "border_style": role_style.border_style,
+            "border_width": role_style.border_width,
+            "border_color_index": role_style.border_color_index,
+            "border_brightness": role_style.border_brightness,
+            "border_opacity": role_style.border_opacity,
             # Padding
             "padding_w": role_style.padding_w
             if hasattr(role_style, "padding_w")
@@ -383,7 +383,7 @@ class AdvancedStyleTab(QWidget):
             and role in self.style_config.role_styles
         ):
             role_style = self.style_config.role_styles[role]
-            branch_colors = self.style_config.branch_colors
+            branch_colors = self.style_config.color_pool
 
             # Use connector_color_index to get color from pool
             color_index = role_style.connector_color_index if hasattr(role_style, 'connector_color_index') else 0
@@ -404,16 +404,16 @@ class AdvancedStyleTab(QWidget):
 
         if layer_name == "canvas":
             # Handle canvas background color separately
-            # NEW: Use branch_colors[8] for canvas background
+            # NEW: Use color_pool[8] for canvas background
             if (
                 "bg_color" in updates
-                and hasattr(self.style_config, "branch_colors")
-                and self.style_config.branch_colors
+                and hasattr(self.style_config, "color_pool")
+                and self.style_config.color_pool
             ):
                 # Ensure we have at least 9 colors (indices 0-8)
-                while len(self.style_config.branch_colors) < 9:
-                    self.style_config.branch_colors.append("#FFFFFFFF")
-                self.style_config.branch_colors[8] = updates["bg_color"]
+                while len(self.style_config.color_pool) < 9:
+                    self.style_config.color_pool.append("#FFFFFFFF")
+                self.style_config.color_pool[8] = updates["bg_color"]
             return  # Canvas doesn't have role styles
 
         # Map layer to role
@@ -452,9 +452,9 @@ class AdvancedStyleTab(QWidget):
             elif key == "bg_color":
                 # Background color goes to role_style
                 if hasattr(role_style, "bg_color_index"):
-                    # For new architecture, we need to find the color index in branch_colors
-                    if value in self.style_config.branch_colors:
-                        role_style.bg_color_index = self.style_config.branch_colors.index(value)
+                    # For new architecture, we need to find the color index in color_pool
+                    if value in self.style_config.color_pool:
+                        role_style.bg_color_index = self.style_config.color_pool.index(value)
                     else:
                         # If color not in pool, add it or use default
                         role_style.bg_color_index = 0
@@ -465,9 +465,9 @@ class AdvancedStyleTab(QWidget):
             elif key == "border_color":
                 # Border color goes to role_style
                 if hasattr(role_style, "border_color_index"):
-                    # For new architecture, we need to find the color index in branch_colors
-                    if value in self.style_config.branch_colors:
-                        role_style.border_color_index = self.style_config.branch_colors.index(value)
+                    # For new architecture, we need to find the color index in color_pool
+                    if value in self.style_config.color_pool:
+                        role_style.border_color_index = self.style_config.color_pool.index(value)
                     else:
                         # If color not in pool, add it or use default
                         role_style.border_color_index = 0
@@ -618,12 +618,12 @@ class AdvancedStyleTab(QWidget):
 
         new_color = style["bg_color"]
 
-        # Update MindMapStyle.branch_colors[8] (canvas background color)
-        if hasattr(self.style_config, "branch_colors"):
+        # Update MindMapStyle.color_pool[8] (canvas background color)
+        if hasattr(self.style_config, "color_pool"):
             # Ensure we have at least 9 colors (indices 0-8)
-            while len(self.style_config.branch_colors) < 9:
-                self.style_config.branch_colors.append("#FFFFFFFF")
-            self.style_config.branch_colors[8] = new_color
+            while len(self.style_config.color_pool) < 9:
+                self.style_config.color_pool.append("#FFFFFFFF")
+            self.style_config.color_pool[8] = new_color
 
         # Apply styles to mindmap
         self._apply_styles_to_mindmap()
@@ -701,15 +701,15 @@ class AdvancedStyleTab(QWidget):
             # Refresh UI to update node style section controls visibility
             self._load_current_layer_style()
         if "branch_colors" in colors:
-            self.style_config.branch_colors = colors["branch_colors"]
+            self.style_config.color_pool = colors["branch_colors"]
 
         if not role:
             # Canvas layer - handle canvas_bg and rainbow config
-            if "canvas_bg" in colors and hasattr(self.style_config, 'branch_colors'):
+            if "canvas_bg" in colors and hasattr(self.style_config, 'color_pool'):
                 # Update branch_colors[8]
-                while len(self.style_config.branch_colors) < 9:
-                    self.style_config.branch_colors.append("#FFFFFFFF")
-                self.style_config.branch_colors[8] = colors["canvas_bg"]
+                while len(self.style_config.color_pool) < 9:
+                    self.style_config.color_pool.append("#FFFFFFFF")
+                self.style_config.color_pool[8] = colors["canvas_bg"]
 
             # Apply styles to mindmap after updating canvas/rainbow config
             self._apply_styles_to_mindmap()
@@ -779,9 +779,9 @@ class AdvancedStyleTab(QWidget):
 
                 # Handle node background color
                 if "bg_color" in colors:
-                    # Find color index in branch_colors
-                    if colors["bg_color"] in self.style_config.branch_colors:
-                        role_style.bg_color_index = self.style_config.branch_colors.index(colors["bg_color"])
+                    # Find color index in color_pool
+                    if colors["bg_color"] in self.style_config.color_pool:
+                        role_style.bg_color_index = self.style_config.color_pool.index(colors["bg_color"])
                     else:
                         # If color not in pool, use default index
                         role_style.bg_color_index = 0
@@ -792,18 +792,18 @@ class AdvancedStyleTab(QWidget):
 
                 # Handle border color
                 if "border_color" in colors:
-                    # Find color index in branch_colors
-                    if colors["border_color"] in self.style_config.branch_colors:
-                        role_style.border_color_index = self.style_config.branch_colors.index(colors["border_color"])
+                    # Find color index in color_pool
+                    if colors["border_color"] in self.style_config.color_pool:
+                        role_style.border_color_index = self.style_config.color_pool.index(colors["border_color"])
                     else:
                         # If color not in pool, use default index
                         role_style.border_color_index = 0
 
                 # Handle connector color
                 if "connector_color" in colors:
-                    # Find color index in branch_colors
-                    if colors["connector_color"] in self.style_config.branch_colors:
-                        role_style.connector_color_index = self.style_config.branch_colors.index(colors["connector_color"])
+                    # Find color index in color_pool
+                    if colors["connector_color"] in self.style_config.color_pool:
+                        role_style.connector_color_index = self.style_config.color_pool.index(colors["connector_color"])
                     else:
                         # If color not in pool, use default index
                         role_style.connector_color_index = 0
@@ -1125,9 +1125,9 @@ class AdvancedStyleTab(QWidget):
                 if "line_width" in style:
                     role_style.line_width = style["line_width"]
                 if "connector_color" in style:
-                    # Find color index in branch_colors
-                    if style["connector_color"] in self.style_config.branch_colors:
-                        role_style.connector_color_index = self.style_config.branch_colors.index(style["connector_color"])
+                    # Find color index in color_pool
+                    if style["connector_color"] in self.style_config.color_pool:
+                        role_style.connector_color_index = self.style_config.color_pool.index(style["connector_color"])
                     else:
                         role_style.connector_color_index = 0
             elif self.command_history and connector_updates:
@@ -1156,9 +1156,9 @@ class AdvancedStyleTab(QWidget):
                     if "line_width" in style:
                         role_style.line_width = style["line_width"]
                     if "connector_color" in style:
-                        # Find color index in branch_colors
-                        if style["connector_color"] in self.style_config.branch_colors:
-                            role_style.connector_color_index = self.style_config.branch_colors.index(style["connector_color"])
+                        # Find color index in color_pool
+                        if style["connector_color"] in self.style_config.color_pool:
+                            role_style.connector_color_index = self.style_config.color_pool.index(style["connector_color"])
                         else:
                             role_style.connector_color_index = 0
 
@@ -1222,6 +1222,11 @@ class AdvancedStyleTab(QWidget):
             # Hide shadow section for canvas
             self.shadow_section.setVisible(False)
         else:
+            # Set root mode for node and border sections
+            is_root = self.current_layer == "root"
+            self.node_style_section.set_root_mode(is_root)
+            self.border_section.set_root_mode(is_root)
+
             # Load node/border style into respective sections
             # Node style section handles background
             self.node_style_section.set_style(layer_data)
@@ -1359,11 +1364,11 @@ class AdvancedStyleTab(QWidget):
         canvas_data = self._get_layer_data("canvas")
         if "bg_color" in canvas_data:
             canvas_color = canvas_data["bg_color"]
-            # Update branch_colors[8] for canvas background
-            if hasattr(style, 'branch_colors'):
-                while len(style.branch_colors) < 9:
-                    style.branch_colors.append("#FFFFFFFF")
-                style.branch_colors[8] = canvas_color
+            # Update color_pool[8] for canvas background
+            if hasattr(style, 'color_pool'):
+                while len(style.color_pool) < 9:
+                    style.color_pool.append("#FFFFFFFF")
+                style.color_pool[8] = canvas_color
 
             # Use mindmap_view's method to update scene background
             if hasattr(mindmap_view, '_update_canvas_background'):

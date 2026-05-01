@@ -91,7 +91,7 @@ class EdgeItem(QGraphicsPathItem):
                 role_style = self.style_config.role_styles[connector_role]
 
                 # Get connector color using index system
-                branch_colors = self.style_config.branch_colors
+                branch_colors = self.style_config.color_pool
                 color_str = self._get_color_from_index(
                     role_style.connector_color_index,
                     branch_colors,
@@ -110,7 +110,7 @@ class EdgeItem(QGraphicsPathItem):
             # 1. Root -> Level 1 edges (target is Level 1)
             # 2. Level 1 -> Level 2+ edges (source is Level 1)
             # 3. Level 2+ -> Level 2+ edges (inherit from Level 1 ancestor)
-            if self.style_config.use_rainbow_branches and len(self.style_config.branch_colors) >= 8:
+            if self.style_config.use_rainbow_branches and len(self.style_config.color_pool) >= 8:
                 branch_idx = None
 
                 # Case 1: Target is a Level 1 node (Root -> Level 1 edge)
@@ -133,9 +133,9 @@ class EdgeItem(QGraphicsPathItem):
                             branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
 
                 # Apply rainbow color if branch index found
-                if branch_idx is not None and branch_idx < len(self.style_config.branch_colors):
-                    # Get base rainbow color from branch_colors array
-                    rainbow_base = self.style_config.branch_colors[branch_idx % 8]  # Only use indices 0-7
+                if branch_idx is not None and branch_idx < len(self.style_config.color_pool):
+                    # Get base rainbow color from color_pool array
+                    rainbow_base = self.style_config.color_pool[branch_idx % 8]  # Only use indices 0-7
 
                     # Apply brightness and opacity adjustments for Level 2+
                     if hasattr(self.style_config, 'role_styles') and adjustment_role in self.style_config.role_styles:

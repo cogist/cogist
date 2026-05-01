@@ -28,8 +28,8 @@ class MindMapStyle:
     Attributes:
         name: Style name
         use_rainbow_branches: Enable rainbow branch mode (PRIMARY nodes cycle through colors)
-        branch_colors: Color pool (10 colors: indices 0-7 for branches, index 8 for canvas background, index 9 for root node)
-                      Loaded from color scheme JSON file during initialization
+        color_pool: Color pool (8 branch colors + special colors like canvas_bg, root_background, etc.)
+                   Loaded from color scheme JSON file during initialization
         role_styles: Complete role-based configurations (flat structure)
     """
 
@@ -37,7 +37,7 @@ class MindMapStyle:
 
     # === Global settings ===
     use_rainbow_branches: bool = False
-    branch_colors: list[str] = field(default_factory=list)
+    color_pool: list[str] = field(default_factory=list)  # Renamed from branch_colors
 
     # === Role configurations (flat structure) ===
     role_styles: dict[NodeRole, RoleStyle] = field(default_factory=dict)

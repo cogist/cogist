@@ -216,14 +216,14 @@ class MindMapView(QGraphicsView):
 
         Optimized for text editing scenarios where only one node changes.
         """
-        # Get branch colors from style config
-        branch_colors = self.style_config.branch_colors if hasattr(self.style_config, 'branch_colors') else []
+        # Get color pool from style config
+        color_pool = self.style_config.color_pool if hasattr(self.style_config, 'color_pool') else []
 
         # Determine branch color
         branch_color = None
         if node.parent and node.parent.is_root:
-            idx = node.parent.children.index(node) % len(branch_colors) if branch_colors else 0
-            branch_color = branch_colors[idx] if branch_colors else node.color
+            idx = node.parent.children.index(node) % len(color_pool) if color_pool else 0
+            branch_color = color_pool[idx] if color_pool else node.color
         elif node.parent:
             # Inherit from parent's branch
             # For simplicity, use node's own color
@@ -252,8 +252,8 @@ class MindMapView(QGraphicsView):
         Create temporary NodeItems to measure actual rendered sizes,
         then sync back to domain nodes.
         """
-        # Get branch colors from style config
-        branch_colors = self.style_config.branch_colors if hasattr(self.style_config, 'branch_colors') else []
+        # Get color pool from style config
+        color_pool = self.style_config.color_pool if hasattr(self.style_config, 'color_pool') else []
 
         def measure_recursive(node: Node, branch_color: str | None = None):
             current_color = branch_color if branch_color else node.color
@@ -280,8 +280,8 @@ class MindMapView(QGraphicsView):
                 # Determine branch color for first-level children
                 child_branch_color = None
                 if node.is_root:
-                    idx = node.children.index(child) % len(branch_colors)
-                    child_branch_color = branch_colors[idx]
+                    idx = node.children.index(child) % len(color_pool)
+                    child_branch_color = color_pool[idx]
                 else:
                     child_branch_color = branch_color
 
@@ -370,11 +370,11 @@ class MindMapView(QGraphicsView):
 
             # NEW: Use branch_colors[8] for canvas background
             if (
-                hasattr(self.style_config, "branch_colors")
-                and self.style_config.branch_colors
-                and len(self.style_config.branch_colors) > 8
+                hasattr(self.style_config, "color_pool")
+                and self.style_config.color_pool
+                and len(self.style_config.color_pool) > 8
             ):
-                canvas_color = self.style_config.branch_colors[8]
+                canvas_color = self.style_config.color_pool[8]
             else:
                 canvas_color = "#FFFFFFFF"  # Default white
             self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
@@ -388,11 +388,11 @@ class MindMapView(QGraphicsView):
 
             # NEW: Use branch_colors[8] for canvas background
             if (
-                hasattr(self.style_config, "branch_colors")
-                and self.style_config.branch_colors
-                and len(self.style_config.branch_colors) > 8
+                hasattr(self.style_config, "color_pool")
+                and self.style_config.color_pool
+                and len(self.style_config.color_pool) > 8
             ):
-                canvas_color = self.style_config.branch_colors[8]
+                canvas_color = self.style_config.color_pool[8]
             else:
                 canvas_color = "#FFFFFFFF"  # Default white
             self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
@@ -402,8 +402,8 @@ class MindMapView(QGraphicsView):
             parent_item: NodeItem | None = None,
             branch_color: str | None = None,
         ):
-            # Get branch colors for rainbow mode
-            branch_colors = self.style_config.branch_colors if hasattr(self.style_config, 'branch_colors') else []
+            # Get color pool for rainbow mode
+            color_pool = self.style_config.color_pool if hasattr(self.style_config, 'color_pool') else []
 
             # Use branch color if assigned, otherwise use root color
             current_color = branch_color if branch_color else node.color
@@ -455,7 +455,7 @@ class MindMapView(QGraphicsView):
                     if (hasattr(self.style_config, 'role_styles') and
                         role in self.style_config.role_styles):
                         role_style = self.style_config.role_styles[role]
-                        branch_colors = self.style_config.branch_colors
+                        branch_colors = self.style_config.color_pool
 
                         # Get connector color using index system
                         color_index = role_style.connector_color_index if hasattr(role_style, 'connector_color_index') else 0
@@ -493,7 +493,7 @@ class MindMapView(QGraphicsView):
                 child_branch_color = (
                     branch_color
                     if branch_color
-                    else branch_colors[len(root.children) - len(node.children)]
+                    else (color_pool[len(root.children) - len(node.children)] if color_pool else None)
                     if node == root
                     else None
                 )
@@ -503,7 +503,7 @@ class MindMapView(QGraphicsView):
                     child_branch_color
                     if branch_color
                     else (
-                        branch_colors[node.children.index(child) % len(branch_colors)]
+                        (color_pool[node.children.index(child) % len(color_pool)] if color_pool else None)
                         if node == root
                         else None
                     ),
@@ -2309,8 +2309,8 @@ class MindMapView(QGraphicsView):
                     role_style = self.style_config.role_styles[role]
 
                     # Get connector color from color pool
-                    if role_style.connector_color_index < len(self.style_config.branch_colors):
-                        color = self.style_config.branch_colors[role_style.connector_color_index]
+                    if role_style.connector_color_index < len(self.style_config.color_pool):
+                        color = self.style_config.color_pool[role_style.connector_color_index]
                     else:
                         color = "#999999"
 

@@ -9,13 +9,17 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,
+    QPushButton,
     QSlider,
     QSpinBox,
 )
+from shiboken6 import isValid
 
 from cogist.presentation.widgets import ToggleSwitch
 
 from .collapsible_panel import CollapsiblePanel
+from .color_picker import create_color_picker
+from .dialog_utils import position_color_dialog
 from .menu_button import MenuButton
 
 
@@ -39,16 +43,17 @@ class BorderSection(CollapsiblePanel):
         # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
+        # Store reference to AdvancedStyleTab for accessing style_config
+        # Note: parent() returns _content_widget, so we need to store the actual parent
+        self._advanced_tab = parent
+
         # State
         self._initialized = False
-        self.current_style = {
-            "enabled": True,
-            "border_style": "solid",
-            "border_width": 2,
-            "border_color_index": 0,
-            "brightness": 1.0,
-            "opacity": 255,
-        }
+        self.current_style: dict = {}  # Will be populated by set_style() from MindMapStyle
+        self.is_root_mode = False  # True for root layer, False for level1/2/3+
+
+        # Color picker (lazy creation)
+        self._color_picker = None
 
         # Connect toggle signal for lazy initialization
         self.toggled.connect(self._on_toggled)
@@ -58,6 +63,17 @@ class BorderSection(CollapsiblePanel):
         if checked and not self._initialized:
             self._init_content()
             self._initialized = True
+            # Apply saved style to newly created controls
+            if self.current_style:
+                self.set_style(self.current_style)
+
+    def set_root_mode(self, is_root: bool):
+        """Set whether this section is in root mode.
+
+        In root mode, border color uses a color picker for arbitrary colors.
+        In normal mode, border color is selected from the color pool.
+        """
+        self.is_root_mode = is_root
 
     def _init_content(self):
         """Initialize content on first expand (lazy initialization)."""
@@ -76,7 +92,8 @@ class BorderSection(CollapsiblePanel):
         layout.addWidget(enabled_label, row, 0)
 
         self.enabled_toggle = ToggleSwitch()
-        self.enabled_toggle.set_checked(self.current_style.get("enabled", True))
+        # Use temporary default for UI initialization (will be updated by set_style)
+        self.enabled_toggle.set_checked(True)
         self.enabled_toggle.toggled.connect(self._on_enabled_changed)
         layout.addWidget(self.enabled_toggle, row, 1, alignment=Qt.AlignRight | Qt.AlignVCenter)
         row += 1
@@ -119,22 +136,24 @@ class BorderSection(CollapsiblePanel):
         self.border_width_spin = QSpinBox()
         self.border_width_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.border_width_spin.setRange(0, 10)
-        self.border_width_spin.setValue(self.current_style["border_width"])
+        # Use temporary default for UI initialization (will be updated by set_style)
+        self.border_width_spin.setValue(2)
         self.border_width_spin.setAlignment(Qt.AlignLeft)
         self.border_width_spin.valueChanged.connect(self._on_width_changed)
         layout.addWidget(self.border_width_spin, row, 1)
         row += 1
 
-        # Border color (placeholder - will be implemented later)
+        # Border color - same as NodeStyleSection (simple QPushButton)
         color_label = QLabel("Color:")
         color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         color_label.setFixedWidth(self._label_width)
         layout.addWidget(color_label, row, 0)
 
-        self.color_btn = MenuButton("Color 1", self.WIDGET_HEIGHT)
-        self.color_btn.setStyleSheet(self._button_style())
+        self.color_btn = QPushButton()
+        self.color_btn.setFixedHeight(self.WIDGET_HEIGHT)
         self.color_btn.clicked.connect(self._on_color_clicked)
         layout.addWidget(self.color_btn, row, 1)
+        # Note: Button stylesheet is set by set_style() - no text, no hardcoded colors
         row += 1
 
         # Brightness slider
@@ -145,9 +164,8 @@ class BorderSection(CollapsiblePanel):
 
         self.brightness_slider = QSlider(Qt.Horizontal)
         self.brightness_slider.setRange(50, 150)  # 0.5-1.5
-        self.brightness_slider.setValue(
-            int(self.current_style.get("brightness", 1.0) * 100)
-        )
+        # Use temporary default for UI initialization (will be updated by set_style)
+        self.brightness_slider.setValue(100)
         self.brightness_slider.setFixedHeight(self.WIDGET_HEIGHT)
         self.brightness_slider.valueChanged.connect(self._on_brightness_changed)
         layout.addWidget(self.brightness_slider, row, 1, alignment=Qt.AlignVCenter)
@@ -161,13 +179,14 @@ class BorderSection(CollapsiblePanel):
 
         self.opacity_slider = QSlider(Qt.Horizontal)
         self.opacity_slider.setRange(0, 255)
-        self.opacity_slider.setValue(self.current_style.get("opacity", 255))
+        # Use temporary default for UI initialization (will be updated by set_style)
+        self.opacity_slider.setValue(255)
         self.opacity_slider.setFixedHeight(self.WIDGET_HEIGHT)
         self.opacity_slider.valueChanged.connect(self._on_opacity_changed)
         layout.addWidget(self.opacity_slider, row, 1, alignment=Qt.AlignVCenter)
 
-        # Initialize visibility based on enabled state
-        self._update_border_controls_visibility()
+        # Note: _update_border_controls_visibility() will be called in set_style()
+        # after current_style is populated with real data from template
 
         self.setLayout(layout)
 
@@ -217,7 +236,8 @@ class BorderSection(CollapsiblePanel):
 
     def _update_border_controls_visibility(self):
         """Show/hide border controls based on enabled state."""
-        enabled = self.current_style.get("enabled", True)
+        # Use current_style if available, otherwise use temporary default
+        enabled = self.current_style.get("enabled", True) if self.current_style else True
 
         # Show/hide all controls except Enabled toggle and its label
         if hasattr(self, 'style_label'):
@@ -270,27 +290,192 @@ class BorderSection(CollapsiblePanel):
             self.opacity_slider.setVisible(enabled)
 
     def _on_color_clicked(self):
-        """Handle border color button click (placeholder)."""
-        # TODO: Implement color picker dialog
-        pass
+        """Handle border color button click."""
+        # Use stored reference to AdvancedStyleTab instead of parent()
+        parent = self._advanced_tab
+
+        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
+            return
+
+        if self.is_root_mode:
+            # Root mode: show color picker for arbitrary colors
+            # Check if color picker still exists (may have been deleted by WA_DeleteOnClose)
+            if self._color_picker is None or not isValid(self._color_picker):
+                # Get the top-level window to ensure proper dialog lifecycle
+                top_level = self.window() if self.window() else parent
+                self._color_picker = create_color_picker(top_level)
+                self._color_picker.color_selected.connect(self._on_border_color_selected)
+                # Ensure dialog closes when parent window closes
+                self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+
+            # Get current color from color_pool based on border_color_index
+            border_color_index = self.current_style["border_color_index"]
+            if (hasattr(parent.style_config, 'color_pool') and
+                parent.style_config.color_pool and
+                border_color_index < len(parent.style_config.color_pool)):
+                current_color = parent.style_config.color_pool[border_color_index]
+            else:
+                print("Warning: branch_colors not properly initialized")
+                return
+
+            # Set current color (MUST call before show!)
+            self._color_picker.set_current_color(current_color)
+
+            # Show color picker
+            self._color_picker.show()
+            self._color_picker.raise_()
+            self._color_picker.activateWindow()
+
+            # Position dialog
+            position_color_dialog(self._color_picker, self.color_btn)
+        else:
+            # Normal mode (level 1/2/3+): show color pool selector dialog
+            self._show_border_color_pool_selector()
+
+    def _show_border_color_pool_selector(self):
+        """Show color pool selector dialog for level 1/2/3+ layers.
+
+        Displays a dialog with 8 color buttons (indices 0-7) for user to select.
+        """
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QDialog, QGridLayout, QLabel, QPushButton
+
+        parent = self._advanced_tab
+        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
+            return
+
+        branch_colors = parent.style_config.color_pool
+        if not branch_colors or len(branch_colors) < 8:
+            print("Warning: branch_colors not properly initialized")
+            return
+
+        # Create dialog
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Select Border Color from Pool")
+        dialog.setFixedSize(280, 180)
+
+        # Create layout
+        layout = QGridLayout(dialog)
+        layout.setSpacing(8)
+        layout.setContentsMargins(16, 16, 16, 16)
+
+        # Add label
+        label = QLabel("Choose a color (indices 0-7):")
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label, 0, 0, 1, 4)
+
+        # Create 8 color buttons (2 rows x 4 columns)
+        buttons = []
+        for i in range(8):
+            btn = QPushButton()
+            btn.setFixedSize(50, 50)
+            color = branch_colors[i] if i < len(branch_colors) else "#FFCCCCCC"
+            btn.setStyleSheet(
+                f"background-color: {color}; "
+                "border: 2px solid #C8C8C8; "
+                "border-radius: 6px;"
+            )
+            btn.setToolTip(f"Color Index {i}")
+
+            # Store index for callback
+            btn.setProperty("color_index", i)
+            btn.clicked.connect(lambda _, b=btn: self._on_border_color_pool_selected(b, dialog))
+
+            row = 1 + (i // 4)
+            col = i % 4
+            layout.addWidget(btn, row, col)
+            buttons.append(btn)
+
+        # Show dialog
+        dialog.exec()
+
+    def _on_border_color_pool_selected(self, button, dialog):
+        """Handle border color selection from pool selector dialog.
+
+        Args:
+            button: The clicked color button
+            dialog: The selector dialog to close
+        """
+        color_index = button.property("color_index")
+
+        # Update border_color_index in current_style
+        self.current_style["border_color_index"] = color_index
+
+        # Update button display color
+        parent = self._advanced_tab
+        if parent and hasattr(parent, 'style_config') and parent.style_config:
+            branch_colors = parent.style_config.color_pool
+            if color_index < len(branch_colors):
+                selected_color = branch_colors[color_index]
+                if hasattr(self, 'color_btn'):
+                    self.color_btn.setText(f"Color {color_index + 1}")
+                    self.color_btn.setStyleSheet(
+                        f"background-color: {selected_color}; "
+                        "border: 1px solid #C8C8C8; "
+                        "border-radius: 6px; "
+                        "padding: 4px 24px 4px 12px; "
+                        "font-size: 13px; "
+                        "text-align: left;"
+                    )
+
+        # Close dialog
+        dialog.accept()
+
+        # Emit style changed
+        self._emit_style_changed()
+
+    def _on_border_color_selected(self, hex_color: str):
+        """Handle border color selection from picker (root mode only)."""
+        # Update the color in color_pool
+        # Use stored reference to AdvancedStyleTab instead of parent()
+        parent = self._advanced_tab
+
+        if parent and hasattr(parent, 'style_config') and parent.style_config:
+            if self.is_root_mode:
+                # Root mode: update color_pool at border_color_index
+                border_color_index = self.current_style["border_color_index"]
+                if (hasattr(parent.style_config, 'color_pool') and
+                    parent.style_config.color_pool and
+                    border_color_index < len(parent.style_config.color_pool)):
+                    parent.style_config.color_pool[border_color_index] = hex_color
+
+                    # Update button color directly
+                    if hasattr(self, 'color_btn'):
+                        self.color_btn.setText("Custom")
+                        self.color_btn.setStyleSheet(
+                            f"background-color: {hex_color}; "
+                            "border: 1px solid #C8C8C8; "
+                            "border-radius: 6px; "
+                            "padding: 4px 24px 4px 12px; "
+                            "font-size: 13px; "
+                            "text-align: left;"
+                        )
+
+                    # Emit style changed
+                    self._emit_style_changed()
 
     def _on_brightness_changed(self, value: int):
         """Handle border brightness change."""
-        self.current_style["brightness"] = value / 100.0
+        # Use border_brightness for role-based style (RoleStyle field name)
+        self.current_style["border_brightness"] = value / 100.0
         self._emit_style_changed()
 
     def _on_opacity_changed(self, value: int):
         """Handle border opacity change."""
-        self.current_style["opacity"] = value
+        # Use border_opacity for role-based style (RoleStyle field name)
+        self.current_style["border_opacity"] = value
         self._emit_style_changed()
 
     def _emit_style_changed(self):
         """Emit style changed signal with only border-related fields."""
         # Only emit border-related fields to avoid overwriting other style properties
         border_only_style = {
-            "border_enabled": self.current_style.get("enabled", True),
+            "border_enabled": self.current_style["enabled"],
             "border_style": self.current_style["border_style"],
             "border_width": self.current_style["border_width"],
+            "border_color_index": self.current_style["border_color_index"],
+            "border_brightness": self.current_style["border_brightness"],
+            "border_opacity": self.current_style["border_opacity"],
         }
         self.style_changed.emit(border_only_style)
 
@@ -299,10 +484,20 @@ class BorderSection(CollapsiblePanel):
         return self.current_style.copy()
 
     def set_style(self, style: dict):
-        """Set border style programmatically."""
+        """Set border style programmatically.
+
+        Args:
+            style: Dictionary containing border style properties from MindMapStyle
+        """
+        # CRITICAL: Update current_style completely from MindMapStyle data
+        # Do NOT use any default values - all data must come from style_config
         self.current_style.update(style)
 
         if self._initialized:
+            # Update enabled toggle
+            if "border_enabled" in style and hasattr(self, 'enabled_toggle'):
+                self.enabled_toggle.set_checked(style["border_enabled"])
+
             if "border_style" in style:
                 style_map = {
                     "solid": "Solid",
@@ -314,6 +509,41 @@ class BorderSection(CollapsiblePanel):
 
             if "border_width" in style:
                 self.border_width_spin.setValue(style["border_width"])
+
+            # Update brightness slider (support multiple field names)
+            if "brightness" in style and hasattr(self, 'brightness_slider'):
+                self.brightness_slider.setValue(int(style["brightness"] * 100))
+            elif "border_brightness" in style and hasattr(self, 'brightness_slider'):
+                self.brightness_slider.setValue(int(style["border_brightness"] * 100))
+
+            # Update opacity slider (support multiple field names)
+            if "opacity" in style and hasattr(self, 'opacity_slider'):
+                self.opacity_slider.setValue(style["opacity"])
+            elif "border_opacity" in style and hasattr(self, 'opacity_slider'):
+                self.opacity_slider.setValue(style["border_opacity"])
+
+            # Update color button display
+            if "border_color_index" in style and hasattr(self, 'color_btn'):
+                parent = self._advanced_tab
+                if parent and hasattr(parent, 'style_config') and parent.style_config:
+                    branch_colors = parent.style_config.color_pool
+                    color_index = style["border_color_index"]
+                    if color_index < len(branch_colors):
+                        selected_color = branch_colors[color_index]
+                        if self.is_root_mode:
+                            # Root mode: show "Custom" for arbitrary colors
+                            self.color_btn.setText("Custom")
+                        else:
+                            # Normal mode: show "Color N"
+                            self.color_btn.setText(f"Color {color_index + 1}")
+                        self.color_btn.setStyleSheet(
+                            f"background-color: {selected_color}; "
+                            "border: 1px solid #C8C8C8; "
+                            "border-radius: 6px; "
+                            "padding: 4px 24px 4px 12px; "
+                            "font-size: 13px; "
+                            "text-align: left;"
+                        )
 
             # Update controls visibility based on enabled state
             if "enabled" in style:

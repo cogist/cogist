@@ -126,7 +126,7 @@ def serialize_style(style_config: MindMapStyle) -> dict:
     return {
         "name": style_config.name,
         "use_rainbow_branches": style_config.use_rainbow_branches,
-        "branch_colors": style_config.branch_colors,
+        "color_pool": style_config.color_pool,  # Renamed from branch_colors
         "role_styles": {
             role.value: serialize_role_style(role_style)
             for role, role_style in style_config.role_styles.items()
@@ -148,7 +148,7 @@ def deserialize_style(data: dict) -> MindMapStyle:
     style = MindMapStyle(
         name=data.get("name", "Default"),
         use_rainbow_branches=data.get("use_rainbow_branches", False),
-        branch_colors=data.get("branch_colors", []),
+        color_pool=data.get("color_pool", []),  # Renamed from branch_colors
     )
 
     # Deserialize role styles
@@ -165,36 +165,21 @@ def serialize_color_scheme(scheme: ColorScheme) -> dict:
     return {
         "name": scheme.name,
         "description": scheme.description,
-        "role_configs": {
-            role.value: {
-                "bg_color": config.bg_color,
-                "border_color": config.border_color,
-                "text_color": config.text_color,
-                "rainbow_bg_enabled": config.rainbow_bg_enabled,
-                "rainbow_border_enabled": config.rainbow_border_enabled,
-                "brightness_amount": config.brightness_amount,
-                "opacity_amount": config.opacity_amount,
-            }
-            for role, config in scheme.role_configs.items()
-        },
-        "branch_colors": scheme.branch_colors,
-        "use_rainbow_branches": scheme.use_rainbow_branches,
-        "canvas_bg_color": scheme.canvas_bg_color,
-        "edge_color": scheme.edge_color,
+        "color_pool": scheme.color_pool,  # Renamed from branch_colors
     }
 
 
 def deserialize_color_scheme(data: dict) -> ColorScheme:
     """Deserialize ColorScheme from JSON-compatible dict.
 
-    Note: Old format with role_configs, canvas_bg_color, edge_color is deprecated.
-    New format only has branch_colors (9 colors).
+    Supports both old format (branch_colors) and new format (color_pool).
     """
+    # Support backward compatibility: check for old field name
+    color_pool = data.get("color_pool") or data.get("branch_colors", [])
     return ColorScheme(
         name=data["name"],
         description=data.get("description", ""),
-        branch_colors=data.get("branch_colors", []),
-        default_use_rainbow_branches=data.get("default_use_rainbow_branches"),
+        color_pool=color_pool,
     )
 
 
