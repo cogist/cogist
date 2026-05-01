@@ -318,7 +318,7 @@ class NodeItem(QGraphicsRectItem):
                                                              role_style.border_brightness, role_style.border_opacity,
                                                              role_style.border_enabled)
             else:
-                # Root or other nodes: use color index
+                # Root node (depth == 0): use color index from role_style
                 bg_color = self._get_color_from_index(role_style.bg_color_index, branch_colors,
                                                      role_style.bg_brightness, role_style.bg_opacity,
                                                      role_style.bg_enabled)
@@ -795,9 +795,13 @@ class NodeItem(QGraphicsRectItem):
                                 bg_color = "#FFFFFFFF"
                                 border_color = "#FF000000"
                         else:
-                            # Root or other nodes: use default colors
-                            bg_color = "#FFFFFFFF"
-                            border_color = "#FF000000"
+                            # Root node (depth == 0): use color index from role_style
+                            bg_color = self._get_color_from_index(role_style.bg_color_index, branch_colors,
+                                                                 role_style.bg_brightness, role_style.bg_opacity,
+                                                                 role_style.bg_enabled)
+                            border_color = self._get_color_from_index(role_style.border_color_index, branch_colors,
+                                                                     role_style.border_brightness, role_style.border_opacity,
+                                                                     role_style.border_enabled)
                     else:
                         # Rainbow disabled: use color indices from role_style
                         bg_color = self._get_color_from_index(role_style.bg_color_index, branch_colors,
