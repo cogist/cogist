@@ -61,6 +61,7 @@ class ConnectorSection(CollapsiblePanel):
             "connector_brightness": 1.0,
             "connector_opacity": 255,
         }
+        self.use_rainbow = False  # Rainbow branch mode state
 
         # Connect toggle signal for lazy initialization
         self.toggled.connect(self._on_toggled)
@@ -296,6 +297,26 @@ class ConnectorSection(CollapsiblePanel):
         """Emit style changed signal."""
         self.style_changed.emit(self.current_style.copy())
 
+    def _update_color_controls_visibility(self):
+        """Show/hide color controls based on rainbow mode."""
+        if hasattr(self, "connector_color_btn"):
+            # Find and hide/show color label
+            layout = self._content_widget.layout()
+            if layout:
+                for i in range(layout.count()):
+                    item = layout.itemAt(i)
+                    widget = item.widget() if item else None
+                    if (
+                        widget
+                        and isinstance(widget, QLabel)
+                        and widget.text() == "Color:"
+                    ):
+                        # In rainbow mode, always hide color controls
+                        widget.setVisible(not self.use_rainbow)
+                        break
+            # Hide/show color button
+            self.connector_color_btn.setVisible(not self.use_rainbow)
+
     def _on_connector_color_pool_selected(self, color_index: int):
         """Handle connector color selection from pool selector popup.
 
@@ -331,6 +352,10 @@ class ConnectorSection(CollapsiblePanel):
 
     def set_style(self, style: dict):
         """Set connector style programmatically."""
+        # Update rainbow mode state
+        if "use_rainbow" in style:
+            self.use_rainbow = style["use_rainbow"]
+
         self.current_style.update(style)
 
         if self._initialized:
@@ -374,3 +399,6 @@ class ConnectorSection(CollapsiblePanel):
             # Update opacity slider/spinbox
             if "connector_opacity" in style and hasattr(self, "connector_opacity_spin"):
                 self.connector_opacity_spin.setValue(style["connector_opacity"])
+
+            # Hide/show color controls based on rainbow mode
+            self._update_color_controls_visibility()

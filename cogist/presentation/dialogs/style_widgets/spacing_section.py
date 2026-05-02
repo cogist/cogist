@@ -34,7 +34,6 @@ class SpacingSection(CollapsiblePanel):
         # State - will be initialized from style_config when loaded
         self._initialized = False
         self.current_spacing = {}  # Will be set by set_spacing() before UI is shown
-        self.hide_sibling = False  # Flag to control sibling visibility on init
 
         # Connect toggle signal for lazy initialization
         self.toggled.connect(self._on_toggled)
@@ -87,12 +86,6 @@ class SpacingSection(CollapsiblePanel):
         self.sibling_spin.setRange(0, 100)
         self.sibling_spin.setValue(self.current_spacing["sibling"])
         self.sibling_spin.valueChanged.connect(self._on_spacing_changed)
-
-        # Apply Root layer specific logic during initialization
-        if self.hide_sibling:
-            sib_label.setVisible(False)
-            self.sibling_spin.setVisible(False)
-
         layout.addWidget(self.sibling_spin, row, 1)
 
         self.setLayout(layout)
@@ -133,16 +126,3 @@ class SpacingSection(CollapsiblePanel):
                 self.parent_child_spin.blockSignals(False)
                 self.sibling_spin.blockSignals(False)
 
-    def set_hide_sibling(self, hide: bool):
-        """Control visibility of sibling spacing controls (for Root layer)."""
-        self.hide_sibling = hide
-        if self._initialized:
-            # Find and toggle visibility of sibling widgets
-            content_layout = self._content_widget.layout()
-            if content_layout:
-                for i in range(content_layout.count()):
-                    item = content_layout.itemAt(i)
-                    widget = item.widget() if item else None
-                    if widget and (widget == self.sibling_spin or (isinstance(widget, QLabel) and "V-Spacing" in widget.text())):
-                        # Check if it's the sibling spin or its label
-                        widget.setVisible(not hide)

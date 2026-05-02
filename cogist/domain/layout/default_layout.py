@@ -51,25 +51,25 @@ class DefaultLayout(BaseLayout):
 
     def _get_level_spacing_for_depth(self, depth: int) -> float:
         """
-        Get horizontal spacing between parent and child based on depth.
+        Get horizontal spacing between parent and child based on child's depth.
 
         Args:
-            depth: Parent node's depth in tree
+            depth: Child node's depth in tree (not parent's)
 
         Returns:
             Horizontal spacing for this parent-child relationship
         """
-        # If style_config is provided, read spacing from role_styles based on parent's role
+        # If style_config is provided, read spacing from role_styles based on child's role
         if self.config.style_config and hasattr(self.config.style_config, 'role_styles'):
             from cogist.domain.styles import NodeRole
 
-            # Map parent depth to role
+            # Map child depth to role
             role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
-            parent_role = role_map.get(depth, NodeRole.TERTIARY)
+            child_role = role_map.get(depth, NodeRole.TERTIARY)
 
-            # Get spacing from parent's role style
-            if parent_role in self.config.style_config.role_styles:
-                role_style = self.config.style_config.role_styles[parent_role]
+            # Get spacing from child's role style
+            if child_role in self.config.style_config.role_styles:
+                role_style = self.config.style_config.role_styles[child_role]
                 return role_style.parent_child_spacing
 
         # Fallback to config's level_spacing
@@ -556,7 +556,8 @@ class DefaultLayout(BaseLayout):
 
         # Calculate the aligned edge position for all sibling nodes
         # This ensures all siblings align on the side closest to parent
-        level_spacing = self._get_level_spacing_for_depth(parent_node.depth)
+        # Use child's depth (parent.depth + 1) for spacing lookup
+        level_spacing = self._get_level_spacing_for_depth(parent_node.depth + 1)
         aligned_edge_x = 0.0  # Will be set based on direction
 
         # For left side (direction=-1): align right edge of children
@@ -605,7 +606,8 @@ class DefaultLayout(BaseLayout):
 
         # Calculate the aligned edge position for all sibling nodes
         # This ensures all siblings align on the side closest to parent
-        level_spacing = self._get_level_spacing_for_depth(parent_node.depth)
+        # Use child's depth (parent.depth + 1) for spacing lookup
+        level_spacing = self._get_level_spacing_for_depth(parent_node.depth + 1)
         aligned_edge_x = 0.0  # Will be set based on direction
 
         # For left side (direction=-1): align right edge of children
@@ -700,7 +702,8 @@ class DefaultLayout(BaseLayout):
         current_y = start_y
 
         # Calculate the aligned edge position for all sibling nodes
-        level_spacing = self._get_level_spacing_for_depth(parent_node.depth)
+        # Use child's depth (parent.depth + 1) for spacing lookup
+        level_spacing = self._get_level_spacing_for_depth(parent_node.depth + 1)
 
         # For left side (direction=-1): align right edge of children
         # For right side (direction=1): align left edge of children

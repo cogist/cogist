@@ -293,7 +293,7 @@ class BorderSection(CollapsiblePanel):
                 self.color_btn.setVisible(False)
             else:
                 self.color_btn.setVisible(enabled)
-        if hasattr(self, "brightness_slider"):
+        if hasattr(self, "brightness_spin"):
             # Find and hide/show brightness label
             layout = self._content_widget.layout()
             if layout:
@@ -307,8 +307,8 @@ class BorderSection(CollapsiblePanel):
                     ):
                         widget.setVisible(enabled)
                         break
-            self.brightness_slider.setVisible(enabled)
-        if hasattr(self, "opacity_slider"):
+            self.brightness_spin.setVisible(enabled)
+        if hasattr(self, "opacity_spin"):
             # Find and hide/show opacity label
             layout = self._content_widget.layout()
             if layout:
@@ -322,7 +322,7 @@ class BorderSection(CollapsiblePanel):
                     ):
                         widget.setVisible(enabled)
                         break
-            self.opacity_slider.setVisible(enabled)
+            self.opacity_spin.setVisible(enabled)
 
     def _on_color_clicked(self):
         """Handle border color button click."""

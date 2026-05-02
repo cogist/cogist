@@ -5,10 +5,12 @@ Implements lazy initialization for better performance.
 """
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QGridLayout, QLabel, QPushButton
+from shiboken6 import isValid
 
 from .collapsible_panel import CollapsiblePanel
+from .color_picker import create_color_picker
+from .dialog_utils import position_color_dialog
 from .spinbox import SpinBox
 
 
@@ -34,20 +36,13 @@ class ShadowSection(CollapsiblePanel):
 
         # State
         self._initialized = False
-        self.current_shadow = self._get_default_shadow()
+        self.current_shadow = {}  # Will be populated by set_shadow() from style_config
+
+        # Color picker (lazy creation)
+        self._color_picker = None
 
         # Connect toggle signal for lazy initialization
         self.toggled.connect(self._on_toggled)
-
-    def _get_default_shadow(self) -> dict:
-        """Get default shadow configuration."""
-        return {
-            "enabled": False,
-            "offset_x": 2,
-            "offset_y": 2,
-            "blur": 4,
-            "color": "#000000",
-        }
 
     def _on_toggled(self, checked: bool):
         """Handle expand/collapse events."""
@@ -129,9 +124,11 @@ class ShadowSection(CollapsiblePanel):
 
         self.shadow_color_btn = QPushButton()
         self.shadow_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
+        # Set initial color from current_shadow (loaded from config via set_shadow)
+        # Trust data integrity: color must exist in current_shadow
+        shadow_color = self.current_shadow["color"]
         self.shadow_color_btn.setStyleSheet(
-            f"background-color: {self.current_shadow['color']}; "
-            "border: 1px solid #ccc; border-radius: 4px;"
+            f"background-color: {shadow_color}; border: 1px solid #ccc; border-radius: 4px;"
         )
         self.shadow_color_btn.clicked.connect(self._pick_color)
         layout.addWidget(self.shadow_color_btn, row, 1)
@@ -151,23 +148,40 @@ class ShadowSection(CollapsiblePanel):
         })
 
     def _pick_color(self):
-        """Open color picker dialog for shadow color."""
-        from PySide6.QtWidgets import QColorDialog
+        """Open non-modal color picker dialog for shadow color."""
+        # Get parent window for proper dialog lifecycle
+        top_level = self.window() if self.window() else self
 
-        current_color = self.current_shadow.get("color", "#000000")
-        color = QColorDialog.getColor(QColor(current_color), self, "Select Shadow Color", QColorDialog.ShowAlphaChannel)
+        # Check if color picker still exists (may have been deleted by WA_DeleteOnClose)
+        if self._color_picker is None or not isValid(self._color_picker):
+            self._color_picker = create_color_picker(top_level)
+            self._color_picker.color_selected.connect(self._on_shadow_color_selected)
+            # Ensure dialog closes when parent window closes
+            self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
-        if color.isValid():
-            # Use name(QColor.HexArgb) to preserve alpha channel
-            color_name = color.name(QColor.HexArgb)
-            self.current_shadow["color"] = color_name
-            self.shadow_color_btn.setStyleSheet(
-                f"background-color: {color_name}; border: 1px solid #ccc; border-radius: 4px;"
-            )
-            # Emit with shadow_ prefix to match role_style field names
-            self.shadow_changed.emit({
-                "shadow_color": color_name,
-            })
+        # Set current color (MUST call before show!)
+        # Trust data integrity: color must exist in current_shadow
+        current_color = self.current_shadow["color"]
+        self._color_picker.set_current_color(current_color)
+
+        # Show color picker
+        self._color_picker.show()
+        self._color_picker.raise_()
+        self._color_picker.activateWindow()
+
+        # Position dialog
+        position_color_dialog(self._color_picker, self.shadow_color_btn)
+
+    def _on_shadow_color_selected(self, hex_color: str):
+        """Handle shadow color selection from picker."""
+        self.current_shadow["color"] = hex_color
+        self.shadow_color_btn.setStyleSheet(
+            f"background-color: {hex_color}; border: 1px solid #ccc; border-radius: 4px;"
+        )
+        # Emit with shadow_ prefix to match role_style field names
+        self.shadow_changed.emit({
+            "shadow_color": hex_color,
+        })
 
     def _emit_shadow_changed(self):
         """Emit shadow changed signal."""

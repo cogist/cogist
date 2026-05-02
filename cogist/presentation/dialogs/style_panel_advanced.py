@@ -1228,8 +1228,8 @@ class AdvancedStyleTab(QWidget):
             }
             self.spacing_section.set_spacing(spacing_config)
 
-            # Root layer specific: hide sibling spacing control (elegant way)
-            self.spacing_section.set_hide_sibling(self.current_layer == "root")
+            # Hide entire Spacing section for root layer (root has no parent or siblings)
+            self.spacing_section.setVisible(self.current_layer != "root")
 
         # Load connector style (per-layer, only for non-canvas and non-root)
         # Edge belongs to target node, so root layer doesn't need connector config

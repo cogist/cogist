@@ -24,7 +24,8 @@ class RoundedRectBorder(BorderStrategy):
         border_style = style_config.get("border_style", "solid")
 
         if border_width > 0 and border_color:
-            # Create the outer boundary path (where the border's outer edge should be)
+            # Use QPainterPath + fillPath for precise border rendering
+            # This ensures no gaps at corners and no color blending issues
             half_width = border_width / 2.0
             outer_rect = rect.adjusted(-half_width, -half_width, half_width, half_width)
             outer_radius = radius + half_width
@@ -44,9 +45,9 @@ class RoundedRectBorder(BorderStrategy):
 
             painter.setPen(pen)
             painter.setBrush(Qt.NoBrush)
-            painter.drawPath(outer_path)  # Draw the outer edge line
+            painter.drawPath(outer_path)
 
-            # Step 2: Fill the entire inner area (background fills to the inner edge of the border)
+            # Step 2: Fill the entire inner area
             if bg_color:
                 painter.setPen(Qt.NoPen)
                 painter.setBrush(QBrush(QColor(bg_color)))
@@ -84,7 +85,8 @@ class CircleBorder(BorderStrategy):
         border_style = style_config.get("border_style", "solid")
 
         if border_width > 0 and border_color:
-            # Create the outer boundary path (where the border's outer edge should be)
+            # Use QPainterPath + fillPath for precise border rendering
+            # This ensures no gaps and no color blending issues
             half_width = border_width / 2.0
             outer_rect = rect.adjusted(-half_width, -half_width, half_width, half_width)
             outer_path = QPainterPath()
@@ -103,9 +105,9 @@ class CircleBorder(BorderStrategy):
 
             painter.setPen(pen)
             painter.setBrush(Qt.NoBrush)
-            painter.drawPath(outer_path)  # Draw the outer edge line
+            painter.drawPath(outer_path)
 
-            # Step 2: Fill the entire inner area (background fills to the inner edge of the border)
+            # Step 2: Fill the entire inner area
             if bg_color:
                 painter.setPen(Qt.NoPen)
                 painter.setBrush(QBrush(QColor(bg_color)))
