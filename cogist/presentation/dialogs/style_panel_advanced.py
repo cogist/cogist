@@ -460,7 +460,7 @@ class AdvancedStyleTab(QWidget):
         self.font_style_section = FontStyleSection()
         self.shadow_section = ShadowSection()
         self.border_section = BorderSection(parent=self)
-        self.connector_section = ConnectorSection()
+        self.connector_section = ConnectorSection(parent=self)
 
         layout.addWidget(self.layer_selector)
         layout.addWidget(self.canvas_panel)  # NEW: Canvas panel
