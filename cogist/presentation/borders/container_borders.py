@@ -23,13 +23,18 @@ class RoundedRectBorder(BorderStrategy):
         border_width = style_config.get("border_width", 0)
         border_style = style_config.get("border_style", "solid")
 
-        # Draw background fill
+        # Draw background fill (original rect)
         if bg_color:
             painter.setPen(Qt.NoPen)
             painter.setBrush(QBrush(QColor(bg_color)))
+            # Disable anti-aliasing for sharp edges
+            painter.setRenderHint(QPainter.Antialiasing, False)
             painter.drawRoundedRect(rect, radius, radius)
+            # Restore anti-aliasing for other elements
+            painter.setRenderHint(QPainter.Antialiasing, True)
 
-        # Draw border if specified
+        # Draw border completely outside background
+        # To match inner edge curvature with background, outer radius must be larger
         if border_width > 0 and border_color:
             pen = QPen(QColor(border_color), border_width)
 
@@ -45,7 +50,19 @@ class RoundedRectBorder(BorderStrategy):
 
             painter.setPen(pen)
             painter.setBrush(Qt.NoBrush)
-            painter.drawRoundedRect(rect, radius, radius)
+            # Expand rect by half border width minus tiny overlap to avoid anti-aliasing gaps
+            # The 0.5px overlap ensures inner edges blend seamlessly with background
+            half_width = border_width / 2.0
+            overlap = 0.5  # Tiny overlap to prevent anti-aliasing gaps
+            border_rect = rect.adjusted(-(half_width - overlap), -(half_width - overlap),
+                                       (half_width - overlap), (half_width - overlap))
+            # Increase radius proportionally to maintain inner edge curvature
+            outer_radius = radius + half_width - overlap
+            # Disable anti-aliasing for sharp edges
+            painter.setRenderHint(QPainter.Antialiasing, False)
+            painter.drawRoundedRect(border_rect, outer_radius, outer_radius)
+            # Restore anti-aliasing for other elements
+            painter.setRenderHint(QPainter.Antialiasing, True)
 
     def get_selection_path(self, rect, style_config: dict) -> QPainterPath:
         """Get selection highlight path for rounded rectangle."""
@@ -72,13 +89,17 @@ class CircleBorder(BorderStrategy):
         border_width = style_config.get("border_width", 0)
         border_style = style_config.get("border_style", "solid")
 
-        # Draw background fill
+        # Draw background fill (original rect)
         if bg_color:
             painter.setPen(Qt.NoPen)
             painter.setBrush(QBrush(QColor(bg_color)))
+            # Disable anti-aliasing for sharp edges
+            painter.setRenderHint(QPainter.Antialiasing, False)
             painter.drawEllipse(rect)
+            # Restore anti-aliasing for other elements
+            painter.setRenderHint(QPainter.Antialiasing, True)
 
-        # Draw border if specified
+        # Draw border completely outside background
         if border_width > 0 and border_color:
             pen = QPen(QColor(border_color), border_width)
 
@@ -94,7 +115,16 @@ class CircleBorder(BorderStrategy):
 
             painter.setPen(pen)
             painter.setBrush(Qt.NoBrush)
-            painter.drawEllipse(rect)
+            # Expand rect by half border width minus tiny overlap to avoid anti-aliasing gaps
+            half_width = border_width / 2.0
+            overlap = 0.5  # Tiny overlap to prevent anti-aliasing gaps
+            border_rect = rect.adjusted(-(half_width - overlap), -(half_width - overlap),
+                                       (half_width - overlap), (half_width - overlap))
+            # Disable anti-aliasing for sharp edges
+            painter.setRenderHint(QPainter.Antialiasing, False)
+            painter.drawEllipse(border_rect)
+            # Restore anti-aliasing for other elements
+            painter.setRenderHint(QPainter.Antialiasing, True)
 
     def get_selection_path(self, rect, style_config: dict) -> QPainterPath:
         """Get selection highlight path for circle/ellipse."""

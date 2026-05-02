@@ -172,7 +172,8 @@ class BorderSection(CollapsiblePanel):
         layout.addWidget(brightness_label, row, 0)
 
         self.brightness_spin = SpinBox()
-        self.brightness_spin.setRange(50, 150)  # 0.5-1.5
+        self.brightness_spin.setRange(50, 200)  # 50%-200% (0.5-2.0)
+        self.brightness_spin.setSuffix("%")
         # Use temporary default for UI initialization (will be updated by set_style)
         self.brightness_spin.setValue(100)
         self.brightness_spin.setFixedHeight(self.WIDGET_HEIGHT)

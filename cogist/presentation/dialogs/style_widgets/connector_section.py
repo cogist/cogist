@@ -195,7 +195,8 @@ class ConnectorSection(CollapsiblePanel):
 
         self.connector_brightness_spin = SpinBox()
         self.connector_brightness_spin.setFixedHeight(self.WIDGET_HEIGHT)
-        self.connector_brightness_spin.setRange(50, 150)  # 0.5-1.5
+        self.connector_brightness_spin.setRange(50, 200)  # 50%-200% (0.5-2.0)
+        self.connector_brightness_spin.setSuffix("%")
         self.connector_brightness_spin.setValue(int(self.current_style["connector_brightness"] * 100))
         self.connector_brightness_spin.valueChanged.connect(self._on_brightness_changed)
         layout.addWidget(self.connector_brightness_spin, 4, 1)
