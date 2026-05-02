@@ -70,6 +70,28 @@ class ConnectorSection(CollapsiblePanel):
         if checked and not self._initialized:
             self._init_content()
             self._initialized = True
+            # Load style from parent after initialization
+            parent = self._advanced_tab if hasattr(self, '_advanced_tab') else None
+            if parent and hasattr(parent, "style_config") and parent.style_config:
+                # Get connector color index from style_config
+                try:
+                    role = parent._get_current_layer_role()
+                    if role and role in parent.style_config.role_styles:
+                        role_style = parent.style_config.role_styles[role]
+                        color_index = role_style.connector_color_index
+                        self.current_style["connector_color_index"] = color_index
+                        # Update button display
+                        color_pool = parent.style_config.color_pool
+                        if color_index < len(color_pool):
+                            selected_color = color_pool[color_index]
+                            if hasattr(self, "connector_color_btn"):
+                                self.connector_color_btn.setStyleSheet(
+                                    f"background-color: {selected_color}; "
+                                    "border: none; "
+                                    "border-radius: 4px;"
+                                )
+                except Exception:
+                    pass  # Silently ignore errors during initialization
 
     def _init_content(self):
         """Initialize content on first expand (lazy initialization)."""
@@ -339,9 +361,15 @@ class ConnectorSection(CollapsiblePanel):
                         if hasattr(self, "connector_color_btn"):
                             self.connector_color_btn.setStyleSheet(
                                 f"background-color: {selected_color}; "
-                                "border: 1px solid #C8C8C8; "
-                                "border-radius: 6px; "
-                                "padding: 4px 24px 4px 12px; "
-                                "font-size: 13px; "
-                                "text-align: left;"
+                                "border: none; "
+                                "border-radius: 4px;"
                             )
+
+            # Update brightness slider/spinbox
+            if "connector_brightness" in style and hasattr(self, "connector_brightness_spin"):
+                brightness_value = int(style["connector_brightness"] * 100)
+                self.connector_brightness_spin.setValue(brightness_value)
+
+            # Update opacity slider/spinbox
+            if "connector_opacity" in style and hasattr(self, "connector_opacity_spin"):
+                self.connector_opacity_spin.setValue(style["connector_opacity"])

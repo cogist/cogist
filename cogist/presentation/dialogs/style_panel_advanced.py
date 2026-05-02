@@ -210,6 +210,7 @@ class AdvancedStyleTab(QWidget):
             "connector_style": self._get_connector_style_for_layer(layer_name),
             "connector_width": self._get_connector_width_for_layer(layer_name),
             "connector_color": self._get_connector_color_for_layer(layer_name),
+            "connector_color_index": role_style.connector_color_index,
             # Spacing - read from role-based configuration
             "parent_child_spacing": self._get_level_spacing_for_layer(layer_name),
             "sibling_spacing": self._get_sibling_spacing_for_layer(layer_name),
@@ -1065,8 +1066,12 @@ class AdvancedStyleTab(QWidget):
                 connector_updates["connector_style"] = style["connector_style"]
             if "line_width" in style:
                 connector_updates["line_width"] = style["line_width"]
-            if "connector_color" in style:
-                connector_updates["connector_color"] = style["connector_color"]
+            if "connector_color_index" in style:
+                connector_updates["connector_color_index"] = style["connector_color_index"]
+            if "connector_brightness" in style:
+                connector_updates["connector_brightness"] = style["connector_brightness"]
+            if "connector_opacity" in style:
+                connector_updates["connector_opacity"] = style["connector_opacity"]
 
             # Use command system if available
             if (
@@ -1083,12 +1088,12 @@ class AdvancedStyleTab(QWidget):
                     role_style.connector_style = style["connector_style"]
                 if "line_width" in style:
                     role_style.line_width = style["line_width"]
-                if "connector_color" in style:
-                    # Find color index in color_pool
-                    if style["connector_color"] in self.style_config.color_pool:
-                        role_style.connector_color_index = self.style_config.color_pool.index(style["connector_color"])
-                    else:
-                        role_style.connector_color_index = 0
+                if "connector_color_index" in style:
+                    role_style.connector_color_index = style["connector_color_index"]
+                if "connector_brightness" in style:
+                    role_style.connector_brightness = style["connector_brightness"]
+                if "connector_opacity" in style:
+                    role_style.connector_opacity = style["connector_opacity"]
             elif self.command_history and connector_updates:
                 from cogist.application.commands import ChangeStyleCommand
                 from cogist.application.commands.change_style_command import StyleChange
@@ -1114,12 +1119,12 @@ class AdvancedStyleTab(QWidget):
                         role_style.connector_style = style["connector_style"]
                     if "line_width" in style:
                         role_style.line_width = style["line_width"]
-                    if "connector_color" in style:
-                        # Find color index in color_pool
-                        if style["connector_color"] in self.style_config.color_pool:
-                            role_style.connector_color_index = self.style_config.color_pool.index(style["connector_color"])
-                        else:
-                            role_style.connector_color_index = 0
+                    if "connector_color_index" in style:
+                        role_style.connector_color_index = style["connector_color_index"]
+                    if "connector_brightness" in style:
+                        role_style.connector_brightness = style["connector_brightness"]
+                    if "connector_opacity" in style:
+                        role_style.connector_opacity = style["connector_opacity"]
 
             self._apply_styles_to_mindmap()
 
@@ -1233,8 +1238,19 @@ class AdvancedStyleTab(QWidget):
                 "connector_shape": layer_data["connector_type"],
                 "connector_style": layer_data["connector_style"],
                 "line_width": layer_data["connector_width"],
-                "connector_color": layer_data["connector_color"],
+                "connector_color_index": layer_data["connector_color_index"],
+                "connector_brightness": layer_data["connector_color_index"],  # Will be replaced below
+                "connector_opacity": layer_data["connector_color_index"],  # Will be replaced below
             }
+
+            # Get brightness and opacity from role_styles
+            assert self.style_config is not None
+            role = self._get_current_layer_role()
+            if role and role in self.style_config.role_styles:
+                role_style = self.style_config.role_styles[role]
+                connector_style["connector_brightness"] = role_style.connector_brightness
+                connector_style["connector_opacity"] = role_style.connector_opacity
+
             self.connector_section.set_style(connector_style)
 
     def refresh_current_layer(self):
@@ -1355,29 +1371,33 @@ class AdvancedStyleTab(QWidget):
             if not hasattr(edge_item, "update_style"):
                 continue
 
-            # Get SOURCE node depth to determine which connector style to use
-            # The edge style is determined by the parent node's layer
-            source_node = edge_item.source_item
-            if not hasattr(source_node, "depth"):
+            # Get TARGET node depth to determine which connector style to use
+            # Edge style is determined by the child node's layer (edge belongs to target)
+            target_node = edge_item.target_item
+            if not hasattr(target_node, "depth"):
                 continue
 
             # Get connector config from role-based style
             from cogist.domain.styles.extended_styles import NodeRole
 
-            source_depth = source_node.depth
+            target_depth = target_node.depth
             role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
-            role = role_map.get(source_depth, NodeRole.TERTIARY)
+            role = role_map.get(target_depth, NodeRole.TERTIARY)
 
-            # Get connector shape from role style
+            # Get connector config from role style
             assert (
                 role in self.style_config.role_styles
             ), f"Role {role} should exist in style_config.role_styles"
             role_style = self.style_config.role_styles[role]
-            connector_shape = role_style.connector_shape
 
-            # Build connector style dict (only shape is needed for update_style)
+            # Build complete connector style dict with all fields
             connector_style = {
-                "connector_shape": connector_shape,
+                "connector_shape": role_style.connector_shape,
+                "connector_style": role_style.connector_style,
+                "line_width": role_style.line_width,
+                "connector_color_index": role_style.connector_color_index,
+                "connector_brightness": role_style.connector_brightness,
+                "connector_opacity": role_style.connector_opacity,
             }
 
             edge_item.update_style(connector_style)

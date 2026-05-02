@@ -134,10 +134,11 @@ class EdgeItem(QGraphicsPathItem):
 
                 # Apply rainbow color if branch index found
                 if branch_idx is not None and branch_idx < len(self.style_config.color_pool):
-                    # Get base rainbow color from color_pool array
+                    # Get base rainbow color from color_pool array (NO brightness/opacity applied yet)
                     rainbow_base = self.style_config.color_pool[branch_idx % 8]  # Only use indices 0-7
 
-                    # Apply brightness and opacity adjustments for Level 2+
+                    # Apply brightness and opacity adjustments based on TARGET depth
+                    # This ensures each level can have different brightness/opacity
                     if hasattr(self.style_config, 'role_styles') and adjustment_role in self.style_config.role_styles:
                         role_style = self.style_config.role_styles[adjustment_role]
 
@@ -653,3 +654,6 @@ class EdgeItem(QGraphicsPathItem):
                 self.connector_strategy = new_strategy
                 # Path changed, need to recalculate
                 self.update_curve()
+
+        # Always trigger repaint to reflect style changes (color, brightness, opacity, etc.)
+        self.update()
