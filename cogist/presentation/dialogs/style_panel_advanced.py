@@ -1213,6 +1213,9 @@ class AdvancedStyleTab(QWidget):
             if "rainbow_border_enabled" in layer_data:
                 self.border_section.setVisible(layer_data["rainbow_border_enabled"])
 
+            # Hide connector section for root layer (edge belongs to target node)
+            self.connector_section.setVisible(self.current_layer != "root")
+
             # Load spacing configuration (per-layer)
             spacing_config = {
                 "parent_child": layer_data["parent_child_spacing"],
@@ -1223,8 +1226,9 @@ class AdvancedStyleTab(QWidget):
             # Root layer specific: hide sibling spacing control (elegant way)
             self.spacing_section.set_hide_sibling(self.current_layer == "root")
 
-        # Load connector style (per-layer, only for non-canvas)
-        if self.current_layer != "canvas":
+        # Load connector style (per-layer, only for non-canvas and non-root)
+        # Edge belongs to target node, so root layer doesn't need connector config
+        if self.current_layer not in ["canvas", "root"]:
             connector_style = {
                 "connector_shape": layer_data["connector_type"],
                 "connector_style": layer_data["connector_style"],

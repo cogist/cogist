@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,
+    QPushButton,
 )
 
 from cogist.presentation.widgets import (
@@ -45,6 +46,9 @@ class ConnectorSection(CollapsiblePanel):
 
         # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
+
+        # Store reference to AdvancedStyleTab for accessing style_config
+        self._advanced_tab = parent
 
         # State
         self._initialized = False
@@ -148,16 +152,17 @@ class ConnectorSection(CollapsiblePanel):
         self.connector_width_spin.valueChanged.connect(self._on_width_changed)
         layout.addWidget(self.connector_width_spin, 2, 1)
 
-        # Connector color
+        # Connector color - simple QPushButton (no text, shows color only)
         color_label = QLabel("Color:")
         color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         color_label.setFixedWidth(self._label_width)
         layout.addWidget(color_label, 3, 0)
 
-        self.connector_color_btn = MenuButton("Color 1", self.WIDGET_HEIGHT)
-        self.connector_color_btn.setStyleSheet(self._button_style())
+        self.connector_color_btn = QPushButton()
+        self.connector_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
         self.connector_color_btn.clicked.connect(self._on_color_clicked)
         layout.addWidget(self.connector_color_btn, 3, 1)
+        # Button stylesheet is set by set_style() - no text, no hardcoded colors
 
         # Connector brightness
         brightness_label = QLabel("Brightness:")
@@ -227,9 +232,14 @@ class ConnectorSection(CollapsiblePanel):
         self._emit_style_changed()
 
     def _on_color_clicked(self):
-        """Handle connector color button click (placeholder)."""
-        # TODO: Implement color picker dialog
-        pass
+        """Handle connector color button click."""
+        parent = self._advanced_tab if hasattr(self, '_advanced_tab') else None
+
+        if not (parent and hasattr(parent, "style_config") and parent.style_config):
+            return
+
+        # Show color pool selector dialog for level 1/2/3+ layers
+        self._show_connector_color_pool_selector()
 
     def _on_brightness_changed(self, value: int):
         """Handle connector brightness change."""
@@ -244,6 +254,100 @@ class ConnectorSection(CollapsiblePanel):
     def _emit_style_changed(self):
         """Emit style changed signal."""
         self.style_changed.emit(self.current_style.copy())
+
+    def _show_connector_color_pool_selector(self):
+        """Show color pool selector dialog for connector color.
+
+        Displays a dialog with 8 color buttons (indices 0-7) for user to select.
+        """
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QDialog, QGridLayout, QLabel, QPushButton
+
+        parent = self._advanced_tab if hasattr(self, '_advanced_tab') else None
+        if not (parent and hasattr(parent, "style_config") and parent.style_config):
+            return
+
+        color_pool = parent.style_config.color_pool
+        if not color_pool or len(color_pool) < 8:
+            print("Warning: color_pool not properly initialized")
+            return
+
+        # Create dialog
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Select Connector Color from Pool")
+        dialog.setFixedSize(280, 180)
+
+        # Create layout
+        layout = QGridLayout(dialog)
+        layout.setSpacing(8)
+        layout.setContentsMargins(16, 16, 16, 16)
+
+        # Add label
+        label = QLabel("Choose a color (indices 0-7):")
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label, 0, 0, 1, 4)
+
+        # Create 8 color buttons (2 rows x 4 columns)
+        buttons = []
+        for i in range(8):
+            btn = QPushButton()
+            btn.setFixedSize(50, 50)
+            color = color_pool[i] if i < len(color_pool) else "#FFCCCCCC"
+            btn.setStyleSheet(
+                f"background-color: {color}; "
+                "border: 2px solid #C8C8C8; "
+                "border-radius: 6px;"
+            )
+            btn.setToolTip(f"Color Index {i}")
+
+            # Store index for callback
+            btn.setProperty("color_index", i)
+            btn.clicked.connect(
+                lambda _, b=btn: self._on_connector_color_pool_selected(b, dialog)
+            )
+
+            row = 1 + (i // 4)
+            col = i % 4
+            layout.addWidget(btn, row, col)
+            buttons.append(btn)
+
+        # Show dialog
+        dialog.exec()
+
+    def _on_connector_color_pool_selected(self, button, dialog):
+        """Handle connector color selection from pool selector dialog.
+
+        Args:
+            button: The clicked color button
+            dialog: The selector dialog to close
+        """
+        color_index = button.property("color_index")
+
+        # Update connector_color_index in current_style
+        self.current_style["connector_color_index"] = color_index
+
+        # Update button display color
+        parent = self._advanced_tab if hasattr(self, '_advanced_tab') else None
+        if parent and hasattr(parent, "style_config") and parent.style_config:
+            color_pool = parent.style_config.color_pool
+            if color_index < len(color_pool):
+                selected_color = color_pool[color_index]
+                # Don't set text - let button show only color
+                if hasattr(self, "connector_color_btn"):
+                    self.connector_color_btn.setStyleSheet(
+                        f"background-color: {selected_color}; "
+                        "border: 1px solid #C8C8C8; "
+                        "border-radius: 6px; "
+                        "padding: 4px 24px 4px 12px; "
+                        "font-size: 13px; "
+                        "text-align: left;"
+                    )
+
+        # Emit style changed signal
+        self._emit_style_changed()
+
+        # Close dialog
+        dialog.accept()
 
     def get_style(self) -> dict:
         """Get current connector style."""
@@ -269,3 +373,22 @@ class ConnectorSection(CollapsiblePanel):
 
             if "line_width" in style:
                 self.connector_width_spin.setValue(style["line_width"])
+
+            # Update connector color button display
+            if "connector_color_index" in style:
+                parent = self._advanced_tab if hasattr(self, '_advanced_tab') else None
+                if parent and hasattr(parent, "style_config") and parent.style_config:
+                    color_pool = parent.style_config.color_pool
+                    color_index = style["connector_color_index"]
+                    if color_index < len(color_pool):
+                        selected_color = color_pool[color_index]
+                        # Don't set text - let button show only color
+                        if hasattr(self, "connector_color_btn"):
+                            self.connector_color_btn.setStyleSheet(
+                                f"background-color: {selected_color}; "
+                                "border: 1px solid #C8C8C8; "
+                                "border-radius: 6px; "
+                                "padding: 4px 24px 4px 12px; "
+                                "font-size: 13px; "
+                                "text-align: left;"
+                            )
