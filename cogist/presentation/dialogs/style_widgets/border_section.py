@@ -23,6 +23,19 @@ from .dialog_utils import position_color_dialog
 from .menu_button import MenuButton
 
 
+class NoSelectSpinBox(QSpinBox):
+    """QSpinBox that doesn't select all text on focus.
+
+    This allows arrow keys to work continuously without entering text selection mode.
+    """
+
+    def focusInEvent(self, event):
+        """Override to prevent text selection on focus."""
+        super().focusInEvent(event)
+        # Move cursor to end instead of selecting all text
+        self.lineEdit().setCursorPosition(self.lineEdit().text().__len__())
+
+
 class BorderSection(CollapsiblePanel):
     """Border style settings with lazy initialization.
 
@@ -133,7 +146,7 @@ class BorderSection(CollapsiblePanel):
         width_label.setFixedWidth(self._label_width)
         layout.addWidget(width_label, row, 0)
 
-        self.border_width_spin = QSpinBox()
+        self.border_width_spin = NoSelectSpinBox()
         self.border_width_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.border_width_spin.setRange(1, 10)
         # Use temporary default for UI initialization (will be updated by set_style)

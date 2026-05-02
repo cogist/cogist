@@ -10,6 +10,7 @@ This module contains the MindMapView class which handles:
 from PySide6.QtCore import QEvent, QPointF, Qt, QTimer, Signal
 from PySide6.QtGui import QPainter, QWheelEvent
 from PySide6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QGraphicsScene,
     QGraphicsView,
@@ -513,8 +514,41 @@ class MindMapView(QGraphicsView):
 
         return get_app_context().get_main_window()
 
+    def focusOutEvent(self, event):
+        """Handle focus lost event.
+
+        When the view loses keyboard focus, clear the node selection state
+        to ensure visual consistency with the focus state.
+        """
+        # Clear node selection when view loses focus
+        self._deselect_node()
+        super().focusOutEvent(event)
+
+    def keyPressEvent(self, event):
+        """Handle key press events.
+
+        Only process keyboard events when the view has focus.
+        If focus is on other widgets (like dialog controls), completely ignore
+        the events to prevent QGraphicsView's default scrolling behavior.
+        """
+        # Check if this view actually has keyboard focus
+        focused = QApplication.focusWidget()
+        if focused != self.viewport():
+            # Focus is elsewhere - completely ignore the event
+            # Do NOT call super().keyPressEvent() to prevent default scrolling
+            event.accept()  # Mark as handled but do nothing
+            return
+
+        # View has focus, let eventFilter handle the shortcuts
+        super().keyPressEvent(event)
+
     def eventFilter(self, obj, event):
-        """Handle keyboard shortcuts for editing commands."""
+        """Handle keyboard shortcuts for editing commands.
+
+        Note: This filter only receives events sent to the view itself.
+        When focus is on other widgets (like dialog SpinBox), their events
+        are handled by those widgets directly - this filter won't see them.
+        """
 
         if event.type() == QEvent.KeyPress:
             key_event = event
@@ -985,6 +1019,17 @@ class MindMapView(QGraphicsView):
         if self.selected_node_id and self.selected_node_id in self.node_items:
             self.node_items[self.selected_node_id].setSelected(False)
         self.selected_node_id = None
+
+    def clear_focus_and_selection(self):
+        """Clear both keyboard focus and node selection.
+
+        Call this when another widget (like a dialog) gains focus,
+        to ensure there's only one active focus in the application.
+        """
+        # Clear keyboard focus from the view
+        self.clearFocus()
+        # Clear node selection state
+        self._deselect_node()
 
     def _navigate_to_sibling(self, direction: str):
         """Navigate to previous/next sibling node.
