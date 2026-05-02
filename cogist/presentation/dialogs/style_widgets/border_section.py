@@ -559,7 +559,8 @@ class BorderSection(CollapsiblePanel):
                         )
 
             # Update controls visibility based on enabled state
-            if "enabled" in style:
+            # Always update visibility when panel is initialized
+            if self._initialized:
                 self._update_border_controls_visibility()
 
             # Hide/show color controls based on rainbow mode (only for non-root layers)
