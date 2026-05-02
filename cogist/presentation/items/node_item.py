@@ -368,21 +368,23 @@ class NodeItem(QGraphicsRectItem):
                                                              role_style.border_brightness, role_style.border_opacity,
                                                              role_style.border_enabled)
             else:
-                # Root node (depth == 0): use color index from role_style
+                # Root node (depth == 0): use special_colors
+                bg_color = self.style_config.special_colors["root_background"]
+                border_color = self.style_config.special_colors["root_border"]
+        else:
+            # Rainbow disabled: use special_colors for root, color indices for others
+            if depth == 0:
+                # Root node: use special_colors
+                bg_color = self.style_config.special_colors["root_background"]
+                border_color = self.style_config.special_colors["root_border"]
+            else:
+                # Other nodes: use color indices directly
                 bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
                                                      role_style.bg_brightness, role_style.bg_opacity,
                                                      role_style.bg_enabled)
                 border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
                                                          role_style.border_brightness, role_style.border_opacity,
                                                          role_style.border_enabled)
-        else:
-            # Rainbow disabled: use color indices directly
-            bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
-                                                 role_style.bg_brightness, role_style.bg_opacity,
-                                                 role_style.bg_enabled)
-            border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
-                                                     role_style.border_brightness, role_style.border_opacity,
-                                                     role_style.border_enabled)
 
         # Text color: auto-contrast or manual
         if role_style.text_color:
@@ -867,21 +869,23 @@ class NodeItem(QGraphicsRectItem):
                                 bg_color = "#FFFFFFFF"
                                 border_color = "#FF000000"
                         else:
-                            # Root node (depth == 0): use color index from role_style
+                            # Root node (depth == 0): use special_colors
+                            bg_color = self.style_config.special_colors["root_background"]
+                            border_color = self.style_config.special_colors["root_border"]
+                    else:
+                        # Rainbow disabled: use special_colors for root, color indices for others
+                        if self.depth == 0:
+                            # Root node: use special_colors
+                            bg_color = self.style_config.special_colors["root_background"]
+                            border_color = self.style_config.special_colors["root_border"]
+                        else:
+                            # Other nodes: use color indices from role_style
                             bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
                                                                  role_style.bg_brightness, role_style.bg_opacity,
                                                                  role_style.bg_enabled)
                             border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
                                                                      role_style.border_brightness, role_style.border_opacity,
                                                                      role_style.border_enabled)
-                    else:
-                        # Rainbow disabled: use color indices from role_style
-                        bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
-                                                             role_style.bg_brightness, role_style.bg_opacity,
-                                                             role_style.bg_enabled)
-                        border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
-                                                                 role_style.border_brightness, role_style.border_opacity,
-                                                                 role_style.border_enabled)
 
                     # text_color from role_style or auto contrast
                     if not text_color:

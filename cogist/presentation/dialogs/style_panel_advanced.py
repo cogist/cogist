@@ -10,6 +10,7 @@ Refactored version: Uses component-based architecture from style_widgets/
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 
+from ..items.node_item import adjust_color_brightness
 from .style_widgets import (
     BorderSection,
     CanvasPanel,
@@ -141,86 +142,57 @@ class AdvancedStyleTab(QWidget):
             bg_color = self.style_config.special_colors["root_background"]
         else:
             # Other layers: use bg_color_index to reference the pool
-            bg_color_index = (
-                role_style.bg_color_index if hasattr(role_style, "bg_color_index") else 0
-            )
+            bg_color_index = role_style.bg_color_index
 
-            if color_pool and bg_color_index < len(color_pool):
-                base_bg_color = color_pool[bg_color_index]
-                # Apply brightness and opacity (simplified)
-                bg_color = base_bg_color
-            else:
-                bg_color = "#FFFFFFFF"
+            # Apply brightness and opacity to get final color
+            base_bg_color = color_pool[bg_color_index]
+            bg_color = adjust_color_brightness(base_bg_color, role_style.bg_brightness)
+            # Apply opacity by modifying alpha channel
+            if role_style.bg_opacity < 255:
+                # Convert opacity to hex and replace alpha channel
+                opacity_hex = f"{role_style.bg_opacity:02X}"
+                if len(bg_color) == 9:  # #AARRGGBB format
+                    bg_color = "#" + opacity_hex + bg_color[3:]
+                else:  # #RRGGBB format
+                    bg_color = "#" + opacity_hex + bg_color[1:]
 
         # Text color: auto-contrast or manual
         text_color = (
             role_style.text_color
-            if hasattr(role_style, "text_color") and role_style.text_color
+            if role_style.text_color
             else self._auto_contrast(bg_color)
         )
 
         # Border color using index system
-        border_color_index = (
-            role_style.border_color_index
-            if hasattr(role_style, "border_color_index")
-            else 0
-        )
-        if color_pool and border_color_index < len(color_pool):
-            border_color = color_pool[border_color_index]
+        if layer_name == "root":
+            border_color = self.style_config.special_colors["root_border"]
         else:
-            border_color = None
+            border_color_index = role_style.border_color_index
+            border_color = color_pool[border_color_index]
 
         layer_data = {
-            # Shape - NEW: flat fields
-            "shape": role_style.basic_shape
-            if hasattr(role_style, "basic_shape")
-            else "rounded_rect",
-            "radius": role_style.border_radius
-            if hasattr(role_style, "border_radius")
-            else 8,
+            # Shape - flat fields from RoleStyle
+            "shape": role_style.basic_shape,
+            "radius": role_style.border_radius,
             # Background enabled
-            "bg_enabled": role_style.bg_enabled
-            if hasattr(role_style, "bg_enabled")
-            else True,
+            "bg_enabled": role_style.bg_enabled,
             # Colors
             "bg_color": bg_color,
             "text_color": text_color,
             "border_color": border_color,
             # Font
-            "font_family": role_style.font_family
-            if hasattr(role_style, "font_family")
-            else "Arial",
-            "font_size": role_style.font_size
-            if hasattr(role_style, "font_size")
-            else 14,
-            "font_weight": role_style.font_weight
-            if hasattr(role_style, "font_weight")
-            else "Normal",
-            "font_italic": role_style.font_italic
-            if hasattr(role_style, "font_italic")
-            else False,
-            "font_underline": role_style.font_underline
-            if hasattr(role_style, "font_underline")
-            else False,
-            "font_strikeout": role_style.font_strikeout
-            if hasattr(role_style, "font_strikeout")
-            else False,
+            "font_family": role_style.font_family,
+            "font_size": role_style.font_size,
+            "font_weight": role_style.font_weight,
+            "font_italic": role_style.font_italic,
+            "font_underline": role_style.font_underline,
+            "font_strikeout": role_style.font_strikeout,
             # Shadow
-            "shadow_enabled": role_style.shadow_enabled
-            if hasattr(role_style, "shadow_enabled")
-            else False,
-            "shadow_offset_x": role_style.shadow_offset_x
-            if hasattr(role_style, "shadow_offset_x")
-            else 2,
-            "shadow_offset_y": role_style.shadow_offset_y
-            if hasattr(role_style, "shadow_offset_y")
-            else 2,
-            "shadow_blur": role_style.shadow_blur
-            if hasattr(role_style, "shadow_blur")
-            else 4,
-            "shadow_color": role_style.shadow_color
-            if hasattr(role_style, "shadow_color")
-            else "#000000",
+            "shadow_enabled": role_style.shadow_enabled,
+            "shadow_offset_x": role_style.shadow_offset_x,
+            "shadow_offset_y": role_style.shadow_offset_y,
+            "shadow_blur": role_style.shadow_blur,
+            "shadow_color": role_style.shadow_color,
             # Border - NEW: flat fields
             "border_enabled": role_style.border_enabled,
             "border_style": role_style.border_style,
@@ -229,16 +201,10 @@ class AdvancedStyleTab(QWidget):
             "border_brightness": role_style.border_brightness,
             "border_opacity": role_style.border_opacity,
             # Padding
-            "padding_w": role_style.padding_w
-            if hasattr(role_style, "padding_w")
-            else 12,
-            "padding_h": role_style.padding_h
-            if hasattr(role_style, "padding_h")
-            else 8,
+            "padding_w": role_style.padding_w,
+            "padding_h": role_style.padding_h,
             # Max text width
-            "max_text_width": role_style.max_text_width
-            if hasattr(role_style, "max_text_width")
-            else 250,
+            "max_text_width": role_style.max_text_width,
             # Connector - read from role-based configuration
             "connector_type": self._get_connector_type_for_layer(layer_name),
             "connector_style": self._get_connector_style_for_layer(layer_name),
@@ -253,13 +219,9 @@ class AdvancedStyleTab(QWidget):
             # Rainbow bg/border - per-role flags (NEW: use simple booleans)
             "rainbow_bg_enabled": True,  # TODO: Add to RoleStyle
             "rainbow_border_enabled": True,  # TODO: Add to RoleStyle
-            # Brightness and opacity - per-role (NEW: use role_style fields)
-            "brightness_amount": role_style.bg_brightness
-            if hasattr(role_style, "bg_brightness")
-            else 1.0,
-            "opacity_amount": role_style.bg_opacity
-            if hasattr(role_style, "bg_opacity")
-            else 255,
+            # Brightness and opacity - per-role (from RoleStyle)
+            "brightness_amount": role_style.bg_brightness,
+            "opacity_amount": role_style.bg_opacity,
         }
 
         return layer_data
@@ -283,17 +245,15 @@ class AdvancedStyleTab(QWidget):
         """Get parent-child spacing for a layer from role-based configuration."""
         assert self.style_config is not None
 
-        # NEW: Try role-based spacing from MindMapStyle.role_styles
+        # NEW: Get from MindMapStyle.role_styles
         role = self._get_current_layer_role()
-        if (
-            role
-            and hasattr(self.style_config, 'role_styles')
+        assert role is not None, f"Role should not be None for layer {layer_name}"
+        assert (
+            hasattr(self.style_config, 'role_styles')
             and role in self.style_config.role_styles
-        ):
-            return self.style_config.role_styles[role].parent_child_spacing
+        ), f"Role {role} should exist in style_config.role_styles"
 
-        # Default value
-        return 80.0
+        return self.style_config.role_styles[role].parent_child_spacing
 
     def _get_sibling_spacing_for_layer(self, layer_name: str) -> float:
         """Get sibling spacing for a layer from role-based configuration."""
@@ -301,17 +261,15 @@ class AdvancedStyleTab(QWidget):
         if layer_name == "root":
             return 0
 
-        # NEW: Try role-based spacing from MindMapStyle.role_styles
+        # NEW: Get from MindMapStyle.role_styles
         role = self._get_current_layer_role()
-        if (
-            role
-            and hasattr(self.style_config, 'role_styles')
+        assert role is not None, f"Role should not be None for layer {layer_name}"
+        assert (
+            hasattr(self.style_config, 'role_styles')
             and role in self.style_config.role_styles
-        ):
-            return self.style_config.role_styles[role].sibling_spacing
+        ), f"Role {role} should exist in style_config.role_styles"
 
-        # Default value
-        return 60.0
+        return self.style_config.role_styles[role].sibling_spacing
 
     def _get_connector_type_for_layer(self, layer_name: str) -> str:
         """Get connector type for a layer from role-based configuration."""
@@ -319,15 +277,13 @@ class AdvancedStyleTab(QWidget):
 
         # NEW: Get from MindMapStyle.role_styles
         role = self._get_current_layer_role()
-        if (
-            role
-            and hasattr(self.style_config, 'role_styles')
+        assert role is not None, f"Role should not be None for layer {layer_name}"
+        assert (
+            hasattr(self.style_config, 'role_styles')
             and role in self.style_config.role_styles
-        ):
-            return self.style_config.role_styles[role].connector_shape
+        ), f"Role {role} should exist in style_config.role_styles"
 
-        # Default value
-        return "bezier"
+        return self.style_config.role_styles[role].connector_shape
 
     def _get_connector_style_for_layer(self, layer_name: str) -> str:
         """Get connector style for a layer from role-based configuration."""
@@ -335,15 +291,13 @@ class AdvancedStyleTab(QWidget):
 
         # NEW: Get from MindMapStyle.role_styles
         role = self._get_current_layer_role()
-        if (
-            role
-            and hasattr(self.style_config, 'role_styles')
+        assert role is not None, f"Role should not be None for layer {layer_name}"
+        assert (
+            hasattr(self.style_config, 'role_styles')
             and role in self.style_config.role_styles
-        ):
-            return self.style_config.role_styles[role].connector_style
+        ), f"Role {role} should exist in style_config.role_styles"
 
-        # Default value
-        return "solid"
+        return self.style_config.role_styles[role].connector_style
 
     def _get_connector_width_for_layer(self, layer_name: str) -> float:
         """Get connector width for a layer from role-based configuration."""
@@ -351,15 +305,13 @@ class AdvancedStyleTab(QWidget):
 
         # NEW: Get from MindMapStyle.role_styles
         role = self._get_current_layer_role()
-        if (
-            role
-            and hasattr(self.style_config, 'role_styles')
+        assert role is not None, f"Role should not be None for layer {layer_name}"
+        assert (
+            hasattr(self.style_config, 'role_styles')
             and role in self.style_config.role_styles
-        ):
-            return self.style_config.role_styles[role].line_width
+        ), f"Role {role} should exist in style_config.role_styles"
 
-        # Default value
-        return 2.0
+        return self.style_config.role_styles[role].line_width
 
     def _get_connector_color_for_layer(self, layer_name: str) -> str:
         """Get connector color for a layer from role-based configuration."""
@@ -367,21 +319,18 @@ class AdvancedStyleTab(QWidget):
 
         # NEW: Get from MindMapStyle.role_styles using color index
         role = self._get_current_layer_role()
-        if (
-            role
-            and hasattr(self.style_config, 'role_styles')
+        assert role is not None, f"Role should not be None for layer {layer_name}"
+        assert (
+            hasattr(self.style_config, 'role_styles')
             and role in self.style_config.role_styles
-        ):
-            role_style = self.style_config.role_styles[role]
-            color_pool = self.style_config.color_pool
+        ), f"Role {role} should exist in style_config.role_styles"
 
-            # Use connector_color_index to get color from pool
-            color_index = role_style.connector_color_index if hasattr(role_style, 'connector_color_index') else 0
-            if color_pool and color_index < len(color_pool):
-                return color_pool[color_index]
+        role_style = self.style_config.role_styles[role]
+        color_pool = self.style_config.color_pool
 
-        # Default value
-        return "#FF666666"
+        # Use connector_color_index to get color from pool
+        color_index = role_style.connector_color_index
+        return color_pool[color_index]
 
     def _update_role_style_in_config(self, layer_name: str, updates: dict):
         """Update specific fields of a role's style in global style_config.
@@ -431,27 +380,35 @@ class AdvancedStyleTab(QWidget):
                 if hasattr(role_style, "border_radius"):
                     role_style.border_radius = value
             elif key == "bg_color":
-                # Background color goes to role_style
-                if hasattr(role_style, "bg_color_index"):
-                    # For new architecture, we need to find the color index in color_pool
-                    if value in self.style_config.color_pool:
-                        role_style.bg_color_index = self.style_config.color_pool.index(value)
-                    else:
-                        # If color not in pool, add it or use default
-                        role_style.bg_color_index = 0
+                # Background color
+                if role == NodeRole.ROOT:
+                    # Root node: update special_colors directly
+                    self.style_config.special_colors["root_background"] = value
+                else:
+                    # Other nodes: find color index in color_pool
+                    if hasattr(role_style, "bg_color_index"):
+                        if value in self.style_config.color_pool:
+                            role_style.bg_color_index = self.style_config.color_pool.index(value)
+                        else:
+                            # If color not in pool, use default index
+                            role_style.bg_color_index = 0
             elif key == "text_color":
                 # Text color goes to role_style
                 if hasattr(role_style, "text_color"):
                     role_style.text_color = value
             elif key == "border_color":
-                # Border color goes to role_style
-                if hasattr(role_style, "border_color_index"):
-                    # For new architecture, we need to find the color index in color_pool
-                    if value in self.style_config.color_pool:
-                        role_style.border_color_index = self.style_config.color_pool.index(value)
-                    else:
-                        # If color not in pool, add it or use default
-                        role_style.border_color_index = 0
+                # Border color
+                if role == NodeRole.ROOT:
+                    # Root node: update special_colors directly
+                    self.style_config.special_colors["root_border"] = value
+                else:
+                    # Other nodes: find color index in color_pool
+                    if hasattr(role_style, "border_color_index"):
+                        if value in self.style_config.color_pool:
+                            role_style.border_color_index = self.style_config.color_pool.index(value)
+                        else:
+                            # If color not in pool, use default index
+                            role_style.border_color_index = 0
             elif key == "font_italic":
                 # Direct boolean assignment
                 if hasattr(role_style, "font_italic"):
@@ -498,7 +455,7 @@ class AdvancedStyleTab(QWidget):
         self.layer_selector = LayerSelector()
         self.canvas_panel = CanvasPanel(self)  # NEW: Canvas panel for background color
         # ColorSchemeSection removed - now in separate ColorSchemeTab
-        self.spacing_section = SpacingSection()
+        self.spacing_section = SpacingSection(parent=self)
         self.node_style_section = NodeStyleSection(parent=self)
         self.font_style_section = FontStyleSection()
         self.shadow_section = ShadowSection()
@@ -665,6 +622,8 @@ class AdvancedStyleTab(QWidget):
         Args:
             colors: Dictionary of changed color values
         """
+        from cogist.domain.styles import NodeRole
+
         assert self.style_config is not None
 
         # Get current role
@@ -753,12 +712,16 @@ class AdvancedStyleTab(QWidget):
 
                 # Handle node background color
                 if "bg_color" in colors:
-                    # Find color index in color_pool
-                    if colors["bg_color"] in self.style_config.color_pool:
-                        role_style.bg_color_index = self.style_config.color_pool.index(colors["bg_color"])
+                    if role == NodeRole.ROOT:
+                        # Root node: update special_colors directly
+                        self.style_config.special_colors["root_background"] = colors["bg_color"]
                     else:
-                        # If color not in pool, use default index
-                        role_style.bg_color_index = 0
+                        # Other nodes: find color index in color_pool
+                        if colors["bg_color"] in self.style_config.color_pool:
+                            role_style.bg_color_index = self.style_config.color_pool.index(colors["bg_color"])
+                        else:
+                            # If color not in pool, use default index
+                            role_style.bg_color_index = 0
 
                 # Handle text/foreground color
                 if "text_color" in colors:
@@ -766,12 +729,16 @@ class AdvancedStyleTab(QWidget):
 
                 # Handle border color
                 if "border_color" in colors:
-                    # Find color index in color_pool
-                    if colors["border_color"] in self.style_config.color_pool:
-                        role_style.border_color_index = self.style_config.color_pool.index(colors["border_color"])
+                    if role == NodeRole.ROOT:
+                        # Root node: update special_colors directly
+                        self.style_config.special_colors["root_border"] = colors["border_color"]
                     else:
-                        # If color not in pool, use default index
-                        role_style.border_color_index = 0
+                        # Other nodes: find color index in color_pool
+                        if colors["border_color"] in self.style_config.color_pool:
+                            role_style.border_color_index = self.style_config.color_pool.index(colors["border_color"])
+                        else:
+                            # If color not in pool, use default index
+                            role_style.border_color_index = 0
 
                 # Handle connector color
                 if "connector_color" in colors:
@@ -1379,10 +1346,12 @@ class AdvancedStyleTab(QWidget):
             role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
             role = role_map.get(source_depth, NodeRole.TERTIARY)
 
-            connector_shape = "bezier"  # Default
-            if role in self.style_config.role_styles:
-                role_style = self.style_config.role_styles[role]
-                connector_shape = role_style.connector_shape
+            # Get connector shape from role style
+            assert (
+                role in self.style_config.role_styles
+            ), f"Role {role} should exist in style_config.role_styles"
+            role_style = self.style_config.role_styles[role]
+            connector_shape = role_style.connector_shape
 
             # Build connector style dict (only shape is needed for update_style)
             connector_style = {

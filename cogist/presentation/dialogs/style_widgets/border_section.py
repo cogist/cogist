@@ -236,8 +236,9 @@ class BorderSection(CollapsiblePanel):
 
     def _update_border_controls_visibility(self):
         """Show/hide border controls based on enabled state."""
-        # Use current_style if available, otherwise use temporary default
-        enabled = self.current_style.get("enabled", True) if self.current_style else True
+        # Trust data integrity: border_enabled must exist in current_style
+        assert self.current_style, "current_style should not be empty"
+        enabled = self.current_style["border_enabled"]
 
         # Show/hide all controls except Enabled toggle and its label
         if hasattr(self, 'style_label'):
@@ -430,29 +431,28 @@ class BorderSection(CollapsiblePanel):
         # Use stored reference to AdvancedStyleTab instead of parent()
         parent = self._advanced_tab
 
-        if parent and hasattr(parent, 'style_config') and parent.style_config:
-            if self.is_root_mode:
-                # Root mode: update color_pool at border_color_index
-                border_color_index = self.current_style["border_color_index"]
-                if (hasattr(parent.style_config, 'color_pool') and
-                    parent.style_config.color_pool and
-                    border_color_index < len(parent.style_config.color_pool)):
-                    parent.style_config.color_pool[border_color_index] = hex_color
+        if parent and hasattr(parent, 'style_config') and parent.style_config and self.is_root_mode:
+            # Root mode: update color_pool at border_color_index
+            border_color_index = self.current_style["border_color_index"]
+            if (hasattr(parent.style_config, 'color_pool') and
+                parent.style_config.color_pool and
+                border_color_index < len(parent.style_config.color_pool)):
+                parent.style_config.color_pool[border_color_index] = hex_color
 
-                    # Update button color directly
-                    if hasattr(self, 'color_btn'):
-                        self.color_btn.setText("Custom")
-                        self.color_btn.setStyleSheet(
-                            f"background-color: {hex_color}; "
-                            "border: 1px solid #C8C8C8; "
-                            "border-radius: 6px; "
-                            "padding: 4px 24px 4px 12px; "
-                            "font-size: 13px; "
-                            "text-align: left;"
-                        )
+                # Update button color directly
+                if hasattr(self, 'color_btn'):
+                    self.color_btn.setText("Custom")
+                    self.color_btn.setStyleSheet(
+                        f"background-color: {hex_color}; "
+                        "border: 1px solid #C8C8C8; "
+                        "border-radius: 6px; "
+                        "padding: 4px 24px 4px 12px; "
+                        "font-size: 13px; "
+                        "text-align: left;"
+                    )
 
-                    # Emit style changed
-                    self._emit_style_changed()
+                # Emit style changed
+                self._emit_style_changed()
 
     def _on_brightness_changed(self, value: int):
         """Handle border brightness change."""
@@ -469,8 +469,9 @@ class BorderSection(CollapsiblePanel):
     def _emit_style_changed(self):
         """Emit style changed signal with only border-related fields."""
         # Only emit border-related fields to avoid overwriting other style properties
+        # Trust data integrity: all keys must exist in current_style
         border_only_style = {
-            "border_enabled": self.current_style["enabled"],
+            "border_enabled": self.current_style["border_enabled"],
             "border_style": self.current_style["border_style"],
             "border_width": self.current_style["border_width"],
             "border_color_index": self.current_style["border_color_index"],

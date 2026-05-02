@@ -15,7 +15,7 @@
   
   "special_colors": {
     "canvas_bg": "#FFF5F0E6",
-    "root_background": "#FFFFFFFF",
+    "root_background": "#FF333333",
     "root_border": "#FF333333",
     "critical_node_bg": "#FFFFEBEE",
     "critical_node_border": "#FFC62828",
