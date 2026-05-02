@@ -126,7 +126,7 @@ class ChangeStyleCommand(Command):
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}
-            connector_keys = {"connector_shape", "connector_style", "line_width", "connector_color"}
+            connector_keys = {"connector_shape", "connector_style", "line_width", "connector_color_index"}
 
             if keys & spacing_keys:
                 # Backup spacing configuration from role-based style
@@ -166,7 +166,7 @@ class ChangeStyleCommand(Command):
                     backup["connector_shape"] = role_style.connector_shape
                     backup["connector_style"] = role_style.connector_style
                     backup["line_width"] = role_style.line_width
-                    backup["connector_color"] = role_style.connector_color
+                    backup["connector_color_index"] = role_style.connector_color_index
             else:
                 # For node layers, access role_styles directly
                 from cogist.domain.styles import NodeRole
@@ -233,7 +233,7 @@ class ChangeStyleCommand(Command):
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}
-            connector_keys = {"connector_shape", "connector_style", "line_width", "connector_color"}
+            connector_keys = {"connector_shape", "connector_style", "line_width", "connector_color_index"}
 
             if style_updates.keys() & spacing_keys:
                 # Apply spacing configuration to role-based style
@@ -279,8 +279,8 @@ class ChangeStyleCommand(Command):
                         role_style.connector_style = style_updates["connector_style"]
                     if "line_width" in style_updates:
                         role_style.line_width = style_updates["line_width"]
-                    if "connector_color" in style_updates:
-                        role_style.connector_color = style_updates["connector_color"]
+                    if "connector_color_index" in style_updates:
+                        role_style.connector_color_index = style_updates["connector_color_index"]
             else:
                 # For node layers, access role_styles directly
                 from cogist.domain.styles import NodeRole
