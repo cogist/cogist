@@ -1,5 +1,6 @@
 """Presentation layer widgets."""
 
+from .color_pool_popup import ColorPoolPopup
 from .connector_previews import (
     generate_bezier_preview,
     generate_bezier_uniform_preview,
@@ -15,6 +16,7 @@ from .visual_selector import VisualOption, VisualOptionButton, VisualSelector
 
 __all__ = [
     # Widgets
+    "ColorPoolPopup",
     "ToggleSwitch",
     "VisualListPopup",
     "VisualOption",

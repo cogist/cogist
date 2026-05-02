@@ -4,7 +4,7 @@ Provides controls for customizing edge appearance between nodes.
 Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QPoint, QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from cogist.presentation.widgets import (
+    ColorPoolPopup,
     VisualPreviewButton,
     generate_bezier_preview,
     generate_bezier_uniform_preview,
@@ -238,8 +239,25 @@ class ConnectorSection(CollapsiblePanel):
         if not (parent and hasattr(parent, "style_config") and parent.style_config):
             return
 
-        # Show color pool selector dialog for level 1/2/3+ layers
-        self._show_connector_color_pool_selector()
+        color_pool = parent.style_config.color_pool
+        if not color_pool or len(color_pool) < 8:
+            print("Warning: color_pool not properly initialized")
+            return
+
+        # Create color pool popup (reusable component)
+        if not hasattr(self, '_color_pool_popup') or self._color_pool_popup is None:
+            self._color_pool_popup = ColorPoolPopup(
+                color_pool=color_pool,
+                parent=self,
+            )
+            self._color_pool_popup.color_selected.connect(
+                self._on_connector_color_pool_selected
+            )
+
+        # Show popup at button position with smart boundary detection
+        button_pos = self.connector_color_btn.mapToGlobal(QPoint(0, self.connector_color_btn.height()))
+        button_width = self.connector_color_btn.width()
+        self._color_pool_popup.show_at(button_pos, button_width)
 
     def _on_brightness_changed(self, value: int):
         """Handle connector brightness change."""
@@ -255,74 +273,12 @@ class ConnectorSection(CollapsiblePanel):
         """Emit style changed signal."""
         self.style_changed.emit(self.current_style.copy())
 
-    def _show_connector_color_pool_selector(self):
-        """Show color pool selector dialog for connector color.
-
-        Displays a dialog with 8 color buttons (indices 0-7) for user to select.
-        """
-        from PySide6.QtCore import Qt
-        from PySide6.QtWidgets import QDialog, QGridLayout, QLabel, QPushButton
-
-        parent = self._advanced_tab if hasattr(self, '_advanced_tab') else None
-        if not (parent and hasattr(parent, "style_config") and parent.style_config):
-            return
-
-        color_pool = parent.style_config.color_pool
-        if not color_pool or len(color_pool) < 8:
-            print("Warning: color_pool not properly initialized")
-            return
-
-        # Create dialog
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Select Connector Color from Pool")
-        dialog.setFixedSize(280, 180)
-
-        # Create layout
-        layout = QGridLayout(dialog)
-        layout.setSpacing(8)
-        layout.setContentsMargins(16, 16, 16, 16)
-
-        # Add label
-        label = QLabel("Choose a color (indices 0-7):")
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label, 0, 0, 1, 4)
-
-        # Create 8 color buttons (2 rows x 4 columns)
-        buttons = []
-        for i in range(8):
-            btn = QPushButton()
-            btn.setFixedSize(50, 50)
-            color = color_pool[i] if i < len(color_pool) else "#FFCCCCCC"
-            btn.setStyleSheet(
-                f"background-color: {color}; "
-                "border: 2px solid #C8C8C8; "
-                "border-radius: 6px;"
-            )
-            btn.setToolTip(f"Color Index {i}")
-
-            # Store index for callback
-            btn.setProperty("color_index", i)
-            btn.clicked.connect(
-                lambda _, b=btn: self._on_connector_color_pool_selected(b, dialog)
-            )
-
-            row = 1 + (i // 4)
-            col = i % 4
-            layout.addWidget(btn, row, col)
-            buttons.append(btn)
-
-        # Show dialog
-        dialog.exec()
-
-    def _on_connector_color_pool_selected(self, button, dialog):
-        """Handle connector color selection from pool selector dialog.
+    def _on_connector_color_pool_selected(self, color_index: int):
+        """Handle connector color selection from pool selector popup.
 
         Args:
-            button: The clicked color button
-            dialog: The selector dialog to close
+            color_index: The selected color index (0-7)
         """
-        color_index = button.property("color_index")
-
         # Update connector_color_index in current_style
         self.current_style["connector_color_index"] = color_index
 
@@ -345,9 +301,6 @@ class ConnectorSection(CollapsiblePanel):
 
         # Emit style changed signal
         self._emit_style_changed()
-
-        # Close dialog
-        dialog.accept()
 
     def get_style(self) -> dict:
         """Get current connector style."""

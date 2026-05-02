@@ -4,7 +4,7 @@ Provides controls for customizing node border appearance.
 Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 from shiboken6 import isValid
 
-from cogist.presentation.widgets import ToggleSwitch
+from cogist.presentation.widgets import ColorPoolPopup, ToggleSwitch
 
 from .collapsible_panel import CollapsiblePanel
 from .color_picker import create_color_picker
@@ -364,13 +364,10 @@ class BorderSection(CollapsiblePanel):
             self._show_border_color_pool_selector()
 
     def _show_border_color_pool_selector(self):
-        """Show color pool selector dialog for level 1/2/3+ layers.
+        """Show color pool selector popup for level 1/2/3+ layers.
 
-        Displays a dialog with 8 color buttons (indices 0-7) for user to select.
+        Uses ColorPoolPopup component for consistent UX with smart positioning.
         """
-        from PySide6.QtCore import Qt
-        from PySide6.QtWidgets import QDialog, QGridLayout, QLabel, QPushButton
-
         parent = self._advanced_tab
         if not (parent and hasattr(parent, "style_config") and parent.style_config):
             return
@@ -380,57 +377,27 @@ class BorderSection(CollapsiblePanel):
             print("Warning: color_pool not properly initialized")
             return
 
-        # Create dialog
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Select Border Color from Pool")
-        dialog.setFixedSize(280, 180)
-
-        # Create layout
-        layout = QGridLayout(dialog)
-        layout.setSpacing(8)
-        layout.setContentsMargins(16, 16, 16, 16)
-
-        # Add label
-        label = QLabel("Choose a color (indices 0-7):")
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label, 0, 0, 1, 4)
-
-        # Create 8 color buttons (2 rows x 4 columns)
-        buttons = []
-        for i in range(8):
-            btn = QPushButton()
-            btn.setFixedSize(50, 50)
-            color = color_pool[i] if i < len(color_pool) else "#FFCCCCCC"
-            btn.setStyleSheet(
-                f"background-color: {color}; "
-                "border: 2px solid #C8C8C8; "
-                "border-radius: 6px;"
+        # Create color pool popup (reusable component)
+        if not hasattr(self, '_color_pool_popup') or self._color_pool_popup is None:
+            self._color_pool_popup = ColorPoolPopup(
+                color_pool=color_pool,
+                parent=self,
             )
-            btn.setToolTip(f"Color Index {i}")
-
-            # Store index for callback
-            btn.setProperty("color_index", i)
-            btn.clicked.connect(
-                lambda _, b=btn: self._on_border_color_pool_selected(b, dialog)
+            self._color_pool_popup.color_selected.connect(
+                self._on_border_color_pool_selected
             )
 
-            row = 1 + (i // 4)
-            col = i % 4
-            layout.addWidget(btn, row, col)
-            buttons.append(btn)
+        # Show popup at button position with smart boundary detection
+        button_pos = self.color_btn.mapToGlobal(QPoint(0, self.color_btn.height()))
+        button_width = self.color_btn.width()
+        self._color_pool_popup.show_at(button_pos, button_width)
 
-        # Show dialog
-        dialog.exec()
-
-    def _on_border_color_pool_selected(self, button, dialog):
-        """Handle border color selection from pool selector dialog.
+    def _on_border_color_pool_selected(self, color_index: int):
+        """Handle border color selection from pool selector popup.
 
         Args:
-            button: The clicked color button
-            dialog: The selector dialog to close
+            color_index: The selected color index (0-7)
         """
-        color_index = button.property("color_index")
-
         # Update border_color_index in current_style
         self.current_style["border_color_index"] = color_index
 
@@ -450,9 +417,6 @@ class BorderSection(CollapsiblePanel):
                         "font-size: 13px; "
                         "text-align: left;"
                     )
-
-        # Close dialog
-        dialog.accept()
 
         # Emit style changed
         self._emit_style_changed()
