@@ -1028,8 +1028,8 @@ class NodeItem(QGraphicsRectItem):
 
         # Build style config dict for strategy
         style_config = {
-            "bg_color": bg_color,
-            "border_color": border_color,
+            "bg_color": bg_color if self.template_style.bg_enabled else None,
+            "border_color": border_color if self.template_style.border_enabled else None,
             "border_width": self.template_style.border_width if hasattr(self.template_style, 'border_width') else 0,
             "border_radius": self.template_style.border_radius if hasattr(self.template_style, 'border_radius') else 8,
             "border_style": self.template_style.border_style if hasattr(self.template_style, 'border_style') else "solid",

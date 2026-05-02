@@ -226,7 +226,7 @@ class BorderSection(CollapsiblePanel):
 
     def _on_enabled_changed(self, checked: bool):
         """Handle border enabled toggle change."""
-        self.current_style["enabled"] = checked
+        self.current_style["border_enabled"] = checked
 
         # Update visibility of all border controls
         self._update_border_controls_visibility()
@@ -524,7 +524,19 @@ class BorderSection(CollapsiblePanel):
                 self.opacity_slider.setValue(style["border_opacity"])
 
             # Update color button display
-            if "border_color_index" in style and hasattr(self, 'color_btn'):
+            if "border_color" in style and hasattr(self, 'color_btn'):
+                # Use actual border_color value (for root node from special_colors)
+                border_color = style["border_color"]
+                self.color_btn.setText("Custom")
+                self.color_btn.setStyleSheet(
+                    f"background-color: {border_color}; "
+                    "border: 1px solid #C8C8C8; "
+                    "border-radius: 6px; "
+                    "padding: 4px 24px 4px 12px; "
+                    "font-size: 13px; "
+                    "text-align: left;"
+                )
+            elif "border_color_index" in style and hasattr(self, 'color_btn'):
                 parent = self._advanced_tab
                 if parent and hasattr(parent, 'style_config') and parent.style_config:
                     color_pool = parent.style_config.color_pool
