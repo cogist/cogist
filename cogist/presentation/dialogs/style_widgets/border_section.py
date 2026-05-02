@@ -68,6 +68,7 @@ class BorderSection(CollapsiblePanel):
         self._initialized = False
         self.current_style: dict = {}  # Will be populated by set_style() from MindMapStyle
         self.is_root_mode = False  # True for root layer, False for level1/2/3+
+        self.use_rainbow = False  # Rainbow branch mode state
 
         # Color picker (lazy creation)
         self._color_picker = None
@@ -568,6 +569,10 @@ class BorderSection(CollapsiblePanel):
         Args:
             style: Dictionary containing border style properties from MindMapStyle
         """
+        # Update rainbow mode state
+        if "use_rainbow" in style:
+            self.use_rainbow = style["use_rainbow"]
+
         # CRITICAL: Update current_style completely from MindMapStyle data
         # Do NOT use any default values - all data must come from style_config
         self.current_style.update(style)
@@ -635,3 +640,18 @@ class BorderSection(CollapsiblePanel):
             # Update controls visibility based on enabled state
             if "enabled" in style:
                 self._update_border_controls_visibility()
+
+            # Hide/show color controls based on rainbow mode (only for non-root layers)
+            if not self.is_root_mode:
+                if self.use_rainbow:
+                    # Rainbow mode: hide color button
+                    if hasattr(self, 'color_label'):
+                        self.color_label.setVisible(False)
+                    if hasattr(self, 'color_btn'):
+                        self.color_btn.setVisible(False)
+                else:
+                    # Non-rainbow mode: show color controls
+                    if hasattr(self, 'color_label'):
+                        self.color_label.setVisible(True)
+                    if hasattr(self, 'color_btn'):
+                        self.color_btn.setVisible(True)
