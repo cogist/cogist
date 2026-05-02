@@ -6,9 +6,10 @@ Implements lazy initialization for better performance.
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QGridLayout, QLabel, QPushButton, QSpinBox
+from PySide6.QtWidgets import QGridLayout, QLabel, QPushButton
 
 from .collapsible_panel import CollapsiblePanel
+from .spinbox import SpinBox
 
 
 class ShadowSection(CollapsiblePanel):
@@ -78,7 +79,7 @@ class ShadowSection(CollapsiblePanel):
         offset_x_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
         layout.addWidget(offset_x_label, row, 0)
 
-        self.shadow_offset_x_spin = QSpinBox()
+        self.shadow_offset_x_spin = SpinBox()
         self.shadow_offset_x_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.shadow_offset_x_spin.setRange(-20, 20)
         self.shadow_offset_x_spin.setValue(self.current_shadow["offset_x"])
@@ -94,7 +95,7 @@ class ShadowSection(CollapsiblePanel):
         offset_y_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
         layout.addWidget(offset_y_label, row, 0)
 
-        self.shadow_offset_y_spin = QSpinBox()
+        self.shadow_offset_y_spin = SpinBox()
         self.shadow_offset_y_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.shadow_offset_y_spin.setRange(-20, 20)
         self.shadow_offset_y_spin.setValue(self.current_shadow["offset_y"])
@@ -110,7 +111,7 @@ class ShadowSection(CollapsiblePanel):
         blur_label.setStyleSheet("QLabel { font-size: 13px; color: #333333; }")
         layout.addWidget(blur_label, row, 0)
 
-        self.shadow_blur_spin = QSpinBox()
+        self.shadow_blur_spin = SpinBox()
         self.shadow_blur_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.shadow_blur_spin.setRange(0, 20)
         self.shadow_blur_spin.setValue(self.current_shadow["blur"])

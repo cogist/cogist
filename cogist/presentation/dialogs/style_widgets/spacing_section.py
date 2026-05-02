@@ -5,9 +5,10 @@ Implements lazy initialization for better performance.
 """
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QGridLayout, QLabel, QSpinBox
+from PySide6.QtWidgets import QGridLayout, QLabel
 
 from .collapsible_panel import CollapsiblePanel
+from .spinbox import SpinBox
 
 
 class SpacingSection(CollapsiblePanel):
@@ -67,7 +68,7 @@ class SpacingSection(CollapsiblePanel):
         pc_label.setFixedWidth(self._label_width)
         layout.addWidget(pc_label, row, 0)
 
-        self.parent_child_spin = QSpinBox()
+        self.parent_child_spin = SpinBox()
         self.parent_child_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.parent_child_spin.setRange(0, 100)
         self.parent_child_spin.setValue(self.current_spacing["parent_child"])
@@ -81,7 +82,7 @@ class SpacingSection(CollapsiblePanel):
         sib_label.setFixedWidth(self._label_width)
         layout.addWidget(sib_label, row, 0)
 
-        self.sibling_spin = QSpinBox()
+        self.sibling_spin = SpinBox()
         self.sibling_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.sibling_spin.setRange(0, 100)
         self.sibling_spin.setValue(self.current_spacing["sibling"])

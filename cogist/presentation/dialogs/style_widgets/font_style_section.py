@@ -16,12 +16,12 @@ from PySide6.QtWidgets import (
     QLabel,
     QMenu,
     QPushButton,
-    QSpinBox,
 )
 
 from cogist.presentation.widgets import ToggleSwitch
 
 from .collapsible_panel import CollapsiblePanel
+from .spinbox import SpinBox
 
 
 class FontStyleSection(CollapsiblePanel):
@@ -166,7 +166,7 @@ class FontStyleSection(CollapsiblePanel):
         font_size_label.setFixedWidth(self._label_width)
         layout.addWidget(font_size_label, row, 0)
 
-        self.font_size_spin = QSpinBox()
+        self.font_size_spin = SpinBox()
         self.font_size_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.font_size_spin.setRange(8, 72)
         self.font_size_spin.setValue(self.current_style["font_size"])

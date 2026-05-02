@@ -10,7 +10,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QSlider,
-    QSpinBox,
     QWidget,
 )
 from shiboken6 import isValid
@@ -26,6 +25,7 @@ from cogist.presentation.widgets.node_shape_previews import (
 from .collapsible_panel import CollapsiblePanel
 from .color_picker import create_color_picker
 from .dialog_utils import position_color_dialog
+from .spinbox import SpinBox
 
 
 class NodeStyleSection(CollapsiblePanel):
@@ -141,7 +141,7 @@ class NodeStyleSection(CollapsiblePanel):
         radius_label.setFixedWidth(self._label_width)
         layout.addWidget(radius_label, row, 0)
 
-        self.radius_spin = QSpinBox()
+        self.radius_spin = SpinBox()
         self.radius_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.radius_spin.setRange(0, 30)
         self.radius_spin.setValue(self.current_style["radius"])
@@ -167,7 +167,7 @@ class NodeStyleSection(CollapsiblePanel):
         padding_w_label.setFixedWidth(self._label_width)
         layout.addWidget(padding_w_label, row, 0)
 
-        self.padding_w_spin = QSpinBox()
+        self.padding_w_spin = SpinBox()
         self.padding_w_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.padding_w_spin.setRange(0, 50)
         self.padding_w_spin.setValue(self.current_style["padding_w"])
@@ -182,7 +182,7 @@ class NodeStyleSection(CollapsiblePanel):
         padding_h_label.setFixedWidth(self._label_width)
         layout.addWidget(padding_h_label, row, 0)
 
-        self.padding_h_spin = QSpinBox()
+        self.padding_h_spin = SpinBox()
         self.padding_h_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.padding_h_spin.setRange(0, 50)
         self.padding_h_spin.setValue(self.current_style["padding_h"])
@@ -197,7 +197,7 @@ class NodeStyleSection(CollapsiblePanel):
         max_text_width_label.setFixedWidth(self._label_width)
         layout.addWidget(max_text_width_label, row, 0)
 
-        self.max_text_width_spin = QSpinBox()
+        self.max_text_width_spin = SpinBox()
         self.max_text_width_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.max_text_width_spin.setRange(0, 1000)  # 0 means unlimited (no wrapping)
         self.max_text_width_spin.setValue(self.current_style.get("max_text_width", 250))

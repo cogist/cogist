@@ -20,7 +20,7 @@ from .collapsible_panel import CollapsiblePanel
 from .color_picker import create_color_picker
 from .dialog_utils import position_color_dialog
 from .menu_button import MenuButton
-from .spinbox import ReverseWheelSpinBox
+from .spinbox import SpinBox
 
 
 class BorderSection(CollapsiblePanel):
@@ -140,7 +140,7 @@ class BorderSection(CollapsiblePanel):
         width_label.setFixedWidth(self._label_width)
         layout.addWidget(width_label, row, 0)
 
-        self.border_width_spin = ReverseWheelSpinBox()
+        self.border_width_spin = SpinBox()
         self.border_width_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.border_width_spin.setRange(1, 10)
         # Use temporary default for UI initialization (will be updated by set_style)
