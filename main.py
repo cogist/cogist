@@ -1030,6 +1030,46 @@ def main():
     # Use macOS native style for proper scrollbar appearance
     app.setStyle("macos")
 
+    # Set global QSpinBox style for consistent UI
+    app.setStyleSheet(
+        "QSpinBox {"
+        "    border: 1px solid #C8C8C8;"
+        "    border-radius: 4px;"
+        "    padding: 2px 8px;"
+        "    background: white;"
+        "}"
+        "QSpinBox::up-button {"
+        "    width: 14px;"
+        "    height: 14px;"
+        "    border: none;"
+        "    background: transparent;"
+        "    padding: 2px;"
+        "}"
+        "QSpinBox::down-button {"
+        "    width: 14px;"
+        "    height: 14px;"
+        "    border: none;"
+        "    background: transparent;"
+        "    padding: 2px;"
+        "}"
+        "QSpinBox::up-button:hover, QSpinBox::down-button:hover {"
+        "    background: #F5F5F5;"
+        "}"
+        "QSpinBox::up-button:pressed, QSpinBox::down-button:pressed {"
+        "    background: #E8E8E8;"
+        "}"
+        "QSpinBox::up-arrow {"
+        "    image: url(assets/icons/arrow-up.svg);"
+        "    width: 10px;"
+        "    height: 10px;"
+        "}"
+        "QSpinBox::down-arrow {"
+        "    image: url(assets/icons/arrow-down.svg);"
+        "    width: 10px;"
+        "    height: 10px;"
+        "}"
+    )
+
     # Create and show main window
     window = MainWindow()
     window.setWindowTitle("Cogist")
