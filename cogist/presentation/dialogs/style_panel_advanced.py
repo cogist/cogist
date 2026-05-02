@@ -823,6 +823,18 @@ class AdvancedStyleTab(QWidget):
             }
             affects_dimensions = any(key in style for key in dimension_keys)
 
+            # Check if this change requires style update (affects colors, visibility, etc.)
+            style_update_keys = {
+                "bg_enabled",
+                "border_enabled",
+                "bg_color",
+                "border_color",
+                "text_color",
+                "brightness_amount",
+                "opacity_amount",
+            }
+            requires_style_update = any(key in style for key in style_update_keys)
+
             # Skip command creation if we're updating from undo/redo
             if self._updating_from_undo_redo:
                 # Direct update without creating a command
@@ -846,7 +858,7 @@ class AdvancedStyleTab(QWidget):
                 # Fallback: direct update without undo/redo
                 self._update_role_style_in_config(self.current_layer, style)
 
-            self._apply_styles_to_mindmap(force_rebuild=affects_dimensions)
+            self._apply_styles_to_mindmap(force_rebuild=affects_dimensions or requires_style_update)
 
     def _on_shadow_enabled_changed(self, enabled: bool):
         """Handle font shadow enabled state change."""
@@ -906,6 +918,9 @@ class AdvancedStyleTab(QWidget):
             }
             affects_dimensions = any(key in style for key in dimension_keys)
 
+            # Font style changes always require style update (affects text rendering)
+            requires_style_update = True
+
             # Skip command creation if we're updating from undo/redo
             if self._updating_from_undo_redo:
                 # Direct update without creating a command
@@ -929,7 +944,7 @@ class AdvancedStyleTab(QWidget):
                 # Fallback: direct update without undo/redo
                 self._update_role_style_in_config(self.current_layer, style)
 
-            self._apply_styles_to_mindmap(force_rebuild=affects_dimensions)
+            self._apply_styles_to_mindmap(force_rebuild=affects_dimensions or requires_style_update)
 
     def _on_font_shadow_enabled_changed(self, enabled: bool):
         """Handle font shadow enabled state change from FontStyleSection."""
@@ -1005,6 +1020,9 @@ class AdvancedStyleTab(QWidget):
     def _on_border_style_changed(self, style: dict):
         """Handle border style changes."""
         if self.current_layer != "canvas":
+            # Border style changes always require style update (affects colors, visibility)
+            requires_style_update = True
+
             # Skip command creation if we're updating from undo/redo
             if self._updating_from_undo_redo:
                 # Direct update without creating a command
@@ -1027,7 +1045,7 @@ class AdvancedStyleTab(QWidget):
                 # Fallback: direct update without undo/redo
                 self._update_role_style_in_config(self.current_layer, style)
 
-            self._apply_styles_to_mindmap()
+            self._apply_styles_to_mindmap(force_rebuild=requires_style_update)
 
     def _on_connector_style_changed(self, style: dict):
         """Handle connector style changes for the current layer."""

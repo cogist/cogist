@@ -369,14 +369,14 @@ class NodeItem(QGraphicsRectItem):
                                                              role_style.border_enabled)
             else:
                 # Root node (depth == 0): use special_colors
-                bg_color = self.style_config.special_colors["root_background"]
-                border_color = self.style_config.special_colors["root_border"]
+                bg_color = self.style_config.special_colors["root_background"] if role_style.bg_enabled else None
+                border_color = self.style_config.special_colors["root_border"] if role_style.border_enabled else None
         else:
             # Rainbow disabled: use special_colors for root, color indices for others
             if depth == 0:
                 # Root node: use special_colors
-                bg_color = self.style_config.special_colors["root_background"]
-                border_color = self.style_config.special_colors["root_border"]
+                bg_color = self.style_config.special_colors["root_background"] if role_style.bg_enabled else None
+                border_color = self.style_config.special_colors["root_border"] if role_style.border_enabled else None
             else:
                 # Other nodes: use color indices directly
                 bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
@@ -870,14 +870,14 @@ class NodeItem(QGraphicsRectItem):
                                 border_color = "#FF000000"
                         else:
                             # Root node (depth == 0): use special_colors
-                            bg_color = self.style_config.special_colors["root_background"]
-                            border_color = self.style_config.special_colors["root_border"]
+                            bg_color = self.style_config.special_colors["root_background"] if role_style.bg_enabled else None
+                            border_color = self.style_config.special_colors["root_border"] if role_style.border_enabled else None
                     else:
                         # Rainbow disabled: use special_colors for root, color indices for others
                         if self.depth == 0:
                             # Root node: use special_colors
-                            bg_color = self.style_config.special_colors["root_background"]
-                            border_color = self.style_config.special_colors["root_border"]
+                            bg_color = self.style_config.special_colors["root_background"] if role_style.bg_enabled else None
+                            border_color = self.style_config.special_colors["root_border"] if role_style.border_enabled else None
                         else:
                             # Other nodes: use color indices from role_style
                             bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
