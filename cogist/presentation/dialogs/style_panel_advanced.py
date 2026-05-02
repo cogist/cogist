@@ -459,7 +459,7 @@ class AdvancedStyleTab(QWidget):
         self.node_style_section = NodeStyleSection(parent=self)
         self.font_style_section = FontStyleSection()
         self.shadow_section = ShadowSection()
-        self.border_section = BorderSection()
+        self.border_section = BorderSection(parent=self)
         self.connector_section = ConnectorSection()
 
         layout.addWidget(self.layer_selector)
