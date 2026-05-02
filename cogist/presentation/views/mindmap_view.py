@@ -533,14 +533,20 @@ class MindMapView(QGraphicsView):
         """
         # Check if this view actually has keyboard focus
         focused = QApplication.focusWidget()
-        if focused != self.viewport():
+
+        # Focus should be on either the view itself or its viewport
+        if focused != self and focused != self.viewport():
             # Focus is elsewhere - completely ignore the event
             # Do NOT call super().keyPressEvent() to prevent default scrolling
             event.accept()  # Mark as handled but do nothing
             return
 
-        # View has focus, let eventFilter handle the shortcuts
-        super().keyPressEvent(event)
+        # View has focus, use eventFilter to handle shortcuts
+        # IMPORTANT: Do NOT call super().keyPressEvent() because it will
+        # trigger QAbstractScrollArea's default arrow key scrolling behavior
+        if not self.eventFilter(self, event):
+            # If eventFilter doesn't handle it, let parent handle it
+            super().keyPressEvent(event)
 
     def eventFilter(self, obj, event):
         """Handle keyboard shortcuts for editing commands.
@@ -1881,8 +1887,11 @@ class MindMapView(QGraphicsView):
             elif self.root_node:
                 # Fallback to root
                 self._select_node_by_id(self.root_node.id)
-            # Ensure view has keyboard focus for keyboard shortcuts
-            self.setFocus(Qt.OtherFocusReason)
+            # CRITICAL: Only set focus if the view already had focus before refresh
+            # This prevents stealing focus from other widgets (like dialog controls)
+            focused_widget = QApplication.focusWidget()
+            if focused_widget == self or focused_widget == self.viewport():
+                self.setFocus(Qt.OtherFocusReason)
 
     def _restore_selection_state_after_undo(self, node_id_before_undo):
         """Restore selection state after undo operation.
