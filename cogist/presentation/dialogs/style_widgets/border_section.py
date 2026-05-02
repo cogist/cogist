@@ -333,9 +333,17 @@ class BorderSection(CollapsiblePanel):
                         and isinstance(widget, QLabel)
                         and widget.text() == "Color:"
                     ):
-                        widget.setVisible(enabled)
+                        # In rainbow mode (non-root), always hide color controls
+                        if not self.is_root_mode and self.use_rainbow:
+                            widget.setVisible(False)
+                        else:
+                            widget.setVisible(enabled)
                         break
-            self.color_btn.setVisible(enabled)
+            # In rainbow mode (non-root), always hide color button
+            if not self.is_root_mode and self.use_rainbow:
+                self.color_btn.setVisible(False)
+            else:
+                self.color_btn.setVisible(enabled)
         if hasattr(self, "brightness_slider"):
             # Find and hide/show brightness label
             layout = self._content_widget.layout()
