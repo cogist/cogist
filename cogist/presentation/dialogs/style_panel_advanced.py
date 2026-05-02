@@ -1241,6 +1241,7 @@ class AdvancedStyleTab(QWidget):
                 "connector_color_index": layer_data["connector_color_index"],
                 "connector_brightness": layer_data["connector_color_index"],  # Will be replaced below
                 "connector_opacity": layer_data["connector_color_index"],  # Will be replaced below
+                "use_rainbow": layer_data.get("use_rainbow", False),  # Pass rainbow mode state
             }
 
             # Get brightness and opacity from role_styles
