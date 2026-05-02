@@ -9,7 +9,6 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,
-    QSpinBox,
 )
 
 from cogist.presentation.widgets import (
@@ -24,6 +23,7 @@ from cogist.presentation.widgets import (
 
 from .collapsible_panel import CollapsiblePanel
 from .menu_button import MenuButton
+from .spinbox import ReverseWheelSpinBox
 
 
 class ConnectorSection(CollapsiblePanel):
@@ -140,7 +140,7 @@ class ConnectorSection(CollapsiblePanel):
         width_label.setFixedWidth(self._label_width)
         layout.addWidget(width_label, 2, 0)
 
-        self.connector_width_spin = QSpinBox()
+        self.connector_width_spin = ReverseWheelSpinBox()
         self.connector_width_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.connector_width_spin.setRange(1, 10)
         self.connector_width_spin.setValue(self.current_style["line_width"])

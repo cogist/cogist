@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
     QMenu,
     QPushButton,
     QSlider,
-    QSpinBox,
 )
 from shiboken6 import isValid
 
@@ -21,6 +20,7 @@ from .collapsible_panel import CollapsiblePanel
 from .color_picker import create_color_picker
 from .dialog_utils import position_color_dialog
 from .menu_button import MenuButton
+from .spinbox import ReverseWheelSpinBox
 
 
 class BorderSection(CollapsiblePanel):
@@ -140,7 +140,7 @@ class BorderSection(CollapsiblePanel):
         width_label.setFixedWidth(self._label_width)
         layout.addWidget(width_label, row, 0)
 
-        self.border_width_spin = QSpinBox()
+        self.border_width_spin = ReverseWheelSpinBox()
         self.border_width_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.border_width_spin.setRange(1, 10)
         # Use temporary default for UI initialization (will be updated by set_style)
@@ -602,13 +602,13 @@ class BorderSection(CollapsiblePanel):
             if not self.is_root_mode:
                 if self.use_rainbow:
                     # Rainbow mode: hide color button
-                    if hasattr(self, 'color_label'):
+                    if hasattr(self, "color_label"):
                         self.color_label.setVisible(False)
-                    if hasattr(self, 'color_btn'):
+                    if hasattr(self, "color_btn"):
                         self.color_btn.setVisible(False)
                 else:
                     # Non-rainbow mode: show color controls
-                    if hasattr(self, 'color_label'):
+                    if hasattr(self, "color_label"):
                         self.color_label.setVisible(True)
-                    if hasattr(self, 'color_btn'):
+                    if hasattr(self, "color_btn"):
                         self.color_btn.setVisible(True)
