@@ -21,8 +21,7 @@ class ColorPicker(QColorDialog):
 
         # Configure dialog for real-time preview
         self.setOptions(
-            QColorDialog.ShowAlphaChannel
-            | QColorDialog.NoButtons  # No OK/Cancel - apply immediately
+            QColorDialog.NoButtons  # No OK/Cancel - apply immediately
             | QColorDialog.DontUseNativeDialog
         )
 
@@ -34,7 +33,8 @@ class ColorPicker(QColorDialog):
 
     def _on_color_changed(self, color: QColor):
         """Handle color change for real-time preview."""
-        # Convert to hex string with alpha
+        # Convert to hex string with alpha (always output ARGB format)
+        # When ShowAlphaChannel is disabled, alpha defaults to 255 (opaque)
         hex_color = color.name(QColor.NameFormat.HexArgb)
         self.color_selected.emit(hex_color)
 
@@ -63,7 +63,11 @@ class ColorPicker(QColorDialog):
             # Invalid format - use black
             color = QColor("#FF000000")
 
+        # Temporarily block signals to prevent triggering color_selected
+        # when setting the initial color (which would update the button incorrectly)
+        self.blockSignals(True)
         self.setCurrentColor(color)
+        self.blockSignals(False)
 
     def add_recent_color(self, hex_color: str):
         """Add color to recent colors list.

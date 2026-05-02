@@ -127,9 +127,24 @@ class ShadowSection(CollapsiblePanel):
         # Set initial color from current_shadow (loaded from config via set_shadow)
         # Trust data integrity: color must exist in current_shadow
         shadow_color = self.current_shadow["color"]
-        self.shadow_color_btn.setStyleSheet(
-            f"background-color: {shadow_color}; border: 1px solid #ccc; border-radius: 4px;"
-        )
+
+        # Convert #AARRGGBB to rgba() format for Qt CSS
+        if len(shadow_color) == 9 and shadow_color.startswith("#"):
+            # #AARRGGBB format
+            alpha = int(shadow_color[1:3], 16)
+            red = int(shadow_color[3:5], 16)
+            green = int(shadow_color[5:7], 16)
+            blue = int(shadow_color[7:9], 16)
+            self.shadow_color_btn.setStyleSheet(
+                f"background-color: rgba({red}, {green}, {blue}, {alpha}); "
+                "border: 1px solid #ccc; border-radius: 4px;"
+            )
+        else:
+            # Fallback for other formats (should not happen)
+            self.shadow_color_btn.setStyleSheet(
+                f"background-color: {shadow_color}; border: 1px solid #ccc; border-radius: 4px;"
+            )
+
         self.shadow_color_btn.clicked.connect(self._pick_color)
         layout.addWidget(self.shadow_color_btn, row, 1)
 
@@ -159,6 +174,10 @@ class ShadowSection(CollapsiblePanel):
             # Ensure dialog closes when parent window closes
             self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
+            # Enable alpha channel for shadow color (shadows need transparency)
+            from PySide6.QtWidgets import QColorDialog
+            self._color_picker.setOption(QColorDialog.ShowAlphaChannel, True)
+
         # Set current color (MUST call before show!)
         # Trust data integrity: color must exist in current_shadow
         current_color = self.current_shadow["color"]
@@ -175,9 +194,23 @@ class ShadowSection(CollapsiblePanel):
     def _on_shadow_color_selected(self, hex_color: str):
         """Handle shadow color selection from picker."""
         self.current_shadow["color"] = hex_color
-        self.shadow_color_btn.setStyleSheet(
-            f"background-color: {hex_color}; border: 1px solid #ccc; border-radius: 4px;"
-        )
+
+        # Convert #AARRGGBB to rgba() format for Qt CSS
+        if len(hex_color) == 9 and hex_color.startswith("#"):
+            # #AARRGGBB format
+            alpha = int(hex_color[1:3], 16)
+            red = int(hex_color[3:5], 16)
+            green = int(hex_color[5:7], 16)
+            blue = int(hex_color[7:9], 16)
+            self.shadow_color_btn.setStyleSheet(
+                f"background-color: rgba({red}, {green}, {blue}, {alpha}); "
+                "border: 1px solid #ccc; border-radius: 4px;"
+            )
+        else:
+            # Fallback for other formats (should not happen)
+            self.shadow_color_btn.setStyleSheet(
+                f"background-color: {hex_color}; border: 1px solid #ccc; border-radius: 4px;"
+            )
         # Emit with shadow_ prefix to match role_style field names
         self.shadow_changed.emit({
             "shadow_color": hex_color,
@@ -204,6 +237,20 @@ class ShadowSection(CollapsiblePanel):
             if "blur" in shadow:
                 self.shadow_blur_spin.setValue(shadow["blur"])
             if "color" in shadow:
-                self.shadow_color_btn.setStyleSheet(
-                    f"background-color: {shadow['color']}; border: 1px solid #ccc; border-radius: 4px;"
-                )
+                # Convert #AARRGGBB to rgba() format for Qt CSS
+                color_value = shadow["color"]
+                if len(color_value) == 9 and color_value.startswith("#"):
+                    # #AARRGGBB format
+                    alpha = int(color_value[1:3], 16)
+                    red = int(color_value[3:5], 16)
+                    green = int(color_value[5:7], 16)
+                    blue = int(color_value[7:9], 16)
+                    self.shadow_color_btn.setStyleSheet(
+                        f"background-color: rgba({red}, {green}, {blue}, {alpha}); "
+                        "border: 1px solid #ccc; border-radius: 4px;"
+                    )
+                else:
+                    # Fallback for other formats (should not happen)
+                    self.shadow_color_btn.setStyleSheet(
+                        f"background-color: {color_value}; border: 1px solid #ccc; border-radius: 4px;"
+                    )
