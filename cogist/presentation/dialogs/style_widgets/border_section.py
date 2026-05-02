@@ -205,10 +205,10 @@ class BorderSection(CollapsiblePanel):
         row += 1
 
         # Border color - same as NodeStyleSection (simple QPushButton)
-        color_label = QLabel("Color:")
-        color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        color_label.setFixedWidth(self._label_width)
-        layout.addWidget(color_label, row, 0)
+        self.color_label = QLabel("Color:")
+        self.color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.color_label.setFixedWidth(self._label_width)
+        layout.addWidget(self.color_label, row, 0)
 
         self.color_btn = QPushButton()
         self.color_btn.setFixedHeight(self.WIDGET_HEIGHT)
