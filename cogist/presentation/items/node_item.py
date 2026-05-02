@@ -369,14 +369,52 @@ class NodeItem(QGraphicsRectItem):
                                                              role_style.border_enabled)
             else:
                 # Root node (depth == 0): use special_colors
-                bg_color = self.style_config.special_colors["root_background"] if role_style.bg_enabled else None
-                border_color = self.style_config.special_colors["root_border"] if role_style.border_enabled else None
+                if role_style.bg_enabled:
+                    bg_color = self.style_config.special_colors["root_background"]
+                    # Apply brightness adjustment
+                    if role_style.bg_brightness != 1.0:
+                        bg_color = adjust_color_brightness(bg_color, role_style.bg_brightness)
+                    # Apply opacity adjustment
+                    if role_style.bg_opacity < 255:
+                        bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                else:
+                    bg_color = None
+
+                if role_style.border_enabled:
+                    border_color = self.style_config.special_colors["root_border"]
+                    # Apply brightness adjustment
+                    if role_style.border_brightness != 1.0:
+                        border_color = adjust_color_brightness(border_color, role_style.border_brightness)
+                    # Apply opacity adjustment
+                    if role_style.border_opacity < 255:
+                        border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                else:
+                    border_color = None
         else:
             # Rainbow disabled: use special_colors for root, color indices for others
             if depth == 0:
                 # Root node: use special_colors
-                bg_color = self.style_config.special_colors["root_background"] if role_style.bg_enabled else None
-                border_color = self.style_config.special_colors["root_border"] if role_style.border_enabled else None
+                if role_style.bg_enabled:
+                    bg_color = self.style_config.special_colors["root_background"]
+                    # Apply brightness adjustment
+                    if role_style.bg_brightness != 1.0:
+                        bg_color = adjust_color_brightness(bg_color, role_style.bg_brightness)
+                    # Apply opacity adjustment
+                    if role_style.bg_opacity < 255:
+                        bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                else:
+                    bg_color = None
+
+                if role_style.border_enabled:
+                    border_color = self.style_config.special_colors["root_border"]
+                    # Apply brightness adjustment
+                    if role_style.border_brightness != 1.0:
+                        border_color = adjust_color_brightness(border_color, role_style.border_brightness)
+                    # Apply opacity adjustment
+                    if role_style.border_opacity < 255:
+                        border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                else:
+                    border_color = None
             else:
                 # Other nodes: use color indices directly
                 bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
@@ -870,14 +908,52 @@ class NodeItem(QGraphicsRectItem):
                                 border_color = "#FF000000"
                         else:
                             # Root node (depth == 0): use special_colors
-                            bg_color = self.style_config.special_colors["root_background"] if role_style.bg_enabled else None
-                            border_color = self.style_config.special_colors["root_border"] if role_style.border_enabled else None
+                            if role_style.bg_enabled:
+                                bg_color = self.style_config.special_colors["root_background"]
+                                # Apply brightness adjustment
+                                if role_style.bg_brightness != 1.0:
+                                    bg_color = adjust_color_brightness(bg_color, role_style.bg_brightness)
+                                # Apply opacity adjustment
+                                if role_style.bg_opacity < 255:
+                                    bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                            else:
+                                bg_color = None
+
+                            if role_style.border_enabled:
+                                border_color = self.style_config.special_colors["root_border"]
+                                # Apply brightness adjustment
+                                if role_style.border_brightness != 1.0:
+                                    border_color = adjust_color_brightness(border_color, role_style.border_brightness)
+                                # Apply opacity adjustment
+                                if role_style.border_opacity < 255:
+                                    border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                            else:
+                                border_color = None
                     else:
                         # Rainbow disabled: use special_colors for root, color indices for others
                         if self.depth == 0:
                             # Root node: use special_colors
-                            bg_color = self.style_config.special_colors["root_background"] if role_style.bg_enabled else None
-                            border_color = self.style_config.special_colors["root_border"] if role_style.border_enabled else None
+                            if role_style.bg_enabled:
+                                bg_color = self.style_config.special_colors["root_background"]
+                                # Apply brightness adjustment
+                                if role_style.bg_brightness != 1.0:
+                                    bg_color = adjust_color_brightness(bg_color, role_style.bg_brightness)
+                                # Apply opacity adjustment
+                                if role_style.bg_opacity < 255:
+                                    bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                            else:
+                                bg_color = None
+
+                            if role_style.border_enabled:
+                                border_color = self.style_config.special_colors["root_border"]
+                                # Apply brightness adjustment
+                                if role_style.border_brightness != 1.0:
+                                    border_color = adjust_color_brightness(border_color, role_style.border_brightness)
+                                # Apply opacity adjustment
+                                if role_style.border_opacity < 255:
+                                    border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                            else:
+                                border_color = None
                         else:
                             # Other nodes: use color indices from role_style
                             bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
