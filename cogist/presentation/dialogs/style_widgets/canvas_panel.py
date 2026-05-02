@@ -128,6 +128,9 @@ class CanvasPanel(CollapsiblePanel):
             # Ensure dialog closes when parent window closes
             self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
+            # Reset reference when dialog closes (WA_DeleteOnClose destroys the object)
+            self._color_picker.finished.connect(lambda: setattr(self, '_color_picker', None))
+
         # Get current color from style data object (no fallback)
         # Use stored reference to AdvancedStyleTab instead of parent()
         parent = self._advanced_tab
