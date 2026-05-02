@@ -39,7 +39,7 @@ class ColorSchemeSection(CollapsiblePanel):
     GROUP_MARGIN = 10
 
     def __init__(self, parent=None):
-        super().__init__("Color Scheme", collapsed=True, parent=parent)
+        super().__init__("Color Scheme", collapsed=False, parent=parent)
 
         # Get LABEL_WIDTH from parent if available
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
@@ -61,6 +61,10 @@ class ColorSchemeSection(CollapsiblePanel):
         self._current_color_button: QPushButton | None = None
 
         self.toggled.connect(self._on_toggled)
+
+        # If panel is expanded by default, initialize content immediately
+        if not self.isCollapsed():
+            self._on_toggled(True)
 
     def _on_toggled(self, expanded: bool):
         """Handle panel expand/collapse."""
