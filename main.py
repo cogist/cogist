@@ -302,18 +302,6 @@ class MainWindow(QMainWindow):
             QSpinBox:focus {
                 border: 1px solid #2196F3;
             }
-            QSpinBox::up-button, QSpinBox::down-button {
-                border: none;
-                width: 16px;
-            }
-            QSpinBox::up-arrow {
-                image: none;
-                border: none;
-            }
-            QSpinBox::down-arrow {
-                image: none;
-                border: none;
-            }
         """)
 
     def _load_default_style(self):

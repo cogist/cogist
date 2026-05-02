@@ -135,10 +135,51 @@ class BorderSection(CollapsiblePanel):
 
         self.border_width_spin = QSpinBox()
         self.border_width_spin.setFixedHeight(self.WIDGET_HEIGHT)
-        self.border_width_spin.setRange(0, 10)
+        self.border_width_spin.setRange(1, 10)
         # Use temporary default for UI initialization (will be updated by set_style)
         self.border_width_spin.setValue(2)
         self.border_width_spin.setAlignment(Qt.AlignLeft)
+        self.border_width_spin.setFocusPolicy(Qt.StrongFocus)
+        # Ensure keyboard tracking is enabled for continuous arrow key navigation
+        self.border_width_spin.setKeyboardTracking(True)
+        self.border_width_spin.setStyleSheet(
+            "QSpinBox {"
+            "    border: 1px solid #C8C8C8;"
+            "    border-radius: 4px;"
+            "    padding: 2px 8px;"
+            "    background: white;"
+            "}"
+            "QSpinBox::up-button {"
+            "    width: 14px;"
+            "    height: 14px;"
+            "    border: none;"
+            "    background: transparent;"
+            "    padding: 2px;"
+            "}"
+            "QSpinBox::down-button {"
+            "    width: 14px;"
+            "    height: 14px;"
+            "    border: none;"
+            "    background: transparent;"
+            "    padding: 2px;"
+            "}"
+            "QSpinBox::up-button:hover, QSpinBox::down-button:hover {"
+            "    background: #F5F5F5;"
+            "}"
+            "QSpinBox::up-button:pressed, QSpinBox::down-button:pressed {"
+            "    background: #E8E8E8;"
+            "}"
+            "QSpinBox::up-arrow {"
+            "    image: url(assets/icons/arrow-up.svg);"
+            "    width: 10px;"
+            "    height: 10px;"
+            "}"
+            "QSpinBox::down-arrow {"
+            "    image: url(assets/icons/arrow-down.svg);"
+            "    width: 10px;"
+            "    height: 10px;"
+            "}"
+        )
         self.border_width_spin.valueChanged.connect(self._on_width_changed)
         layout.addWidget(self.border_width_spin, row, 1)
         row += 1
