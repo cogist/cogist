@@ -94,6 +94,12 @@ class ConnectorSection(CollapsiblePanel):
                 except Exception:
                     pass  # Silently ignore errors during initialization
 
+                # Load rainbow mode state from parent
+                if hasattr(parent, "style_config") and parent.style_config:
+                    self.use_rainbow = getattr(parent.style_config, 'use_rainbow_branches', False)
+                    # Update color controls visibility based on rainbow mode
+                    self._update_color_controls_visibility()
+
     def _init_content(self):
         """Initialize content on first expand (lazy initialization)."""
         layout = QGridLayout()
