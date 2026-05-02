@@ -73,9 +73,9 @@ class EdgeItem(QGraphicsPathItem):
                 1: NodeRole.PRIMARY,
                 2: NodeRole.SECONDARY,
             }
-            # Use source depth for connector style (edge inherits source node's connector config)
-            connector_role = role_map.get(source_depth, NodeRole.TERTIARY)
-            # Use source depth for brightness/opacity adjustments (edge belongs to source node's layer)
+            # Use TARGET depth for connector style (edge belongs to target node)
+            connector_role = role_map.get(target_depth, NodeRole.TERTIARY)
+            # Use target depth for brightness/opacity adjustments
             adjustment_role = connector_role
 
             # Default values
@@ -90,7 +90,7 @@ class EdgeItem(QGraphicsPathItem):
                 connector_role in self.style_config.role_styles):
                 role_style = self.style_config.role_styles[connector_role]
 
-                # Get connector color using index system
+                # Get connector color from color pool index with brightness/opacity
                 color_pool = self.style_config.color_pool
                 color_str = self._get_color_from_index(
                     role_style.connector_color_index,

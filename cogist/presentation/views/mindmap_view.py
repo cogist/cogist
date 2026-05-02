@@ -421,10 +421,9 @@ class MindMapView(QGraphicsView):
 
                 # Apply edge style from style_config (role-based configuration)
                 if hasattr(self, "style_config") and self.style_config:
-                    # Get source node depth to determine which connector config to use
-                    source_depth = (
-                        parent_item.depth if hasattr(parent_item, "depth") else 0
-                    )
+                    # Get TARGET node depth to determine which connector config to use
+                    # Edge belongs to the child node (target), not the parent (source)
+                    target_depth = item.depth if hasattr(item, "depth") else 0
 
                     # Get connector config from role-based style
                     from cogist.domain.styles.extended_styles import NodeRole
@@ -434,7 +433,7 @@ class MindMapView(QGraphicsView):
                         1: NodeRole.PRIMARY,
                         2: NodeRole.SECONDARY,
                     }
-                    role = role_map.get(source_depth, NodeRole.TERTIARY)
+                    role = role_map.get(target_depth, NodeRole.TERTIARY)
 
                     # NEW: Use MindMapStyle.role_styles
                     if (hasattr(self.style_config, 'role_styles') and
@@ -442,12 +441,11 @@ class MindMapView(QGraphicsView):
                         role_style = self.style_config.role_styles[role]
                         color_pool = self.style_config.color_pool
 
-                        # Get connector color using index system
+                        # Get connector color from color pool index
                         color_index = role_style.connector_color_index if hasattr(role_style, 'connector_color_index') else 0
 
                         if color_pool and color_index < len(color_pool):
                             connector_color = color_pool[color_index]
-                            # Apply brightness and opacity adjustments (simplified)
                         else:
                             connector_color = "#FF666666"
 
