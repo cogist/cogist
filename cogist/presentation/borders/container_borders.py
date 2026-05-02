@@ -23,22 +23,16 @@ class RoundedRectBorder(BorderStrategy):
         border_width = style_config.get("border_width", 0)
         border_style = style_config.get("border_style", "solid")
 
-        # Draw background fill (original rect)
-        if bg_color:
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QBrush(QColor(bg_color)))
-            # Disable anti-aliasing for sharp edges
-            painter.setRenderHint(QPainter.Antialiasing, False)
-            painter.drawRoundedRect(rect, radius, radius)
-            # Restore anti-aliasing for other elements
-            painter.setRenderHint(QPainter.Antialiasing, True)
-
-        # Draw border completely outside background
-        # To match inner edge curvature with background, outer radius must be larger
         if border_width > 0 and border_color:
-            pen = QPen(QColor(border_color), border_width)
+            # Create the outer boundary path (where the border's outer edge should be)
+            half_width = border_width / 2.0
+            outer_rect = rect.adjusted(-half_width, -half_width, half_width, half_width)
+            outer_radius = radius + half_width
+            outer_path = QPainterPath()
+            outer_path.addRoundedRect(outer_rect, outer_radius, outer_radius)
 
-            # Set border style
+            # Step 1: Draw border outline first (just the line, no fill)
+            pen = QPen(QColor(border_color), border_width)
             if border_style == "dashed":
                 pen.setStyle(Qt.DashLine)
             elif border_style == "dotted":
@@ -50,19 +44,19 @@ class RoundedRectBorder(BorderStrategy):
 
             painter.setPen(pen)
             painter.setBrush(Qt.NoBrush)
-            # Expand rect by half border width minus tiny overlap to avoid anti-aliasing gaps
-            # The 0.5px overlap ensures inner edges blend seamlessly with background
-            half_width = border_width / 2.0
-            overlap = 0.5  # Tiny overlap to prevent anti-aliasing gaps
-            border_rect = rect.adjusted(-(half_width - overlap), -(half_width - overlap),
-                                       (half_width - overlap), (half_width - overlap))
-            # Increase radius proportionally to maintain inner edge curvature
-            outer_radius = radius + half_width - overlap
-            # Disable anti-aliasing for sharp edges
-            painter.setRenderHint(QPainter.Antialiasing, False)
-            painter.drawRoundedRect(border_rect, outer_radius, outer_radius)
-            # Restore anti-aliasing for other elements
-            painter.setRenderHint(QPainter.Antialiasing, True)
+            painter.drawPath(outer_path)  # Draw the outer edge line
+
+            # Step 2: Fill the entire inner area (background fills to the inner edge of the border)
+            if bg_color:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(QColor(bg_color)))
+                painter.fillPath(outer_path, painter.brush())
+        else:
+            # No border, just draw background
+            if bg_color:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(QColor(bg_color)))
+                painter.drawRoundedRect(rect, radius, radius)
 
     def get_selection_path(self, rect, style_config: dict) -> QPainterPath:
         """Get selection highlight path for rounded rectangle."""
@@ -89,21 +83,15 @@ class CircleBorder(BorderStrategy):
         border_width = style_config.get("border_width", 0)
         border_style = style_config.get("border_style", "solid")
 
-        # Draw background fill (original rect)
-        if bg_color:
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QBrush(QColor(bg_color)))
-            # Disable anti-aliasing for sharp edges
-            painter.setRenderHint(QPainter.Antialiasing, False)
-            painter.drawEllipse(rect)
-            # Restore anti-aliasing for other elements
-            painter.setRenderHint(QPainter.Antialiasing, True)
-
-        # Draw border completely outside background
         if border_width > 0 and border_color:
-            pen = QPen(QColor(border_color), border_width)
+            # Create the outer boundary path (where the border's outer edge should be)
+            half_width = border_width / 2.0
+            outer_rect = rect.adjusted(-half_width, -half_width, half_width, half_width)
+            outer_path = QPainterPath()
+            outer_path.addEllipse(outer_rect)
 
-            # Set border style
+            # Step 1: Draw border outline first (just the line, no fill)
+            pen = QPen(QColor(border_color), border_width)
             if border_style == "dashed":
                 pen.setStyle(Qt.DashLine)
             elif border_style == "dotted":
@@ -115,16 +103,19 @@ class CircleBorder(BorderStrategy):
 
             painter.setPen(pen)
             painter.setBrush(Qt.NoBrush)
-            # Expand rect by half border width minus tiny overlap to avoid anti-aliasing gaps
-            half_width = border_width / 2.0
-            overlap = 0.5  # Tiny overlap to prevent anti-aliasing gaps
-            border_rect = rect.adjusted(-(half_width - overlap), -(half_width - overlap),
-                                       (half_width - overlap), (half_width - overlap))
-            # Disable anti-aliasing for sharp edges
-            painter.setRenderHint(QPainter.Antialiasing, False)
-            painter.drawEllipse(border_rect)
-            # Restore anti-aliasing for other elements
-            painter.setRenderHint(QPainter.Antialiasing, True)
+            painter.drawPath(outer_path)  # Draw the outer edge line
+
+            # Step 2: Fill the entire inner area (background fills to the inner edge of the border)
+            if bg_color:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(QColor(bg_color)))
+                painter.fillPath(outer_path, painter.brush())
+        else:
+            # No border, just draw background
+            if bg_color:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(QColor(bg_color)))
+                painter.drawEllipse(rect)
 
     def get_selection_path(self, rect, style_config: dict) -> QPainterPath:
         """Get selection highlight path for circle/ellipse."""
