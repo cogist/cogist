@@ -1876,7 +1876,7 @@ class MindMapView(QGraphicsView):
         # Update scene rect based on new content
         self.scene_manager.update_from_content()
 
-        # Restore selection state and focus
+        # Restore selection state
         if saved_selection_id:
             if saved_selection_id in self.node_items:
                 # Original node still exists, select it
@@ -1887,11 +1887,8 @@ class MindMapView(QGraphicsView):
             elif self.root_node:
                 # Fallback to root
                 self._select_node_by_id(self.root_node.id)
-            # CRITICAL: Only set focus if the view already had focus before refresh
-            # This prevents stealing focus from other widgets (like dialog controls)
-            focused_widget = QApplication.focusWidget()
-            if focused_widget == self or focused_widget == self.viewport():
-                self.setFocus(Qt.OtherFocusReason)
+            # Note: Do NOT call setFocus() here - let Qt manage focus naturally.
+            # If user is interacting with dialog controls, focus should stay there.
 
     def _restore_selection_state_after_undo(self, node_id_before_undo):
         """Restore selection state after undo operation.
