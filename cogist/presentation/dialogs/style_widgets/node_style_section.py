@@ -9,7 +9,6 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
     QPushButton,
-    QSlider,
     QWidget,
 )
 from shiboken6 import isValid
@@ -248,32 +247,32 @@ class NodeStyleSection(CollapsiblePanel):
         # Note: Button stylesheet is set by set_style() - no text, no hardcoded colors
         row += 1
 
-        # Brightness slider
+        # Brightness spinbox
         self.brightness_label = QLabel("Brightness:")
         self.brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.brightness_label.setFixedWidth(self._label_width)
         layout.addWidget(self.brightness_label, row, 0)
 
-        self.brightness_slider = QSlider(Qt.Horizontal)
-        self.brightness_slider.setRange(50, 150)  # 0.5-1.5
-        self.brightness_slider.setValue(int(self.current_style.get("brightness", 1.0) * 100))
-        self.brightness_slider.setFixedHeight(self.WIDGET_HEIGHT)
-        self.brightness_slider.valueChanged.connect(self._on_brightness_changed)
-        layout.addWidget(self.brightness_slider, row, 1, alignment=Qt.AlignVCenter)
+        self.brightness_spin = SpinBox()
+        self.brightness_spin.setRange(50, 150)  # 0.5-1.5
+        self.brightness_spin.setValue(int(self.current_style.get("brightness", 1.0) * 100))
+        self.brightness_spin.setFixedHeight(self.WIDGET_HEIGHT)
+        self.brightness_spin.valueChanged.connect(self._on_brightness_changed)
+        layout.addWidget(self.brightness_spin, row, 1)
         row += 1
 
-        # Opacity slider
+        # Opacity spinbox
         self.opacity_label = QLabel("Opacity:")
         self.opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.opacity_label.setFixedWidth(self._label_width)
         layout.addWidget(self.opacity_label, row, 0)
 
-        self.opacity_slider = QSlider(Qt.Horizontal)
-        self.opacity_slider.setRange(0, 255)
-        self.opacity_slider.setValue(self.current_style.get("opacity", 255))
-        self.opacity_slider.setFixedHeight(self.WIDGET_HEIGHT)
-        self.opacity_slider.valueChanged.connect(self._on_opacity_changed)
-        layout.addWidget(self.opacity_slider, row, 1, alignment=Qt.AlignVCenter)
+        self.opacity_spin = SpinBox()
+        self.opacity_spin.setRange(0, 255)
+        self.opacity_spin.setValue(self.current_style.get("opacity", 255))
+        self.opacity_spin.setFixedHeight(self.WIDGET_HEIGHT)
+        self.opacity_spin.valueChanged.connect(self._on_opacity_changed)
+        layout.addWidget(self.opacity_spin, row, 1)
 
         # Initialize visibility based on enabled state
         self._update_background_controls_visibility()
@@ -330,17 +329,17 @@ class NodeStyleSection(CollapsiblePanel):
         if hasattr(self, 'bg_color_btn'):
             self.bg_color_btn.setVisible(enabled)
 
-        # Show/hide brightness slider and label
+        # Show/hide brightness spinbox and label
         if hasattr(self, 'brightness_label'):
             self.brightness_label.setVisible(enabled)
-        if hasattr(self, 'brightness_slider'):
-            self.brightness_slider.setVisible(enabled)
+        if hasattr(self, 'brightness_spin'):
+            self.brightness_spin.setVisible(enabled)
 
-        # Show/hide opacity slider and label
+        # Show/hide opacity spinbox and label
         if hasattr(self, 'opacity_label'):
             self.opacity_label.setVisible(enabled)
-        if hasattr(self, 'opacity_slider'):
-            self.opacity_slider.setVisible(enabled)
+        if hasattr(self, 'opacity_spin'):
+            self.opacity_spin.setVisible(enabled)
 
     def _on_bg_enabled_changed(self, checked: bool):
         """Handle background enabled toggle change."""
@@ -348,15 +347,15 @@ class NodeStyleSection(CollapsiblePanel):
 
         # Update visibility of background controls
         if self.use_rainbow and not self.is_root_mode:
-            # Rainbow mode: only show/hide brightness & opacity sliders
+            # Rainbow mode: only show/hide brightness & opacity spinboxes
             if hasattr(self, 'brightness_label'):
                 self.brightness_label.setVisible(checked)
-            if hasattr(self, 'brightness_slider'):
-                self.brightness_slider.setVisible(checked)
+            if hasattr(self, 'brightness_spin'):
+                self.brightness_spin.setVisible(checked)
             if hasattr(self, 'opacity_label'):
                 self.opacity_label.setVisible(checked)
-            if hasattr(self, 'opacity_slider'):
-                self.opacity_slider.setVisible(checked)
+            if hasattr(self, 'opacity_spin'):
+                self.opacity_spin.setVisible(checked)
         else:
             # Non-rainbow mode or root layer: normal behavior
             self._update_background_controls_visibility()
@@ -652,21 +651,21 @@ class NodeStyleSection(CollapsiblePanel):
                 if not self.use_rainbow or self.is_root_mode:
                     self._update_background_controls_visibility()
 
-            # Update brightness slider (support multiple field names)
-            if "brightness" in style and hasattr(self, 'brightness_slider'):
-                self.brightness_slider.setValue(int(style["brightness"] * 100))
-            elif "brightness_amount" in style and hasattr(self, 'brightness_slider'):
-                self.brightness_slider.setValue(int(style["brightness_amount"] * 100))
-            elif "bg_brightness" in style and hasattr(self, 'brightness_slider'):
-                self.brightness_slider.setValue(int(style["bg_brightness"] * 100))
+            # Update brightness spinbox (support multiple field names)
+            if "brightness" in style and hasattr(self, 'brightness_spin'):
+                self.brightness_spin.setValue(int(style["brightness"] * 100))
+            elif "brightness_amount" in style and hasattr(self, 'brightness_spin'):
+                self.brightness_spin.setValue(int(style["brightness_amount"] * 100))
+            elif "bg_brightness" in style and hasattr(self, 'brightness_spin'):
+                self.brightness_spin.setValue(int(style["bg_brightness"] * 100))
 
-            # Update opacity slider (support multiple field names)
-            if "opacity" in style and hasattr(self, 'opacity_slider'):
-                self.opacity_slider.setValue(style["opacity"])
-            elif "opacity_amount" in style and hasattr(self, 'opacity_slider'):
-                self.opacity_slider.setValue(style["opacity_amount"])
-            elif "bg_opacity" in style and hasattr(self, 'opacity_slider'):
-                self.opacity_slider.setValue(style["bg_opacity"])
+            # Update opacity spinbox (support multiple field names)
+            if "opacity" in style and hasattr(self, 'opacity_spin'):
+                self.opacity_spin.setValue(style["opacity"])
+            elif "opacity_amount" in style and hasattr(self, 'opacity_spin'):
+                self.opacity_spin.setValue(style["opacity_amount"])
+            elif "bg_opacity" in style and hasattr(self, 'opacity_spin'):
+                self.opacity_spin.setValue(style["bg_opacity"])
 
             # Update background color button
             if "bg_color" in style and hasattr(self, 'bg_color_btn'):
@@ -700,12 +699,12 @@ class NodeStyleSection(CollapsiblePanel):
                     bg_enabled = self.current_style.get("bg_enabled", True)
                     if hasattr(self, 'brightness_label'):
                         self.brightness_label.setVisible(bg_enabled)
-                    if hasattr(self, 'brightness_slider'):
-                        self.brightness_slider.setVisible(bg_enabled)
+                    if hasattr(self, 'brightness_spin'):
+                        self.brightness_spin.setVisible(bg_enabled)
                     if hasattr(self, 'opacity_label'):
                         self.opacity_label.setVisible(bg_enabled)
-                    if hasattr(self, 'opacity_slider'):
-                        self.opacity_slider.setVisible(bg_enabled)
+                    if hasattr(self, 'opacity_spin'):
+                        self.opacity_spin.setVisible(bg_enabled)
                 else:
                     # Non-rainbow mode: normal behavior - all controls follow bg_enabled
                     self._update_background_controls_visibility()

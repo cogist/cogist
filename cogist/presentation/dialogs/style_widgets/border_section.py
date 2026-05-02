@@ -10,7 +10,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QMenu,
     QPushButton,
-    QSlider,
 )
 from shiboken6 import isValid
 
@@ -166,34 +165,34 @@ class BorderSection(CollapsiblePanel):
         # Note: Button stylesheet is set by set_style() - no text, no hardcoded colors
         row += 1
 
-        # Brightness slider
+        # Brightness spinbox
         brightness_label = QLabel("Brightness:")
         brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         brightness_label.setFixedWidth(self._label_width)
         layout.addWidget(brightness_label, row, 0)
 
-        self.brightness_slider = QSlider(Qt.Horizontal)
-        self.brightness_slider.setRange(50, 150)  # 0.5-1.5
+        self.brightness_spin = SpinBox()
+        self.brightness_spin.setRange(50, 150)  # 0.5-1.5
         # Use temporary default for UI initialization (will be updated by set_style)
-        self.brightness_slider.setValue(100)
-        self.brightness_slider.setFixedHeight(self.WIDGET_HEIGHT)
-        self.brightness_slider.valueChanged.connect(self._on_brightness_changed)
-        layout.addWidget(self.brightness_slider, row, 1, alignment=Qt.AlignVCenter)
+        self.brightness_spin.setValue(100)
+        self.brightness_spin.setFixedHeight(self.WIDGET_HEIGHT)
+        self.brightness_spin.valueChanged.connect(self._on_brightness_changed)
+        layout.addWidget(self.brightness_spin, row, 1)
         row += 1
 
-        # Opacity slider
+        # Opacity spinbox
         opacity_label = QLabel("Opacity:")
         opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         opacity_label.setFixedWidth(self._label_width)
         layout.addWidget(opacity_label, row, 0)
 
-        self.opacity_slider = QSlider(Qt.Horizontal)
-        self.opacity_slider.setRange(0, 255)
+        self.opacity_spin = SpinBox()
+        self.opacity_spin.setRange(0, 255)
         # Use temporary default for UI initialization (will be updated by set_style)
-        self.opacity_slider.setValue(255)
-        self.opacity_slider.setFixedHeight(self.WIDGET_HEIGHT)
-        self.opacity_slider.valueChanged.connect(self._on_opacity_changed)
-        layout.addWidget(self.opacity_slider, row, 1, alignment=Qt.AlignVCenter)
+        self.opacity_spin.setValue(255)
+        self.opacity_spin.setFixedHeight(self.WIDGET_HEIGHT)
+        self.opacity_spin.valueChanged.connect(self._on_opacity_changed)
+        layout.addWidget(self.opacity_spin, row, 1)
 
         # Note: _update_border_controls_visibility() will be called in set_style()
         # after current_style is populated with real data from template
@@ -553,17 +552,17 @@ class BorderSection(CollapsiblePanel):
             if "border_width" in style:
                 self.border_width_spin.setValue(style["border_width"])
 
-            # Update brightness slider (support multiple field names)
-            if "brightness" in style and hasattr(self, "brightness_slider"):
-                self.brightness_slider.setValue(int(style["brightness"] * 100))
-            elif "border_brightness" in style and hasattr(self, "brightness_slider"):
-                self.brightness_slider.setValue(int(style["border_brightness"] * 100))
+            # Update brightness spinbox (support multiple field names)
+            if "brightness" in style and hasattr(self, "brightness_spin"):
+                self.brightness_spin.setValue(int(style["brightness"] * 100))
+            elif "border_brightness" in style and hasattr(self, "brightness_spin"):
+                self.brightness_spin.setValue(int(style["border_brightness"] * 100))
 
-            # Update opacity slider (support multiple field names)
-            if "opacity" in style and hasattr(self, "opacity_slider"):
-                self.opacity_slider.setValue(style["opacity"])
-            elif "border_opacity" in style and hasattr(self, "opacity_slider"):
-                self.opacity_slider.setValue(style["border_opacity"])
+            # Update opacity spinbox (support multiple field names)
+            if "opacity" in style and hasattr(self, "opacity_spin"):
+                self.opacity_spin.setValue(style["opacity"])
+            elif "border_opacity" in style and hasattr(self, "opacity_spin"):
+                self.opacity_spin.setValue(style["border_opacity"])
 
             # Update color button display
             if "border_color" in style and hasattr(self, "color_btn"):
