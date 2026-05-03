@@ -256,6 +256,7 @@ class NodeStyleSection(CollapsiblePanel):
         self.brightness_spin = SpinBox()
         self.brightness_spin.setRange(50, 150)  # 0.5-1.5
         self.brightness_spin.setValue(int(self.current_style.get("brightness", 1.0) * 100))
+        self.brightness_spin.setSuffix("%")
         self.brightness_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.brightness_spin.valueChanged.connect(self._on_brightness_changed)
         layout.addWidget(self.brightness_spin, row, 1)
