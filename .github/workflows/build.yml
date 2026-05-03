@@ -99,7 +99,9 @@ jobs:
       - name: Create archive (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          ditto -c -k --sequesterRsrc --keepParent dist/Cogist ${{ matrix.artifact_name }}.dmg
+          # PyInstaller creates .app bundle on macOS with --windowed
+          hdiutil create -volname Cogist -srcfolder dist/Cogist.app -ov -format UDZO ${{ matrix.artifact_name }}.dmg 2>/dev/null || \
+          ditto -c -k --sequesterRsrc dist/Cogist ${{ matrix.artifact_name }}.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -135,6 +137,7 @@ jobs:
             artifacts/**/*.AppImage
             artifacts/**/*.exe
             artifacts/**/*.dmg
+            artifacts/**/*.zip
           draft: false
           prerelease: false
         env:
