@@ -5,32 +5,57 @@ Provides icon-based navigation to switch between different panels:
 - Future: Layout, Theme, Settings, etc.
 """
 
-from PySide6.QtCore import Qt, Signal
+import os
+import sys
+
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QFrame, QPushButton, QVBoxLayout
+
+
+def get_resource_path(relative_path: str) -> str:
+    """Get absolute path to resource, works for dev and for PyInstaller."""
+    if hasattr(sys, '_MEIPASS'):
+        # PyInstaller mode
+        base_path = sys._MEIPASS
+    else:
+        # Development mode
+        base_path = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+
+    return os.path.join(base_path, relative_path)
 
 
 class ActivityBarButton(QPushButton):
     """A button in the activity bar with icon and active state."""
 
-    def __init__(self, icon_text: str, tooltip: str, parent=None):
-        super().__init__(icon_text, parent)
+    def __init__(self, icon_path: str, tooltip: str, parent=None):
+        super().__init__(parent)
         self.setFixedSize(48, 48)
         self.setToolTip(tooltip)
         self.setCheckable(True)
+
+        # Set SVG icon
+        icon = QIcon(icon_path)
+        self.setIcon(icon)
+        self.setIconSize(QSize(32, 32))
+
+        # Set tooltip style - white text on dark background (opposite of button background)
         self.setStyleSheet("""
             ActivityBarButton {
                 background-color: #333333;
                 border: none;
-                color: #858585;
-                font-size: 20px;
             }
             ActivityBarButton:hover {
                 background-color: #333333;
-                color: #C5C5C5;
             }
             ActivityBarButton:checked {
                 background-color: #333333;
-                color: #FFFFFF;
+            }
+            QToolTip {
+                background-color: #FFFFFF;
+                color: #000000;
+                border: 1px solid #CCCCCC;
+                padding: 4px;
             }
         """)
 
@@ -58,14 +83,16 @@ class ActivityBar(QFrame):
         self.buttons = {}
 
         # Style panel buttons
-        # Color scheme button (🎨 Palette icon)
-        color_scheme_btn = ActivityBarButton("🎨", "Color Scheme")
+        # Color scheme button (Color wheel icon)
+        color_scheme_icon = get_resource_path("assets/icons/color-scheme.svg")
+        color_scheme_btn = ActivityBarButton(color_scheme_icon, "Color Scheme")
         layout.addWidget(color_scheme_btn)
         self.buttons["color_scheme"] = color_scheme_btn
         color_scheme_btn.clicked.connect(lambda: self._on_activated("color_scheme"))
 
-        # Advanced mode button (🔧 Tools icon)
-        advanced_btn = ActivityBarButton("🔧", "Advanced Mode")
+        # Advanced mode button (Gear icon)
+        gear_icon = get_resource_path("assets/icons/gear.svg")
+        advanced_btn = ActivityBarButton(gear_icon, "Advanced Mode")
         layout.addWidget(advanced_btn)
         self.buttons["advanced"] = advanced_btn
         advanced_btn.clicked.connect(lambda: self._on_activated("advanced"))
