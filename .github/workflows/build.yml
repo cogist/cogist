@@ -106,8 +106,7 @@ jobs:
         with:
           name: ${{ matrix.artifact_name }}
           path: |
-            ${{ matrix.artifact_name }}
-            *.zip
+            ${{ matrix.artifact_name }}.*
           retention-days: 30
 
   release:
@@ -124,8 +123,14 @@ jobs:
 
       - name: List artifacts
         run: |
+          echo "=== Artifacts directory structure ==="
           ls -la artifacts/
-          find artifacts/ -type f
+          echo "\n=== All files ==="
+          find artifacts/ -type f || echo "No files found!"
+          echo "\n=== Check each platform ==="
+          ls -la artifacts/Cogist-Linux/ 2>/dev/null || echo "Linux artifact not found"
+          ls -la artifacts/Cogist-Windows/ 2>/dev/null || echo "Windows artifact not found"
+          ls -la artifacts/Cogist-macOS/ 2>/dev/null || echo "macOS artifact not found"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
