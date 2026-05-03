@@ -1,6 +1,6 @@
 # Cogist
 
-🧠 A Beautiful Mind Mapping Tool with Intelligent Layout Algorithms
+🧠 A Cross-Platform Mind Mapping Tool with Intelligent Layout Algorithms, Focus on Your Thinking!
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
@@ -9,119 +9,21 @@
 [![Changelog](https://img.shields.io/badge/changelog-latest-orange.svg)](CHANGELOG.md)
 
 ## ✨ Core Features
-
-### 🎨 Professional Curve Rendering
-- Gradient curve with varying line width (10→2 pixels)
-- Smart edge anchor point selection
-- Smooth S-shaped Bezier curves
-- Auto-matching curve colors to branches
-- High-performance rendering with path caching
-
-### 🧩 Intelligent Layout Algorithm
-- Center-radial layout with balanced distribution
-- Automatic node overlap prevention
-- Real-time adjustment on drag
-- Configurable spacing levels (Compact/Normal/Relaxed/Spacious)
-
-### 🎯 Perfect Interaction Experience
-- Drag parent node - children follow
-- Keyboard navigation (arrow keys for panning)
-- View zoom (+/-/0 keys)
-- Real-time curve updates
-- Undo/Redo support (Ctrl+Z/Y)
-- Node editing (Tab, Enter, Delete, Space)
-
-### 🎭 Advanced Style System (v0.3.0)
-- Role-based styling (Root/Primary/Secondary/Tertiary)
-- Template + Color Scheme separation
-- Customizable shapes, borders, backgrounds, shadows
-- Font decorations (Italic, Underline, Strikethrough)
-- Real-time preview in Settings Panel
-- Save and load custom templates
-- Multiple connector styles (Bezier, Orthogonal, Rounded)
-- Abstract spacing levels (Compact/Normal/Relaxed/Spacious)
-
-## 🛠️ Tech Stack
-
-- **Python 3.13+**
-- **PySide6 6.8+** (Qt for Python)
-- **QGraphicsView Framework** (2D graphics rendering)
-- **uv** (Modern Python package manager)
-
-## 📦 Installation
-
-```bash
-# Using uv (recommended)
-uv install
-
-# Or using pip
-pip install pyside6 qdarkstyle qt-material
-```
-
-## 🚀 Quick Start
-
-```bash
-# Using uv (recommended)
-uv run cogist
-
-# Or run main.py directly
-uv run python main.py
-```
-
-### Keyboard Shortcuts
-
-- **Arrow keys** - Pan canvas
-- **+ / =** - Zoom in
-- **-** - Zoom out
-- **0** - Reset view
-- **Space** - Edit node text
-- **Tab** - Add child node
-- **Enter** - Add sibling node
-- **Delete** - Delete selected node
-- **Ctrl/Cmd + Z** - Undo
-- **Ctrl/Cmd + Y** - Redo
-
-## 📁 Project Structure
-
-```
-cogist/
-├── main.py                 # Main application entry point
-├── pyproject.toml          # Project configuration
-├── README.md               # Project documentation
-├── LICENSE                 # License file
-├── CHANGELOG.md            # Version history (v0.5.0 latest)
-├── docs/                   # 📚 Documentation center
-│   ├── ARCHITECTURE.md             # Architecture design
-│   ├── DESIGN_PHILOSOPHY.md        # Design philosophy
-│   ├── PRODUCT_STRATEGY.md         # Product strategy
-│   └── ROADMAP.md                  # Development roadmap
-├── cogist/                 # Source code package
-│   ├── domain/             # Domain layer (entities, styles, layout, connectors, borders)
-│   │   ├── entities/       # Node, Edge entities
-│   │   ├── styles/         # Style system (Template, ColorScheme, RoleBasedStyle, SpacingConfig)
-│   │   │   ├── extended_styles.py  # Core style data structures
-│   │   │   └── style_resolver.py   # Style resolution and serialization
-│   │   ├── connectors/     # Connector algorithms (Bezier, Orthogonal, Rounded, etc.)
-│   │   ├── borders/        # Border system (Container, Decorative lines)
-│   │   ├── layout/         # Layout algorithms and registry
-│   │   └── colors/         # Color theme definitions
-│   ├── application/        # Application layer (services, commands)
-│   │   ├── services/       # MindMapService, AppContext
-│   │   └── commands/       # Command pattern (AddNode, DeleteNode, EditText)
-│   ├── presentation/       # Presentation layer (UI components)
-│   │   ├── items/          # QGraphicsItem implementations (NodeItem, EdgeItem)
-│   │   ├── dialogs/        # Dialogs (StylePanelAdvanced, ActivityBar)
-│   │   │   ├── style_panel_advanced.py  # Advanced style panel
-│   │   │   └── style_widgets/           # Reusable style widgets
-│   │   └── widgets/        # Custom widgets (ConnectorPreviews, VisualSelector, etc.)
-│   └── infrastructure/     # Infrastructure layer (persistence, serialization)
-│       ├── repositories/   # Data persistence
-│       └── io/             # Serialization (CGS format, JSON)
-└── tests/                  # Unit tests
-    ├── test_extended_styles.py
-    ├── test_style_serialization.py
-    └── test_cgs_serializer.py
-```
+- **Cross-platform support**: Windows, macOS, Linux
+- **Smart auto-layout**: Just focus on your ideas, let Cogist handle everything!
+- **Divergent thinking**: Brainstorm freely without worrying about messy thoughts
+- **Easy reorganization**: Drag node trees to change parents anytime, even when restructuring ideas
+- **Quick keyboard shortcuts**:
+  - Tab for child, Space for sibling, Delete/Backspace to remove nodes - lightning fast operations
+  - Navigate between nodes with mouse or arrow keys, easily switch current node
+- **Smooth zoom & pan**: Keyboard, mouse, and gesture support for view manipulation
+- **Vibrant colors or minimal business style**: Color pool-based schemes with one-click rainbow mode and streamlined business mode
+- **Powerful style customization**: Comprehensive style panel with spacing, shapes, backgrounds, borders, line styles, fonts, shadows, connectors, colors, brightness, opacity - meet all aesthetic needs
+- **Real-time style preview**: No need to click OK button, all changes take effect instantly, WYSIWYG
+- **Role-based style system**: Map hierarchy levels to roles, adjust styles by role - neither rigid nor overly granular
+- **Global undo/redo**: All commands can be undone/redone, including adding/deleting nodes, changing styles. Modify freely without fear of mistakes
+- **Flexible layout, template, and color scheme combinations**: Future support for one-click selection of layout algorithms, templates, or color schemes for holistic style switching
+- **Priority-based node importance styling**: Future support for three-level importance (Important/Normal/Secondary), apply same style to nodes with same importance level, highlight key points at a glance
 
 ## 📸 Feature Demos
 
@@ -151,138 +53,11 @@ cogist/
 | macOS | Universal (Intel + Apple Silicon) | [Coming Soon](https://github.com/cogist/cogist/releases) |
 | Linux | x64 | [Coming Soon](https://github.com/cogist/cogist/releases) |
 
-## 🎯 Key Features
-
-### Main Application (`main.py`)
-
-**Core Functionality:**
-- Smart curve connection with automatic edge anchor selection
-- Gradient line width curves for professional appearance (10→2px)
-- Child node following when dragging parent
-- Keyboard navigation (pan + zoom)
-- Branch color differentiation with role-based coloring
-- High-performance rendering with path caching
-- Undo/Redo support (Ctrl+Z/Y)
-- Node editing (Tab, Enter, Delete, Space)
-- File save/load in `.cgs` format (ZIP-compressed JSON container)
-- Real-time style preview with Template + ColorScheme system
-
-**Settings Panel:**
-- Advanced mode with full-featured style editing
-- Role-based style editing (Root/Primary/Secondary/Tertiary)
-- Real-time preview of all style changes
-- Customizable shapes, borders, backgrounds, shadows, fonts
-- Font decorations: Italic, Underline, Strikethrough
-- Template and Color Scheme management
-- Multiple connector styles (Bezier, Orthogonal, Rounded, Sharp-First Rounded)
-- Node shape previews and visual selectors
-
-**Run:**
-```bash
-uv run python main.py
-# or
-uv run cogist
-```
-
-## 🔧 Development Guide
-
-### Architecture Overview
-
-Cogist follows a **Domain-Driven Design (DDD)** with four-layer architecture:
-
-1. **Domain Layer** - Core business logic (entities, styles, layout algorithms)
-2. **Application Layer** - Business orchestration (services, commands)
-3. **Infrastructure Layer** - Technical implementation (persistence, serialization)
-4. **Presentation Layer** - User interface (Qt widgets, graphics items)
-
-### Add New Layout
-
-```python
-from cogist.domain.layout import BaseLayout
-
-class CustomLayout(BaseLayout):
-    def calculate_positions(self, root_node):
-        # Implement your layout algorithm
-        # Return dict mapping node_id -> (x, y) positions
-        pass
-```
-
-### Customize Node Style
-
-```python
-from cogist.presentation.items.node_item import NodeItem
-
-class CustomNodeItem(NodeItem):
-    def paint(self, painter, option, widget):
-        # Custom drawing logic
-        super().paint(painter, option, widget)
-```
-
-### Extend Style Templates
-
-```python
-from cogist.domain.styles import MindMapStyle, RoleStyle, NodeRole
-
-# Load template from JSON file
-import json
-template_data = json.loads(open('assets/templates/default.json').read())
-
-# Create custom role style
-custom_role = RoleStyle(
-    role=NodeRole.PRIMARY,
-    shape_type="basic",
-    basic_shape="rounded_rect",
-    border_radius=8,
-    bg_enabled=True,
-    bg_color_index=0,
-    bg_brightness=1.0,
-    bg_opacity=255,
-    # ... more fields
-)
-```
-
-## 📸 Screenshots
-
-After running the program, you can experience:
-- Center-radial layout with balanced node distribution
-- Color-coded nodes for different branches (Root/Primary/Secondary/Tertiary)
-- Gradient curves connecting parent-child nodes
-- Interactive drag and zoom functionality
-- Real-time style preview in Advanced Settings Panel
-- Professional appearance with customizable templates
-- Multiple connector styles (Bezier, Orthogonal, Rounded, Sharp-First Rounded)
-- Node shapes (Rounded Rect, Circle, Ellipse, etc.) with live previews
-- Shadow effects and font decorations
-- Visual selectors for shapes, connectors, and borders
-
-## 📖 Documentation
-
-- **[Architecture](docs/ARCHITECTURE.md)** - System architecture overview
-- **[Roadmap](docs/ROADMAP.md)** - Development roadmap and future plans
-- **[Changelog](CHANGELOG.md)** - Version history and release notes
-
-## 📝 License
-
-This project uses the **MIT License**, but includes important third-party dependency license notices:
-
-### Your Rights
-- Free to use (including commercial use)
-- Free to modify and distribute
-- Free to keep code closed source
-- ⚠️ Must comply with PySide6's LGPL license
-
-### Third-Party Licenses
-This project depends on **PySide6 (Qt for Python)**, which uses the **LGPL-3.0** license.
-See the [LICENSE](LICENSE) file for compliance requirements.
-
-In simple terms:
-- You can use Cogist to develop closed-source commercial software
-- ⚠️ You cannot modify PySide6 without open-sourcing those modifications
-- ⚠️ You must allow users to replace the PySide6 library
-
-See the [LICENSE](LICENSE) file for the complete license text.
-
----
-
-**Cogist** - Map Your Thinking 🧠
+> 💡 **Tip**: You can also run from source (requires Python 3.13+ and uv)
+> ```bash
+> git clone https://github.com/cogist/cogist.git
+> cd cogist
+> uv sync
+> uv run cogist
+> ```
 
