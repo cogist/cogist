@@ -79,7 +79,6 @@ jobs:
         run: |
           uv run pyinstaller \
             --name=Cogist \
-            --onefile \
             --windowed \
             --add-data="assets:assets" \
             --icon=assets/icons/cogist.png \
@@ -100,8 +99,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           # PyInstaller creates .app bundle on macOS with --windowed
-          hdiutil create -volname Cogist -srcfolder dist/Cogist.app -ov -format UDZO ${{ matrix.artifact_name }}.dmg 2>/dev/null || \
-          ditto -c -k --sequesterRsrc dist/Cogist ${{ matrix.artifact_name }}.zip
+          hdiutil create -volname Cogist -srcfolder dist/Cogist.app -ov -format UDZO ${{ matrix.artifact_name }}.dmg
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
