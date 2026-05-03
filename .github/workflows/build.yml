@@ -15,20 +15,24 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-13, macos-latest]
         include:
           - os: ubuntu-latest
             platform: linux
-            artifact_name: Cogist-Linux
-            executable_name: Cogist
+            arch: x64
+            artifact_name: Cogist-Linux-x64
           - os: windows-latest
             platform: windows
-            artifact_name: Cogist-Windows
-            executable_name: Cogist.exe
+            arch: x64
+            artifact_name: Cogist-Windows-x64
+          - os: macos-13
+            platform: macos
+            arch: x64
+            artifact_name: Cogist-macOS-x64
           - os: macos-latest
             platform: macos
-            artifact_name: Cogist-macOS
-            executable_name: Cogist
+            arch: arm64
+            artifact_name: Cogist-macOS-arm64
 
     steps:
       - name: Checkout code
@@ -90,10 +94,43 @@ jobs:
           cp dist/Cogist ${{ matrix.artifact_name }}.AppImage
           chmod +x ${{ matrix.artifact_name }}.AppImage
 
-      - name: Create package (Windows)
+      - name: Create package (Windows - Portable)
         if: matrix.os == 'windows-latest'
         run: |
-          Copy-Item dist\Cogist.exe ${{ matrix.artifact_name }}.exe
+          Copy-Item dist\Cogist.exe ${{ matrix.artifact_name }}-Portable.exe
+
+      - name: Install Inno Setup
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install innosetup --no-progress -y
+
+      - name: Create installer (Windows - Setup)
+        if: matrix.os == 'windows-latest'
+        run: |
+          @"
+          [Setup]
+          AppName=Cogist
+          AppVersion=$env:GITHUB_REF_NAME
+          DefaultDirName={pf}\Cogist
+          DefaultGroupName=Cogist
+          OutputDir=.
+          OutputBaseFilename=${{ matrix.artifact_name }}-Setup
+          Compression=lzma
+          SolidCompression=yes
+          
+          [Files]
+          Source: "dist\Cogist.exe"; DestDir: "{app}"; Flags: ignoreversion
+          
+          [Icons]
+          Name: "{group}\Cogist"; Filename: "{app}\Cogist.exe"
+          Name: "{commondesktop}\Cogist"; Filename: "{app}\Cogist.exe"
+          
+          [UninstallDelete]
+          Type: filesandordirs; Name: "{app}"
+          "@
+          > setup.iss
+          
+          & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' setup.iss
 
       - name: Create archive (macOS)
         if: matrix.os == 'macos-latest'
@@ -106,7 +143,7 @@ jobs:
         with:
           name: ${{ matrix.artifact_name }}
           path: |
-            ${{ matrix.artifact_name }}.*
+            ${{ matrix.artifact_name }}-*
           retention-days: 30
 
   release:
