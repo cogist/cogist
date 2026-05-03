@@ -132,9 +132,9 @@ jobs:
         with:
           body_path: CHANGELOG.md
           files: |
-            artifacts/Cogist-Linux/Cogist-Linux.AppImage
-            artifacts/Cogist-Windows/Cogist-Windows.exe
-            artifacts/Cogist-macOS/Cogist-macOS.dmg
+            artifacts/**/*.AppImage
+            artifacts/**/*.exe
+            artifacts/**/*.dmg
           draft: false
           prerelease: false
         env:
