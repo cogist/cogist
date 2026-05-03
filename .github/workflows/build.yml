@@ -88,19 +88,18 @@ jobs:
       - name: Create archive (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          cp dist/Cogist ${{ matrix.artifact_name }}
-          chmod +x ${{ matrix.artifact_name }}
+          cp dist/Cogist ${{ matrix.artifact_name }}.AppImage
+          chmod +x ${{ matrix.artifact_name }}.AppImage
 
-      - name: Create archive (Windows)
+      - name: Create package (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          Compress-Archive -Path dist\Cogist.exe -DestinationPath ${{ matrix.artifact_name }}.zip
+          Copy-Item dist\Cogist.exe ${{ matrix.artifact_name }}.exe
 
       - name: Create archive (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          cp dist/Cogist ${{ matrix.artifact_name }}
-          chmod +x ${{ matrix.artifact_name }}
+          ditto -c -k --sequesterRsrc --keepParent dist/Cogist ${{ matrix.artifact_name }}.dmg
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -133,9 +132,9 @@ jobs:
         with:
           body_path: CHANGELOG.md
           files: |
-            artifacts/Cogist-Linux/Cogist-Linux
-            artifacts/Cogist-Windows/Cogist-Windows.zip
-            artifacts/Cogist-macOS/Cogist-macOS
+            artifacts/Cogist-Linux/Cogist-Linux.AppImage
+            artifacts/Cogist-Windows/Cogist-Windows.exe
+            artifacts/Cogist-macOS/Cogist-macOS.dmg
           draft: false
           prerelease: false
         env:
