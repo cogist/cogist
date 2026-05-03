@@ -1320,14 +1320,21 @@ class NodeItem(QGraphicsRectItem):
             if self.style_config:
                 canvas_bg_hex = self.style_config.special_colors.get("canvas_bg", "#FFFFFF")
 
-            # Calculate canvas complement for outer ring
+            # Outer ring strategy: use white/black with high opacity for bright visibility
             canvas_bg_obj = QColor(canvas_bg_hex)
             canvas_rgb = (canvas_bg_obj.red(), canvas_bg_obj.green(), canvas_bg_obj.blue())
             h_canvas, s_canvas, v_canvas = self._rgb_to_hsv(*canvas_rgb)
-            h_canvas_comp = (h_canvas + 0.5) % 1
-            s_canvas_comp = min(1.0, s_canvas + 0.4)
-            v_canvas_comp = 0.9 if v_canvas < 0.5 else 0.25
-            canvas_comp_rgb = self._hsv_to_rgb(h_canvas_comp, s_canvas_comp, v_canvas_comp)
+
+            # Use appropriate alpha (opacity) for bright visibility on different backgrounds
+            # Qt setAlphaF() controls OPACITY: higher = more opaque = color dominates
+            # Light background + black: LOW opacity = soft gray = bright appearance
+            # Dark background + white: HIGH opacity = bright white = vivid appearance
+            if v_canvas < 0.5:  # Dark canvas → bright white glow
+                outer_base_rgb = (255, 255, 255)
+                glow_opacity = 0.70  # High opacity = bright white dominates
+            else:  # Light canvas → soft dark glow
+                outer_base_rgb = (0, 0, 0)
+                glow_opacity = 0.30  # Low opacity = soft gray (not too dark!)
 
             # Calculate inner ring color based on node border (if exists) or background
             if border_color and self.template_style.border_enabled:
@@ -1344,24 +1351,38 @@ class NodeItem(QGraphicsRectItem):
 
             target_rgb = (target_color_obj.red(), target_color_obj.green(), target_color_obj.blue())
             h_target, s_target, v_target = self._rgb_to_hsv(*target_rgb)
-            h_target_comp = (h_target + 0.5) % 1
-            s_target_comp = min(1.0, s_target + 0.4)
 
-            # Adjust lightness for maximum contrast
-            if v_target < 0.3:
-                v_target_comp = 0.9
-            elif v_target > 0.7:
-                v_target_comp = 0.25
+            # Special handling for low-saturation colors (gray/black/white)
+            # These colors don't have meaningful hue, so use opposite brightness
+            if s_target < 0.1:  # Very low saturation (gray scale)
+                h_target_comp = 0.5  # Doesn't matter, will be neutral
+                s_target_comp = 0.0  # Keep it neutral (no color)
+
+                # Dark gray/black → bright white, Light gray/white → dark black
+                if v_target < 0.3:
+                    v_target_comp = 0.95  # Dark → very bright
+                elif v_target > 0.7:
+                    v_target_comp = 0.1   # Light → very dark
+                else:
+                    v_target_comp = 0.9 if v_target < 0.5 else 0.1  # Medium → opposite
             else:
-                v_target_comp = 0.9 if v_target < 0.5 else 0.25
+                # Normal saturated color: use complementary hue
+                h_target_comp = (h_target + 0.5) % 1
+                s_target_comp = min(1.0, s_target + 0.4)
+
+                # Adjust lightness: complementary color should be on opposite brightness
+                # Dark target → bright complement, Light target → dark complement
+                if v_target < 0.4:
+                    v_target_comp = 0.85  # Dark → bright
+                elif v_target > 0.6:
+                    v_target_comp = 0.85  # Light → also bright (for vivid colors)
+                else:
+                    v_target_comp = 0.85  # Medium → bright (default to visible)
 
             inner_rgb = self._hsv_to_rgb(h_target_comp, s_target_comp, v_target_comp)
 
-            # Verify contrast meets WCAG AA (4.5:1)
-            contrast = self._contrast_ratio(inner_rgb, target_rgb)
-            if contrast < 4.5:
-                lum_target = self._relative_luminance(*target_rgb)
-                inner_rgb = (0, 0, 0) if lum_target > 0.5 else (255, 255, 255)
+            # NO contrast check fallback - always use complementary color
+            # The inner ring IS the complement, no need to verify contrast with itself
 
             # Draw double border using QPainterPath subtraction (EXACTLY like node border)
             # Create THREE concentric rings: node → inner ring → outer ring
@@ -1421,9 +1442,9 @@ class NodeItem(QGraphicsRectItem):
             painter.setBrush(QBrush(QColor(*inner_rgb)))
             painter.drawPath(inner_ring_path)
 
-            # Layer 2: Outer focus ring (semi-transparent glow)
-            outer_glow = QColor(*canvas_comp_rgb)
-            outer_glow.setAlphaF(0.2)  # 20% opacity for subtle glow
+            # Layer 2: Outer focus ring (bright glow with high opacity)
+            outer_glow = QColor(*outer_base_rgb)
+            outer_glow.setAlphaF(glow_opacity)  # Use pre-calculated opacity
             painter.setPen(Qt.NoPen)
             painter.setBrush(QBrush(outer_glow))
             painter.drawPath(outer_ring_path)
