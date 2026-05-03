@@ -107,7 +107,7 @@ jobs:
       - name: Create installer (Windows - Setup)
         if: matrix.os == 'windows-latest'
         run: |
-          @"
+          $issContent = @"
           [Setup]
           AppName=Cogist
           AppVersion=$env:GITHUB_REF_NAME
@@ -128,7 +128,8 @@ jobs:
           [UninstallDelete]
           Type: filesandordirs; Name: "{app}"
           "@
-          > setup.iss
+          
+          Set-Content -Path setup.iss -Value $issContent -Encoding UTF8
           
           & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' setup.iss
 
