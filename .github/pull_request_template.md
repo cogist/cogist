@@ -1,92 +1,92 @@
-# GitHub Pull Request 模板
+# Pull Request Template
 
-## 📋 PR 检查清单
+## 📋 PR Checklist
 
-### 类型标记
-- [ ] ✨ 新功能 (feat)
-- [ ] 🐛 Bug 修复 (fix)
-- [ ] 📝 文档更新 (docs)
-- [ ] ♻️ 代码重构 (refactor)
-- [ ] ⚡ 性能优化 (perf)
-- [ ] 🔧 配置修改 (chore)
+### Type of Change
+- [ ] ✨ New feature (feat)
+- [ ] 🐛 Bug fix (fix)
+- [ ] 📝 Documentation update (docs)
+- [ ] ♻️ Code refactoring (refactor)
+- [ ] ⚡ Performance optimization (perf)
+- [ ] 🔧 Configuration change (chore)
 
 ---
 
-## 📚 文档影响评估
+## 📚 Documentation Impact Assessment
 
-### 本次变更涉及哪些文档？
-- [ ] 无文档变更
+### Which documents are affected by this change?
+- [ ] No documentation changes
 - [ ] README.md
 - [ ] CHANGELOG.md
 - [ ] PROJECT_STATUS.md
-- [ ] 其他技术文档
+- [ ] Other technical documentation
 
-### 如果更新了文档，请确认：
+### If documentation is updated, please confirm:
 
-#### ✅ 通用检查
-- [ ] 文档职责清晰，没有内容重叠
-- [ ] 链接正确（使用相对路径）
-- [ ] 格式与项目其他文档一致
-- [ ] 语言简洁，无冗余描述
+#### ✅ General Checks
+- [ ] Document responsibilities are clear, no content overlap
+- [ ] Links are correct (using relative paths)
+- [ ] Format is consistent with other project documents
+- [ ] Language is concise, no redundant descriptions
 
-#### ✅ 特定文档检查
+#### ✅ Specific Document Checks
 
 **CHANGELOG.md:**
-- [ ] 记录的是用户可见的变化（非技术细节）
-- [ ] 遵循 Keep a Changelog 格式
-- [ ] 分类正确（Added / Changed / Removed）
+- [ ] Records user-visible changes (not technical details)
+- [ ] Follows Keep a Changelog format
+- [ ] Correctly categorized (Added / Changed / Removed)
 
 **PROJECT_STATUS.md:**
-- [ ] 只记录当前状态和任务进度
-- [ ] 历史信息已指向 CHANGELOG.md
-- [ ] 进度统计准确
+- [ ] Only records current status and task progress
+- [ ] Historical information points to CHANGELOG.md
+- [ ] Progress statistics are accurate
 
 **README.md:**
-- [ ] 第一屏能在 30 秒内理解项目
-- [ ] 所有徽章和链接有效
-- [ ] 快速开始示例可运行
+- [ ] First screen can understand the project within 30 seconds
+- [ ] All badges and links are valid
+- [ ] Quick start examples are runnable
 
-**技术文档:**
-- [ ] 架构图/示例代码已更新
-- [ ] 决策理由已说明
-- [ ] 最后更新时间已标注
+**Technical Documentation:**
+- [ ] Architecture diagrams/example code are updated
+- [ ] Decision rationale is explained
+- [ ] Last update time is noted
 
 ---
 
-## 🔗 关联 Issue
+## 🔗 Related Issues
 
 Closes #____
 
 ---
 
-## 📝 变更说明
+## 📝 Change Description
 
-### 为什么需要这次变更？
-（简要说明背景和目标）
+### Why is this change needed?
+(Briefly describe the background and objectives)
 
-### 主要改动
-（列出关键改动点）
+### Key Changes
+(List key modification points)
 
-### 测试验证
-- [ ] 代码已测试
-- [ ] 文档已校对
-- [ ] 链接已验证
-
----
-
-## 📸 截图（如适用）
-
-（如果是 UI 变更，请提供前后对比截图）
+### Testing & Verification
+- [ ] Code has been tested
+- [ ] Documentation has been reviewed
+- [ ] Links have been verified
 
 ---
 
-## ✅ 提交前最后确认
+## 📸 Screenshots (if applicable)
 
-- [ ] 我已阅读 [CONTRIBUTING.md](docs/CONTRIBUTING.md)
-- [ ] 我已检查 [DOCUMENT_CHECKLIST.md](docs/DOCUMENT_CHECKLIST.md)
-- [ ] 我确认变更符合项目规范
-- [ ] 我愿意为这次变更负责
+(If this is a UI change, please provide before/after comparison screenshots)
 
 ---
 
-**感谢你的贡献！** 🎉
+## ✅ Final Confirmation Before Submission
+
+- [ ] I have read [CONTRIBUTING.md](docs/CONTRIBUTING.md)
+- [ ] I have checked [DOCUMENT_CHECKLIST.md](docs/DOCUMENT_CHECKLIST.md)
+- [ ] I confirm the changes comply with project standards
+- [ ] I am willing to take responsibility for this change
+
+---
+
+**Thank you for your contribution!** 🎉
