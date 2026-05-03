@@ -831,8 +831,8 @@ class AdvancedStyleTab(QWidget):
                 "bg_color",
                 "border_color",
                 "text_color",
-                "brightness_amount",
-                "opacity_amount",
+                "bg_brightness",
+                "bg_opacity",
             }
             requires_style_update = any(key in style for key in style_update_keys)
 

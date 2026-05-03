@@ -28,9 +28,13 @@ NUMERIC_STYLE_FIELDS = {
     "padding_h",
     "max_text_width",
     "font_size",
+    "bg_brightness",
+    "bg_opacity",
     # Border numeric fields
     "border_width",
     "border_radius",
+    "border_brightness",
+    "border_opacity",
     # Connector numeric fields
     "line_width",
     "connector_brightness",
