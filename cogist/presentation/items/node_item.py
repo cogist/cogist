@@ -1622,12 +1622,16 @@ class NodeItem(QGraphicsRectItem):
             text=self.text_content,
             max_width=max_width,  # Read from style object
             mindmap_view=mindmap_view,  # Pass MindMapView reference
+            parent_node=self,  # Pass reference to parent NodeItem for real-time sync
         )
 
-        # Match the text item's font exactly
+        # Match the text item's font and color exactly
         font = self.text_item.font()
         self.edit_widget.setFont(font)
-        self.edit_widget.setDefaultTextColor(Qt.black)
+
+        # CRITICAL: Preserve the original text color during editing
+        # This ensures white text stays white, black text stays black
+        self.edit_widget.setDefaultTextColor(self.text_item.defaultTextColor())
 
         # Add to scene as child item (not via proxy widget)
         self.edit_widget.setParentItem(self)
@@ -1649,7 +1653,8 @@ class NodeItem(QGraphicsRectItem):
             -self.node_width / 2 + padding_left, -self.node_height / 2 + padding_top
         )
 
-        # Hide text item during editing
+        # Hide text item during editing (edit_widget will be the visible one)
+        # For real-time layout refresh, we'll sync text to text_item but keep it hidden
         self.text_item.setVisible(False)
 
         # Store callback for manual finish_editing calls
@@ -1769,10 +1774,15 @@ class NodeItem(QGraphicsRectItem):
             """Handle editing finished."""
             self.finish_editing(on_edit_callback)
 
+        def on_editing_cancelled():
+            """Handle editing cancelled (ESC key)."""
+            self.cancel_editing()
+
         self.edit_widget.width_changed.connect(on_width_changed)
         self.edit_widget.text_changed.connect(on_text_changed)
         self.edit_widget.tab_pressed.connect(on_tab_pressed)
         self.edit_widget.editing_finished.connect(on_editing_finished)
+        self.edit_widget.editing_cancelled.connect(on_editing_cancelled)
 
         # Start editing mode
         select_all = cursor_position < 0
@@ -1795,6 +1805,7 @@ class NodeItem(QGraphicsRectItem):
             self.edit_widget.text_changed.disconnect()
             self.edit_widget.tab_pressed.disconnect()
             self.edit_widget.editing_finished.disconnect()
+            self.edit_widget.editing_cancelled.disconnect()
 
         # Clear focus from edit widget
         self.edit_widget.clearFocus()
@@ -1838,6 +1849,7 @@ class NodeItem(QGraphicsRectItem):
             self.edit_widget.text_changed.disconnect()
             self.edit_widget.tab_pressed.disconnect()
             self.edit_widget.editing_finished.disconnect()
+            self.edit_widget.editing_cancelled.disconnect()
 
         # Clear focus from edit widget
         self.edit_widget.clearFocus()
@@ -1849,6 +1861,12 @@ class NodeItem(QGraphicsRectItem):
 
         # Clear references
         self.edit_widget = None
+
+        # Show text item again
+        self.text_item.setVisible(True)
+
+        # CRITICAL: Restore original text content (it was modified during editing for real-time sync)
+        self.text_item.setPlainText(self.text_content)
 
         # Restore original dimensions
         if hasattr(self, "_original_node_width") and hasattr(
