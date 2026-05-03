@@ -273,10 +273,6 @@ class NodeItem(QGraphicsRectItem):
         if not hasattr(self.style_config, 'role_styles') or role not in self.style_config.role_styles:
             node_id = self.domain_node.id if self.domain_node else "unknown"
             available_roles = list(self.style_config.role_styles.keys()) if hasattr(self.style_config, 'role_styles') else []
-            import sys
-            print(f"DEBUG: Role {role} not found. Available roles: {available_roles}", file=sys.stderr)
-            print(f"DEBUG: style_config type: {type(self.style_config)}", file=sys.stderr)
-            print(f"DEBUG: style_config.name: {self.style_config.name if hasattr(self.style_config, 'name') else 'N/A'}", file=sys.stderr)
             raise RuntimeError(
                 f"Role {role} not found in style_config.role_styles for node {node_id}. Available: {available_roles}"
             )

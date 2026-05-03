@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-05-03
+
+### Added
+- **Color Scheme System**: Complete color scheme management with JSON-based configuration
+  - Three built-in schemes: Default, Pastel, Vibrant
+  - Color pool with quick selection popup
+  - Role-based color assignment (Root/Primary/Secondary/Tertiary)
+  - Automatic branch coloring in rainbow mode
+- **Advanced Style Panel**: Redesigned style editing interface
+  - Collapsible sections for better organization
+  - Real-time preview updates
+  - Layer-based editing (Node/Border/Shadow/Connector/Canvas)
+  - Rainbow mode toggle for connector colors
+- **UI Controls**: New interactive components
+  - Custom SpinBox with arrow buttons and keyboard support
+  - ToggleSwitch widget for boolean settings
+  - VisualListPopup for color selection
+  - Percentage-based opacity controls (0-100% mapped to 0-255)
+
+### Changed
+- **Architecture**: Major refactoring of style system
+  - Migrated from template-based to role-based styling
+  - Separated color schemes from node templates
+  - Improved style resolver performance
+  - Unified connector color control with border/background styles
+- **Performance**: Optimized rendering and layout
+  - Compound QPainterPath for semi-transparent borders (no overlap artifacts)
+  - Cached path objects for better rendering performance
+  - Reduced unnecessary scene updates during drag operations
+- **UX Improvements**: Enhanced user experience
+  - Opacity controls now use 0-100% range instead of 0-255
+  - Brightness controls show percentage suffix
+  - Undo/Redo support for brightness and opacity changes
+  - Color picker properly resets on dialog close
+
+### Fixed
+- **Semi-transparent rendering**: Eliminated dark lines at border/background intersections
+  - Use QPainterPath.subtracted() to create precise ring shapes
+  - Separate drawing paths for background and border
+  - No overlap, no gaps, perfect rendering at any transparency
+- **UI consistency**: Fixed various display issues
+  - Border controls visibility syncs correctly on layer switch
+  - Connector brightness and opacity update properly in view
+  - Shadow color picker supports alpha channel
+  - Rainbow mode state loads correctly on initialization
+- **Edge ownership**: Unified edge management to target node
+  - Simplified edge creation and deletion logic
+  - Better memory management
+  - Consistent behavior across all operations
+
+### Removed
+- **Legacy code**: Cleaned up deprecated implementations
+  - Removed old ColorTheme class
+  - Deleted debug test files (test_*.py)
+  - Removed canvas_section.py (replaced by canvas_panel.py)
+
 ## [0.4.4] - 2026-04-28
 
 ### Fixed
