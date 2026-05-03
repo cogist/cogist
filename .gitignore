@@ -33,6 +33,7 @@ venv.bak/
 
 # Chinese documentation (personal reference, do not commit)
 docs/zh-CN/
+README_zh-CN.md
 
 # IDE and editors (do not commit any IDE-related files)
 .idea/

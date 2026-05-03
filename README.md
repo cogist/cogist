@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![PySide6 6.8+](https://img.shields.io/badge/PySide6-6.8+-green.svg)](https://doc.qt.io/qtforpython-6/)
-[![Version: 0.5.0](https://img.shields.io/badge/version-0.5.0-purple.svg)](https://github.com/cogist/cogist/releases/tag/v0.5.0)
+[![Version: 0.5.1](https://img.shields.io/badge/version-0.5.1-purple.svg)](https://github.com/cogist/cogist/releases/tag/v0.5.1)
 [![Changelog](https://img.shields.io/badge/changelog-latest-orange.svg)](CHANGELOG.md)
 
 ## ✨ Core Features
@@ -122,6 +122,34 @@ cogist/
     ├── test_style_serialization.py
     └── test_cgs_serializer.py
 ```
+
+## 📸 Feature Demos
+
+### Drag Node Demo
+
+![Drag Node](assets/drag.gif)
+
+*Drag nodes to new parent, children follow automatically, instant re-layout*
+
+### Rainbow Mode Demo
+
+![Rainbow Mode](assets/rainbow.gif)
+
+*One-click rainbow mode, different branches use different colors for clear thinking*
+
+### Spacing Adjustment Demo
+
+![Spacing Adjustment](assets/spacing.gif)
+
+*Real-time spacing adjustment, all changes take effect instantly, WYSIWYG*
+
+## 📥 Download
+
+| Platform | Architecture | Download Link |
+|----------|-------------|---------------|
+| Windows | x64 | [Coming Soon](https://github.com/cogist/cogist/releases) |
+| macOS | Universal (Intel + Apple Silicon) | [Coming Soon](https://github.com/cogist/cogist/releases) |
+| Linux | x64 | [Coming Soon](https://github.com/cogist/cogist/releases) |
 
 ## 🎯 Key Features
 
