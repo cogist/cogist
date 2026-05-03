@@ -269,8 +269,11 @@ class NodeStyleSection(CollapsiblePanel):
         layout.addWidget(self.opacity_label, row, 0)
 
         self.opacity_spin = SpinBox()
-        self.opacity_spin.setRange(0, 255)
-        self.opacity_spin.setValue(self.current_style.get("opacity", 255))
+        self.opacity_spin.setRange(0, 100)
+        self.opacity_spin.setSuffix("%")
+        # Convert from 0-255 to 0-100 for display
+        opacity_value = self.current_style.get("opacity", 255)
+        self.opacity_spin.setValue(int(opacity_value / 255 * 100))
         self.opacity_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.opacity_spin.valueChanged.connect(self._on_opacity_changed)
         layout.addWidget(self.opacity_spin, row, 1)
@@ -549,8 +552,9 @@ class NodeStyleSection(CollapsiblePanel):
 
     def _on_opacity_changed(self, value: int):
         """Handle background opacity change."""
+        # Convert from 0-100% to 0-255 for storage
         # Use bg_opacity for role-based style (RoleStyle field name)
-        self.current_style["bg_opacity"] = value
+        self.current_style["bg_opacity"] = int(value / 100 * 255)
         self._emit_style_changed()
 
     def _emit_style_changed(self):
@@ -662,11 +666,14 @@ class NodeStyleSection(CollapsiblePanel):
 
             # Update opacity spinbox (support multiple field names)
             if "opacity" in style and hasattr(self, 'opacity_spin'):
-                self.opacity_spin.setValue(style["opacity"])
+                # Convert from 0-255 to 0-100% for display
+                self.opacity_spin.setValue(int(style["opacity"] / 255 * 100))
             elif "opacity_amount" in style and hasattr(self, 'opacity_spin'):
-                self.opacity_spin.setValue(style["opacity_amount"])
+                # Convert from 0-255 to 0-100% for display
+                self.opacity_spin.setValue(int(style["opacity_amount"] / 255 * 100))
             elif "bg_opacity" in style and hasattr(self, 'opacity_spin'):
-                self.opacity_spin.setValue(style["bg_opacity"])
+                # Convert from 0-255 to 0-100% for display
+                self.opacity_spin.setValue(int(style["bg_opacity"] / 255 * 100))
 
             # Update background color button
             if "bg_color" in style and hasattr(self, 'bg_color_btn'):

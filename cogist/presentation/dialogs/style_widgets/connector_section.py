@@ -216,8 +216,11 @@ class ConnectorSection(CollapsiblePanel):
 
         self.connector_opacity_spin = SpinBox()
         self.connector_opacity_spin.setFixedHeight(self.WIDGET_HEIGHT)
-        self.connector_opacity_spin.setRange(0, 255)
-        self.connector_opacity_spin.setValue(self.current_style["connector_opacity"])
+        self.connector_opacity_spin.setRange(0, 100)
+        self.connector_opacity_spin.setSuffix("%")
+        # Convert from 0-255 to 0-100 for display
+        opacity_value = self.current_style.get("connector_opacity", 255)
+        self.connector_opacity_spin.setValue(int(opacity_value / 255 * 100))
         self.connector_opacity_spin.valueChanged.connect(self._on_opacity_changed)
         layout.addWidget(self.connector_opacity_spin, 5, 1)
 
@@ -296,7 +299,8 @@ class ConnectorSection(CollapsiblePanel):
 
     def _on_opacity_changed(self, value: int):
         """Handle connector opacity change."""
-        self.current_style["connector_opacity"] = value
+        # Convert from 0-100% to 0-255 for storage
+        self.current_style["connector_opacity"] = int(value / 100 * 255)
         self._emit_style_changed()
 
     def _emit_style_changed(self):
@@ -404,7 +408,8 @@ class ConnectorSection(CollapsiblePanel):
 
             # Update opacity slider/spinbox
             if "connector_opacity" in style and hasattr(self, "connector_opacity_spin"):
-                self.connector_opacity_spin.setValue(style["connector_opacity"])
+                # Convert from 0-255 to 0-100% for display
+                self.connector_opacity_spin.setValue(int(style["connector_opacity"] / 255 * 100))
 
             # Hide/show color controls based on rainbow mode
             self._update_color_controls_visibility()

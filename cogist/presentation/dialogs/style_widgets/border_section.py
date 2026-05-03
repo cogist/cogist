@@ -188,9 +188,10 @@ class BorderSection(CollapsiblePanel):
         layout.addWidget(opacity_label, row, 0)
 
         self.opacity_spin = SpinBox()
-        self.opacity_spin.setRange(0, 255)
+        self.opacity_spin.setRange(0, 100)
+        self.opacity_spin.setSuffix("%")
         # Use temporary default for UI initialization (will be updated by set_style)
-        self.opacity_spin.setValue(255)
+        self.opacity_spin.setValue(100)  # 100% = 255
         self.opacity_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.opacity_spin.valueChanged.connect(self._on_opacity_changed)
         layout.addWidget(self.opacity_spin, row, 1)
@@ -462,8 +463,9 @@ class BorderSection(CollapsiblePanel):
 
     def _on_opacity_changed(self, value: int):
         """Handle border opacity change."""
+        # Convert from 0-100% to 0-255 for storage
         # Use border_opacity for role-based style (RoleStyle field name)
-        self.current_style["border_opacity"] = value
+        self.current_style["border_opacity"] = int(value / 100 * 255)
         self._emit_style_changed()
 
     def _emit_style_changed(self):
@@ -525,9 +527,11 @@ class BorderSection(CollapsiblePanel):
 
             # Update opacity spinbox (support multiple field names)
             if "opacity" in style and hasattr(self, "opacity_spin"):
-                self.opacity_spin.setValue(style["opacity"])
+                # Convert from 0-255 to 0-100% for display
+                self.opacity_spin.setValue(int(style["opacity"] / 255 * 100))
             elif "border_opacity" in style and hasattr(self, "opacity_spin"):
-                self.opacity_spin.setValue(style["border_opacity"])
+                # Convert from 0-255 to 0-100% for display
+                self.opacity_spin.setValue(int(style["border_opacity"] / 255 * 100))
 
             # Update color button display
             if "border_color" in style and hasattr(self, "color_btn"):
