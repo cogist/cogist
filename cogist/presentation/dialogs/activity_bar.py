@@ -58,11 +58,11 @@ class ActivityBar(QFrame):
         self.buttons = {}
 
         # Style panel buttons
-        # Simple mode button (⚙ Settings icon)
-        simple_btn = ActivityBarButton("⚙", "Simple Mode")
-        layout.addWidget(simple_btn)
-        self.buttons["simple"] = simple_btn
-        simple_btn.clicked.connect(lambda: self._on_activated("simple"))
+        # Color scheme button (🎨 Palette icon)
+        color_scheme_btn = ActivityBarButton("🎨", "Color Scheme")
+        layout.addWidget(color_scheme_btn)
+        self.buttons["color_scheme"] = color_scheme_btn
+        color_scheme_btn.clicked.connect(lambda: self._on_activated("color_scheme"))
 
         # Advanced mode button (🔧 Tools icon)
         advanced_btn = ActivityBarButton("🔧", "Advanced Mode")

@@ -16,6 +16,118 @@ from PySide6.QtWidgets import (
 
 from cogist.presentation.items.editable_text_item import EditableTextItem
 
+# === Color Adjustment Helper Functions ===
+
+def adjust_color_brightness(hex_color: str, brightness: float) -> str:
+    """Adjust color brightness.
+
+    Args:
+        hex_color: Color in #AARRGGBB or #RRGGBB format
+        brightness: Brightness factor (0.5-1.5, where 1.0 = no change)
+
+    Returns:
+        Adjusted color in #AARRGGBB format
+    """
+    hex_color = hex_color.lstrip("#")
+
+    # Parse alpha channel if present
+    if len(hex_color) == 8:
+        alpha = hex_color[:2]
+        rgb = hex_color[2:]
+    else:
+        alpha = "FF"
+        rgb = hex_color
+
+    if len(rgb) != 6:
+        return f"#{alpha}000000"
+
+    try:
+        r = int(rgb[0:2], 16)
+        g = int(rgb[2:4], 16)
+        b = int(rgb[4:6], 16)
+    except ValueError:
+        return f"#{alpha}000000"
+
+    # Apply brightness adjustment
+    r = min(255, max(0, int(r * brightness)))
+    g = min(255, max(0, int(g * brightness)))
+    b = min(255, max(0, int(b * brightness)))
+
+    return f"#{alpha}{r:02X}{g:02X}{b:02X}"
+
+
+def apply_opacity_to_color(hex_color: str, opacity: int) -> str:
+    """Apply opacity to color.
+
+    Args:
+        hex_color: Color in #RRGGBB or #AARRGGBB format
+        opacity: Opacity value (0-255)
+
+    Returns:
+        Color with opacity in #AARRGGBB format
+    """
+    hex_color = hex_color.lstrip("#")
+
+    # Extract RGB
+    if len(hex_color) == 8:
+        rgb = hex_color[2:]
+    elif len(hex_color) == 6:
+        rgb = hex_color
+    else:
+        return hex_color
+
+    return f"#{opacity:02X}{rgb}"
+
+
+def blend_colors(fg_color: str, bg_color: str, fg_alpha: int = 255) -> str:
+    """Blend foreground color over background color using alpha compositing.
+
+    This implements the standard alpha blending formula:
+        result = fg * alpha + bg * (1 - alpha)
+
+    Args:
+        fg_color: Foreground color in #AARRGGBB or #RRGGBB format
+        bg_color: Background color in #AARRGGBB or #RRGGBB format
+        fg_alpha: Foreground alpha (0-255). If fg_color has alpha, this is ignored.
+
+    Returns:
+        Blended color in #FFRRGGBB format (fully opaque)
+    """
+    def parse_color(color: str) -> tuple:
+        """Parse color to (r, g, b, a) tuple."""
+        color = color.lstrip("#")
+        if len(color) == 8:
+            a = int(color[0:2], 16)
+            r = int(color[2:4], 16)
+            g = int(color[4:6], 16)
+            b = int(color[6:8], 16)
+        elif len(color) == 6:
+            r = int(color[0:2], 16)
+            g = int(color[2:4], 16)
+            b = int(color[4:6], 16)
+            a = 255
+        else:
+            raise ValueError(f"Invalid color format: {color}")
+        return r, g, b, a
+
+    try:
+        fg_r, fg_g, fg_b, fg_a = parse_color(fg_color)
+        bg_r, bg_g, bg_b, bg_a = parse_color(bg_color)
+
+        # Use fg_color's alpha if it has one, otherwise use provided alpha
+        alpha = fg_a if len(fg_color.lstrip("#")) == 8 else fg_alpha
+        alpha_factor = alpha / 255.0
+
+        # Alpha blending formula
+        r = int(fg_r * alpha_factor + bg_r * (1 - alpha_factor))
+        g = int(fg_g * alpha_factor + bg_g * (1 - alpha_factor))
+        b = int(fg_b * alpha_factor + bg_b * (1 - alpha_factor))
+
+        return f"#FF{r:02X}{g:02X}{b:02X}"
+    except (ValueError, IndexError):
+        # Fallback to foreground color if parsing fails
+        return fg_color
+
 
 class NodeStyle:
     """
@@ -97,6 +209,7 @@ class NodeItem(QGraphicsRectItem):
         depth: int = 0,
         use_domain_size: bool = False,
         style_config=None,  # MindMapStyle instance for unified styling
+        domain_node=None,  # Domain Node entity reference (for accessing parent/children)
     ):
         # Initialize with placeholder rect, actual rect set after size calculation
         super().__init__()
@@ -109,6 +222,7 @@ class NodeItem(QGraphicsRectItem):
         self.is_root = is_root
         self.depth = depth
         self.style_config = style_config  # Store style configuration
+        self.domain_node = domain_node  # Store domain node reference
         self.is_right_side = (
             True  # Default: right side of root (will be set by main.py)
         )
@@ -155,45 +269,201 @@ class NodeItem(QGraphicsRectItem):
         # Map depth to role
         role = self._depth_to_role(depth)
 
-        # CRITICAL: Get template style for this role - must exist in template
-        # No fallback allowed - all roles must be defined in the template
-        template_style = self.style_config.resolved_template.role_styles[role]
-
-        # Extract font properties from template (without colors)
-        font_size = template_style.font_size
-        font_weight_str = template_style.font_weight
-        font_family = template_style.font_family
-
-        # Get colors from color scheme
-        color_scheme = self.style_config.resolved_color_scheme
-        if color_scheme:
-            # node_colors is required and contains all roles
-            bg_color = color_scheme.node_colors[role]
-
-            # text_colors is optional - auto contrast if not provided
-            if color_scheme.text_colors and role in color_scheme.text_colors:
-                text_color = color_scheme.text_colors[role]
-            else:
-                text_color = self._auto_contrast(bg_color)
-
-            # border_colors is optional - None if not provided
-            if color_scheme.border_colors and role in color_scheme.border_colors:
-                border_color = color_scheme.border_colors[role]
-            else:
-                border_color = None
-        else:
-            # CRITICAL: color_scheme must be available - no fallback allowed
+        # NEW: Get role style from MindMapStyle.role_styles (flat structure)
+        if not hasattr(self.style_config, 'role_styles') or role not in self.style_config.role_styles:
+            node_id = self.domain_node.id if self.domain_node else "unknown"
+            available_roles = list(self.style_config.role_styles.keys()) if hasattr(self.style_config, 'role_styles') else []
+            import sys
+            print(f"DEBUG: Role {role} not found. Available roles: {available_roles}", file=sys.stderr)
+            print(f"DEBUG: style_config type: {type(self.style_config)}", file=sys.stderr)
+            print(f"DEBUG: style_config.name: {self.style_config.name if hasattr(self.style_config, 'name') else 'N/A'}", file=sys.stderr)
             raise RuntimeError(
-                f"color_scheme is required but got None for node {self.node_id} at depth {self.depth}"
+                f"Role {role} not found in style_config.role_styles for node {node_id}. Available: {available_roles}"
             )
 
+        role_style = self.style_config.role_styles[role]
+        color_pool = self.style_config.color_pool
+
+        # Extract font properties from role style
+        font_size = role_style.font_size
+        font_weight_str = role_style.font_weight
+        font_family = role_style.font_family
+
+        # === Color Resolution ===
+        # Check if rainbow branches are enabled
+        if self.style_config.use_rainbow_branches and len(color_pool) >= 8:
+            # Level 1: Use rainbow colors
+            if depth == 1 and self.domain_node and self.domain_node.parent:
+                try:
+                    branch_idx = self.domain_node.parent.children.index(self.domain_node)
+                    base_color = color_pool[branch_idx % 8]  # Cycle through 8 colors
+
+                    # Apply background color with adjustments
+                    if role_style.bg_enabled:
+                        bg_color = adjust_color_brightness(base_color, role_style.bg_brightness)
+                        if role_style.bg_opacity < 255:
+                            bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                    else:
+                        bg_color = "#00000000"  # Transparent
+
+                    # Apply border color with adjustments
+                    if role_style.border_enabled:
+                        border_color = adjust_color_brightness(base_color, role_style.border_brightness)
+                        if role_style.border_opacity < 255:
+                            border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                    else:
+                        border_color = None
+                except (ValueError, AttributeError):
+                    # Fallback to default color index
+                    bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
+                                                          role_style.bg_brightness, role_style.bg_opacity,
+                                                          role_style.bg_enabled)
+                    border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
+                                                             role_style.border_brightness, role_style.border_opacity,
+                                                             role_style.border_enabled)
+
+            # Level 2+: Inherit from Level 1 ancestor
+            elif depth >= 2 and self.domain_node:
+                level_1_ancestor = self._find_level_1_ancestor()
+                if level_1_ancestor:
+                    try:
+                        if level_1_ancestor.parent:
+                            branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
+                            ancestor_color = color_pool[branch_idx % 8]
+
+                            # Background
+                            if role_style.bg_enabled:
+                                bg_color = adjust_color_brightness(ancestor_color, role_style.bg_brightness)
+                                if role_style.bg_opacity < 255:
+                                    bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                            else:
+                                bg_color = "#00000000"
+
+                            # Border
+                            if role_style.border_enabled:
+                                border_color = adjust_color_brightness(ancestor_color, role_style.border_brightness)
+                                if role_style.border_opacity < 255:
+                                    border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                            else:
+                                border_color = None
+                        else:
+                            bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
+                                                                 role_style.bg_brightness, role_style.bg_opacity,
+                                                                 role_style.bg_enabled)
+                            border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
+                                                                     role_style.border_brightness, role_style.border_opacity,
+                                                                     role_style.border_enabled)
+                    except (ValueError, AttributeError):
+                        bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
+                                                             role_style.bg_brightness, role_style.bg_opacity,
+                                                             role_style.bg_enabled)
+                        border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
+                                                                 role_style.border_brightness, role_style.border_opacity,
+                                                                 role_style.border_enabled)
+                else:
+                    bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
+                                                         role_style.bg_brightness, role_style.bg_opacity,
+                                                         role_style.bg_enabled)
+                    border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
+                                                             role_style.border_brightness, role_style.border_opacity,
+                                                             role_style.border_enabled)
+            else:
+                # Root node (depth == 0): use special_colors
+                if role_style.bg_enabled:
+                    bg_color = self.style_config.special_colors["root_background"]
+                    # Apply brightness adjustment
+                    if role_style.bg_brightness != 1.0:
+                        bg_color = adjust_color_brightness(bg_color, role_style.bg_brightness)
+                    # Apply opacity adjustment
+                    if role_style.bg_opacity < 255:
+                        bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                else:
+                    bg_color = None
+
+                if role_style.border_enabled:
+                    border_color = self.style_config.special_colors["root_border"]
+                    # Apply brightness adjustment
+                    if role_style.border_brightness != 1.0:
+                        border_color = adjust_color_brightness(border_color, role_style.border_brightness)
+                    # Apply opacity adjustment
+                    if role_style.border_opacity < 255:
+                        border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                else:
+                    border_color = None
+        else:
+            # Rainbow disabled: use special_colors for root, color indices for others
+            if depth == 0:
+                # Root node: use special_colors
+                if role_style.bg_enabled:
+                    bg_color = self.style_config.special_colors["root_background"]
+                    # Apply brightness adjustment
+                    if role_style.bg_brightness != 1.0:
+                        bg_color = adjust_color_brightness(bg_color, role_style.bg_brightness)
+                    # Apply opacity adjustment
+                    if role_style.bg_opacity < 255:
+                        bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                else:
+                    bg_color = None
+
+                if role_style.border_enabled:
+                    border_color = self.style_config.special_colors["root_border"]
+                    # Apply brightness adjustment
+                    if role_style.border_brightness != 1.0:
+                        border_color = adjust_color_brightness(border_color, role_style.border_brightness)
+                    # Apply opacity adjustment
+                    if role_style.border_opacity < 255:
+                        border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                else:
+                    border_color = None
+            else:
+                # Other nodes: use color indices directly
+                bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
+                                                     role_style.bg_brightness, role_style.bg_opacity,
+                                                     role_style.bg_enabled)
+                border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
+                                                         role_style.border_brightness, role_style.border_opacity,
+                                                         role_style.border_enabled)
+
+        # Text color: auto-contrast or manual
+        if role_style.text_color:
+            text_color = role_style.text_color
+        else:
+            # Calculate effective background color for text contrast
+            # If node background is disabled or transparent, blend with canvas background
+            if bg_color is None:
+                # Background disabled: use canvas background directly
+                canvas_bg = self.style_config.special_colors["canvas_bg"]
+                text_color = self._auto_contrast(canvas_bg)
+            else:
+                # Background enabled: check if it's transparent or semi-transparent
+                bg_alpha = int(bg_color[1:3], 16) if len(bg_color) == 9 else 255
+
+                if bg_alpha < 255:
+                    # Semi-transparent: blend node bg with canvas bg
+                    canvas_bg = self.style_config.special_colors["canvas_bg"]
+
+                    # Blend node background over canvas background
+                    effective_bg = blend_colors(bg_color, canvas_bg, bg_alpha)
+                    text_color = self._auto_contrast(effective_bg)
+                else:
+                    # Fully opaque: use node background directly
+                    text_color = self._auto_contrast(bg_color)
+
         # Store for rendering
-        self.template_style = template_style
+        self.template_style = role_style  # Keep same attribute name for compatibility
         self.bg_color = bg_color
         self.text_color = text_color
         self.border_color = border_color
 
-        style_for_calc = template_style
+        style_for_calc = role_style
+
+        # Store for rendering
+        self.template_style = role_style  # Keep same attribute name for compatibility
+        self.bg_color = bg_color
+        self.text_color = text_color
+        self.border_color = border_color
+
+        style_for_calc = role_style
 
         # Convert font weight string to QFont.Weight enum
         weight_map = {
@@ -225,12 +495,12 @@ class NodeItem(QGraphicsRectItem):
         font = QFont(font_family, font_size)
         font.setWeight(font_weight)  # Use setWeight for better compatibility
 
-        # Apply font decorations from template_style
-        if hasattr(template_style, "font_italic") and template_style.font_italic:
+        # Apply font decorations from role_style
+        if hasattr(role_style, "font_italic") and role_style.font_italic:
             font.setItalic(True)
-        if hasattr(template_style, "font_underline") and template_style.font_underline:
+        if hasattr(role_style, "font_underline") and role_style.font_underline:
             font.setUnderline(True)
-        if hasattr(template_style, "font_strikeout") and template_style.font_strikeout:
+        if hasattr(role_style, "font_strikeout") and role_style.font_strikeout:
             font.setStrikeOut(True)
 
         self.text_item.setFont(font)
@@ -371,7 +641,126 @@ class NodeItem(QGraphicsRectItem):
         luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
 
         # Return white for dark backgrounds, black for light
-        return "#FFFFFF" if luminance < 0.5 else "#000000"
+        return "#FFFFFFFF" if luminance < 0.5 else "#FF000000"
+
+    def _get_color_from_index(self, color_index: int, color_pool: list,
+                              brightness: float, opacity: int, enabled: bool) -> str | None:
+        """Get color from color_pool index with adjustments.
+
+        Args:
+            color_index: Index into color_pool array
+            color_pool: List of colors
+            brightness: Brightness adjustment factor
+            opacity: Opacity value (0-255)
+            enabled: Whether the element is enabled
+
+        Returns:
+            Color string or None if disabled
+        """
+        if not enabled:
+            return None
+
+        if not color_pool or color_index >= len(color_pool):
+            return "#FF000000"  # Default black
+
+        base_color = color_pool[color_index]
+        adjusted = adjust_color_brightness(base_color, brightness)
+        if opacity < 255:
+            adjusted = apply_opacity_to_color(adjusted, opacity)
+        return adjusted
+
+    def _find_level_1_ancestor(self):  # type: ignore
+        """Find the Level 1 ancestor node (direct child of root).
+
+        Returns:
+            The Level 1 ancestor node, or None if not found.
+        """
+        if not self.domain_node or not self.domain_node.parent:
+            return None
+
+        # Walk up the tree to find the Level 1 node
+        current = self.domain_node
+        while current.parent and current.parent.parent:  # Stop when parent is root
+            current = current.parent
+
+        # Check if current's parent is root
+        if current.parent and hasattr(current.parent, 'is_root') and current.parent.is_root:
+            return current
+
+        return None
+
+    def _adjust_color_brightness(self, color_hex: str, brightness_factor: float) -> str:
+        """Adjust color brightness using HSL color space.
+
+        Args:
+            color_hex: Color in hex format (#AARRGGBB or #RRGGBB)
+            brightness_factor: Brightness adjustment factor (0.0-2.0)
+                             0.0 = fully darkened, 1.0 = no change, 2.0 = fully brightened
+
+        Returns:
+            Adjusted color in #AARRGGBB format
+        """
+        import colorsys
+
+        # Parse hex color
+        color_hex = color_hex.lstrip("#")
+
+        # Extract alpha channel
+        if len(color_hex) == 8:
+            alpha = int(color_hex[0:2], 16)
+            rgb_hex = color_hex[2:]
+        elif len(color_hex) == 6:
+            alpha = 255
+            rgb_hex = color_hex
+        else:
+            return color_hex
+
+        try:
+            r = int(rgb_hex[0:2], 16) / 255.0
+            g = int(rgb_hex[2:4], 16) / 255.0
+            b = int(rgb_hex[4:6], 16) / 255.0
+        except ValueError:
+            return color_hex
+
+        # Convert RGB to HLS
+        h, lightness, s = colorsys.rgb_to_hls(r, g, b)
+
+        # Adjust lightness
+        new_lightness = lightness * brightness_factor
+        new_lightness = max(0.0, min(1.0, new_lightness))  # Clamp to [0, 1]
+
+        # Convert back to RGB
+        new_r, new_g, new_b = colorsys.hls_to_rgb(h, new_lightness, s)
+
+        # Convert to hex
+        r_int = int(new_r * 255)
+        g_int = int(new_g * 255)
+        b_int = int(new_b * 255)
+
+        return f"#{alpha:02X}{r_int:02X}{g_int:02X}{b_int:02X}"
+
+    def _apply_opacity(self, color_hex: str, opacity: int) -> str:
+        """Apply opacity to a color by modifying the alpha channel.
+
+        Args:
+            color_hex: Color in hex format (#AARRGGBB or #RRGGBB)
+            opacity: Opacity value (0-255), 255 = fully opaque
+
+        Returns:
+            Color with modified alpha channel in #AARRGGBB format
+        """
+        color_hex = color_hex.lstrip("#")
+
+        # Extract RGB components
+        if len(color_hex) == 8:
+            rgb_hex = color_hex[2:]
+        elif len(color_hex) == 6:
+            rgb_hex = color_hex
+        else:
+            return color_hex
+
+        # Apply new opacity
+        return f"#{opacity:02X}{rgb_hex}"
 
     def _apply_font_shadow(self):
         """Apply font shadow effect to text_item based on template_style.
@@ -421,51 +810,198 @@ class NodeItem(QGraphicsRectItem):
         self.style_config = style_config
 
         # Recalculate style based on new config using role-based system
-        if self.style_config and self.style_config.resolved_template:
+        if self.style_config:
             # Map depth to role
             role = self._depth_to_role(self.depth)
 
-            # CRITICAL: Get template style for this role - must exist in template
-            # No fallback allowed - all roles must be defined in the template
-            template_style = self.style_config.resolved_template.role_styles[role]
+            # Get role style directly from role_styles (flat structure)
+            if role in self.style_config.role_styles:
+                role_style = self.style_config.role_styles[role]
+                color_pool = self.style_config.color_pool
 
-            if template_style:
-                # Get colors from color scheme
-                color_scheme = self.style_config.resolved_color_scheme
-                if color_scheme:
-                    # node_colors is required and contains all roles
-                    bg_color = color_scheme.node_colors[role]
+                if role_style:
+                    # text_color from role_style or auto contrast
+                    text_color = role_style.text_color
 
-                    # text_colors is optional - auto contrast if not provided
-                    if color_scheme.text_colors and role in color_scheme.text_colors:
-                        text_color = color_scheme.text_colors[role]
+                    # Check if rainbow branches are enabled
+                    if self.style_config.use_rainbow_branches:
+                        # Level 1: Use rainbow colors if enabled
+                        if self.depth == 1 and self.domain_node and self.domain_node.parent:
+                            # Get branch index from parent's children list
+                            try:
+                                branch_idx = self.domain_node.parent.children.index(self.domain_node)
+                                from cogist.domain.styles.extended_styles import (
+                                    get_rainbow_branch_color,
+                                )
+                                branch_color = get_rainbow_branch_color(branch_idx, self.style_config.color_pool)
+
+                                # In rainbow mode: switches control whether to draw color (rainbow) or not (transparent)
+                                # Background: if enabled, draw rainbow color; if disabled, no background
+                                if role_style.bg_enabled:
+                                    bg_color = branch_color
+                                    # Apply brightness adjustment
+                                    if role_style.bg_brightness != 1.0:
+                                        bg_color = self._adjust_color_brightness(bg_color, role_style.bg_brightness)
+                                    # Apply opacity adjustment
+                                    if role_style.bg_opacity < 255:
+                                        bg_color = self._apply_opacity(bg_color, role_style.bg_opacity)
+                                else:
+                                    bg_color = "#00000000"  # Transparent (no background)
+
+                                # Border: if enabled, draw rainbow color; if disabled, no border
+                                if role_style.border_enabled:
+                                    border_color = branch_color
+                                    # Apply brightness adjustment
+                                    if role_style.border_brightness != 1.0:
+                                        border_color = self._adjust_color_brightness(border_color, role_style.border_brightness)
+                                    # Apply opacity adjustment
+                                    if role_style.border_opacity < 255:
+                                        border_color = self._apply_opacity(border_color, role_style.border_opacity)
+                                else:
+                                    border_color = None  # No border
+                            except (ValueError, AttributeError):
+                                # Fallback to default color if index not found
+                                bg_color = "#FFFFFFFF"
+                                border_color = "#FF000000"
+
+                        # Level 2+: Inherit from Level 1 ancestor with brightness adjustment
+                        elif self.depth >= 2 and self.domain_node:
+                            level_1_ancestor = self._find_level_1_ancestor()
+                            if level_1_ancestor:
+                                # Get Level 1 ancestor's branch color
+                                try:
+                                    # Find the Level 1 node's position in its parent's children
+                                    if level_1_ancestor.parent:
+                                        branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
+                                        from cogist.domain.styles.extended_styles import (
+                                            get_rainbow_branch_color,
+                                        )
+                                        ancestor_branch_color = get_rainbow_branch_color(
+                                            branch_idx, self.style_config.color_pool
+                                        )
+
+                                        # Background: if enabled, draw rainbow color; if disabled, no background
+                                        if role_style.bg_enabled:
+                                            bg_color = self._adjust_color_brightness(ancestor_branch_color, role_style.bg_brightness)
+                                            # Apply opacity adjustment (0-255)
+                                            if role_style.bg_opacity < 255:
+                                                bg_color = self._apply_opacity(bg_color, role_style.bg_opacity)
+                                        else:
+                                            bg_color = "#00000000"  # Transparent (no background)
+
+                                        # Border: if enabled, draw rainbow color; if disabled, no border
+                                        if role_style.border_enabled:
+                                            border_color = self._adjust_color_brightness(ancestor_branch_color, role_style.border_brightness)
+                                            # Apply opacity adjustment to border as well
+                                            if role_style.border_opacity < 255:
+                                                border_color = self._apply_opacity(border_color, role_style.border_opacity)
+                                        else:
+                                            border_color = None  # No border
+                                    else:
+                                        bg_color = "#FFFFFFFF"
+                                        border_color = "#FF000000"
+                                except (ValueError, AttributeError):
+                                    bg_color = "#FFFFFFFF"
+                                    border_color = "#FF000000"
+                            else:
+                                bg_color = "#FFFFFFFF"
+                                border_color = "#FF000000"
+                        else:
+                            # Root node (depth == 0): use special_colors
+                            if role_style.bg_enabled:
+                                bg_color = self.style_config.special_colors["root_background"]
+                                # Apply brightness adjustment
+                                if role_style.bg_brightness != 1.0:
+                                    bg_color = adjust_color_brightness(bg_color, role_style.bg_brightness)
+                                # Apply opacity adjustment
+                                if role_style.bg_opacity < 255:
+                                    bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                            else:
+                                bg_color = None
+
+                            if role_style.border_enabled:
+                                border_color = self.style_config.special_colors["root_border"]
+                                # Apply brightness adjustment
+                                if role_style.border_brightness != 1.0:
+                                    border_color = adjust_color_brightness(border_color, role_style.border_brightness)
+                                # Apply opacity adjustment
+                                if role_style.border_opacity < 255:
+                                    border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                            else:
+                                border_color = None
                     else:
-                        text_color = self._auto_contrast(bg_color)
+                        # Rainbow disabled: use special_colors for root, color indices for others
+                        if self.depth == 0:
+                            # Root node: use special_colors
+                            if role_style.bg_enabled:
+                                bg_color = self.style_config.special_colors["root_background"]
+                                # Apply brightness adjustment
+                                if role_style.bg_brightness != 1.0:
+                                    bg_color = adjust_color_brightness(bg_color, role_style.bg_brightness)
+                                # Apply opacity adjustment
+                                if role_style.bg_opacity < 255:
+                                    bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                            else:
+                                bg_color = None
 
-                    # border_colors is optional - None if not provided
-                    if (
-                        color_scheme.border_colors
-                        and role in color_scheme.border_colors
-                    ):
-                        border_color = color_scheme.border_colors[role]
-                    else:
-                        border_color = None
+                            if role_style.border_enabled:
+                                border_color = self.style_config.special_colors["root_border"]
+                                # Apply brightness adjustment
+                                if role_style.border_brightness != 1.0:
+                                    border_color = adjust_color_brightness(border_color, role_style.border_brightness)
+                                # Apply opacity adjustment
+                                if role_style.border_opacity < 255:
+                                    border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                            else:
+                                border_color = None
+                        else:
+                            # Other nodes: use color indices from role_style
+                            bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
+                                                                 role_style.bg_brightness, role_style.bg_opacity,
+                                                                 role_style.bg_enabled)
+                            border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
+                                                                     role_style.border_brightness, role_style.border_opacity,
+                                                                     role_style.border_enabled)
+
+                    # text_color from role_style or auto contrast
+                    if not text_color:
+                        # Calculate effective background color for text contrast
+                        # If node background is disabled or transparent, blend with canvas background
+                        if bg_color is None:
+                            # Background disabled: use canvas background directly
+                            canvas_bg = self.style_config.special_colors["canvas_bg"]
+                            text_color = self._auto_contrast(canvas_bg)
+                        else:
+                            # Background enabled: check if it's transparent or semi-transparent
+                            bg_alpha = int(bg_color[1:3], 16) if len(bg_color) == 9 else 255
+
+                            if bg_alpha < 255:
+                                # Semi-transparent: blend node bg with canvas bg
+                                canvas_bg = self.style_config.special_colors["canvas_bg"]
+
+                                # Blend node background over canvas background
+                                effective_bg = blend_colors(bg_color, canvas_bg, bg_alpha)
+                                text_color = self._auto_contrast(effective_bg)
+                            else:
+                                # Fully opaque: use node background directly
+                                text_color = self._auto_contrast(bg_color)
                 else:
                     # CRITICAL: color_scheme must be available - no fallback allowed
+                    node_id = self.domain_node.id if self.domain_node else "unknown"
                     raise RuntimeError(
-                        f"color_scheme is required but got None for node {self.node_id} at depth {self.depth}"
+                        f"color_scheme is required but got None for node {node_id} at depth {self.depth}"
                     )
 
                 # Store for rendering
-                self.template_style = template_style
+                self.template_style = role_style
                 self.bg_color = bg_color
                 self.text_color = text_color
                 self.border_color = border_color
 
                 # Update font
-                font_size = template_style.font_size
-                font_weight_str = template_style.font_weight
-                font_family = template_style.font_family
+                font_size = role_style.font_size
+                font_weight_str = role_style.font_weight
+                font_family = role_style.font_family
 
                 # Convert font weight string to QFont.Weight enum
                 weight_map = {
@@ -497,14 +1033,14 @@ class NodeItem(QGraphicsRectItem):
                 font.setWeight(font_weight)
 
                 # Apply font decorations
-                # CRITICAL: Always apply font_italic from template
-                if template_style.font_italic:
+                # CRITICAL: Always apply font_italic from role_style
+                if role_style.font_italic:
                     font.setItalic(True)
 
                 # CRITICAL: Apply underline and strikeout
-                if hasattr(template_style, "font_underline") and template_style.font_underline:
+                if hasattr(role_style, "font_underline") and role_style.font_underline:
                     font.setUnderline(True)
-                if hasattr(template_style, "font_strikeout") and template_style.font_strikeout:
+                if hasattr(role_style, "font_strikeout") and role_style.font_strikeout:
                     font.setStrikeOut(True)
 
                 self.text_item.setFont(font)
@@ -518,15 +1054,11 @@ class NodeItem(QGraphicsRectItem):
                 # Apply font shadow effect
                 self._apply_font_shadow()
             else:
-                # CRITICAL: template_style must exist for all roles - no fallback allowed
+                # CRITICAL: role_style must exist for all roles - no fallback allowed
+                node_id = self.domain_node.id if self.domain_node else "unknown"
                 raise RuntimeError(
-                    f"template_style is required for role '{role}' but got None for node {self.node_id}"
+                    f"role_style is required for role '{role}' but got None for node {node_id}"
                 )
-        else:
-            # CRITICAL: resolved_template must be available - no fallback allowed
-            raise RuntimeError(
-                f"resolved_template is required but got None for node {self.node_id}"
-            )
 
         # CRITICAL: Recalculate node geometry when style changes (padding, font size, etc.)
         # This ensures node size is updated to match new padding values
@@ -562,32 +1094,21 @@ class NodeItem(QGraphicsRectItem):
 
         painter.setRenderHint(QPainter.Antialiasing, True)
 
-        shape_type = self.template_style.shape.basic_shape
+        # NEW: Use flat RoleStyle fields
+        shape_type = self.template_style.basic_shape if hasattr(self.template_style, 'basic_shape') else "rounded_rect"
         rect = self.rect()
 
-        # Map depth to role
-        role = self._depth_to_role(self.depth)
-
-        # Read colors directly from global style_config (no caching)
-        if self.style_config and self.style_config.resolved_color_scheme:
-            color_scheme = self.style_config.resolved_color_scheme
-            bg_color = color_scheme.node_colors[role]
-            border_color = (
-                color_scheme.border_colors[role]
-                if color_scheme.border_colors and role in color_scheme.border_colors
-                else None
-            )
-        else:
-            bg_color = "#FFFFFF"
-            border_color = None
+        # Use cached colors from update_style (no recalculation needed)
+        bg_color = self.bg_color
+        border_color = self.border_color
 
         # Build style config dict for strategy
         style_config = {
-            "bg_color": bg_color,
-            "border_color": border_color,
-            "border_width": self.template_style.border.border_width,
-            "border_radius": self.template_style.shape.border_radius,
-            "border_style": self.template_style.border.border_style,
+            "bg_color": bg_color if self.template_style.bg_enabled else None,
+            "border_color": border_color if self.template_style.border_enabled else None,
+            "border_width": self.template_style.border_width if hasattr(self.template_style, 'border_width') else 0,
+            "border_radius": self.template_style.border_radius if hasattr(self.template_style, 'border_radius') else 8,
+            "border_style": self.template_style.border_style if hasattr(self.template_style, 'border_style') else "solid",
             "padding_w": self.template_style.padding_w,
             "padding_h": self.template_style.padding_h,
             "is_right_side": self.is_right_side,  # For adaptive decorative lines

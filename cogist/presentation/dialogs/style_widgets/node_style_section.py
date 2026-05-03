@@ -5,18 +5,15 @@ padding, and font properties. Implements lazy initialization for better performa
 """
 
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QCheckBox,
     QGridLayout,
     QLabel,
-    QMenu,
     QPushButton,
-    QSpinBox,
     QWidget,
 )
+from shiboken6 import isValid
 
-from cogist.presentation.widgets import VisualPreviewButton
+from cogist.presentation.widgets import ToggleSwitch, VisualPreviewButton
 from cogist.presentation.widgets.node_shape_previews import (
     generate_bottom_line_preview,
     generate_circle_preview,
@@ -25,7 +22,9 @@ from cogist.presentation.widgets.node_shape_previews import (
 )
 
 from .collapsible_panel import CollapsiblePanel
-from .menu_button import MenuButton
+from .color_picker import create_color_picker
+from .dialog_utils import position_color_dialog
+from .spinbox import SpinBox
 
 
 class NodeStyleSection(CollapsiblePanel):
@@ -39,22 +38,30 @@ class NodeStyleSection(CollapsiblePanel):
     style_changed = Signal(dict)
     shadow_enabled_changed = Signal(bool)
 
-    # UI constants
-    LABEL_WIDTH = 75
+    # UI constants (fallback value, will use parent's LABEL_WIDTH if available)
+    LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
 
     def __init__(self, parent=None):
         super().__init__("Node Style", collapsed=True, parent=parent)
 
+        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
+
+        # Store reference to AdvancedStyleTab for accessing style_config
+        # Note: parent() returns _content_widget, so we need to store the actual parent
+        self._advanced_tab = parent
+
         # State
         self._initialized = False
         self.current_style = self._get_default_style()
         self.last_emitted_style = None  # Track last emitted style to detect changes
-        self._font_data_cache: tuple[list[tuple[str, str, str]], dict[str, str]] | None = None
-        self._font_dialog = None
-        self._font_loader = None
-        self._load_fonts()  # Pre-load fonts on initialization
+        self.is_root_mode = False  # True for root layer, False for level1/2/3+
+        self.use_rainbow = False  # Rainbow branch mode state
+
+        # Color picker (lazy creation)
+        self._color_picker = None
 
         # Connect toggle signal for lazy initialization
         self.toggled.connect(self._on_toggled)
@@ -63,93 +70,40 @@ class NodeStyleSection(CollapsiblePanel):
         """Get default node style - used only during initialization before real data is loaded."""
         # This should be overwritten by set_style() before any UI interaction
         return {
+            "bg_enabled": True,
             "shape": "rounded_rect",
             "radius": 10,
-            "bg_color": "#2196F3",
-            "text_color": "#FFFFFF",
             "padding_w": 20,
             "padding_h": 16,
             "max_text_width": 250,  # Default max text width
-            "font_family": "Arial",
-            "font_size": 14,
-            "font_weight": "Normal",
-            "font_italic": False,
-            "font_underline": False,
-            "font_strikeout": False,
-            "shadow_enabled": False,
+            "bg_color_index": 0,
+            "brightness": 1.0,
+            "opacity": 255,
         }
-
-    def _load_fonts(self):
-        """Pre-load all available fonts in background thread on initialization."""
-        from PySide6.QtCore import QThread, Signal
-        from PySide6.QtGui import QFontDatabase
-
-        class FontLoaderThread(QThread):
-            """Background thread for loading fonts."""
-            fonts_loaded = Signal(object)
-
-            def run(self):
-                """Load and process fonts."""
-                font_db = QFontDatabase()
-                families = font_db.families()
-
-                # Filter out bitmap/system fonts
-                filtered_families = []
-                for family in families:
-                    if family.startswith('.'):
-                        continue
-                    if any(keyword in family.lower() for keyword in ['bitmap', 'dingbats', 'symbol', 'icon']):
-                        continue
-                    if not font_db.styles(family):
-                        continue
-                    filtered_families.append(family)
-
-                # Return raw family names (localization done in main thread)
-                self.fonts_loaded.emit(filtered_families)
-
-        def on_fonts_loaded(filtered_families):
-            """Cache the loaded font data."""
-            # Process fonts in main thread (for localization)
-            font_name_map = {}
-            seen_base_names = set()
-            items_data = []
-
-            for family in filtered_families:
-                # Get localized name
-                localized_name = self._get_localized_font_name(family)
-
-                # Normalize for deduplication
-                base_name = family.split('(')[0].strip().lower()
-
-                is_duplicate = False
-                for seen_base in seen_base_names:
-                    if base_name in seen_base or seen_base in base_name:
-                        is_duplicate = True
-                        break
-
-                if not is_duplicate:
-                    seen_base_names.add(base_name)
-                    font_name_map[localized_name] = family
-                    items_data.append((localized_name, family, family))
-
-            self._font_data_cache = (items_data, font_name_map)
-
-        # Start background loader
-        self._font_loader = FontLoaderThread()
-        self._font_loader.fonts_loaded.connect(on_fonts_loaded)
-        self._font_loader.start()
 
     def _on_toggled(self, checked: bool):
         """Handle expand/collapse events."""
         if checked and not self._initialized:
             self._init_content()
             self._initialized = True
+            # Apply saved style to newly created button (same as CanvasPanel)
+            if self.current_style:
+                self.set_style(self.current_style)
+
+    def set_root_mode(self, is_root: bool):
+        """Set whether this section is in root mode.
+
+        In root mode, background color uses special_colors["root_background"] directly.
+        In normal mode, background color uses bg_color_index to reference the pool.
+        """
+        self.is_root_mode = is_root
+        # No need to update button - it only shows color, no text
 
     def _init_content(self):
         """Initialize content on first expand (lazy initialization)."""
         layout = QGridLayout()
         layout.setSpacing(6)
-        layout.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
+        layout.setContentsMargins(self.GROUP_MARGIN, 6, self.GROUP_MARGIN, 16)
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
 
@@ -158,7 +112,7 @@ class NodeStyleSection(CollapsiblePanel):
         # Style selector - using reusable VisualPreviewButton
         style_label = QLabel("Style:")
         style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        style_label.setMinimumWidth(self.LABEL_WIDTH)
+        style_label.setFixedWidth(self._label_width)
         layout.addWidget(style_label, row, 0)
 
         # Create visual options for popup
@@ -183,10 +137,10 @@ class NodeStyleSection(CollapsiblePanel):
         # Corner radius
         radius_label = QLabel("Radius:")
         radius_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        radius_label.setMinimumWidth(self.LABEL_WIDTH)
+        radius_label.setFixedWidth(self._label_width)
         layout.addWidget(radius_label, row, 0)
 
-        self.radius_spin = QSpinBox()
+        self.radius_spin = SpinBox()
         self.radius_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.radius_spin.setRange(0, 30)
         self.radius_spin.setValue(self.current_style["radius"])
@@ -206,45 +160,13 @@ class NodeStyleSection(CollapsiblePanel):
         layout.addWidget(self.radius_spin, row, 1)
         row += 1
 
-        # Background color
-        bg_label = QLabel("Background:")
-        bg_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        bg_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(bg_label, row, 0)
-
-        self.bg_color_btn = QPushButton()
-        self.bg_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
-        self.bg_color_btn.setStyleSheet(
-            f"background-color: {self.current_style['bg_color']}; "
-            "border: 1px solid #ccc; border-radius: 6px;"
-        )
-        self.bg_color_btn.clicked.connect(lambda: self._pick_color("bg_color"))
-        layout.addWidget(self.bg_color_btn, row, 1)
-        row += 1
-
-        # Text color
-        text_label = QLabel("Text Color:")
-        text_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        text_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(text_label, row, 0)
-
-        self.text_color_btn = QPushButton()
-        self.text_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
-        self.text_color_btn.setStyleSheet(
-            f"background-color: {self.current_style['text_color']}; "
-            "border: 1px solid #ccc; border-radius: 6px;"
-        )
-        self.text_color_btn.clicked.connect(lambda: self._pick_color("text_color"))
-        layout.addWidget(self.text_color_btn, row, 1)
-        row += 1
-
         # Padding W
         padding_w_label = QLabel("Padding W:")
         padding_w_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        padding_w_label.setMinimumWidth(self.LABEL_WIDTH)
+        padding_w_label.setFixedWidth(self._label_width)
         layout.addWidget(padding_w_label, row, 0)
 
-        self.padding_w_spin = QSpinBox()
+        self.padding_w_spin = SpinBox()
         self.padding_w_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.padding_w_spin.setRange(0, 50)
         self.padding_w_spin.setValue(self.current_style["padding_w"])
@@ -256,10 +178,10 @@ class NodeStyleSection(CollapsiblePanel):
         # Padding H
         padding_h_label = QLabel("Padding H:")
         padding_h_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        padding_h_label.setMinimumWidth(self.LABEL_WIDTH)
+        padding_h_label.setFixedWidth(self._label_width)
         layout.addWidget(padding_h_label, row, 0)
 
-        self.padding_h_spin = QSpinBox()
+        self.padding_h_spin = SpinBox()
         self.padding_h_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.padding_h_spin.setRange(0, 50)
         self.padding_h_spin.setValue(self.current_style["padding_h"])
@@ -271,10 +193,10 @@ class NodeStyleSection(CollapsiblePanel):
         # Max text width
         max_text_width_label = QLabel("Max Width:")
         max_text_width_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        max_text_width_label.setMinimumWidth(self.LABEL_WIDTH)
+        max_text_width_label.setFixedWidth(self._label_width)
         layout.addWidget(max_text_width_label, row, 0)
 
-        self.max_text_width_spin = QSpinBox()
+        self.max_text_width_spin = SpinBox()
         self.max_text_width_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.max_text_width_spin.setRange(0, 1000)  # 0 means unlimited (no wrapping)
         self.max_text_width_spin.setValue(self.current_style.get("max_text_width", 250))
@@ -284,119 +206,82 @@ class NodeStyleSection(CollapsiblePanel):
         layout.addWidget(self.max_text_width_spin, row, 1)
         row += 1
 
-        # Font family
-        font_family_label = QLabel("Font:")
-        font_family_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        font_family_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(font_family_label, row, 0)
+        # Background enabled - Toggle Switch with label on same row (right-aligned like rainbow switch)
+        from PySide6.QtWidgets import QHBoxLayout
+        bg_switch_row = QHBoxLayout()
+        bg_switch_row.setContentsMargins(0, 0, 0, 0)
+        bg_switch_row.setSpacing(0)
 
-        self.font_family_combo = QPushButton(self.current_style["font_family"])
-        self.font_family_combo.setFixedHeight(self.WIDGET_HEIGHT)
-        self.font_family_combo.setStyleSheet(self._button_style())
-        self.font_family_combo.clicked.connect(self._show_font_menu)
-        layout.addWidget(self.font_family_combo, row, 1)
+        bg_header_label = QLabel("Background:")
+        bg_header_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        bg_header_label.setFixedWidth(self._label_width)
+        # Removed bold style - use normal font weight
+        bg_switch_row.addWidget(bg_header_label)
+
+        bg_switch_row.addStretch()
+
+        self.bg_enabled_toggle = ToggleSwitch()
+        self.bg_enabled_toggle.set_checked(self.current_style.get("bg_enabled", True))
+        self.bg_enabled_toggle.toggled.connect(self._on_bg_enabled_changed)
+        bg_switch_row.addWidget(self.bg_enabled_toggle)
+
+        # Create a container widget to ensure proper height in grid layout
+        bg_switch_container = QWidget()
+        bg_switch_container.setLayout(bg_switch_row)
+        bg_switch_container.setFixedHeight(self.WIDGET_HEIGHT)  # Match other widgets height
+
+        layout.addWidget(bg_switch_container, row, 0, 1, 2)
         row += 1
 
-        # Font size
-        font_size_label = QLabel("Font Size:")
-        font_size_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        font_size_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(font_size_label, row, 0)
+        # Background color - same as CanvasPanel
+        self.bg_color_label = QLabel("Color:")
+        self.bg_color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.bg_color_label.setFixedWidth(self._label_width)
+        layout.addWidget(self.bg_color_label, row, 0)
 
-        self.font_size_spin = QSpinBox()
-        self.font_size_spin.setFixedHeight(self.WIDGET_HEIGHT)
-        self.font_size_spin.setRange(8, 72)
-        self.font_size_spin.setValue(self.current_style["font_size"])
-        self.font_size_spin.setAlignment(Qt.AlignLeft)
-        self.font_size_spin.valueChanged.connect(self._on_font_size_changed)
-        layout.addWidget(self.font_size_spin, row, 1)
+        # Use QPushButton without text (like CanvasPanel) - shows only color
+        self.bg_color_btn = QPushButton()
+        self.bg_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
+        self.bg_color_btn.clicked.connect(self._on_bg_color_clicked)
+        layout.addWidget(self.bg_color_btn, row, 1)
+        # Note: Button stylesheet is set by set_style() - no text, no hardcoded colors
         row += 1
 
-        # Font weight
-        font_weight_label = QLabel("Weight:")
-        font_weight_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        font_weight_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(font_weight_label, row, 0)
+        # Brightness spinbox
+        self.brightness_label = QLabel("Brightness:")
+        self.brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.brightness_label.setFixedWidth(self._label_width)
+        layout.addWidget(self.brightness_label, row, 0)
 
-        self.font_weight_menu = QMenu()
-        self.font_weight_menu.aboutToShow.connect(
-            lambda: self._update_font_weight_options()
-        )
-
-        # Initial weight options (will be updated dynamically)
-        weight_options = ["Light", "Normal", "Bold", "ExtraBold"]
-        for option in weight_options:
-            action = self.font_weight_menu.addAction(option)
-            action.triggered.connect(lambda _, opt=option: self._set_font_weight(opt))
-
-        # Use reusable MenuButton instead of QPushButton
-        self.font_weight_combo = MenuButton(self.current_style["font_weight"], self.WIDGET_HEIGHT)
-        self.font_weight_combo.setStyleSheet(self._button_style())
-        self.font_weight_combo.set_menu(self.font_weight_menu)
-        layout.addWidget(self.font_weight_combo, row, 1)
+        self.brightness_spin = SpinBox()
+        self.brightness_spin.setRange(50, 150)  # 0.5-1.5
+        self.brightness_spin.setValue(int(self.current_style.get("brightness", 1.0) * 100))
+        self.brightness_spin.setSuffix("%")
+        self.brightness_spin.setFixedHeight(self.WIDGET_HEIGHT)
+        self.brightness_spin.valueChanged.connect(self._on_brightness_changed)
+        layout.addWidget(self.brightness_spin, row, 1)
         row += 1
 
-        # Font style checkboxes - 2x2 grid layout
-        font_style_label = QLabel("Font Style:")
-        font_style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        font_style_label.setMinimumWidth(self.LABEL_WIDTH)
-        layout.addWidget(font_style_label, row, 0)
+        # Opacity spinbox
+        self.opacity_label = QLabel("Opacity:")
+        self.opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.opacity_label.setFixedWidth(self._label_width)
+        layout.addWidget(self.opacity_label, row, 0)
 
-        # Container for 2x2 checkbox grid
-        style_container = QWidget()
-        style_layout = QGridLayout(style_container)
-        style_layout.setSpacing(6)
-        style_layout.setContentsMargins(0, 0, 0, 4)
+        self.opacity_spin = SpinBox()
+        self.opacity_spin.setRange(0, 100)
+        self.opacity_spin.setSuffix("%")
+        # Convert from 0-255 to 0-100 for display
+        opacity_value = self.current_style.get("opacity", 255)
+        self.opacity_spin.setValue(int(opacity_value / 255 * 100))
+        self.opacity_spin.setFixedHeight(self.WIDGET_HEIGHT)
+        self.opacity_spin.valueChanged.connect(self._on_opacity_changed)
+        layout.addWidget(self.opacity_spin, row, 1)
 
-        self.font_italic_check = QCheckBox("Italic")
-        self.font_italic_check.setChecked(self.current_style["font_italic"])
-        self.font_italic_check.setStyleSheet("QCheckBox { background: transparent; }")
-        self.font_italic_check.toggled.connect(self._on_font_style_changed)
-        style_layout.addWidget(self.font_italic_check, 0, 0)
-
-        self.font_underline_check = QCheckBox("Underline")
-        self.font_underline_check.setChecked(self.current_style["font_underline"])
-        self.font_underline_check.setStyleSheet("QCheckBox { background: transparent; }")
-        self.font_underline_check.toggled.connect(self._on_font_style_changed)
-        style_layout.addWidget(self.font_underline_check, 0, 1)
-
-        self.font_strikeout_check = QCheckBox("Strikeout")
-        self.font_strikeout_check.setChecked(self.current_style["font_strikeout"])
-        self.font_strikeout_check.setStyleSheet("QCheckBox { background: transparent; }")
-        self.font_strikeout_check.toggled.connect(self._on_font_style_changed)
-        style_layout.addWidget(self.font_strikeout_check, 1, 0)
-
-        self.font_shadow_check = QCheckBox("Shadow")
-        self.font_shadow_check.setChecked(self.current_style.get("shadow_enabled", False))
-        self.font_shadow_check.setStyleSheet("QCheckBox { background: transparent; }")
-        self.font_shadow_check.toggled.connect(self._on_font_shadow_toggled)
-        style_layout.addWidget(self.font_shadow_check, 1, 1)
-
-        layout.addWidget(style_container, row, 1)
+        # Initialize visibility based on enabled state
+        self._update_background_controls_visibility()
 
         self.setLayout(layout)
-
-    def _button_style(self) -> str:
-        """Get standard button stylesheet."""
-        return """
-            QPushButton {
-                background-color: #FFFFFF;
-                border: 1px solid #C8C8C8;
-                border-radius: 6px;
-                padding: 4px 24px 4px 12px;
-                font-size: 13px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background-color: #F0F0F0;
-                border-color: #A0A0A0;
-            }
-            QPushButton::menu-indicator {
-                image: none;
-                width: 0;
-                height: 0;
-            }
-        """
 
     def _on_shape_changed(self, shape_name: str):
         """Handle shape selection change."""
@@ -427,35 +312,6 @@ class NodeStyleSection(CollapsiblePanel):
         self.current_style["radius"] = value
         self._emit_style_changed()
 
-    def _pick_color(self, color_type: str):
-        """Open color picker dialog."""
-        from PySide6.QtWidgets import QColorDialog
-
-        current_color = self.current_style.get(f"{color_type}", "#FFFFFF")
-        current = QColor(current_color)
-
-        # Determine which button was clicked
-        if color_type == "bg_color":
-            button = self.bg_color_btn
-        elif color_type == "text_color":
-            button = self.text_color_btn
-        else:
-            return
-
-        color = QColorDialog.getColor(current, self, f"Select {color_type.replace('_', ' ').title()} Color", QColorDialog.ShowAlphaChannel)
-
-        if color.isValid():
-            # Use name(QColor.HexArgb) to preserve alpha channel
-            color_name = color.name(QColor.HexArgb)
-            self.current_style[color_type] = color_name
-
-            # Update button appearance
-            button.setStyleSheet(
-                f"background-color: {color_name}; border: 1px solid #ccc; border-radius: 6px;"
-            )
-
-            self._emit_style_changed()
-
     def _on_padding_changed(self):
         """Handle padding changes."""
         self.current_style["padding_w"] = self.padding_w_spin.value()
@@ -467,473 +323,238 @@ class NodeStyleSection(CollapsiblePanel):
         self.current_style["max_text_width"] = value
         self._emit_style_changed()
 
-    def _get_localized_font_name(self, font_family: str) -> str:
-        """Get localized font name for display.
+    def _update_background_controls_visibility(self):
+        """Show/hide background controls based on enabled state."""
+        enabled = self.current_style.get("bg_enabled", True)
 
-        Uses platform-specific APIs to get the localized font name:
-        - macOS: Core Text via PyObjC
-        - Windows: ctypes with GDI
-        - Linux: fontconfig
-        Falls back to English name if localized name not available.
-        """
-        import platform
-        system = platform.system()
+        # Show/hide color button and label
+        if hasattr(self, 'bg_color_label'):
+            self.bg_color_label.setVisible(enabled)
+        if hasattr(self, 'bg_color_btn'):
+            self.bg_color_btn.setVisible(enabled)
 
-        try:
-            if system == "Darwin":  # macOS
-                # Try to use Core Text via PyObjC
-                try:
-                    from CoreText import (  # type: ignore
-                        CTFontCopyDisplayName,
-                        CTFontCreateWithName,
-                    )
+        # Show/hide brightness spinbox and label
+        if hasattr(self, 'brightness_label'):
+            self.brightness_label.setVisible(enabled)
+        if hasattr(self, 'brightness_spin'):
+            self.brightness_spin.setVisible(enabled)
 
-                    # Create a CTFontRef
-                    ct_font = CTFontCreateWithName(font_family, 12.0, None)
-                    if ct_font:
-                        # Get display name (localized)
-                        display_name = CTFontCopyDisplayName(ct_font)
-                        if display_name:
-                            return str(display_name)
-                except Exception:
-                    pass  # Fall through to default
+        # Show/hide opacity spinbox and label
+        if hasattr(self, 'opacity_label'):
+            self.opacity_label.setVisible(enabled)
+        if hasattr(self, 'opacity_spin'):
+            self.opacity_spin.setVisible(enabled)
 
-            elif system == "Windows":
-                # Try to use ctypes with GDI (simplified)
-                try:
-                    import ctypes
-                    from ctypes import wintypes
+    def _on_bg_enabled_changed(self, checked: bool):
+        """Handle background enabled toggle change."""
+        self.current_style["bg_enabled"] = checked
 
-                    gdi32 = ctypes.windll.gdi32
-                    hdc = gdi32.CreateDCW("DISPLAY", None, None, None)
+        # Update visibility of background controls
+        if self.use_rainbow and not self.is_root_mode:
+            # Rainbow mode: only show/hide brightness & opacity spinboxes
+            if hasattr(self, 'brightness_label'):
+                self.brightness_label.setVisible(checked)
+            if hasattr(self, 'brightness_spin'):
+                self.brightness_spin.setVisible(checked)
+            if hasattr(self, 'opacity_label'):
+                self.opacity_label.setVisible(checked)
+            if hasattr(self, 'opacity_spin'):
+                self.opacity_spin.setVisible(checked)
+        else:
+            # Non-rainbow mode or root layer: normal behavior
+            self._update_background_controls_visibility()
 
-                    class LOGFONTW(ctypes.Structure):
-                        _fields_ = [
-                            ("lfHeight", wintypes.LONG),
-                            ("lfWidth", wintypes.LONG),
-                            ("lfEscapement", wintypes.LONG),
-                            ("lfOrientation", wintypes.LONG),
-                            ("lfWeight", wintypes.LONG),
-                            ("lfItalic", wintypes.BYTE),
-                            ("lfUnderline", wintypes.BYTE),
-                            ("lfStrikeOut", wintypes.BYTE),
-                            ("lfCharSet", wintypes.BYTE),
-                            ("lfOutPrecision", wintypes.BYTE),
-                            ("lfClipPrecision", wintypes.BYTE),
-                            ("lfQuality", wintypes.BYTE),
-                            ("lfPitchAndFamily", wintypes.BYTE),
-                            ("lfFaceName", wintypes.WCHAR * 32),
-                        ]
+        # Emit style changed event
+        self._emit_style_changed()
 
-                    logfont = LOGFONTW()
-                    logfont.lfHeight = 0
-                    logfont.lfFaceName = font_family
+    def _on_bg_color_clicked(self):
+        """Handle background color button click."""
+        # Use stored reference to AdvancedStyleTab instead of parent()
+        parent = self._advanced_tab
 
-                    hfont = gdi32.CreateFontIndirectW(ctypes.byref(logfont))
-                    old_font = gdi32.SelectObject(hdc, hfont)
-                    gdi32.SelectObject(hdc, old_font)
-                    gdi32.DeleteObject(hfont)
-                    gdi32.DeleteDC(hdc)
-                except Exception:
-                    pass
+        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
+            return
 
-            elif system == "Linux":
-                # Try to use fontconfig
-                try:
-                    import subprocess
-                    result = subprocess.run(
-                        ["fc-match", "-f", "%{family}", font_family],
-                        capture_output=True,
-                        text=True,
-                        timeout=2
-                    )
-                    if result.returncode == 0 and result.stdout.strip():
-                        return result.stdout.strip()
-                except Exception:
-                    pass
+        if self.is_root_mode:
+            # Root mode: show color picker for special_colors["root_background"] (same as CanvasPanel)
+            # Check if color picker still exists (may have been deleted by WA_DeleteOnClose)
+            if self._color_picker is None or not isValid(self._color_picker):
+                # Get the top-level window to ensure proper dialog lifecycle
+                top_level = self.window() if self.window() else parent
+                self._color_picker = create_color_picker(top_level)
+                self._color_picker.color_selected.connect(self._on_bg_color_selected)
+                # Ensure dialog closes when parent window closes
+                self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
-        except Exception:
-            pass
+            current_color = parent.style_config.special_colors["root_background"]
 
-        # Fallback: return the original font family name
-        return font_family
+            # Set current color (MUST call before show!)
+            self._color_picker.set_current_color(current_color)
 
-    def _show_font_menu(self):
-        """Show font family selection popup with localized names.
+            # Show color picker
+            self._color_picker.show()
+            self._color_picker.raise_()
+            self._color_picker.activateWindow()
 
-        Uses a frameless dialog with single-click selection for better UX.
-        Uses pre-loaded font cache for instant display.
+            # Position dialog
+            position_color_dialog(self._color_picker, self.bg_color_btn)
+        else:
+            # Normal mode (level 1/2/3+): show color pool selector dialog
+            self._show_color_pool_selector()
+
+    def _show_color_pool_selector(self):
+        """Show color pool selector dialog for level 1/2/3+ layers.
+
+        Displays a dialog with 8 color buttons (indices 0-7) for user to select.
         """
         from PySide6.QtCore import Qt
-        from PySide6.QtGui import QFont
-        from PySide6.QtWidgets import (
-            QDialog,
-            QListWidget,
-            QVBoxLayout,
-        )
+        from PySide6.QtWidgets import QDialog, QGridLayout, QLabel, QPushButton
 
-        # Reuse existing dialog if available
-        if hasattr(self, '_font_dialog') and self._font_dialog is not None:
-            # Dialog already created, just show it
-            self._font_dialog.show()
-            self._font_dialog.raise_()
-            self._font_dialog.activateWindow()
-            self._font_dialog.setFocus()
+        parent = self._advanced_tab
+        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
             return
 
-        # Store default button style to restore later
-        self._default_font_button_style = self.font_family_combo.styleSheet()
+        color_pool = parent.style_config.color_pool
+        if not color_pool or len(color_pool) < 8:
+            print("Warning: color_pool not properly initialized")
+            return
 
-        # Set button background to match dialog while open
-        self.font_family_combo.setStyleSheet("""
-            QPushButton {
-                background-color: rgb(236, 236, 236);
-                border: 1px solid #C8C8C8;
-                border-radius: 6px;
-                padding: 4px 24px 4px 12px;
-                font-size: 13px;
-                text-align: left;
-            }
-        """)
-
-        # Create frameless dialog with rounded corners
+        # Create dialog
         dialog = QDialog(self)
-        dialog.setWindowFlags(
-            Qt.Dialog | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
-        )
-        dialog.setAttribute(Qt.WA_DeleteOnClose)
-        dialog.setFixedSize(300, 400)
-        dialog.setStyleSheet("""
-            QDialog {
-                background-color: rgb(236, 236, 236);
-                border: 1px solid #C8C8C8;
-                border-radius: 8px;
-            }
-        """)
+        dialog.setWindowTitle("Select Color from Pool")
+        dialog.setFixedSize(280, 180)
 
-        # Store reference to prevent multiple dialogs
-        self._font_dialog = dialog
+        # Create layout
+        layout = QGridLayout(dialog)
+        layout.setSpacing(8)
+        layout.setContentsMargins(16, 16, 16, 16)
 
-        # Layout
-        layout = QVBoxLayout(dialog)
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
+        # Add label
+        label = QLabel("Choose a color (indices 0-7):")
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label, 0, 0, 1, 4)
 
-        # Font list with custom styling
-        font_list = QListWidget()
-        font_list.setFont(QFont("Arial", 14))
-        font_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        font_list.setFrameShape(QListWidget.NoFrame)
-        font_list.setStyleSheet("""
-            QListWidget {
-                background-color: transparent;
-                border: none;
-                outline: none;
-            }
-            QListWidget::item {
-                background-color: transparent;
-                border-radius: 4px;
-                padding: 4px 8px;
-            }
-            QListWidget::item:hover {
-                background-color: rgb(84, 143, 255);
-                color: white;
-            }
-            QListWidget::item:selected {
-                background-color: rgb(84, 143, 255);
-                color: white;
-            }
-        """)
-        layout.addWidget(font_list)
+        # Create 8 color buttons (2 rows x 4 columns)
+        buttons = []
+        for i in range(8):
+            btn = QPushButton()
+            btn.setFixedSize(50, 50)
+            color = color_pool[i] if i < len(color_pool) else "#FFCCCCCC"
+            btn.setStyleSheet(
+                f"background-color: {color}; "
+                "border: 2px solid #C8C8C8; "
+                "border-radius: 6px;"
+            )
+            btn.setToolTip(f"Color Index {i}")
 
-        # Show dialog immediately
-        button_pos = self.font_family_combo.mapToGlobal(
-            self.font_family_combo.rect().bottomLeft()
-        )
-        dialog_x = button_pos.x()
-        dialog_y = button_pos.y() + 2  # 2px gap below button
+            # Store index for callback
+            btn.setProperty("color_index", i)
+            btn.clicked.connect(lambda _, b=btn: self._on_color_pool_selected(b, dialog))
 
-        dialog.show()
-        dialog.move(dialog_x, dialog_y)
-        dialog.raise_()
-        dialog.activateWindow()
-        dialog.setFocus()
-
-        # Populate fonts from cache (instant!)
-        self._populate_fonts_from_cache(font_list, dialog)
-
-    def _populate_fonts_from_cache(self, font_list, dialog):
-        """Populate font list from pre-loaded cache."""
-        from PySide6.QtGui import QFont
-        from PySide6.QtWidgets import QListWidget, QListWidgetItem
-
-        # Check if cache is ready
-        if self._font_data_cache is None:
-            # Cache not ready yet, wait for it
-            return
-
-        items_data, font_name_map = self._font_data_cache
-        current_family = self.current_style.get("font_family", "Arial")
-
-        # Track last hovered item to avoid redundant updates
-        last_hovered_item = [None]
-
-        # Hover to set focus (with deduplication)
-        def on_item_entered(item):
-            if item != last_hovered_item[0]:
-                font_list.setCurrentItem(item)
-                last_hovered_item[0] = item
-
-        font_list.itemEntered.connect(on_item_entered)
-        font_list.setMouseTracking(True)
-
-        # Single-click to select
-        def on_item_clicked(item):
-            display_name = item.text()
-            actual_family = font_name_map.get(display_name, display_name)
-            self._set_font_family(actual_family)
-            # Restore button style immediately before closing
-            self.font_family_combo.setStyleSheet(self._button_style())
-            self._font_dialog = None
-            dialog.accept()
-
-        font_list.itemClicked.connect(on_item_clicked)
-
-        # ESC to close
-        def on_key_press(event):
-            if event.key() == Qt.Key_Escape:
-                # Restore button style
-                self.font_family_combo.setStyleSheet(self._button_style())
-                self._font_dialog = None
-                dialog.reject()
-            else:
-                # Call base class implementation
-                type(dialog).keyPressEvent(dialog, event)
-
-        dialog.keyPressEvent = on_key_press
-
-        # Close dialog when clicking outside
-        def on_mouse_press_outside(event):
-            if event.button() == Qt.LeftButton:
-                # Restore button style
-                self.font_family_combo.setStyleSheet(self._button_style())
-                self._font_dialog = None
-                dialog.reject()
-
-        dialog.mousePressEvent = on_mouse_press_outside
-
-        # Cleanup when dialog closes
-        def cleanup_on_close():
-            self.font_family_combo.setStyleSheet(self._button_style())
-            self._font_dialog = None
-
-        dialog.finished.connect(cleanup_on_close)
-
-        # Populate the list from cache
-        font_list.clear()
-        current_item = None
-        for display_name, actual_family, render_family in items_data:
-            item = QListWidgetItem(display_name)
-            item.setFont(QFont(render_family))
-            font_list.addItem(item)
-
-            if actual_family == current_family:
-                font_list.setCurrentItem(item)
-                current_item = item
-
-        # Scroll to current font at the top of the view
-        if current_item:
-            font_list.scrollToItem(current_item, QListWidget.PositionAtTop)
-
-        dialog.keyPressEvent = on_key_press
-
-        # Close dialog when clicking outside
-        def on_mouse_press(event):
-            if event.button() == Qt.LeftButton:
-                # Restore button style
-                self.font_family_combo.setStyleSheet(self._button_style())
-                self._font_dialog = None
-                dialog.reject()
-
-        dialog.mousePressEvent = on_mouse_press
-
-        # Cleanup when dialog closes (handles ESC, focus loss, and click)
-        def cleanup_and_restore():
-            # Restore button style using the original method
-            self.font_family_combo.setStyleSheet(self._button_style())
-            self._font_dialog = None
-
-        # Connect to both accepted and rejected to handle all close scenarios
-        dialog.finished.connect(cleanup_and_restore)
-
-        # Position dialog below the font button (like QMenu)
-        button_pos = self.font_family_combo.mapToGlobal(
-            self.font_family_combo.rect().bottomLeft()
-        )
-        dialog_x = button_pos.x()
-        dialog_y = button_pos.y() + 2  # 2px gap below button
-
-        # Show dialog first, then move it
-        dialog.show()
-        dialog.move(dialog_x, dialog_y)
-        dialog.raise_()
-        dialog.activateWindow()
-        dialog.setFocus()
+            row = 1 + (i // 4)
+            col = i % 4
+            layout.addWidget(btn, row, col)
+            buttons.append(btn)
 
         # Show dialog
         dialog.exec()
 
-    def _set_font_family(self, family: str):
-        """Set font family."""
-        # Get localized name for display
-        localized_name = self._get_localized_font_name(family)
-        self.font_family_combo.setText(localized_name)
-        self.current_style["font_family"] = family
+    def _on_color_pool_selected(self, button, dialog):
+        """Handle color selection from pool selector dialog.
 
-        # Update font weight options based on new font
-        self._update_font_weight_options()
-
-        self._emit_style_changed()
-
-    def _on_font_size_changed(self, value: int):
-        """Handle font size change."""
-        self.current_style["font_size"] = value
-        self._emit_style_changed()
-
-    def _update_font_weight_options(self):
-        """Update font weight menu based on available weights for the current font.
-
-        Filters out italic/oblique styles and sorts by weight priority.
-        Detects and removes duplicate weights (e.g., Normal/Regular may be the same).
+        Args:
+            button: The clicked color button
+            dialog: The selector dialog to close
         """
-        from PySide6.QtGui import QFontDatabase
+        color_index = button.property("color_index")
 
-        font_family = self.current_style.get("font_family", "Arial")
-        font_db = QFontDatabase()
-        styles = font_db.styles(font_family)
+        # Update bg_color_index in current_style
+        self.current_style["bg_color_index"] = color_index
 
-        if not styles:
-            # Fallback to default weights if no styles found
-            styles = ["Thin", "ExtraLight", "Light", "Regular", "Normal", "Medium", "Bold", "ExtraBold", "Black"]
+        # Update button display color
+        parent = self._advanced_tab
+        if parent and hasattr(parent, 'style_config') and parent.style_config:
+            color_pool = parent.style_config.color_pool
+            if color_index < len(color_pool):
+                selected_color = color_pool[color_index]
+                if hasattr(self, 'bg_color_btn'):
+                    self.bg_color_btn.setStyleSheet(
+                        f"background-color: {selected_color}; "
+                        "border: 1px solid #C8C8C8; "
+                        "border-radius: 6px; "
+                        "padding: 4px 24px 4px 12px; "
+                        "font-size: 13px; "
+                        "text-align: left;"
+                    )
 
-        # Filter out italic/oblique styles - these are not weights
-        weight_styles = [s for s in styles if "italic" not in s.lower() and "oblique" not in s.lower()]
+        # Close dialog
+        dialog.accept()
 
-        # Define weight priority for sorting
-        weight_priority = {
-            "Thin": 1,
-            "Hairline": 1,
-            "ExtraLight": 2,
-            "UltraLight": 2,
-            "Light": 3,
-            "Regular": 4,
-            "Normal": 4,
-            "Medium": 5,
-            "Semi Bold": 6,
-            "SemiBold": 6,
-            "Demi Bold": 6,
-            "DemiBold": 6,
-            "Bold": 7,
-            "Extra Bold": 8,
-            "ExtraBold": 8,
-            "Ultra Bold": 8,
-            "UltraBold": 8,
-            "Black": 9,
-            "Heavy": 9,
-        }
+        # Emit style changed
+        self._emit_style_changed()
 
-        # Sort styles by weight priority
-        sorted_styles = sorted(
-            weight_styles,
-            key=lambda s: weight_priority.get(s, 100)
-        )
+    def _on_bg_color_selected(self, hex_color: str):
+        """Handle color selection from picker (root mode only)."""
+        # Update the color in color_pool
+        # Use stored reference to AdvancedStyleTab instead of parent()
+        parent = self._advanced_tab
 
-        # Detect and remove duplicate weights
-        # When two styles have the same weight value, prefer the more common name
-        # Priority: Regular > Normal, Light > ExtraLight, etc.
-        weight_name_priority = {
-            "Regular": 1,
-            "Normal": 2,
-            "Light": 1,
-            "ExtraLight": 2,
-            "UltraLight": 3,
-            "Medium": 1,
-            "SemiBold": 1,
-            "Semi Bold": 2,
-            "DemiBold": 3,
-            "Demi Bold": 4,
-            "Bold": 1,
-            "ExtraBold": 1,
-            "Extra Bold": 2,
-            "UltraBold": 3,
-            "Ultra Bold": 4,
-            "Black": 1,
-            "Heavy": 2,
-            "Thin": 1,
-            "Hairline": 2,
-        }
+        if parent and hasattr(parent, 'style_config') and parent.style_config:
+            if self.is_root_mode:
+                parent.style_config.special_colors["root_background"] = hex_color
 
-        unique_styles = []
-        seen_weights = {}  # Maps weight_value -> (style_name, priority)
+                # CRITICAL: Update current_style to match CanvasPanel behavior
+                self.current_style["bg_color"] = hex_color
 
-        for style in sorted_styles:
-            # Get the weight value for this style using QFontDatabase
-            weight_value = font_db.weight(font_family, style)
+                # Update button color directly (like CanvasPanel)
+                if hasattr(self, 'bg_color_btn'):
+                    self.bg_color_btn.setStyleSheet(
+                        f"background-color: {hex_color}; "
+                        "border: 1px solid #C8C8C8; "
+                        "border-radius: 6px; "
+                        "padding: 4px 24px 4px 12px; "
+                        "font-size: 13px; "
+                        "text-align: left;"
+                    )
 
-            # Get priority for this style name (lower is better)
-            priority = weight_name_priority.get(style, 100)
-
-            # If we haven't seen this weight value, or this style has higher priority
-            if weight_value not in seen_weights:
-                seen_weights[weight_value] = (style, priority)
+                # Emit style changed to trigger redraw
+                self._emit_style_changed()
             else:
-                existing_style, existing_priority = seen_weights[weight_value]
-                if priority < existing_priority:
-                    # Replace with higher priority style
-                    seen_weights[weight_value] = (style, priority)
+                # Normal mode: update color_pool at bg_color_index
+                color_index = self.current_style.get("bg_color_index", 0)
 
-        # Build final list maintaining sort order
-        seen_in_final = set()
-        for style in sorted_styles:
-            weight_value = font_db.weight(font_family, style)
-            if weight_value in seen_weights:
-                best_style, _ = seen_weights[weight_value]
-                if best_style == style and style not in seen_in_final:
-                    unique_styles.append(style)
-                    seen_in_final.add(style)
+                if (hasattr(parent.style_config, 'color_pool') and
+                    parent.style_config.color_pool and
+                    color_index < len(parent.style_config.color_pool)):
+                    parent.style_config.color_pool[color_index] = hex_color
 
-        # Rebuild the menu with unique styles
-        self.font_weight_menu.clear()
-        for style in unique_styles:
-            action = self.font_weight_menu.addAction(style)
-            action.triggered.connect(lambda _, opt=style: self._set_font_weight(opt))
+                    # Update button color directly
+                    if hasattr(self, 'bg_color_btn'):
+                        self.bg_color_btn.setStyleSheet(
+                            f"background-color: {hex_color}; "
+                            "border: 1px solid #C8C8C8; "
+                            "border-radius: 6px; "
+                            "padding: 4px 24px 4px 12px; "
+                            "font-size: 13px; "
+                            "text-align: left;"
+                        )
 
-        # Update current selection if it's still valid
-        current_weight = self.current_style.get("font_weight", "Normal")
-        if current_weight not in unique_styles:
-            # Select first available weight or closest match
-            current_weight = unique_styles[0] if unique_styles else "Normal"
-            self.current_style["font_weight"] = current_weight
+                    # Emit style changed to trigger redraw
+                    self._emit_style_changed()
+                else:
+                    print(f"Warning: color_pool not properly initialized or index {color_index} out of range")
 
-        self.font_weight_combo.setText(current_weight)
-
-    def _set_font_weight(self, value: str):
-        """Set font weight."""
-        self.font_weight_combo.setText(value)
-        self.current_style["font_weight"] = value
+    def _on_brightness_changed(self, value: int):
+        """Handle background brightness change."""
+        # Use bg_brightness for role-based style (RoleStyle field name)
+        self.current_style["bg_brightness"] = value / 100.0
         self._emit_style_changed()
 
-    def _on_font_style_changed(self):
-        """Handle font style checkbox changes."""
-        self.current_style["font_italic"] = self.font_italic_check.isChecked()
-        self.current_style["font_underline"] = self.font_underline_check.isChecked()
-        self.current_style["font_strikeout"] = self.font_strikeout_check.isChecked()
-        self._emit_style_changed()
-
-    def _on_font_shadow_toggled(self, checked: bool):
-        """Handle font shadow checkbox toggle."""
-        self.current_style["shadow_enabled"] = checked
-        self.shadow_enabled_changed.emit(checked)
+    def _on_opacity_changed(self, value: int):
+        """Handle background opacity change."""
+        # Convert from 0-100% to 0-255 for storage
+        # Use bg_opacity for role-based style (RoleStyle field name)
+        self.current_style["bg_opacity"] = int(value / 100 * 255)
         self._emit_style_changed()
 
     def _emit_style_changed(self):
@@ -967,6 +588,27 @@ class NodeStyleSection(CollapsiblePanel):
         Args:
             style: Dictionary containing node style properties
         """
+        # Update rainbow mode state
+        if "use_rainbow" in style:
+            self.use_rainbow = style["use_rainbow"]
+
+        # If bg_color is not in style but we can get it from parent, add it
+        if "bg_color" not in style and self._advanced_tab:
+            parent = self._advanced_tab
+            if hasattr(parent, 'style_config') and parent.style_config:
+                color_pool = parent.style_config.color_pool
+                if color_pool:
+                    if self.is_root_mode:
+                        # Root mode: use special_colors["root_background"]
+                        style = dict(style)  # Create a copy to avoid modifying original
+                        style["bg_color"] = parent.style_config.special_colors["root_background"]
+                    else:
+                        # Normal mode: use bg_color_index
+                        color_index = style.get("bg_color_index", 0)
+                        if color_index < len(color_pool):
+                            style = dict(style)  # Create a copy to avoid modifying original
+                            style["bg_color"] = color_pool[color_index]
+
         self.current_style.update(style)
 
         # Update last_emitted_style to match current state
@@ -999,16 +641,6 @@ class NodeStyleSection(CollapsiblePanel):
             if "radius" in style:
                 self.radius_spin.setValue(style["radius"])
 
-            if "bg_color" in style:
-                self.bg_color_btn.setStyleSheet(
-                    f"background-color: {style['bg_color']}; border: 1px solid #ccc; border-radius: 6px;"
-                )
-
-            if "text_color" in style:
-                self.text_color_btn.setStyleSheet(
-                    f"background-color: {style['text_color']}; border: 1px solid #ccc; border-radius: 6px;"
-                )
-
             if "padding_w" in style:
                 self.padding_w_spin.setValue(style["padding_w"])
             if "padding_h" in style:
@@ -1017,19 +649,70 @@ class NodeStyleSection(CollapsiblePanel):
             if "max_text_width" in style:
                 self.max_text_width_spin.setValue(style["max_text_width"])
 
-            if "font_family" in style:
-                localized_name = self._get_localized_font_name(style["font_family"])
-                self.font_family_combo.setText(localized_name)
-            if "font_size" in style:
-                self.font_size_spin.setValue(style["font_size"])
-            if "font_weight" in style:
-                self.font_weight_combo.setText(style["font_weight"])
+            # Update background enabled toggle
+            if "bg_enabled" in style and hasattr(self, 'bg_enabled_toggle'):
+                self.bg_enabled_toggle.set_checked(style["bg_enabled"])
+                # Update controls visibility based on new enabled state
+                if not self.use_rainbow or self.is_root_mode:
+                    self._update_background_controls_visibility()
 
-            if "font_italic" in style:
-                self.font_italic_check.setChecked(style["font_italic"])
-            if "font_underline" in style:
-                self.font_underline_check.setChecked(style["font_underline"])
-            if "font_strikeout" in style:
-                self.font_strikeout_check.setChecked(style["font_strikeout"])
-            if "shadow_enabled" in style:
-                self.font_shadow_check.setChecked(style["shadow_enabled"])
+            # Update brightness spinbox (support multiple field names)
+            if "brightness" in style and hasattr(self, 'brightness_spin'):
+                self.brightness_spin.setValue(int(style["brightness"] * 100))
+            elif "brightness_amount" in style and hasattr(self, 'brightness_spin'):
+                self.brightness_spin.setValue(int(style["brightness_amount"] * 100))
+            elif "bg_brightness" in style and hasattr(self, 'brightness_spin'):
+                self.brightness_spin.setValue(int(style["bg_brightness"] * 100))
+
+            # Update opacity spinbox (support multiple field names)
+            if "opacity" in style and hasattr(self, 'opacity_spin'):
+                # Convert from 0-255 to 0-100% for display
+                self.opacity_spin.setValue(int(style["opacity"] / 255 * 100))
+            elif "opacity_amount" in style and hasattr(self, 'opacity_spin'):
+                # Convert from 0-255 to 0-100% for display
+                self.opacity_spin.setValue(int(style["opacity_amount"] / 255 * 100))
+            elif "bg_opacity" in style and hasattr(self, 'opacity_spin'):
+                # Convert from 0-255 to 0-100% for display
+                self.opacity_spin.setValue(int(style["bg_opacity"] / 255 * 100))
+
+            # Update background color button
+            if "bg_color" in style and hasattr(self, 'bg_color_btn'):
+                bg_color = style["bg_color"]
+                # Convert #AARRGGBB to rgba() format for Qt (9 chars: # + 8 hex)
+                if len(bg_color) == 9 and bg_color.startswith("#"):
+                    # #AARRGGBB format
+                    alpha = int(bg_color[1:3], 16)
+                    red = int(bg_color[3:5], 16)
+                    green = int(bg_color[5:7], 16)
+                    blue = int(bg_color[7:9], 16)
+                    self.bg_color_btn.setStyleSheet(
+                        f"background-color: rgba({red}, {green}, {blue}, {alpha});"
+                        " border: 1px solid #C8C8C8;"
+                        " border-radius: 6px;"
+                        " padding: 4px 24px 4px 12px;"
+                        " font-size: 13px;"
+                        " text-align: left;"
+                    )
+
+            # Hide/show color controls based on rainbow mode (only for non-root layers)
+            if self._initialized and not self.is_root_mode:
+                if self.use_rainbow:
+                    # Rainbow mode: hide color button, show/hide brightness & opacity based on bg_enabled
+                    if hasattr(self, 'bg_color_label'):
+                        self.bg_color_label.setVisible(False)
+                    if hasattr(self, 'bg_color_btn'):
+                        self.bg_color_btn.setVisible(False)
+
+                    # Brightness and opacity visibility controlled by background enabled state
+                    bg_enabled = self.current_style.get("bg_enabled", True)
+                    if hasattr(self, 'brightness_label'):
+                        self.brightness_label.setVisible(bg_enabled)
+                    if hasattr(self, 'brightness_spin'):
+                        self.brightness_spin.setVisible(bg_enabled)
+                    if hasattr(self, 'opacity_label'):
+                        self.opacity_label.setVisible(bg_enabled)
+                    if hasattr(self, 'opacity_spin'):
+                        self.opacity_spin.setVisible(bg_enabled)
+                else:
+                    # Non-rainbow mode: normal behavior - all controls follow bg_enabled
+                    self._update_background_controls_visibility()

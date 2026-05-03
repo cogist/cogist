@@ -10,6 +10,7 @@ This module contains the MindMapView class which handles:
 from PySide6.QtCore import QEvent, QPointF, Qt, QTimer, Signal
 from PySide6.QtGui import QPainter, QWheelEvent
 from PySide6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QGraphicsScene,
     QGraphicsView,
@@ -41,9 +42,13 @@ class MindMapView(QGraphicsView):
         self.mindmap_service: MindMapService = mindmap_service or MindMapService()
 
         # Store style configuration
-        from cogist.domain.styles import templates
-
-        self.style_config = style_config or templates.create_default_template()
+        if style_config is None:
+            # This should never happen in normal usage (main.py always passes style_config)
+            raise ValueError(
+                "MindMapView must be initialized with a style_config. "
+                "Production code should always load templates from JSON files."
+            )
+        self.style_config = style_config
 
         # Create scene
         self.scene = QGraphicsScene()
@@ -172,12 +177,9 @@ class MindMapView(QGraphicsView):
         # Step 2: Apply layout with actual sizes
         from cogist.domain.layout import DefaultLayoutConfig
 
-        # Create layout config from style_config spacing values
-        # LayoutConfig will read spacing from role_styles via resolved_template reference
+        # Create layout config with style_config for dynamic spacing lookup
         layout_config = DefaultLayoutConfig(
-            level_spacing=self.style_config.parent_child_spacing,
-            sibling_spacing=self.style_config.sibling_spacing,
-            resolved_template=self.style_config.resolved_template,  # For role-based spacing
+            style_config=self.style_config,  # Pass style_config for role-based spacing
         )
 
         # Update service layout config
@@ -215,22 +217,14 @@ class MindMapView(QGraphicsView):
 
         Optimized for text editing scenarios where only one node changes.
         """
-        branch_colors = [
-            "#FFFF6B6B",
-            "#FF4ECDC4",
-            "#FF45B7D1",
-            "#FFFFA07A",
-            "#FF98D8C8",
-            "#FFF7DC6F",
-            "#FFBB8FCE",
-            "#FF85C1E9",
-        ]
+        # Get color pool from style config
+        color_pool = self.style_config.color_pool if hasattr(self.style_config, 'color_pool') else []
 
         # Determine branch color
         branch_color = None
         if node.parent and node.parent.is_root:
-            idx = node.parent.children.index(node) % len(branch_colors)
-            branch_color = branch_colors[idx]
+            idx = node.parent.children.index(node) % len(color_pool) if color_pool else 0
+            branch_color = color_pool[idx] if color_pool else node.color
         elif node.parent:
             # Inherit from parent's branch
             # For simplicity, use node's own color
@@ -247,6 +241,7 @@ class MindMapView(QGraphicsView):
             is_root=node.is_root,
             depth=node.depth,
             style_config=self.style_config,
+            domain_node=node,  # Pass domain node reference
         )
 
         # Update node dimensions
@@ -258,16 +253,8 @@ class MindMapView(QGraphicsView):
         Create temporary NodeItems to measure actual rendered sizes,
         then sync back to domain nodes.
         """
-        branch_colors = [
-            "#FFFF6B6B",
-            "#FF4ECDC4",
-            "#FF45B7D1",
-            "#FFFFA07A",
-            "#FF98D8C8",
-            "#FFF7DC6F",
-            "#FFBB8FCE",
-            "#FF85C1E9",
-        ]
+        # Get color pool from style config
+        color_pool = self.style_config.color_pool if hasattr(self.style_config, 'color_pool') else []
 
         def measure_recursive(node: Node, branch_color: str | None = None):
             current_color = branch_color if branch_color else node.color
@@ -281,6 +268,7 @@ class MindMapView(QGraphicsView):
                 is_root=node.is_root,
                 depth=node.depth,
                 style_config=self.style_config,  # Pass style configuration
+                domain_node=node,  # Pass domain node reference
                 # DO NOT use use_domain_size here - we need to measure actual size
             )
 
@@ -293,8 +281,8 @@ class MindMapView(QGraphicsView):
                 # Determine branch color for first-level children
                 child_branch_color = None
                 if node.is_root:
-                    idx = node.children.index(child) % len(branch_colors)
-                    child_branch_color = branch_colors[idx]
+                    idx = node.children.index(child) % len(color_pool)
+                    child_branch_color = color_pool[idx]
                 else:
                     child_branch_color = branch_color
 
@@ -381,7 +369,7 @@ class MindMapView(QGraphicsView):
         if hasattr(self, "style_config") and self.style_config:
             from PySide6.QtGui import QBrush, QColor
 
-            canvas_color = self.style_config.canvas_bg_color or "#FFFFFF"
+            canvas_color = self.style_config.special_colors["canvas_bg"]
             self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
 
     def _create_ui_items(self, root: Node):
@@ -391,26 +379,17 @@ class MindMapView(QGraphicsView):
         if hasattr(self, "style_config") and self.style_config:
             from PySide6.QtGui import QBrush, QColor
 
-            canvas_color = self.style_config.canvas_bg_color or "#FFFFFF"
+            canvas_color = self.style_config.special_colors["canvas_bg"]
             self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
-
-        # Define branch colors (light colors for background, black text)
-        branch_colors = [
-            "#FF6B6B",  # Red
-            "#4ECDC4",  # Teal
-            "#45B7D1",  # Blue
-            "#FFA07A",  # Salmon
-            "#98D8C8",  # Mint
-            "#F7DC6F",  # Yellow
-            "#BB8FCE",  # Purple
-            "#85C1E9",  # Light Blue
-        ]
 
         def create_items_recursive(
             node: Node,
             parent_item: NodeItem | None = None,
             branch_color: str | None = None,
         ):
+            # Get color pool for rainbow mode
+            color_pool = self.style_config.color_pool if hasattr(self.style_config, 'color_pool') else []
+
             # Use branch color if assigned, otherwise use root color
             current_color = branch_color if branch_color else node.color
 
@@ -424,6 +403,7 @@ class MindMapView(QGraphicsView):
                 depth=node.depth,
                 use_domain_size=True,  # Use domain layer's pre-measured size
                 style_config=self.style_config,  # Pass style configuration
+                domain_node=node,  # Pass domain node reference for parent/children access
             )
             item.setPos(*node.position)
 
@@ -441,10 +421,9 @@ class MindMapView(QGraphicsView):
 
                 # Apply edge style from style_config (role-based configuration)
                 if hasattr(self, "style_config") and self.style_config:
-                    # Get source node depth to determine which connector config to use
-                    source_depth = (
-                        parent_item.depth if hasattr(parent_item, "depth") else 0
-                    )
+                    # Get TARGET node depth to determine which connector config to use
+                    # Edge belongs to the child node (target), not the parent (source)
+                    target_depth = item.depth if hasattr(item, "depth") else 0
 
                     # Get connector config from role-based style
                     from cogist.domain.styles.extended_styles import NodeRole
@@ -454,23 +433,32 @@ class MindMapView(QGraphicsView):
                         1: NodeRole.PRIMARY,
                         2: NodeRole.SECONDARY,
                     }
-                    role = role_map.get(source_depth, NodeRole.TERTIARY)
+                    role = role_map.get(target_depth, NodeRole.TERTIARY)
 
-                    if (self.style_config.resolved_template and
-                        role in self.style_config.resolved_template.role_styles):
-                        role_style = self.style_config.resolved_template.role_styles[role]
+                    # NEW: Use MindMapStyle.role_styles
+                    if (hasattr(self.style_config, 'role_styles') and
+                        role in self.style_config.role_styles):
+                        role_style = self.style_config.role_styles[role]
+                        color_pool = self.style_config.color_pool
 
-                        # Build edge style config from role-based values
+                        # Get connector color from color pool index
+                        color_index = role_style.connector_color_index if hasattr(role_style, 'connector_color_index') else 0
+
+                        if color_pool and color_index < len(color_pool):
+                            connector_color = color_pool[color_index]
+                        else:
+                            connector_color = "#FF666666"
+
                         edge_style_config = {
-                            "connector_color": role_style.connector_color or (self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666"),
-                            "line_width": role_style.line_width,
-                            "connector_style": role_style.connector_style,
-                            "connector_shape": role_style.connector_shape,
+                            "connector_color": connector_color,
+                            "line_width": role_style.line_width if hasattr(role_style, 'line_width') else 2.0,
+                            "connector_style": role_style.connector_style if hasattr(role_style, 'connector_style') else "solid",
+                            "connector_shape": role_style.connector_shape if hasattr(role_style, 'connector_shape') else "bezier",
                         }
                     else:
                         # Fallback to default values
                         edge_style_config = {
-                            "connector_color": self.style_config.resolved_color_scheme.edge_color if self.style_config.resolved_color_scheme else "#666666",
+                            "connector_color": "#FF666666",
                             "line_width": 2.0,
                             "connector_style": "solid",
                             "connector_shape": "bezier",
@@ -488,7 +476,7 @@ class MindMapView(QGraphicsView):
                 child_branch_color = (
                     branch_color
                     if branch_color
-                    else branch_colors[len(root.children) - len(node.children)]
+                    else (color_pool[len(root.children) - len(node.children)] if color_pool else None)
                     if node == root
                     else None
                 )
@@ -498,7 +486,7 @@ class MindMapView(QGraphicsView):
                     child_branch_color
                     if branch_color
                     else (
-                        branch_colors[node.children.index(child) % len(branch_colors)]
+                        (color_pool[node.children.index(child) % len(color_pool)] if color_pool else None)
                         if node == root
                         else None
                     ),
@@ -524,8 +512,47 @@ class MindMapView(QGraphicsView):
 
         return get_app_context().get_main_window()
 
+    def focusOutEvent(self, event):
+        """Handle focus lost event.
+
+        When the view loses keyboard focus, clear the node selection state
+        to ensure visual consistency with the focus state.
+        """
+        # Clear node selection when view loses focus
+        self._deselect_node()
+        super().focusOutEvent(event)
+
+    def keyPressEvent(self, event):
+        """Handle key press events.
+
+        Only process keyboard events when the view has focus.
+        If focus is on other widgets (like dialog controls), completely ignore
+        the events to prevent QGraphicsView's default scrolling behavior.
+        """
+        # Check if this view actually has keyboard focus
+        focused = QApplication.focusWidget()
+
+        # Focus should be on either the view itself or its viewport
+        if focused != self and focused != self.viewport():
+            # Focus is elsewhere - completely ignore the event
+            # Do NOT call super().keyPressEvent() to prevent default scrolling
+            event.accept()  # Mark as handled but do nothing
+            return
+
+        # View has focus, use eventFilter to handle shortcuts
+        # IMPORTANT: Do NOT call super().keyPressEvent() because it will
+        # trigger QAbstractScrollArea's default arrow key scrolling behavior
+        if not self.eventFilter(self, event):
+            # If eventFilter doesn't handle it, let parent handle it
+            super().keyPressEvent(event)
+
     def eventFilter(self, obj, event):
-        """Handle keyboard shortcuts for editing commands."""
+        """Handle keyboard shortcuts for editing commands.
+
+        Note: This filter only receives events sent to the view itself.
+        When focus is on other widgets (like dialog SpinBox), their events
+        are handled by those widgets directly - this filter won't see them.
+        """
 
         if event.type() == QEvent.KeyPress:
             key_event = event
@@ -996,6 +1023,17 @@ class MindMapView(QGraphicsView):
         if self.selected_node_id and self.selected_node_id in self.node_items:
             self.node_items[self.selected_node_id].setSelected(False)
         self.selected_node_id = None
+
+    def clear_focus_and_selection(self):
+        """Clear both keyboard focus and node selection.
+
+        Call this when another widget (like a dialog) gains focus,
+        to ensure there's only one active focus in the application.
+        """
+        # Clear keyboard focus from the view
+        self.clearFocus()
+        # Clear node selection state
+        self._deselect_node()
 
     def _navigate_to_sibling(self, direction: str):
         """Navigate to previous/next sibling node.
@@ -1786,11 +1824,9 @@ class MindMapView(QGraphicsView):
         # Step 2: Re-apply layout, passing selected node to preserve its side
         from cogist.domain.layout import DefaultLayoutConfig
 
-        # Create layout config using role-based spacing (via resolved_template)
+        # Create layout config with style_config for dynamic spacing lookup
         layout_config = DefaultLayoutConfig(
-            level_spacing=self.style_config.parent_child_spacing,
-            sibling_spacing=self.style_config.sibling_spacing,
-            resolved_template=self.style_config.resolved_template,  # For role-based spacing
+            style_config=self.style_config,  # Pass style_config for role-based spacing
         )
 
         # Use LayoutRegistry to create layout instance (demonstrates proper architecture)
@@ -1838,7 +1874,7 @@ class MindMapView(QGraphicsView):
         # Update scene rect based on new content
         self.scene_manager.update_from_content()
 
-        # Restore selection state and focus
+        # Restore selection state
         if saved_selection_id:
             if saved_selection_id in self.node_items:
                 # Original node still exists, select it
@@ -1849,8 +1885,8 @@ class MindMapView(QGraphicsView):
             elif self.root_node:
                 # Fallback to root
                 self._select_node_by_id(self.root_node.id)
-            # Ensure view has keyboard focus for keyboard shortcuts
-            self.setFocus(Qt.OtherFocusReason)
+            # Note: Do NOT call setFocus() here - let Qt manage focus naturally.
+            # If user is interacting with dialog controls, focus should stay there.
 
     def _restore_selection_state_after_undo(self, node_id_before_undo):
         """Restore selection state after undo operation.
@@ -2302,10 +2338,15 @@ class MindMapView(QGraphicsView):
                 color = "#999999"
                 connector_shape = "bezier"
 
-                if (self.style_config.resolved_template and
-                    role in self.style_config.resolved_template.role_styles):
-                    role_style = self.style_config.resolved_template.role_styles[role]
-                    color = role_style.connector_color or "#999999"
+                if role in self.style_config.role_styles:
+                    role_style = self.style_config.role_styles[role]
+
+                    # Get connector color from color pool
+                    if role_style.connector_color_index < len(self.style_config.color_pool):
+                        color = self.style_config.color_pool[role_style.connector_color_index]
+                    else:
+                        color = "#999999"
+
                     connector_shape = role_style.connector_shape
 
                 # Create a temporary EdgeItem with proper styling

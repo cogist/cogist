@@ -69,46 +69,8 @@ class MainWindow(QMainWindow):
 
         self.mindmap_service = MindMapService()
 
-        # Initialize style system with fallback strategy
-        from cogist.domain.styles import templates
-
-        # Strategy 1: Try user's saved default template
-        from cogist.infrastructure.utils import config_manager
-        from cogist.infrastructure.utils.resources import (
-            template_deserializer,
-            template_loader,
-        )
-
-        template_dir = config_manager.get_template_directory()
-        user_default = template_dir / "default.json"
-
-        if user_default.exists():
-            try:
-                import json
-
-                user_data = json.loads(user_default.read_text(encoding="utf-8"))
-                self.current_style = (
-                    template_deserializer.deserialize_complete_template(user_data)
-                )
-            except Exception as e:
-                print(
-                    f"Failed to load user default template: {e}, falling back to built-in"
-                )
-                self.current_style = templates.create_default_template()
-        else:
-            # Strategy 2: Try built-in default template
-            builtin_data = template_loader.get_builtin_template("default")
-            if builtin_data:
-                self.current_style = (
-                    template_deserializer.deserialize_complete_template(builtin_data)
-                )
-                # Save to user directory for future use
-                template_loader.save_template_to_user_dir(builtin_data, "default")
-                print("Loaded built-in default template and saved to user directory")
-            else:
-                # Strategy 3: Fallback to hardcoded default
-                self.current_style = templates.create_default_template()
-                print("Using hardcoded default template")
+        # Load default style configuration (template + color scheme)
+        self._load_default_style()
 
         # Apply global styles
         self._apply_global_styles()
@@ -134,6 +96,11 @@ class MainWindow(QMainWindow):
             command_history=self.mindmap_service.node_service.command_history,
         )
         self.style_panel.setVisible(False)  # Hidden by default
+
+        # Connect color scheme tab signals to advanced tab handlers
+        self.style_panel.color_scheme_tab.style_changed.connect(
+            self.style_panel.advanced_tab._on_color_scheme_changed
+        )
 
         # Create horizontal layout: ActivityBar | StylePanel | MindMapView
         main_widget = QWidget()
@@ -173,7 +140,7 @@ class MainWindow(QMainWindow):
 
     def _on_panel_activated(self, panel_name: str):
         """Handle panel switch from activity bar."""
-        if panel_name in ["simple", "advanced"]:
+        if panel_name in ["color_scheme", "advanced"]:
             # Show style panel
             self.style_panel.setVisible(True)
             # Switch to the selected mode
@@ -189,6 +156,10 @@ class MainWindow(QMainWindow):
             self.style_panel.advanced_tab.style_config = self.mindmap_view.style_config
             # Refresh UI controls to match new style config
             self.style_panel.advanced_tab.refresh_current_layer()
+
+        # Also update color scheme tab
+        if hasattr(self, "style_panel") and hasattr(self.style_panel, "color_scheme_tab"):
+            self.style_panel.color_scheme_tab.set_style_config(self.mindmap_view.style_config)
 
         # Enable document mode to reduce decorations
         self.setDocumentMode(True)
@@ -322,39 +293,26 @@ class MainWindow(QMainWindow):
             QPushButton:pressed {
                 background-color: #D0D0D0;
             }
-            QSpinBox {
-                border: 1px solid #CCCCCC;
-                border-radius: 6px;
-                padding: 4px 8px;
-                background-color: white;
-            }
-            QSpinBox:focus {
-                border: 1px solid #2196F3;
-            }
-            QSpinBox::up-button, QSpinBox::down-button {
-                border: none;
-                width: 16px;
-            }
-            QSpinBox::up-arrow {
-                image: none;
-                border: none;
-            }
-            QSpinBox::down-arrow {
-                image: none;
-                border: none;
-            }
         """)
 
-    def _reset_style_to_default(self):
-        """Reset style configuration to default using three-level fallback strategy."""
-        from cogist.domain.styles import templates
+    def _load_default_style(self):
+        """Load default style configuration (template + color scheme) with two-level fallback.
+
+        This method is called during initialization and when creating new files.
+
+        Architecture:
+        - Template: Defines node styles, spacing, fonts (structure)
+        - Color Scheme: Defines color pool (colors only)
+        - They are loaded independently and merged
+        """
         from cogist.infrastructure.utils import config_manager
         from cogist.infrastructure.utils.resources import (
+            color_scheme_loader,
             template_deserializer,
             template_loader,
         )
 
-        # Strategy 1: Try user's saved default template
+        # Step 1: Load template (structure only, no colors)
         template_dir = config_manager.get_template_directory()
         user_default = template_dir / "default.json"
 
@@ -366,27 +324,55 @@ class MainWindow(QMainWindow):
                 self.current_style = (
                     template_deserializer.deserialize_complete_template(user_data)
                 )
+                print("Loaded user default template")
             except Exception as e:
                 print(
-                    f"[New File] Failed to load user default template: {e}, falling back to built-in"
+                    f"Failed to load user default template: {e}, falling back to built-in"
                 )
-                self.current_style = templates.create_default_template()
+                # Fallback to built-in template
+                builtin_data = template_loader.get_builtin_template("default")
+                if builtin_data:
+                    self.current_style = (
+                        template_deserializer.deserialize_complete_template(builtin_data)
+                    )
+                else:
+                    raise RuntimeError(
+                        "Failed to load any template. Built-in template is missing or corrupted."
+                    ) from None
         else:
-            # Strategy 2: Try built-in default template
+            # User template doesn't exist, load built-in template directly (read-only)
             builtin_data = template_loader.get_builtin_template("default")
             if builtin_data:
                 self.current_style = (
                     template_deserializer.deserialize_complete_template(builtin_data)
                 )
-                # Save to user directory for future use
-                template_loader.save_template_to_user_dir(builtin_data, "default")
-                print(
-                    "[New File] Loaded built-in default template and saved to user directory"
-                )
             else:
-                # Strategy 3: Fallback to hardcoded default
-                self.current_style = templates.create_default_template()
-                print("[New File] Using hardcoded default template")
+                raise RuntimeError(
+                    "Failed to load any template. Built-in template is missing or corrupted."
+                )
+
+        # Step 2: Load color scheme INDEPENDENTLY (colors only)
+        # Color scheme completely overrides template's color_pool
+        try:
+            color_scheme_data = color_scheme_loader.load_color_scheme_with_fallback("default")
+            # Override color_pool from color scheme (ignore template's colors)
+            if "color_pool" in color_scheme_data:
+                self.current_style.color_pool = color_scheme_data["color_pool"]
+
+            # Override special_colors from color scheme
+            if "special_colors" in color_scheme_data:
+                self.current_style.special_colors = color_scheme_data["special_colors"]
+        except RuntimeError as e:
+            print(f"Warning: {e}")
+            print("Using empty color pool (nodes will use default colors)")
+
+    def _reset_style_to_default(self):
+        """Reset style configuration to default (used when creating new files).
+
+        This method wraps _load_default_style() with additional logging.
+        """
+        print("[New File] Loading default style configuration...")
+        self._load_default_style()
 
         # Apply global styles
         self._apply_global_styles()
@@ -561,9 +547,7 @@ class MainWindow(QMainWindow):
             import json
 
             from cogist.domain.styles import (
-                serialize_color_scheme,
                 serialize_style,
-                serialize_template,
             )
 
             # Build complete template data structure (same as CGS format)
@@ -572,24 +556,10 @@ class MainWindow(QMainWindow):
                 "description": f"Custom template: {template_name}",
             }
 
-            # Add MindMapStyle config (spacing, connectors, etc.)
+            # Add MindMapStyle config (contains all style data: role_styles, branch_colors, etc.)
             if self.current_style:
                 style_config_data = serialize_style(self.current_style)
                 template_data["style_config"] = style_config_data
-
-            # Add Template (node styles)
-            if self.current_style.resolved_template:
-                template_obj_data = serialize_template(
-                    self.current_style.resolved_template
-                )
-                template_data["template"] = template_obj_data
-
-            # Add ColorScheme (colors)
-            if self.current_style.resolved_color_scheme:
-                color_scheme_data = serialize_color_scheme(
-                    self.current_style.resolved_color_scheme
-                )
-                template_data["color_scheme"] = color_scheme_data
 
             # Save as single JSON file
             template_file = template_dir / f"{template_name}.json"
@@ -642,7 +612,7 @@ class MainWindow(QMainWindow):
                 else:
                     return  # Cancelled, abort
 
-        # CRITICAL: Reset style configuration to default (three-level fallback)
+        # CRITICAL: Reset style configuration to default (two-level fallback)
         self._reset_style_to_default()
 
         # Reinitialize the mind map view (same as __init__)
@@ -765,7 +735,6 @@ class MainWindow(QMainWindow):
             self.mindmap_service.node_service.command_history.peek_last_redo_command()
         )
         command_type_name = last_command and type(last_command).__name__
-        print(f"DEBUG _redo: command_type={command_type_name}")
         is_add_node_command = command_type_name == "AddNodeCommand"
         is_edit_text_command = command_type_name == "EditTextCommand"
         is_reparent_command = command_type_name == "ReparentNodeCommand"
@@ -1027,8 +996,8 @@ class MainWindow(QMainWindow):
 
         # Update activity bar button state
         if not is_visible:
-            # If showing, activate advanced mode by default
-            self.activity_bar.activate_panel("advanced")
+            # If showing, activate color scheme by default
+            self.activity_bar.activate_panel("color_scheme")
         else:
             # If hiding, uncheck all buttons
             for btn in self.activity_bar.buttons.values():
@@ -1036,8 +1005,8 @@ class MainWindow(QMainWindow):
 
     def _open_style_panel(self):
         """Open the style panel via activity bar."""
-        # Activate the advanced mode button by default
-        self.activity_bar.activate_panel("advanced")
+        # Activate the color scheme button by default
+        self.activity_bar.activate_panel("color_scheme")
 
 
 def main():

@@ -4,17 +4,16 @@ Provides controls for customizing edge appearance between nodes.
 Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QColor
+from PySide6.QtCore import QPoint, QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,
     QPushButton,
-    QSpinBox,
 )
 
 from cogist.presentation.widgets import (
+    ColorPoolPopup,
     VisualPreviewButton,
     generate_bezier_preview,
     generate_bezier_uniform_preview,
@@ -26,6 +25,7 @@ from cogist.presentation.widgets import (
 
 from .collapsible_panel import CollapsiblePanel
 from .menu_button import MenuButton
+from .spinbox import SpinBox
 
 
 class ConnectorSection(CollapsiblePanel):
@@ -37,13 +37,19 @@ class ConnectorSection(CollapsiblePanel):
 
     style_changed = Signal(dict)
 
-    # UI constants
-    LABEL_WIDTH = 75
+    # UI constants (fallback value, will use parent's LABEL_WIDTH if available)
+    LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
 
     def __init__(self, parent=None):
         super().__init__("Connector Style", collapsed=True, parent=parent)
+
+        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
+
+        # Store reference to AdvancedStyleTab for accessing style_config
+        self._advanced_tab = parent
 
         # State
         self._initialized = False
@@ -51,8 +57,11 @@ class ConnectorSection(CollapsiblePanel):
             "connector_shape": "bezier",
             "connector_style": "solid",
             "line_width": 2,
-            "connector_color": "#666666",
+            "connector_color_index": 0,
+            "connector_brightness": 1.0,
+            "connector_opacity": 255,
         }
+        self.use_rainbow = False  # Rainbow branch mode state
 
         # Connect toggle signal for lazy initialization
         self.toggled.connect(self._on_toggled)
@@ -62,19 +71,47 @@ class ConnectorSection(CollapsiblePanel):
         if checked and not self._initialized:
             self._init_content()
             self._initialized = True
+            # Load style from parent after initialization
+            parent = self._advanced_tab if hasattr(self, '_advanced_tab') else None
+            if parent and hasattr(parent, "style_config") and parent.style_config:
+                # Get connector color index from style_config
+                try:
+                    role = parent._get_current_layer_role()
+                    if role and role in parent.style_config.role_styles:
+                        role_style = parent.style_config.role_styles[role]
+                        color_index = role_style.connector_color_index
+                        self.current_style["connector_color_index"] = color_index
+                        # Update button display
+                        color_pool = parent.style_config.color_pool
+                        if color_index < len(color_pool):
+                            selected_color = color_pool[color_index]
+                            if hasattr(self, "connector_color_btn"):
+                                self.connector_color_btn.setStyleSheet(
+                                    f"background-color: {selected_color}; "
+                                    "border: none; "
+                                    "border-radius: 4px;"
+                                )
+                except Exception:
+                    pass  # Silently ignore errors during initialization
+
+                # Load rainbow mode state from parent
+                if hasattr(parent, "style_config") and parent.style_config:
+                    self.use_rainbow = getattr(parent.style_config, 'use_rainbow_branches', False)
+                    # Update color controls visibility based on rainbow mode
+                    self._update_color_controls_visibility()
 
     def _init_content(self):
         """Initialize content on first expand (lazy initialization)."""
         layout = QGridLayout()
         layout.setSpacing(6)
-        layout.setContentsMargins(self.GROUP_MARGIN, 16, self.GROUP_MARGIN, 16)
+        layout.setContentsMargins(self.GROUP_MARGIN, 6, self.GROUP_MARGIN, 16)
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
 
         # Connector shape selector - using reusable VisualPreviewButton
         shape_label = QLabel("Shape:")
         shape_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        shape_label.setMinimumWidth(self.LABEL_WIDTH)
+        shape_label.setFixedWidth(self._label_width)
         layout.addWidget(shape_label, 0, 0)
 
         # Create visual options for popup
@@ -104,7 +141,7 @@ class ConnectorSection(CollapsiblePanel):
         # Connector style
         style_label = QLabel("Style:")
         style_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        style_label.setMinimumWidth(self.LABEL_WIDTH)
+        style_label.setFixedWidth(self._label_width)
         layout.addWidget(style_label, 1, 0)
 
         # Get initial connector style from current_style
@@ -134,10 +171,10 @@ class ConnectorSection(CollapsiblePanel):
         # Connector width
         width_label = QLabel("Width:")
         width_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        width_label.setMinimumWidth(self.LABEL_WIDTH)
+        width_label.setFixedWidth(self._label_width)
         layout.addWidget(width_label, 2, 0)
 
-        self.connector_width_spin = QSpinBox()
+        self.connector_width_spin = SpinBox()
         self.connector_width_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.connector_width_spin.setRange(1, 10)
         self.connector_width_spin.setValue(self.current_style["line_width"])
@@ -145,20 +182,47 @@ class ConnectorSection(CollapsiblePanel):
         self.connector_width_spin.valueChanged.connect(self._on_width_changed)
         layout.addWidget(self.connector_width_spin, 2, 1)
 
-        # Connector color
+        # Connector color - simple QPushButton (no text, shows color only)
         color_label = QLabel("Color:")
         color_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        color_label.setMinimumWidth(self.LABEL_WIDTH)
+        color_label.setFixedWidth(self._label_width)
         layout.addWidget(color_label, 3, 0)
 
         self.connector_color_btn = QPushButton()
         self.connector_color_btn.setFixedHeight(self.WIDGET_HEIGHT)
-        self.connector_color_btn.setStyleSheet(
-            f"background-color: {self.current_style['connector_color']}; "
-            "border: 1px solid #ccc; border-radius: 6px;"
-        )
-        self.connector_color_btn.clicked.connect(self._pick_color)
+        self.connector_color_btn.clicked.connect(self._on_color_clicked)
         layout.addWidget(self.connector_color_btn, 3, 1)
+        # Button stylesheet is set by set_style() - no text, no hardcoded colors
+
+        # Connector brightness
+        brightness_label = QLabel("Brightness:")
+        brightness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        brightness_label.setFixedWidth(self._label_width)
+        layout.addWidget(brightness_label, 4, 0)
+
+        self.connector_brightness_spin = SpinBox()
+        self.connector_brightness_spin.setFixedHeight(self.WIDGET_HEIGHT)
+        self.connector_brightness_spin.setRange(50, 200)  # 50%-200% (0.5-2.0)
+        self.connector_brightness_spin.setSuffix("%")
+        self.connector_brightness_spin.setValue(int(self.current_style["connector_brightness"] * 100))
+        self.connector_brightness_spin.valueChanged.connect(self._on_brightness_changed)
+        layout.addWidget(self.connector_brightness_spin, 4, 1)
+
+        # Connector opacity
+        opacity_label = QLabel("Opacity:")
+        opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        opacity_label.setFixedWidth(self._label_width)
+        layout.addWidget(opacity_label, 5, 0)
+
+        self.connector_opacity_spin = SpinBox()
+        self.connector_opacity_spin.setFixedHeight(self.WIDGET_HEIGHT)
+        self.connector_opacity_spin.setRange(0, 100)
+        self.connector_opacity_spin.setSuffix("%")
+        # Convert from 0-255 to 0-100 for display
+        opacity_value = self.current_style.get("connector_opacity", 255)
+        self.connector_opacity_spin.setValue(int(opacity_value / 255 * 100))
+        self.connector_opacity_spin.valueChanged.connect(self._on_opacity_changed)
+        layout.addWidget(self.connector_opacity_spin, 5, 1)
 
         self.setLayout(layout)
 
@@ -201,27 +265,96 @@ class ConnectorSection(CollapsiblePanel):
         self.current_style["line_width"] = value
         self._emit_style_changed()
 
-    def _pick_color(self):
-        """Open color picker dialog."""
-        from PySide6.QtWidgets import QColorDialog
+    def _on_color_clicked(self):
+        """Handle connector color button click."""
+        parent = self._advanced_tab if hasattr(self, '_advanced_tab') else None
 
-        current = QColor(self.current_style["connector_color"])
-        color = QColorDialog.getColor(
-            current, self, "Select Connector Color", QColorDialog.ShowAlphaChannel
-        )
+        if not (parent and hasattr(parent, "style_config") and parent.style_config):
+            return
 
-        if color.isValid():
-            # Use name(QColor.HexArgb) to preserve alpha channel
-            self.current_style["connector_color"] = color.name(QColor.HexArgb)
-            self.connector_color_btn.setStyleSheet(
-                f"background-color: {self.current_style['connector_color']}; "
-                "border: 1px solid #ccc; border-radius: 6px;"
+        color_pool = parent.style_config.color_pool
+        if not color_pool or len(color_pool) < 8:
+            print("Warning: color_pool not properly initialized")
+            return
+
+        # Create color pool popup (reusable component)
+        if not hasattr(self, '_color_pool_popup') or self._color_pool_popup is None:
+            self._color_pool_popup = ColorPoolPopup(
+                color_pool=color_pool,
+                parent=self,
             )
-            self._emit_style_changed()
+            self._color_pool_popup.color_selected.connect(
+                self._on_connector_color_pool_selected
+            )
+
+        # Show popup at button position with smart boundary detection
+        button_pos = self.connector_color_btn.mapToGlobal(QPoint(0, self.connector_color_btn.height()))
+        button_width = self.connector_color_btn.width()
+        self._color_pool_popup.show_at(button_pos, button_width)
+
+    def _on_brightness_changed(self, value: int):
+        """Handle connector brightness change."""
+        self.current_style["connector_brightness"] = value / 100.0
+        self._emit_style_changed()
+
+    def _on_opacity_changed(self, value: int):
+        """Handle connector opacity change."""
+        # Convert from 0-100% to 0-255 for storage
+        self.current_style["connector_opacity"] = int(value / 100 * 255)
+        self._emit_style_changed()
 
     def _emit_style_changed(self):
         """Emit style changed signal."""
         self.style_changed.emit(self.current_style.copy())
+
+    def _update_color_controls_visibility(self):
+        """Show/hide color controls based on rainbow mode."""
+        if hasattr(self, "connector_color_btn"):
+            # Find and hide/show color label
+            layout = self._content_widget.layout()
+            if layout:
+                for i in range(layout.count()):
+                    item = layout.itemAt(i)
+                    widget = item.widget() if item else None
+                    if (
+                        widget
+                        and isinstance(widget, QLabel)
+                        and widget.text() == "Color:"
+                    ):
+                        # In rainbow mode, always hide color controls
+                        widget.setVisible(not self.use_rainbow)
+                        break
+            # Hide/show color button
+            self.connector_color_btn.setVisible(not self.use_rainbow)
+
+    def _on_connector_color_pool_selected(self, color_index: int):
+        """Handle connector color selection from pool selector popup.
+
+        Args:
+            color_index: The selected color index (0-7)
+        """
+        # Update connector_color_index in current_style
+        self.current_style["connector_color_index"] = color_index
+
+        # Update button display color
+        parent = self._advanced_tab if hasattr(self, '_advanced_tab') else None
+        if parent and hasattr(parent, "style_config") and parent.style_config:
+            color_pool = parent.style_config.color_pool
+            if color_index < len(color_pool):
+                selected_color = color_pool[color_index]
+                # Don't set text - let button show only color
+                if hasattr(self, "connector_color_btn"):
+                    self.connector_color_btn.setStyleSheet(
+                        f"background-color: {selected_color}; "
+                        "border: 1px solid #C8C8C8; "
+                        "border-radius: 6px; "
+                        "padding: 4px 24px 4px 12px; "
+                        "font-size: 13px; "
+                        "text-align: left;"
+                    )
+
+        # Emit style changed signal
+        self._emit_style_changed()
 
     def get_style(self) -> dict:
         """Get current connector style."""
@@ -229,6 +362,10 @@ class ConnectorSection(CollapsiblePanel):
 
     def set_style(self, style: dict):
         """Set connector style programmatically."""
+        # Update rainbow mode state
+        if "use_rainbow" in style:
+            self.use_rainbow = style["use_rainbow"]
+
         self.current_style.update(style)
 
         if self._initialized:
@@ -248,8 +385,31 @@ class ConnectorSection(CollapsiblePanel):
             if "line_width" in style:
                 self.connector_width_spin.setValue(style["line_width"])
 
-            if "connector_color" in style:
-                self.connector_color_btn.setStyleSheet(
-                    f"background-color: {style['connector_color']}; "
-                    "border: 1px solid #ccc; border-radius: 6px;"
-                )
+            # Update connector color button display
+            if "connector_color_index" in style:
+                parent = self._advanced_tab if hasattr(self, '_advanced_tab') else None
+                if parent and hasattr(parent, "style_config") and parent.style_config:
+                    color_pool = parent.style_config.color_pool
+                    color_index = style["connector_color_index"]
+                    if color_index < len(color_pool):
+                        selected_color = color_pool[color_index]
+                        # Don't set text - let button show only color
+                        if hasattr(self, "connector_color_btn"):
+                            self.connector_color_btn.setStyleSheet(
+                                f"background-color: {selected_color}; "
+                                "border: none; "
+                                "border-radius: 4px;"
+                            )
+
+            # Update brightness slider/spinbox
+            if "connector_brightness" in style and hasattr(self, "connector_brightness_spin"):
+                brightness_value = int(style["connector_brightness"] * 100)
+                self.connector_brightness_spin.setValue(brightness_value)
+
+            # Update opacity slider/spinbox
+            if "connector_opacity" in style and hasattr(self, "connector_opacity_spin"):
+                # Convert from 0-255 to 0-100% for display
+                self.connector_opacity_spin.setValue(int(style["connector_opacity"] / 255 * 100))
+
+            # Hide/show color controls based on rainbow mode
+            self._update_color_controls_visibility()

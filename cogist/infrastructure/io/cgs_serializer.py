@@ -23,9 +23,7 @@ class CGSSerializer:
     │   ├── nodes.json         # Node tree structure
     │   └── positions.json     # Node positions (optional)
     ├── style/
-    │   ├── config.json        # MindMapStyle configuration
-    │   ├── template.json      # Template definition (optional)
-    │   └── color_scheme.json  # ColorScheme definition (optional)
+    │   └── mindmap_style.json # Complete MindMapStyle (self-contained)
     └── assets/                # Resource files (optional)
         ├── images/
         ├── vectors/
@@ -108,7 +106,7 @@ class CGSSerializer:
 
                 # 3. Read style configuration (if present)
                 style_config = None
-                if 'style/config.json' in zf.namelist():
+                if 'style/mindmap_style.json' in zf.namelist():
                     style_config = cls._read_style_config(zf)
 
                 # 4. Read assets
@@ -189,47 +187,21 @@ class CGSSerializer:
 
     @classmethod
     def _write_style_config(cls, zf: zipfile.ZipFile, style_config: MindMapStyle) -> None:
-        """Write style configuration to ZIP archive."""
-        # Write main style config
+        """Write complete MindMapStyle to single file (NEW FORMAT)."""
         style_data = serialize_style(style_config)
-        zf.writestr('style/config.json', json.dumps(style_data, indent=2, ensure_ascii=False))
-
-        # Write embedded template if available
-        if style_config.resolved_template:
-            from cogist.domain.styles import serialize_template
-            template_data = serialize_template(style_config.resolved_template)
-            zf.writestr('style/template.json', json.dumps(template_data, indent=2, ensure_ascii=False))
-
-        # Write embedded color scheme if available
-        if style_config.resolved_color_scheme:
-            from cogist.domain.styles import serialize_color_scheme
-            cs_data = serialize_color_scheme(style_config.resolved_color_scheme)
-            zf.writestr('style/color_scheme.json', json.dumps(cs_data, indent=2, ensure_ascii=False))
+        zf.writestr(
+            'style/mindmap_style.json',
+            json.dumps(style_data, indent=2, ensure_ascii=False)
+        )
 
     @classmethod
     def _read_style_config(cls, zf: zipfile.ZipFile) -> MindMapStyle | None:
-        """Read style configuration from ZIP archive."""
-        from cogist.domain.styles import (
-            deserialize_color_scheme,
-            deserialize_style,
-            deserialize_template,
-        )
+        """Read complete MindMapStyle from single file (NEW FORMAT)."""
+        from cogist.domain.styles import deserialize_style
 
-        # Read main config
-        style_data = json.loads(zf.read('style/config.json'))
-        style_config = deserialize_style(style_data)
-
-        # Read embedded template if available
-        if 'style/template.json' in zf.namelist():
-            template_data = json.loads(zf.read('style/template.json'))
-            style_config.resolved_template = deserialize_template(template_data)
-
-        # Read embedded color scheme if available
-        if 'style/color_scheme.json' in zf.namelist():
-            cs_data = json.loads(zf.read('style/color_scheme.json'))
-            style_config.resolved_color_scheme = deserialize_color_scheme(cs_data)
-
-        return style_config
+        # Read the single self-contained style file
+        style_data = json.loads(zf.read('style/mindmap_style.json'))
+        return deserialize_style(style_data)
 
     @classmethod
     def _read_assets(cls, zf: zipfile.ZipFile) -> dict[str, bytes]:
@@ -278,10 +250,6 @@ class CGSSerializer:
         # Add style files if present
         if style_config:
             manifest['files']['style_config'] = 'style/config.json'
-            if style_config.resolved_template:
-                manifest['files']['template'] = 'style/template.json'
-            if style_config.resolved_color_scheme:
-                manifest['files']['color_scheme'] = 'style/color_scheme.json'
 
         # Add asset files if present
         if assets:

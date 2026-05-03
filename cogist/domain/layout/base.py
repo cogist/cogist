@@ -24,68 +24,17 @@ class BaseLayoutConfig:
 class DefaultLayoutConfig(BaseLayoutConfig):
     """Default layout configuration (left-right balanced)
 
-    All spacing values should be provided by StyleConfig via main.py.
-    These fields are just containers - they have no meaningful defaults.
+    Spacing values can be provided directly or read from MindMapStyle.role_styles.
+    If style_config is provided, spacing will be dynamically read based on node depth/role.
+
+    Attributes:
+        level_spacing: Default horizontal spacing (fallback if style_config not provided)
+        sibling_spacing: Default vertical spacing (fallback if style_config not provided)
+        style_config: Optional MindMapStyle for dynamic spacing lookup
     """
-    level_spacing: float = 0.0
-    sibling_spacing: float = 0.0
-
-    # Reference to resolved template for role-based spacing
-    resolved_template: Any = None  # Will be set from MindMapStyle
-
-    def get_level_spacing(self, depth: int) -> float:
-        """Get level spacing for a specific depth.
-
-        Args:
-            depth: Parent node's depth in tree
-
-        Returns:
-            Horizontal spacing for this parent-child relationship
-        """
-        # Get from role-based config
-        if self.resolved_template and hasattr(self.resolved_template, 'role_styles'):
-            from ..styles.extended_styles import NodeRole
-
-            # Map depth to role
-            role_map = {
-                0: NodeRole.ROOT,
-                1: NodeRole.PRIMARY,
-                2: NodeRole.SECONDARY,
-            }
-            role = role_map.get(depth, NodeRole.TERTIARY)
-
-            if role in self.resolved_template.role_styles:
-                return self.resolved_template.role_styles[role].parent_child_spacing
-
-        # Final fallback
-        return 80.0
-
-    def get_sibling_spacing(self, depth: int) -> float:
-        """Get sibling spacing for a specific depth.
-
-        Args:
-            depth: Node depth in tree
-
-        Returns:
-            Sibling spacing for this depth
-        """
-        # Get from role-based config
-        if self.resolved_template and hasattr(self.resolved_template, 'role_styles'):
-            from ..styles.extended_styles import NodeRole
-
-            # Map depth to role
-            role_map = {
-                0: NodeRole.ROOT,
-                1: NodeRole.PRIMARY,
-                2: NodeRole.SECONDARY,
-            }
-            role = role_map.get(depth, NodeRole.TERTIARY)
-
-            if role in self.resolved_template.role_styles:
-                return self.resolved_template.role_styles[role].sibling_spacing
-
-        # Final fallback
-        return 60.0
+    level_spacing: float = 80.0  # Default horizontal spacing
+    sibling_spacing: float = 60.0  # Default vertical spacing
+    style_config: Any = None  # Optional MindMapStyle for dynamic spacing
 
 
 # === Type Union for all layout configs ===

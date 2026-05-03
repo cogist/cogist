@@ -134,10 +134,49 @@ class VisualListPopup(QDialog):
                 info["widget"].setStyleSheet("background: transparent;")
 
     def show_at(self, position: QPoint):
-        """Show popup at specified position.
+        """Show popup at specified position with smart boundary detection.
+
+        Automatically adjusts position to ensure popup stays within screen bounds.
+        If popup would extend below screen, it shows above the trigger position.
 
         Args:
-            position: Global position to show the popup
+            position: Global position to show the popup (typically below trigger button)
         """
-        self.move(position)
+        from PySide6.QtWidgets import QApplication
+
+        # Get screen geometry
+        screen = QApplication.screenAt(position)
+        if not screen:
+            screen = QApplication.primaryScreen()
+
+        screen_geometry = screen.availableGeometry()
+
+        # Calculate popup size
+        popup_width = self.width()
+        popup_height = self.height()
+
+        # Calculate ideal position (below trigger)
+        x = position.x()
+        y = position.y()
+
+        # Check if popup would extend below screen
+        if y + popup_height > screen_geometry.bottom():
+            # Show above the trigger position instead
+            # Assume trigger button height is ~32px, position above it
+            y = position.y() - popup_height - 4  # 4px gap
+
+        # Ensure popup doesn't go above screen top
+        if y < screen_geometry.top():
+            y = screen_geometry.top() + 10  # 10px margin from top
+
+        # Ensure popup doesn't extend beyond right edge
+        if x + popup_width > screen_geometry.right():
+            x = screen_geometry.right() - popup_width - 10  # 10px margin
+
+        # Ensure popup doesn't go beyond left edge
+        if x < screen_geometry.left():
+            x = screen_geometry.left() + 10  # 10px margin
+
+        # Move and show
+        self.move(int(x), int(y))
         self.show()

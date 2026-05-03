@@ -25,13 +25,16 @@ class LayerSelector(QFrame):
 
     layer_changed = Signal(str)
 
-    # UI Constants
-    LABEL_WIDTH = 75
+    # UI Constants (fallback value, will use parent's LABEL_WIDTH if available)
+    LABEL_WIDTH = 90
     WIDGET_HEIGHT = 32
     GROUP_MARGIN = 10
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
         # Current layer
         self.current_layer = "canvas"
@@ -78,7 +81,7 @@ class LayerSelector(QFrame):
         # Layer label
         layer_label = QLabel("Layer:")
         layer_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        layer_label.setMinimumWidth(self.LABEL_WIDTH)
+        layer_label.setFixedWidth(self._label_width)
         content_layout.addWidget(layer_label, 0, 0)
 
         # Layer combo button - get initial layer from parent panel

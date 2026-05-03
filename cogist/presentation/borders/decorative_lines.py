@@ -34,6 +34,18 @@ class BottomLineBorder(BorderStrategy):
         # Draw bottom line
         pen = QPen(QColor(border_color), border_width)
         pen.setCapStyle(Qt.RoundCap)  # Rounded ends look better
+
+        # Set border style
+        border_style = style_config.get("border_style", "solid")
+        if border_style == "dashed":
+            pen.setStyle(Qt.DashLine)
+        elif border_style == "dotted":
+            pen.setStyle(Qt.DotLine)
+        elif border_style == "dash_dot":
+            pen.setStyle(Qt.DashDotLine)
+        else:
+            pen.setStyle(Qt.SolidLine)
+
         painter.setPen(pen)
 
         # Calculate line endpoints (full width)
@@ -83,6 +95,18 @@ class LeftLineBorder(BorderStrategy):
         # Draw vertical line on the appropriate edge
         pen = QPen(QColor(border_color), border_width)
         pen.setCapStyle(Qt.RoundCap)
+
+        # Set border style
+        border_style = style_config.get("border_style", "solid")
+        if border_style == "dashed":
+            pen.setStyle(Qt.DashLine)
+        elif border_style == "dotted":
+            pen.setStyle(Qt.DotLine)
+        elif border_style == "dash_dot":
+            pen.setStyle(Qt.DashDotLine)
+        else:
+            pen.setStyle(Qt.SolidLine)
+
         painter.setPen(pen)
 
         # Calculate line endpoints (full height)

@@ -1,0 +1,25 @@
+{
+  "name": "default",
+  "description": "Default balanced color scheme with warm tones",
+  
+  "color_pool": [
+    "#FFEE3848",
+    "#FFF48333",
+    "#FFF1CF27",
+    "#FF18DC6A",
+    "#FF14D0C1",
+    "#FF2A9CED",
+    "#FF8540E7",
+    "#FFEA2E8C"
+  ],
+  
+  "special_colors": {
+    "canvas_bg": "#FFF5F0E6",
+    "root_background": "#FF333333",
+    "root_border": "#FF333333",
+    "critical_node_bg": "#FFFFEBEE",
+    "critical_node_border": "#FFC62828",
+    "minor_node_bg": "#FFF5F5F5",
+    "minor_node_border": "#FF9E9E9E"
+  }
+}

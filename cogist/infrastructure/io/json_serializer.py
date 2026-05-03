@@ -141,7 +141,7 @@ class JSONSerializer:
                 data.get("position", {}).get("x", 0.0),
                 data.get("position", {}).get("y", 0.0),
             ),
-            color=data.get("color", "#2196F3"),
+            color=data.get("color", "#FF2196F3"),
             is_root=data.get("is_root", False),
             depth=data.get("depth", 0),  # Restore depth from saved data
         )

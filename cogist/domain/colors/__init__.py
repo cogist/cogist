@@ -1,22 +1,10 @@
 """Color themes - Domain Layer
 
-Provides color theme definitions for consistent color schemes.
+DEPRECATED: This module is no longer used.
+Color management has been moved to cogist.domain.styles.ColorScheme.
 """
 
-from .color_theme import (
-    BLUE_THEME,
-    COLOR_THEMES,
-    COOL_THEME,
-    DARK_THEME,
-    WARM_THEME,
-    ColorTheme,
-)
+# This module is deprecated and will be removed in a future version.
+# Use cogist.domain.styles.ColorScheme instead.
 
-__all__ = [
-    'ColorTheme',
-    'COLOR_THEMES',
-    'BLUE_THEME',
-    'DARK_THEME',
-    'WARM_THEME',
-    'COOL_THEME',
-]
+__all__ = []

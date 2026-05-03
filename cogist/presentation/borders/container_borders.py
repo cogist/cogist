@@ -23,17 +23,32 @@ class RoundedRectBorder(BorderStrategy):
         border_width = style_config.get("border_width", 0)
         border_style = style_config.get("border_style", "solid")
 
-        # Draw background fill
-        if bg_color:
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QBrush(QColor(bg_color)))
-            painter.drawRoundedRect(rect, radius, radius)
-
-        # Draw border if specified
         if border_width > 0 and border_color:
-            pen = QPen(QColor(border_color), border_width)
+            # Use compound QPainterPath to create a ring/border-only shape
+            # This prevents semi-transparent overlap between border and background
 
-            # Set border style
+            # Outer path (extends half border width outward)
+            half_width = border_width / 2.0
+            outer_rect = rect.adjusted(-half_width, -half_width, half_width, half_width)
+            outer_radius = radius + half_width
+            outer_path = QPainterPath()
+            outer_path.addRoundedRect(outer_rect, outer_radius, outer_radius)
+
+            # Inner path (original rect, creates the "hole")
+            inner_path = QPainterPath()
+            inner_path.addRoundedRect(rect, radius, radius)
+
+            # Subtract inner from outer to create a ring shape
+            border_ring = outer_path.subtracted(inner_path)
+
+            # Step 1: Draw background first (full rectangle)
+            if bg_color:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(QColor(bg_color)))
+                painter.drawPath(inner_path)
+
+            # Step 2: Draw border ring on top (only the ring area, no overlap)
+            pen = QPen(QColor(border_color), 0)  # Pen width 0 - we're filling a path, not stroking
             if border_style == "dashed":
                 pen.setStyle(Qt.DashLine)
             elif border_style == "dotted":
@@ -44,8 +59,14 @@ class RoundedRectBorder(BorderStrategy):
                 pen.setStyle(Qt.SolidLine)
 
             painter.setPen(pen)
-            painter.setBrush(Qt.NoBrush)
-            painter.drawRoundedRect(rect, radius, radius)
+            painter.setBrush(QBrush(QColor(border_color)))
+            painter.drawPath(border_ring)
+        else:
+            # No border, just draw background
+            if bg_color:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(QColor(bg_color)))
+                painter.drawRoundedRect(rect, radius, radius)
 
     def get_selection_path(self, rect, style_config: dict) -> QPainterPath:
         """Get selection highlight path for rounded rectangle."""
@@ -72,17 +93,31 @@ class CircleBorder(BorderStrategy):
         border_width = style_config.get("border_width", 0)
         border_style = style_config.get("border_style", "solid")
 
-        # Draw background fill
-        if bg_color:
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QBrush(QColor(bg_color)))
-            painter.drawEllipse(rect)
-
-        # Draw border if specified
         if border_width > 0 and border_color:
-            pen = QPen(QColor(border_color), border_width)
+            # Use compound QPainterPath to create a ring/border-only shape
+            # This prevents semi-transparent overlap between border and background
 
-            # Set border style
+            # Outer path (extends half border width outward)
+            half_width = border_width / 2.0
+            outer_rect = rect.adjusted(-half_width, -half_width, half_width, half_width)
+            outer_path = QPainterPath()
+            outer_path.addEllipse(outer_rect)
+
+            # Inner path (original rect, creates the "hole")
+            inner_path = QPainterPath()
+            inner_path.addEllipse(rect)
+
+            # Subtract inner from outer to create a ring shape
+            border_ring = outer_path.subtracted(inner_path)
+
+            # Step 1: Draw background first (full ellipse)
+            if bg_color:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(QColor(bg_color)))
+                painter.drawPath(inner_path)
+
+            # Step 2: Draw border ring on top (only the ring area, no overlap)
+            pen = QPen(QColor(border_color), 0)  # Pen width 0 - we're filling a path, not stroking
             if border_style == "dashed":
                 pen.setStyle(Qt.DashLine)
             elif border_style == "dotted":
@@ -93,8 +128,14 @@ class CircleBorder(BorderStrategy):
                 pen.setStyle(Qt.SolidLine)
 
             painter.setPen(pen)
-            painter.setBrush(Qt.NoBrush)
-            painter.drawEllipse(rect)
+            painter.setBrush(QBrush(QColor(border_color)))
+            painter.drawPath(border_ring)
+        else:
+            # No border, just draw background
+            if bg_color:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(QColor(bg_color)))
+                painter.drawEllipse(rect)
 
     def get_selection_path(self, rect, style_config: dict) -> QPainterPath:
         """Get selection highlight path for circle/ellipse."""

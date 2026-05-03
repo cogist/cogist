@@ -28,11 +28,17 @@ NUMERIC_STYLE_FIELDS = {
     "padding_h",
     "max_text_width",
     "font_size",
+    "bg_brightness",
+    "bg_opacity",
     # Border numeric fields
     "border_width",
     "border_radius",
+    "border_brightness",
+    "border_opacity",
     # Connector numeric fields
     "line_width",
+    "connector_brightness",
+    "connector_opacity",
     # Shadow numeric fields
     "shadow_offset_x",
     "shadow_offset_y",
@@ -122,16 +128,11 @@ class ChangeStyleCommand(Command):
         if layer == "canvas":
             for key in keys:
                 if key == "bg_color":
-                    backup[key] = self.style_config.canvas_bg_color
-                    # Also backup resolved_color_scheme if it exists
-                    if self.style_config.resolved_color_scheme:
-                        backup["resolved_canvas_bg_color"] = (
-                            self.style_config.resolved_color_scheme.canvas_bg_color
-                        )
+                    backup[key] = self.style_config.special_colors["canvas_bg"]
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}
-            connector_keys = {"connector_shape", "connector_style", "line_width", "color"}
+            connector_keys = {"connector_shape", "connector_style", "line_width", "connector_color_index", "connector_brightness", "connector_opacity"}
 
             if keys & spacing_keys:
                 # Backup spacing configuration from role-based style
@@ -148,8 +149,8 @@ class ChangeStyleCommand(Command):
                 }
                 role = layer_to_role.get(layer)
 
-                if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
-                    role_style = self.style_config.resolved_template.role_styles[role]
+                if role and role in self.style_config.role_styles:
+                    role_style = self.style_config.role_styles[role]
                     backup["parent_child_spacing"] = role_style.parent_child_spacing
                     backup["sibling_spacing"] = role_style.sibling_spacing
             elif keys & connector_keys:
@@ -166,65 +167,64 @@ class ChangeStyleCommand(Command):
                 }
                 role = layer_to_role.get(layer)
 
-                if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
-                    role_style = self.style_config.resolved_template.role_styles[role]
+                if role and role in self.style_config.role_styles:
+                    role_style = self.style_config.role_styles[role]
                     backup["connector_shape"] = role_style.connector_shape
                     backup["connector_style"] = role_style.connector_style
                     backup["line_width"] = role_style.line_width
-                    backup["connector_color"] = role_style.connector_color
+                    backup["connector_color_index"] = role_style.connector_color_index
+                    backup["connector_brightness"] = role_style.connector_brightness
+                    backup["connector_opacity"] = role_style.connector_opacity
             else:
-                # For node layers, access the resolved template
-                if self.style_config.resolved_template:
-                    from cogist.domain.styles import NodeRole
+                # For node layers, access role_styles directly
+                from cogist.domain.styles import NodeRole
 
-                    # Map layer name to role
-                    layer_to_role = {
-                        "root": "root",
-                        "level_1": "primary",
-                        "level_2": "secondary",
-                        "level_3_plus": "tertiary",
-                        "critical": "tertiary",
-                        "minor": "tertiary",
-                    }
+                # Map layer name to role
+                layer_to_role = {
+                    "root": "root",
+                    "level_1": "primary",
+                    "level_2": "secondary",
+                    "level_3_plus": "tertiary",
+                    "critical": "tertiary",
+                    "minor": "tertiary",
+                }
 
-                    role_str = layer_to_role.get(layer)
-                    if role_str:
-                        role = NodeRole(role_str)
-                        if role in self.style_config.resolved_template.role_styles:
-                            role_style = self.style_config.resolved_template.role_styles[role]
+                role_str = layer_to_role.get(layer)
+                if role_str:
+                    role = NodeRole(role_str)
+                    if role in self.style_config.role_styles:
+                        role_style = self.style_config.role_styles[role]
 
-                            for key in keys:
-                                if key == "shape":
-                                    # Backup shape type
-                                    if hasattr(role_style, 'shape'):
-                                        backup[key] = role_style.shape.basic_shape
-                                elif key == "radius":
-                                    # Backup border radius
-                                    if hasattr(role_style, 'shape'):
-                                        backup[key] = role_style.shape.border_radius
-                                elif key == "bg_color":
-                                    # Background color from color_scheme
-                                    if self.style_config.resolved_color_scheme:
-                                        backup[key] = self.style_config.resolved_color_scheme.node_colors.get(role)
-                                elif key == "text_color":
-                                    # Text color from color_scheme
-                                    if self.style_config.resolved_color_scheme and self.style_config.resolved_color_scheme.text_colors:
-                                        backup[key] = self.style_config.resolved_color_scheme.text_colors.get(role)
-                                elif key == "border_color":
-                                    # Border color from color_scheme
-                                    if self.style_config.resolved_color_scheme and self.style_config.resolved_color_scheme.border_colors:
-                                        backup[key] = self.style_config.resolved_color_scheme.border_colors.get(role)
-                                elif key == "font_italic":
-                                    # Direct boolean backup
-                                    if hasattr(role_style, 'font_italic'):
-                                        backup[key] = role_style.font_italic
-                                elif key.startswith("border_") and hasattr(role_style, 'border'):
-                                    # Backup border attributes from border object
-                                    border_attr = key
-                                    if hasattr(role_style.border, border_attr):
-                                        backup[key] = getattr(role_style.border, border_attr)
-                                elif hasattr(role_style, key):
-                                    backup[key] = getattr(role_style, key)
+                        for key in keys:
+                            if key == "shape":
+                                # Backup shape type
+                                if hasattr(role_style, 'basic_shape'):
+                                    backup[key] = role_style.basic_shape
+                            elif key == "radius":
+                                # Backup border radius
+                                if hasattr(role_style, 'border_radius'):
+                                    backup[key] = role_style.border_radius
+                            elif key == "bg_color":
+                                # Background color: root layer uses special_colors["root_background"] directly
+                                # For other layers, this shouldn't happen (they use bg_color_index)
+                                backup[key] = None  # Skip backup for bg_color
+                            elif key == "text_color":
+                                # Text color from role_style
+                                backup[key] = role_style.text_color
+                            elif key == "border_color":
+                                # Border color from role_style
+                                backup[key] = role_style.border_color
+                            elif key == "font_italic":
+                                # Direct boolean backup
+                                if hasattr(role_style, 'font_italic'):
+                                    backup[key] = role_style.font_italic
+                            elif key.startswith("border_") and hasattr(role_style, 'border'):
+                                # Backup border attributes from border object
+                                border_attr = key
+                                if hasattr(role_style.border, border_attr):
+                                    backup[key] = getattr(role_style.border, border_attr)
+                            elif hasattr(role_style, key):
+                                backup[key] = getattr(role_style, key)
 
         return backup
 
@@ -237,22 +237,11 @@ class ChangeStyleCommand(Command):
         """
         if layer == "canvas":
             if "bg_color" in style_updates:
-                self.style_config.canvas_bg_color = style_updates["bg_color"]
-            # Also restore resolved_color_scheme if it was backed up
-            if "resolved_canvas_bg_color" in style_updates:
-                if self.style_config.resolved_color_scheme:
-                    self.style_config.resolved_color_scheme.canvas_bg_color = (
-                        style_updates["resolved_canvas_bg_color"]
-                    )
-            # Sync canvas_bg_color to resolved_color_scheme if only bg_color is present
-            elif "bg_color" in style_updates and self.style_config.resolved_color_scheme:
-                self.style_config.resolved_color_scheme.canvas_bg_color = (
-                    style_updates["bg_color"]
-                )
+                self.style_config.special_colors["canvas_bg"] = style_updates["bg_color"]
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}
-            connector_keys = {"connector_shape", "connector_style", "line_width", "color"}
+            connector_keys = {"connector_shape", "connector_style", "line_width", "connector_color_index", "connector_brightness", "connector_opacity"}
 
             if style_updates.keys() & spacing_keys:
                 # Apply spacing configuration to role-based style
@@ -268,8 +257,8 @@ class ChangeStyleCommand(Command):
                 }
                 role = layer_to_role.get(layer)
 
-                if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
-                    role_style = self.style_config.resolved_template.role_styles[role]
+                if role and role in self.style_config.role_styles:
+                    role_style = self.style_config.role_styles[role]
 
                     if "parent_child_spacing" in style_updates:
                         role_style.parent_child_spacing = style_updates["parent_child_spacing"]
@@ -289,8 +278,8 @@ class ChangeStyleCommand(Command):
                 }
                 role = layer_to_role.get(layer)
 
-                if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
-                    role_style = self.style_config.resolved_template.role_styles[role]
+                if role and role in self.style_config.role_styles:
+                    role_style = self.style_config.role_styles[role]
 
                     if "connector_shape" in style_updates:
                         role_style.connector_shape = style_updates["connector_shape"]
@@ -298,66 +287,62 @@ class ChangeStyleCommand(Command):
                         role_style.connector_style = style_updates["connector_style"]
                     if "line_width" in style_updates:
                         role_style.line_width = style_updates["line_width"]
-                    if "connector_color" in style_updates:
-                        role_style.connector_color = style_updates["connector_color"]
+                    if "connector_color_index" in style_updates:
+                        role_style.connector_color_index = style_updates["connector_color_index"]
+                    if "connector_brightness" in style_updates:
+                        role_style.connector_brightness = style_updates["connector_brightness"]
+                    if "connector_opacity" in style_updates:
+                        role_style.connector_opacity = style_updates["connector_opacity"]
             else:
-                # For node layers, access the resolved template
-                if self.style_config.resolved_template:
-                    from cogist.domain.styles import NodeRole
+                # For node layers, access role_styles directly
+                from cogist.domain.styles import NodeRole
 
-                    # Map layer name to role
-                    layer_to_role = {
-                        "root": "root",
-                        "level_1": "primary",
-                        "level_2": "secondary",
-                        "level_3_plus": "tertiary",
-                        "critical": "tertiary",
-                        "minor": "tertiary",
-                    }
+                # Map layer name to role
+                layer_to_role = {
+                    "root": "root",
+                    "level_1": "primary",
+                    "level_2": "secondary",
+                    "level_3_plus": "tertiary",
+                    "critical": "tertiary",
+                    "minor": "tertiary",
+                }
 
-                    role_str = layer_to_role.get(layer)
-                    if role_str:
-                        role = NodeRole(role_str)
-                        if role in self.style_config.resolved_template.role_styles:
-                            role_style = self.style_config.resolved_template.role_styles[role]
+                role_str = layer_to_role.get(layer)
+                if role_str:
+                    role = NodeRole(role_str)
+                    if role in self.style_config.role_styles:
+                        role_style = self.style_config.role_styles[role]
 
-                            for key, value in style_updates.items():
-                                if key == "shape":
-                                    # Handle shape type update
-                                    if hasattr(role_style, 'shape'):
-                                        role_style.shape.basic_shape = value
-                                elif key == "radius":
-                                    # Handle border radius update
-                                    if hasattr(role_style, 'shape'):
-                                        role_style.shape.border_radius = value
-                                elif key == "bg_color":
-                                    # Background color goes to color_scheme
-                                    if self.style_config.resolved_color_scheme:
-                                        self.style_config.resolved_color_scheme.node_colors[role] = value
-                                elif key == "text_color":
-                                    # Text color goes to color_scheme
-                                    if self.style_config.resolved_color_scheme:
-                                        if not self.style_config.resolved_color_scheme.text_colors:
-                                            self.style_config.resolved_color_scheme.text_colors = {}
-                                        self.style_config.resolved_color_scheme.text_colors[role] = value
-                                elif key == "border_color":
-                                    # Border color goes to color_scheme
-                                    if self.style_config.resolved_color_scheme:
-                                        if not self.style_config.resolved_color_scheme.border_colors:
-                                            self.style_config.resolved_color_scheme.border_colors = {}
-                                        self.style_config.resolved_color_scheme.border_colors[role] = value
-                                elif key == "font_italic":
-                                    # Direct boolean assignment
-                                    if hasattr(role_style, 'font_italic'):
-                                        role_style.font_italic = value
-                                elif key.startswith("border_") and hasattr(role_style, 'border'):
-                                    # Apply border attributes to border object
-                                    border_attr = key
-                                    if hasattr(role_style.border, border_attr):
-                                        setattr(role_style.border, border_attr, value)
-                                elif hasattr(role_style, key):
-                                    # Direct attribute update (includes shadow_enabled, shadow_offset_x, etc.)
-                                    setattr(role_style, key, value)
+                        for key, value in style_updates.items():
+                            if key == "shape":
+                                # Handle shape type update
+                                if hasattr(role_style, 'basic_shape'):
+                                    role_style.basic_shape = value
+                            elif key == "radius":
+                                # Handle border radius update
+                                if hasattr(role_style, 'border_radius'):
+                                    role_style.border_radius = value
+                            elif key == "bg_color":
+                                # Background color goes to role_style
+                                role_style.bg_color = value
+                            elif key == "text_color":
+                                # Text color goes to role_style
+                                role_style.text_color = value
+                            elif key == "border_color":
+                                # Border color goes to role_style
+                                role_style.border_color = value
+                            elif key == "font_italic":
+                                # Direct boolean assignment
+                                if hasattr(role_style, 'font_italic'):
+                                    role_style.font_italic = value
+                            elif key.startswith("border_") and hasattr(role_style, 'border'):
+                                # Apply border attributes to border object
+                                border_attr = key
+                                if hasattr(role_style.border, border_attr):
+                                    setattr(role_style.border, border_attr, value)
+                            elif hasattr(role_style, key):
+                                # Direct attribute update (includes shadow_enabled, shadow_offset_x, etc.)
+                                setattr(role_style, key, value)
 
     def _restore_layer_style(self, layer: str, old_values: dict) -> None:
         """Restore old style values for a layer.

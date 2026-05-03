@@ -10,10 +10,12 @@ Refactored version: Uses component-based architecture from style_widgets/
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 
+from ..items.node_item import adjust_color_brightness
 from .style_widgets import (
     BorderSection,
-    CanvasSection,
+    CanvasPanel,
     ConnectorSection,
+    FontStyleSection,
     LayerSelector,
     NodeStyleSection,
     ShadowSection,
@@ -26,7 +28,7 @@ class AdvancedStyleTab(QWidget):
 
     This refactored version uses component-based architecture:
     - LayerSelector: Layer switching
-    - CanvasSection: Canvas background
+    - ColorSchemeSection: Color scheme management
     - NodeStyleSection: Node appearance
     - BorderSection: Border styling
     - ConnectorSection: Edge styling
@@ -37,8 +39,11 @@ class AdvancedStyleTab(QWidget):
 
     # Panel dimensions
     PANEL_WIDTH = 260  # Original carefully designed width
+    LABEL_WIDTH = 90  # Unified label column width for all sections
 
-    def __init__(self, style_config=None, config_manager=None, command_history=None, parent=None):
+    def __init__(
+        self, style_config=None, config_manager=None, command_history=None, parent=None
+    ):
         super().__init__(parent)
 
         # Set initial width (fixed, non-resizable)
@@ -48,7 +53,9 @@ class AdvancedStyleTab(QWidget):
         # Store reference to global style configuration
         self.style_config = style_config
         if not self.style_config:
-            raise ValueError("style_config is required - panel must have access to global style data")
+            raise ValueError(
+                "style_config is required - panel must have access to global style data"
+            )
 
         # Store reference to config manager
         self.config_manager = config_manager
@@ -76,7 +83,7 @@ class AdvancedStyleTab(QWidget):
     def _get_layer_data(self, layer_name: str) -> dict:
         """Get style data for a layer directly from global style_config.
 
-        This method reads from style_config.resolved_template and resolved_color_scheme,
+        This method reads from style_config.role_styles and color_pool,
         ensuring panel always uses the authoritative data source.
 
         Args:
@@ -88,7 +95,14 @@ class AdvancedStyleTab(QWidget):
         assert self.style_config is not None, "style_config must be set"
 
         if layer_name == "canvas":
-            return {"bg_color": self.style_config.canvas_bg_color}
+            # Canvas needs global rainbow config too
+            canvas_bg = self.style_config.special_colors["canvas_bg"]
+            data = {
+                "bg_color": canvas_bg,
+                "use_rainbow_branches": self.style_config.use_rainbow_branches,
+                "color_pool": self.style_config.color_pool,
+            }
+            return data
 
         # Map layer names to NodeRole
         layer_to_role = {
@@ -105,35 +119,67 @@ class AdvancedStyleTab(QWidget):
             raise ValueError(f"Unknown layer: {layer_name}")
 
         from cogist.domain.styles import NodeRole
+
         role = NodeRole(role_str)
 
-        template = self.style_config.resolved_template
-        color_scheme = self.style_config.resolved_color_scheme
+        # NEW: Get role style directly from MindMapStyle.role_styles (flat structure)
+        if (
+            not hasattr(self.style_config, "role_styles")
+            or role not in self.style_config.role_styles
+        ):
+            raise ValueError(
+                f"No style data for role {role} in style_config.role_styles"
+            )
 
-        if not template or role not in template.role_styles:
-            raise ValueError(f"No style data for role {role} in template")
-
-        role_style = template.role_styles[role]
+        role_style = self.style_config.role_styles[role]
+        color_pool = self.style_config.color_pool
 
         # Build complete layer data from global style config
+        # NEW: Use flat RoleStyle structure with color indices
+
+        # Get background color
+        if layer_name == "root":
+            bg_color = self.style_config.special_colors["root_background"]
+        else:
+            # Other layers: use bg_color_index to reference the pool
+            bg_color_index = role_style.bg_color_index
+
+            # Apply brightness and opacity to get final color
+            base_bg_color = color_pool[bg_color_index]
+            bg_color = adjust_color_brightness(base_bg_color, role_style.bg_brightness)
+            # Apply opacity by modifying alpha channel
+            if role_style.bg_opacity < 255:
+                # Convert opacity to hex and replace alpha channel
+                opacity_hex = f"{role_style.bg_opacity:02X}"
+                if len(bg_color) == 9:  # #AARRGGBB format
+                    bg_color = "#" + opacity_hex + bg_color[3:]
+                else:  # #RRGGBB format
+                    bg_color = "#" + opacity_hex + bg_color[1:]
+
+        # Text color: auto-contrast or manual
+        text_color = (
+            role_style.text_color
+            if role_style.text_color
+            else self._auto_contrast(bg_color)
+        )
+
+        # Border color using index system
+        if layer_name == "root":
+            border_color = self.style_config.special_colors["root_border"]
+        else:
+            border_color_index = role_style.border_color_index
+            border_color = color_pool[border_color_index]
+
         layer_data = {
-            # Shape
-            "shape": role_style.shape.basic_shape,
-            "radius": role_style.shape.border_radius,
-            # Colors - node_colors is required and contains all roles
-            "bg_color": color_scheme.node_colors[role],
-            # text_colors is optional - auto contrast if not provided
-            "text_color": (
-                color_scheme.text_colors[role]
-                if color_scheme.text_colors and role in color_scheme.text_colors
-                else self._auto_contrast(color_scheme.node_colors[role])
-            ),
-            # border_colors is optional - None if not provided
-            "border_color": (
-                color_scheme.border_colors[role]
-                if color_scheme.border_colors and role in color_scheme.border_colors
-                else None
-            ),
+            # Shape - flat fields from RoleStyle
+            "shape": role_style.basic_shape,
+            "radius": role_style.border_radius,
+            # Background enabled
+            "bg_enabled": role_style.bg_enabled,
+            # Colors
+            "bg_color": bg_color,
+            "text_color": text_color,
+            "border_color": border_color,
             # Font
             "font_family": role_style.font_family,
             "font_size": role_style.font_size,
@@ -146,10 +192,14 @@ class AdvancedStyleTab(QWidget):
             "shadow_offset_x": role_style.shadow_offset_x,
             "shadow_offset_y": role_style.shadow_offset_y,
             "shadow_blur": role_style.shadow_blur,
-            "shadow_color": role_style.shadow_color or "#000000",
-            # Border
-            "border_style": role_style.border.border_style,
-            "border_width": role_style.border.border_width,
+            "shadow_color": role_style.shadow_color,
+            # Border - NEW: flat fields
+            "border_enabled": role_style.border_enabled,
+            "border_style": role_style.border_style,
+            "border_width": role_style.border_width,
+            "border_color_index": role_style.border_color_index,
+            "border_brightness": role_style.border_brightness,
+            "border_opacity": role_style.border_opacity,
             # Padding
             "padding_w": role_style.padding_w,
             "padding_h": role_style.padding_h,
@@ -160,9 +210,19 @@ class AdvancedStyleTab(QWidget):
             "connector_style": self._get_connector_style_for_layer(layer_name),
             "connector_width": self._get_connector_width_for_layer(layer_name),
             "connector_color": self._get_connector_color_for_layer(layer_name),
+            "connector_color_index": role_style.connector_color_index,
             # Spacing - read from role-based configuration
             "parent_child_spacing": self._get_level_spacing_for_layer(layer_name),
             "sibling_spacing": self._get_sibling_spacing_for_layer(layer_name),
+            # Rainbow branch - global MindMapStyle properties
+            "use_rainbow": self.style_config.use_rainbow_branches,
+            "rainbow_pool": color_pool,
+            # Rainbow bg/border - per-role flags (NEW: use simple booleans)
+            "rainbow_bg_enabled": True,  # TODO: Add to RoleStyle
+            "rainbow_border_enabled": True,  # TODO: Add to RoleStyle
+            # Brightness and opacity - per-role (from RoleStyle)
+            "brightness_amount": role_style.bg_brightness,
+            "opacity_amount": role_style.bg_opacity,
         }
 
         return layer_data
@@ -186,13 +246,15 @@ class AdvancedStyleTab(QWidget):
         """Get parent-child spacing for a layer from role-based configuration."""
         assert self.style_config is not None
 
-        # Try role-based spacing first (new architecture)
+        # NEW: Get from MindMapStyle.role_styles
         role = self._get_current_layer_role()
-        if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
-            return self.style_config.resolved_template.role_styles[role].parent_child_spacing
+        assert role is not None, f"Role should not be None for layer {layer_name}"
+        assert (
+            hasattr(self.style_config, 'role_styles')
+            and role in self.style_config.role_styles
+        ), f"Role {role} should exist in style_config.role_styles"
 
-        # Default value
-        return 80.0
+        return self.style_config.role_styles[role].parent_child_spacing
 
     def _get_sibling_spacing_for_layer(self, layer_name: str) -> float:
         """Get sibling spacing for a layer from role-based configuration."""
@@ -200,67 +262,76 @@ class AdvancedStyleTab(QWidget):
         if layer_name == "root":
             return 0
 
-        # Try role-based spacing first (new architecture)
+        # NEW: Get from MindMapStyle.role_styles
         role = self._get_current_layer_role()
-        if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
-            return self.style_config.resolved_template.role_styles[role].sibling_spacing
+        assert role is not None, f"Role should not be None for layer {layer_name}"
+        assert (
+            hasattr(self.style_config, 'role_styles')
+            and role in self.style_config.role_styles
+        ), f"Role {role} should exist in style_config.role_styles"
 
-        # Default value
-        return 60.0
+        return self.style_config.role_styles[role].sibling_spacing
 
     def _get_connector_type_for_layer(self, layer_name: str) -> str:
         """Get connector type for a layer from role-based configuration."""
         assert self.style_config is not None
 
-        # Get from role-based config
+        # NEW: Get from MindMapStyle.role_styles
         role = self._get_current_layer_role()
-        if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
-            return self.style_config.resolved_template.role_styles[role].connector_shape
+        assert role is not None, f"Role should not be None for layer {layer_name}"
+        assert (
+            hasattr(self.style_config, 'role_styles')
+            and role in self.style_config.role_styles
+        ), f"Role {role} should exist in style_config.role_styles"
 
-        # Default value
-        return "bezier"
+        return self.style_config.role_styles[role].connector_shape
 
     def _get_connector_style_for_layer(self, layer_name: str) -> str:
         """Get connector style for a layer from role-based configuration."""
         assert self.style_config is not None
 
-        # Get from role-based config
+        # NEW: Get from MindMapStyle.role_styles
         role = self._get_current_layer_role()
-        if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
-            return self.style_config.resolved_template.role_styles[role].connector_style
+        assert role is not None, f"Role should not be None for layer {layer_name}"
+        assert (
+            hasattr(self.style_config, 'role_styles')
+            and role in self.style_config.role_styles
+        ), f"Role {role} should exist in style_config.role_styles"
 
-        # Default value
-        return "solid"
+        return self.style_config.role_styles[role].connector_style
 
     def _get_connector_width_for_layer(self, layer_name: str) -> float:
         """Get connector width for a layer from role-based configuration."""
         assert self.style_config is not None
 
-        # Get from role-based config
+        # NEW: Get from MindMapStyle.role_styles
         role = self._get_current_layer_role()
-        if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
-            return self.style_config.resolved_template.role_styles[role].line_width
+        assert role is not None, f"Role should not be None for layer {layer_name}"
+        assert (
+            hasattr(self.style_config, 'role_styles')
+            and role in self.style_config.role_styles
+        ), f"Role {role} should exist in style_config.role_styles"
 
-        # Default value
-        return 2.0
+        return self.style_config.role_styles[role].line_width
 
     def _get_connector_color_for_layer(self, layer_name: str) -> str:
         """Get connector color for a layer from role-based configuration."""
         assert self.style_config is not None
 
-        # Get from role-based config
+        # NEW: Get from MindMapStyle.role_styles using color index
         role = self._get_current_layer_role()
-        if role and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
-            role_style = self.style_config.resolved_template.role_styles[role]
-            # Connector color comes from ColorScheme if not overridden
-            if role_style.connector_color:
-                return role_style.connector_color
-            # Fall back to edge color from color scheme
-            if self.style_config.resolved_color_scheme:
-                return self.style_config.resolved_color_scheme.edge_color
+        assert role is not None, f"Role should not be None for layer {layer_name}"
+        assert (
+            hasattr(self.style_config, 'role_styles')
+            and role in self.style_config.role_styles
+        ), f"Role {role} should exist in style_config.role_styles"
 
-        # Default value
-        return "#666666"
+        role_style = self.style_config.role_styles[role]
+        color_pool = self.style_config.color_pool
+
+        # Use connector_color_index to get color from pool
+        color_index = role_style.connector_color_index
+        return color_pool[color_index]
 
     def _update_role_style_in_config(self, layer_name: str, updates: dict):
         """Update specific fields of a role's style in global style_config.
@@ -273,10 +344,7 @@ class AdvancedStyleTab(QWidget):
 
         if layer_name == "canvas":
             # Handle canvas background color separately
-            if "bg_color" in updates:
-                self.style_config.canvas_bg_color = updates["bg_color"]
-                if self.style_config.resolved_color_scheme:
-                    self.style_config.resolved_color_scheme.canvas_bg_color = updates["bg_color"]
+            self.style_config.special_colors["canvas_bg"] = updates["bg_color"]
             return  # Canvas doesn't have role styles
 
         # Map layer to role
@@ -294,49 +362,61 @@ class AdvancedStyleTab(QWidget):
             return
 
         from cogist.domain.styles import NodeRole
+
         role = NodeRole(role_str)
 
-        template = self.style_config.resolved_template
-        color_scheme = self.style_config.resolved_color_scheme
-
-        if not template or role not in template.role_styles:
+        if role not in self.style_config.role_styles:
             return
 
-        role_style = template.role_styles[role]
+        role_style = self.style_config.role_styles[role]
 
-        # Apply updates to role_style and color_scheme
+        # Apply updates to role_style
         for key, value in updates.items():
             if key == "shape":
                 # Handle shape type update
-                if hasattr(role_style, 'shape'):
-                    role_style.shape.basic_shape = value
+                if hasattr(role_style, "basic_shape"):
+                    role_style.basic_shape = value
             elif key == "radius":
                 # Handle border radius update
-                if hasattr(role_style, 'shape'):
-                    role_style.shape.border_radius = value
+                if hasattr(role_style, "border_radius"):
+                    role_style.border_radius = value
             elif key == "bg_color":
-                # Background color goes to color_scheme
-                if color_scheme:
-                    color_scheme.node_colors[role] = value
+                # Background color
+                if role == NodeRole.ROOT:
+                    # Root node: update special_colors directly
+                    self.style_config.special_colors["root_background"] = value
+                else:
+                    # Other nodes: find color index in color_pool
+                    if hasattr(role_style, "bg_color_index"):
+                        if value in self.style_config.color_pool:
+                            role_style.bg_color_index = self.style_config.color_pool.index(value)
+                        else:
+                            # If color not in pool, use default index
+                            role_style.bg_color_index = 0
             elif key == "text_color":
-                # Text color goes to color_scheme
-                if color_scheme:
-                    if not color_scheme.text_colors:
-                        color_scheme.text_colors = {}
-                    color_scheme.text_colors[role] = value
+                # Text color goes to role_style
+                if hasattr(role_style, "text_color"):
+                    role_style.text_color = value
             elif key == "border_color":
-                # Border color goes to color_scheme
-                if color_scheme:
-                    if not color_scheme.border_colors:
-                        color_scheme.border_colors = {}
-                    color_scheme.border_colors[role] = value
+                # Border color
+                if role == NodeRole.ROOT:
+                    # Root node: update special_colors directly
+                    self.style_config.special_colors["root_border"] = value
+                else:
+                    # Other nodes: find color index in color_pool
+                    if hasattr(role_style, "border_color_index"):
+                        if value in self.style_config.color_pool:
+                            role_style.border_color_index = self.style_config.color_pool.index(value)
+                        else:
+                            # If color not in pool, use default index
+                            role_style.border_color_index = 0
             elif key == "font_italic":
                 # Direct boolean assignment
-                if hasattr(role_style, 'font_italic'):
+                if hasattr(role_style, "font_italic"):
                     role_style.font_italic = value
             elif key == "max_text_width":
                 # Handle max text width update
-                if hasattr(role_style, 'max_text_width'):
+                if hasattr(role_style, "max_text_width"):
                     role_style.max_text_width = value
             elif hasattr(role_style, key):
                 setattr(role_style, key, value)
@@ -345,7 +425,7 @@ class AdvancedStyleTab(QWidget):
                 attr_name = key
                 if hasattr(role_style, attr_name):
                     setattr(role_style, attr_name, value)
-            elif key.startswith("border_") and hasattr(role_style, 'border'):
+            elif key.startswith("border_") and hasattr(role_style, "border"):
                 # Handle border attributes on border object
                 # border_style and border_width are the actual field names in BorderStyle
                 border_attr = key  # Keep the full name (border_style, border_width)
@@ -374,21 +454,27 @@ class AdvancedStyleTab(QWidget):
 
         # Add modular components
         self.layer_selector = LayerSelector()
-        self.canvas_section = CanvasSection()
-        self.spacing_section = SpacingSection()
-        self.node_style_section = NodeStyleSection()
+        self.canvas_panel = CanvasPanel(self)  # NEW: Canvas panel for background color
+        # ColorSchemeSection removed - now in separate ColorSchemeTab
+        self.spacing_section = SpacingSection(parent=self)
+        self.node_style_section = NodeStyleSection(parent=self)
+        self.font_style_section = FontStyleSection()
         self.shadow_section = ShadowSection()
-        self.border_section = BorderSection()
-        self.connector_section = ConnectorSection()
+        self.border_section = BorderSection(parent=self)
+        self.connector_section = ConnectorSection(parent=self)
 
         layout.addWidget(self.layer_selector)
-        layout.addWidget(self.canvas_section)
+        layout.addWidget(self.canvas_panel)  # NEW: Canvas panel
         layout.addWidget(self.spacing_section)
         layout.addWidget(self.node_style_section)
+        layout.addWidget(self.font_style_section)
         layout.addWidget(self.shadow_section)
         layout.addWidget(self.border_section)
         layout.addWidget(self.connector_section)
         layout.addStretch()
+
+        # Connect signals
+        # CanvasPanel signal handling removed - canvas background is managed in ColorSchemeTab
 
         scroll.setWidget(content_widget)
 
@@ -429,8 +515,10 @@ class AdvancedStyleTab(QWidget):
         # Layer selection
         self.layer_selector.layer_changed.connect(self._on_layer_changed)
 
-        # Canvas background
-        self.canvas_section.color_changed.connect(self._on_canvas_color_changed)
+        # ColorSchemeSection removed - now in separate ColorSchemeTab
+
+        # NEW: Connect CanvasPanel signal for background color changes
+        self.canvas_panel.style_changed.connect(self._on_canvas_bg_color_changed)
 
         # Spacing configuration
         self.spacing_section.spacing_changed.connect(self._on_spacing_changed)
@@ -439,6 +527,12 @@ class AdvancedStyleTab(QWidget):
         self.node_style_section.style_changed.connect(self._on_node_style_changed)
         self.node_style_section.shadow_enabled_changed.connect(
             self._on_shadow_enabled_changed
+        )
+
+        # Font style
+        self.font_style_section.style_changed.connect(self._on_font_style_changed)
+        self.font_style_section.shadow_enabled_changed.connect(
+            self._on_font_shadow_enabled_changed
         )
 
         # Shadow style
@@ -450,6 +544,41 @@ class AdvancedStyleTab(QWidget):
         # Connector style
         self.connector_section.style_changed.connect(self._on_connector_style_changed)
 
+    def _on_canvas_bg_color_changed(self, style: dict):
+        """Handle canvas background color change from CanvasPanel.
+
+        Args:
+            style: Dictionary with 'bg_color' key containing the new color
+        """
+        assert self.style_config is not None
+
+        if "bg_color" not in style:
+            return
+
+        new_color = style["bg_color"]
+
+        # Update canvas background in special_colors
+        self.style_config.special_colors["canvas_bg"] = new_color
+
+        # Apply styles to mindmap
+        self._apply_styles_to_mindmap()
+
+        # Use command system if available
+        if self.command_history:
+            from cogist.application.commands import ChangeStyleCommand
+            from cogist.application.commands.change_style_command import StyleChange
+
+            change = StyleChange(
+                layer="canvas",
+                style_updates={"bg_color": new_color},
+            )
+            command = ChangeStyleCommand(
+                style_config=self.style_config,
+                changes=[change],
+            )
+            command.execute()
+            self.command_history.push(command)
+
     def _on_layer_changed(self, layer_name: str):
         """Handle layer selection change."""
         # No need to save - styles are already saved directly to global config
@@ -460,15 +589,20 @@ class AdvancedStyleTab(QWidget):
         is_canvas = layer_name == "canvas"
         is_priority = layer_name in ["critical", "minor"]
 
-        # Canvas background: only show for canvas layer
-        self.canvas_section.setVisible(is_canvas)
-        self.canvas_section.setCollapsed(False)
+        # Canvas panel: only show for canvas layer
+        self.canvas_panel.setVisible(is_canvas)
 
         # Spacing: only show for non-canvas layers (not a global setting)
         self.spacing_section.setVisible(not is_canvas)
 
         # Node/Border/Connector: only show for non-canvas layers
         self.node_style_section.setVisible(not is_canvas)
+
+        # Set root mode for node style section
+        is_root = layer_name == "root"
+        self.node_style_section.set_root_mode(is_root)
+
+        self.font_style_section.setVisible(not is_canvas)
         # Shadow section visibility is controlled by shadow_enabled state in _load_current_layer_style
         self.border_section.setVisible(not is_canvas)
         self.connector_section.setVisible(not is_canvas and not is_priority)
@@ -476,30 +610,145 @@ class AdvancedStyleTab(QWidget):
         # Load style for selected layer
         self._load_current_layer_style()
 
-    def _on_canvas_color_changed(self, color: str):
-        """Handle canvas background color change."""
+    def _on_color_scheme_changed(self, colors: dict):
+        """Handle color scheme change.
+
+        This method routes color changes to the appropriate place in style_config:
+        - bg_color -> color_scheme.node_colors[current_role]
+        - text_color -> color_scheme.text_colors[current_role]
+        - border_color -> color_scheme.border_colors[current_role]
+        - connector_color -> role_style.connector_color
+        - canvas_bg -> color_scheme.canvas_bg
+
+        Args:
+            colors: Dictionary of changed color values
+        """
+        from cogist.domain.styles import NodeRole
+
         assert self.style_config is not None
+
+        # Get current role
+        role = self._get_current_layer_role()
+
+        # Handle global rainbow config FIRST (before checking role)
+        # This ensures rainbow state is synced across all layers including canvas
+        # NEW: Use MindMapStyle fields directly
+        if "use_rainbow_branches" in colors:
+            self.style_config.use_rainbow_branches = colors["use_rainbow_branches"]
+            # Refresh UI to update node style section controls visibility
+            self._load_current_layer_style()
+        if "color_pool" in colors:
+            self.style_config.color_pool = colors["color_pool"]
+
+        if not role:
+            # Canvas layer - handle canvas_bg if present
+            if "canvas_bg" in colors:
+                self.style_config.special_colors["canvas_bg"] = colors["canvas_bg"]
+
+            # Apply styles to mindmap after updating canvas/rainbow config
+            self._apply_styles_to_mindmap()
+            return
+
+        # Handle per-role rainbow mode controls (for root/level_1/2/3+)
+        if role and self.current_layer in [
+            "root",
+            "level_1",
+            "level_2",
+            "level_3_plus",
+        ] and role in self.style_config.role_styles:
+            role_style = self.style_config.role_styles[role]
+
+            # TODO: rainbow_bg_enabled and rainbow_border_enabled will be handled later
+            # if "rainbow_bg_enabled" in colors:
+            #     role_style.bg_enabled = colors["rainbow_bg_enabled"]
+            # if "rainbow_border_enabled" in colors:
+            #     role_style.border_enabled = colors["rainbow_border_enabled"]
+            #     # Control border section visibility based on rainbow_border_enabled
+            #     self.border_section.setVisible(colors["rainbow_border_enabled"])
+
+            # Brightness and opacity adjustments
+            if "brightness_amount" in colors:
+                role_style.bg_brightness = colors["brightness_amount"]
+                role_style.border_brightness = colors["brightness_amount"]
+            if "opacity_amount" in colors:
+                role_style.bg_opacity = colors["opacity_amount"]
+                role_style.border_opacity = colors["opacity_amount"]
+
+        # Apply styles to mindmap after updating role configs
+        self._apply_styles_to_mindmap()
 
         # Use command system if available
         if self.command_history:
             from cogist.application.commands import ChangeStyleCommand
             from cogist.application.commands.change_style_command import StyleChange
 
-            change = StyleChange(
-                layer="canvas",
-                style_updates={"bg_color": color},
-            )
-            command = ChangeStyleCommand(
-                style_config=self.style_config,
-                changes=[change],
-            )
-            command.execute()
-            self.command_history.push(command)
+            style_updates = {}
+
+            # Build style updates based on changed colors
+            if "bg_color" in colors:
+                style_updates["bg_color"] = colors["bg_color"]
+            if "text_color" in colors:
+                style_updates["text_color"] = colors["text_color"]
+            if "border_color" in colors:
+                style_updates["border_color"] = colors["border_color"]
+            if "connector_color" in colors:
+                style_updates["connector_color"] = colors["connector_color"]
+
+            if style_updates:
+                change = StyleChange(
+                    layer=self.current_layer,
+                    style_updates=style_updates,
+                )
+                command = ChangeStyleCommand(
+                    style_config=self.style_config,
+                    changes=[change],
+                )
+                command.execute()
+                self.command_history.push(command)
         else:
             # Fallback: direct update without undo/redo
-            self.style_config.canvas_bg_color = color
-            if self.style_config.resolved_color_scheme:
-                self.style_config.resolved_color_scheme.canvas_bg_color = color
+            # Get role_style from new architecture
+            if role in self.style_config.role_styles:
+                role_style = self.style_config.role_styles[role]
+
+                # Handle node background color
+                if "bg_color" in colors:
+                    if role == NodeRole.ROOT:
+                        # Root node: update special_colors directly
+                        self.style_config.special_colors["root_background"] = colors["bg_color"]
+                    else:
+                        # Other nodes: find color index in color_pool
+                        if colors["bg_color"] in self.style_config.color_pool:
+                            role_style.bg_color_index = self.style_config.color_pool.index(colors["bg_color"])
+                        else:
+                            # If color not in pool, use default index
+                            role_style.bg_color_index = 0
+
+                # Handle text/foreground color
+                if "text_color" in colors:
+                    role_style.text_color = colors["text_color"]
+
+                # Handle border color
+                if "border_color" in colors:
+                    if role == NodeRole.ROOT:
+                        # Root node: update special_colors directly
+                        self.style_config.special_colors["root_border"] = colors["border_color"]
+                    else:
+                        # Other nodes: find color index in color_pool
+                        if colors["border_color"] in self.style_config.color_pool:
+                            role_style.border_color_index = self.style_config.color_pool.index(colors["border_color"])
+                        else:
+                            # If color not in pool, use default index
+                            role_style.border_color_index = 0
+
+                # Handle connector color
+                if "connector_color" in colors:
+                    # Find color index in color_pool
+                    if colors["connector_color"] in self.style_config.color_pool:
+                        role_style.connector_color_index = self.style_config.color_pool.index(colors["connector_color"])
+                    else:
+                        # If color not in pool, use default index
+                        role_style.connector_color_index = 0
 
         self._apply_styles_to_mindmap()
 
@@ -521,9 +770,13 @@ class AdvancedStyleTab(QWidget):
                 style_updates["sibling_spacing"] = spacing["sibling"]
 
             # Skip command creation if we're updating from undo/redo
-            if self._updating_from_undo_redo and style_updates and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+            if (
+                self._updating_from_undo_redo
+                and style_updates
+                and role in self.style_config.role_styles
+            ):
                 # Direct update to role-based config
-                role_style = self.style_config.resolved_template.role_styles[role]
+                role_style = self.style_config.role_styles[role]
                 if "parent_child" in spacing:
                     role_style.parent_child_spacing = spacing["parent_child"]
                 if "sibling" in spacing:
@@ -544,8 +797,8 @@ class AdvancedStyleTab(QWidget):
                 self.command_history.push(command)
             elif style_updates:
                 # Fallback: direct update to role-based config without undo/redo
-                if self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
-                    role_style = self.style_config.resolved_template.role_styles[role]
+                if role in self.style_config.role_styles:
+                    role_style = self.style_config.role_styles[role]
                     if "parent_child" in spacing:
                         role_style.parent_child_spacing = spacing["parent_child"]
                     if "sibling" in spacing:
@@ -558,8 +811,30 @@ class AdvancedStyleTab(QWidget):
         """Handle node style changes."""
         if self.current_layer != "canvas":
             # Check if this change affects node dimensions (requires size recalculation)
-            dimension_keys = {"max_text_width", "padding_w", "padding_h", "font_size", "font_family", "font_weight", "font_italic", "font_underline", "font_strikeout"}
+            dimension_keys = {
+                "max_text_width",
+                "padding_w",
+                "padding_h",
+                "font_size",
+                "font_family",
+                "font_weight",
+                "font_italic",
+                "font_underline",
+                "font_strikeout",
+            }
             affects_dimensions = any(key in style for key in dimension_keys)
+
+            # Check if this change requires style update (affects colors, visibility, etc.)
+            style_update_keys = {
+                "bg_enabled",
+                "border_enabled",
+                "bg_color",
+                "border_color",
+                "text_color",
+                "bg_brightness",
+                "bg_opacity",
+            }
+            requires_style_update = any(key in style for key in style_update_keys)
 
             # Skip command creation if we're updating from undo/redo
             if self._updating_from_undo_redo:
@@ -584,13 +859,27 @@ class AdvancedStyleTab(QWidget):
                 # Fallback: direct update without undo/redo
                 self._update_role_style_in_config(self.current_layer, style)
 
-            self._apply_styles_to_mindmap(force_rebuild=affects_dimensions)
+            self._apply_styles_to_mindmap(force_rebuild=affects_dimensions or requires_style_update)
 
     def _on_shadow_enabled_changed(self, enabled: bool):
         """Handle font shadow enabled state change."""
-        self.shadow_section.setVisible(enabled)
         if enabled:
+            # Disable updates on parent to prevent layout flash
+            self.setUpdatesEnabled(False)
+
+            # Initialize content first if not already initialized (lazy init)
+            if not self.shadow_section._initialized:
+                self.shadow_section._init_content()
+                self.shadow_section._initialized = True
+
+            # Set collapsed state and make visible while updates are disabled
             self.shadow_section.setCollapsed(False)
+            self.shadow_section.setVisible(True)
+
+            # Re-enable updates - Qt will do a single layout update
+            self.setUpdatesEnabled(True)
+        else:
+            self.shadow_section.setVisible(False)
 
         # Update using command system if available
         if self.current_layer != "canvas":
@@ -610,7 +899,95 @@ class AdvancedStyleTab(QWidget):
                 self.command_history.push(command)
             else:
                 # Fallback: direct update without undo/redo
-                self._update_role_style_in_config(self.current_layer, {"shadow_enabled": enabled})
+                self._update_role_style_in_config(
+                    self.current_layer, {"shadow_enabled": enabled}
+                )
+
+            self._apply_styles_to_mindmap()
+
+    def _on_font_style_changed(self, style: dict):
+        """Handle font style changes."""
+        if self.current_layer != "canvas":
+            # Check if this change affects node dimensions (requires size recalculation)
+            dimension_keys = {
+                "font_size",
+                "font_family",
+                "font_weight",
+                "font_italic",
+                "font_underline",
+                "font_strikeout",
+            }
+            affects_dimensions = any(key in style for key in dimension_keys)
+
+            # Font style changes always require style update (affects text rendering)
+            requires_style_update = True
+
+            # Skip command creation if we're updating from undo/redo
+            if self._updating_from_undo_redo:
+                # Direct update without creating a command
+                self._update_role_style_in_config(self.current_layer, style)
+            elif self.command_history:
+                from cogist.application.commands import ChangeStyleCommand
+                from cogist.application.commands.change_style_command import StyleChange
+
+                # Create and execute style change command
+                change = StyleChange(
+                    layer=self.current_layer,
+                    style_updates=style,
+                )
+                command = ChangeStyleCommand(
+                    style_config=self.style_config,
+                    changes=[change],
+                )
+                command.execute()
+                self.command_history.push(command)
+            else:
+                # Fallback: direct update without undo/redo
+                self._update_role_style_in_config(self.current_layer, style)
+
+            self._apply_styles_to_mindmap(force_rebuild=affects_dimensions or requires_style_update)
+
+    def _on_font_shadow_enabled_changed(self, enabled: bool):
+        """Handle font shadow enabled state change from FontStyleSection."""
+        if enabled:
+            # Disable updates on parent to prevent layout flash
+            self.setUpdatesEnabled(False)
+
+            # Initialize content first if not already initialized (lazy init)
+            if not self.shadow_section._initialized:
+                self.shadow_section._init_content()
+                self.shadow_section._initialized = True
+
+            # Set collapsed state and make visible while updates are disabled
+            self.shadow_section.setCollapsed(False)
+            self.shadow_section.setVisible(True)
+
+            # Re-enable updates - Qt will do a single layout update
+            self.setUpdatesEnabled(True)
+        else:
+            self.shadow_section.setVisible(False)
+
+        # Update using command system if available
+        if self.current_layer != "canvas":
+            if self.command_history:
+                from cogist.application.commands import ChangeStyleCommand
+                from cogist.application.commands.change_style_command import StyleChange
+
+                change = StyleChange(
+                    layer=self.current_layer,
+                    style_updates={"shadow_enabled": enabled},
+                )
+                command = ChangeStyleCommand(
+                    style_config=self.style_config,
+                    changes=[change],
+                )
+                command.execute()
+                self.command_history.push(command)
+            else:
+                # Fallback: direct update without undo/redo
+                self._update_role_style_in_config(
+                    self.current_layer, {"shadow_enabled": enabled}
+                )
 
             self._apply_styles_to_mindmap()
 
@@ -644,6 +1021,9 @@ class AdvancedStyleTab(QWidget):
     def _on_border_style_changed(self, style: dict):
         """Handle border style changes."""
         if self.current_layer != "canvas":
+            # Border style changes always require style update (affects colors, visibility)
+            requires_style_update = True
+
             # Skip command creation if we're updating from undo/redo
             if self._updating_from_undo_redo:
                 # Direct update without creating a command
@@ -666,7 +1046,7 @@ class AdvancedStyleTab(QWidget):
                 # Fallback: direct update without undo/redo
                 self._update_role_style_in_config(self.current_layer, style)
 
-            self._apply_styles_to_mindmap()
+            self._apply_styles_to_mindmap(force_rebuild=requires_style_update)
 
     def _on_connector_style_changed(self, style: dict):
         """Handle connector style changes for the current layer."""
@@ -686,13 +1066,21 @@ class AdvancedStyleTab(QWidget):
                 connector_updates["connector_style"] = style["connector_style"]
             if "line_width" in style:
                 connector_updates["line_width"] = style["line_width"]
-            if "connector_color" in style:
-                connector_updates["connector_color"] = style["connector_color"]
+            if "connector_color_index" in style:
+                connector_updates["connector_color_index"] = style["connector_color_index"]
+            if "connector_brightness" in style:
+                connector_updates["connector_brightness"] = style["connector_brightness"]
+            if "connector_opacity" in style:
+                connector_updates["connector_opacity"] = style["connector_opacity"]
 
             # Use command system if available
-            if self._updating_from_undo_redo and connector_updates and self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
+            if (
+                self._updating_from_undo_redo
+                and connector_updates
+                and role in self.style_config.role_styles
+            ):
                 # Direct update to role-based config without creating a command
-                role_style = self.style_config.resolved_template.role_styles[role]
+                role_style = self.style_config.role_styles[role]
 
                 if "connector_shape" in style:
                     role_style.connector_shape = style["connector_shape"]
@@ -700,8 +1088,12 @@ class AdvancedStyleTab(QWidget):
                     role_style.connector_style = style["connector_style"]
                 if "line_width" in style:
                     role_style.line_width = style["line_width"]
-                if "connector_color" in style:
-                    role_style.connector_color = style["connector_color"]
+                if "connector_color_index" in style:
+                    role_style.connector_color_index = style["connector_color_index"]
+                if "connector_brightness" in style:
+                    role_style.connector_brightness = style["connector_brightness"]
+                if "connector_opacity" in style:
+                    role_style.connector_opacity = style["connector_opacity"]
             elif self.command_history and connector_updates:
                 from cogist.application.commands import ChangeStyleCommand
                 from cogist.application.commands.change_style_command import StyleChange
@@ -718,8 +1110,8 @@ class AdvancedStyleTab(QWidget):
                 self.command_history.push(command)
             elif connector_updates:
                 # Fallback: direct update to role-based config without undo/redo
-                if self.style_config.resolved_template and role in self.style_config.resolved_template.role_styles:
-                    role_style = self.style_config.resolved_template.role_styles[role]
+                if role in self.style_config.role_styles:
+                    role_style = self.style_config.role_styles[role]
 
                     if "connector_shape" in style:
                         role_style.connector_shape = style["connector_shape"]
@@ -727,8 +1119,12 @@ class AdvancedStyleTab(QWidget):
                         role_style.connector_style = style["connector_style"]
                     if "line_width" in style:
                         role_style.line_width = style["line_width"]
-                    if "connector_color" in style:
-                        role_style.connector_color = style["connector_color"]
+                    if "connector_color_index" in style:
+                        role_style.connector_color_index = style["connector_color_index"]
+                    if "connector_brightness" in style:
+                        role_style.connector_brightness = style["connector_brightness"]
+                    if "connector_opacity" in style:
+                        role_style.connector_opacity = style["connector_opacity"]
 
             self._apply_styles_to_mindmap()
 
@@ -765,16 +1161,13 @@ class AdvancedStyleTab(QWidget):
 
     def _set_initial_visibility(self):
         """Set initial visibility of sections based on default layer (canvas)."""
-        # Canvas layer is selected by default
-        self.canvas_section.setVisible(True)
-        self.canvas_section.setCollapsed(False)
-
         # Hide spacing for canvas layer
         self.spacing_section.setVisible(False)
         self.spacing_section.setCollapsed(True)
 
         # Hide node/shadow/border/connector for canvas layer
         self.node_style_section.setVisible(False)
+        self.font_style_section.setVisible(False)
         # Shadow section is controlled by shadow_enabled checkbox
         self.shadow_section.setVisible(False)
         self.border_section.setVisible(False)
@@ -786,14 +1179,27 @@ class AdvancedStyleTab(QWidget):
         layer_data = self._get_layer_data(self.current_layer)
 
         if self.current_layer == "canvas":
-            # Load canvas style
-            if "bg_color" in layer_data:
-                self.canvas_section.set_color(layer_data["bg_color"])
+            # Load canvas background color into CanvasPanel
+            canvas_style = {"bg_color": layer_data["bg_color"]}
+            self.canvas_panel.set_style(canvas_style)
+
             # Hide shadow section for canvas
             self.shadow_section.setVisible(False)
         else:
-            # Load node style
+            # Set root mode for node and border sections
+            is_root = self.current_layer == "root"
+            self.node_style_section.set_root_mode(is_root)
+            self.border_section.set_root_mode(is_root)
+
+            # Load node/border style into respective sections
+            # Node style section handles background
             self.node_style_section.set_style(layer_data)
+
+            # Border section handles border
+            self.border_section.set_style(layer_data)
+
+            # Load font style
+            self.font_style_section.set_style(layer_data)
             # Sync shadow section visibility with shadow_enabled state
             shadow_enabled = layer_data["shadow_enabled"]
             self.shadow_section.setVisible(shadow_enabled)
@@ -808,8 +1214,12 @@ class AdvancedStyleTab(QWidget):
             }
             self.shadow_section.set_shadow(shadow_config)
 
-            # Load border style
-            self.border_section.set_style(layer_data)
+            # Sync border section visibility with rainbow_border_enabled state
+            if "rainbow_border_enabled" in layer_data:
+                self.border_section.setVisible(layer_data["rainbow_border_enabled"])
+
+            # Hide connector section for root layer (edge belongs to target node)
+            self.connector_section.setVisible(self.current_layer != "root")
 
             # Load spacing configuration (per-layer)
             spacing_config = {
@@ -818,17 +1228,30 @@ class AdvancedStyleTab(QWidget):
             }
             self.spacing_section.set_spacing(spacing_config)
 
-            # Root layer specific: hide sibling spacing control (elegant way)
-            self.spacing_section.set_hide_sibling(self.current_layer == "root")
+            # Hide entire Spacing section for root layer (root has no parent or siblings)
+            self.spacing_section.setVisible(self.current_layer != "root")
 
-        # Load connector style (per-layer, only for non-canvas)
-        if self.current_layer != "canvas":
+        # Load connector style (per-layer, only for non-canvas and non-root)
+        # Edge belongs to target node, so root layer doesn't need connector config
+        if self.current_layer not in ["canvas", "root"]:
             connector_style = {
                 "connector_shape": layer_data["connector_type"],
                 "connector_style": layer_data["connector_style"],
                 "line_width": layer_data["connector_width"],
-                "connector_color": layer_data["connector_color"],
+                "connector_color_index": layer_data["connector_color_index"],
+                "connector_brightness": layer_data["connector_color_index"],  # Will be replaced below
+                "connector_opacity": layer_data["connector_color_index"],  # Will be replaced below
+                "use_rainbow": layer_data.get("use_rainbow", False),  # Pass rainbow mode state
             }
+
+            # Get brightness and opacity from role_styles
+            assert self.style_config is not None
+            role = self._get_current_layer_role()
+            if role and role in self.style_config.role_styles:
+                role_style = self.style_config.role_styles[role]
+                connector_style["connector_brightness"] = role_style.connector_brightness
+                connector_style["connector_opacity"] = role_style.connector_opacity
+
             self.connector_section.set_style(connector_style)
 
     def refresh_current_layer(self):
@@ -871,9 +1294,9 @@ class AdvancedStyleTab(QWidget):
             # Apply spacing configuration (per-layer, skip canvas)
             # Sync spacing from panel's style_config to mindmap_view's style_config
             # CRITICAL: If style affects dimensions, update all node items' template_style first
-            if force_rebuild and hasattr(mindmap_view, 'node_items'):
+            if force_rebuild and hasattr(mindmap_view, "node_items"):
                 for node_item in mindmap_view.node_items.values():
-                    if hasattr(node_item, 'update_style'):
+                    if hasattr(node_item, "update_style"):
                         node_item.update_style(mindmap_view.style_config)
 
             # Refresh layout to apply all changes
@@ -882,13 +1305,15 @@ class AdvancedStyleTab(QWidget):
             if hasattr(mindmap_view, "_refresh_layout"):
                 mindmap_view._refresh_layout(skip_measurement=False)
 
-        except Exception:
+        except Exception as e:
             # Error already shown in UI, no need to print to console
-            pass
+            import traceback
+            print(f"[_apply_styles_to_mindmap] ERROR: {e}")
+            traceback.print_exc()
 
     def _apply_node_styles_to_mindmap(self, mindmap_view):
         """Apply node layer styles using RoleBasedStyle architecture."""
-        from cogist.domain.styles import ColorScheme, NodeRole, Template
+        from cogist.domain.styles import NodeRole
 
         if not mindmap_view.style_config:
             return
@@ -905,62 +1330,25 @@ class AdvancedStyleTab(QWidget):
             "minor": NodeRole.TERTIARY,
         }
 
-        # Initialize role_styles dict if template doesn't have it
-        if not style.resolved_template:
-            style.resolved_template = Template(
-                name="Custom", description="", role_styles={}
-            )
-
-        # Convert each layer to RoleBasedStyle + update ColorScheme
-        for layer_name, role in layer_to_role.items():
+        # Convert each layer to RoleBasedStyle
+        for layer_name, _role in layer_to_role.items():
             # Skip priority layers (critical/minor) - they use tertiary styles
             if layer_name in ["critical", "minor"]:
                 continue
 
-            # Get layer data directly from global style_config
-            layer_data = self._get_layer_data(layer_name)
-
             # CRITICAL: Do NOT recreate RoleBasedStyle objects!
             # Panel already updated the global config directly via _update_role_style_in_config.
             # Recreating would overwrite the changes with old values.
-            # Only update color scheme here.
-
-            # Update color scheme
-            if not style.resolved_color_scheme:
-                style.resolved_color_scheme = ColorScheme(
-                    name="Custom", description="", node_colors={}
-                )
-
-            # Set node color
-            if "bg_color" in layer_data:
-                style.resolved_color_scheme.node_colors[role] = layer_data["bg_color"]
-
-            # Set text color
-            if "text_color" in layer_data:
-                if not style.resolved_color_scheme.text_colors:
-                    style.resolved_color_scheme.text_colors = {}
-                style.resolved_color_scheme.text_colors[role] = layer_data["text_color"]
-
-            # Set border color (only if not None)
-            if "border_color" in layer_data and layer_data["border_color"] is not None:
-                if not style.resolved_color_scheme.border_colors:
-                    style.resolved_color_scheme.border_colors = {}
-                style.resolved_color_scheme.border_colors[role] = layer_data[
-                    "border_color"
-                ]
 
         # Update canvas background color
         canvas_data = self._get_layer_data("canvas")
         if "bg_color" in canvas_data:
             canvas_color = canvas_data["bg_color"]
-            style.canvas_bg_color = canvas_color
-            if style.resolved_color_scheme:
-                style.resolved_color_scheme.canvas_bg_color = canvas_color
+            style.special_colors["canvas_bg"] = canvas_color
 
-            # CRITICAL: Update the scene background immediately
-            from PySide6.QtGui import QBrush, QColor
-            if hasattr(mindmap_view, 'scene'):
-                mindmap_view.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
+            # Use mindmap_view's method to update scene background
+            if hasattr(mindmap_view, '_update_canvas_background'):
+                mindmap_view._update_canvas_background()
 
         # Update all existing node items with new style
         if hasattr(mindmap_view, "node_items"):
@@ -984,32 +1372,36 @@ class AdvancedStyleTab(QWidget):
             if not hasattr(edge_item, "update_style"):
                 continue
 
-            # Get SOURCE node depth to determine which connector style to use
-            # The edge style is determined by the parent node's layer
-            source_node = edge_item.source_item
-            if not hasattr(source_node, 'depth'):
+            # Get TARGET node depth to determine which connector style to use
+            # Edge style is determined by the child node's layer (edge belongs to target)
+            target_node = edge_item.target_item
+            if not hasattr(target_node, "depth"):
                 continue
 
             # Get connector config from role-based style
             from cogist.domain.styles.extended_styles import NodeRole
 
-            source_depth = source_node.depth
+            target_depth = target_node.depth
             role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
-            role = role_map.get(source_depth, NodeRole.TERTIARY)
+            role = role_map.get(target_depth, NodeRole.TERTIARY)
 
-            connector_shape = "bezier"  # Default
-            if (self.style_config.resolved_template and
-                role in self.style_config.resolved_template.role_styles):
-                role_style = self.style_config.resolved_template.role_styles[role]
-                connector_shape = role_style.connector_shape
+            # Get connector config from role style
+            assert (
+                role in self.style_config.role_styles
+            ), f"Role {role} should exist in style_config.role_styles"
+            role_style = self.style_config.role_styles[role]
 
-            # Build connector style dict (only shape is needed for update_style)
+            # Build complete connector style dict with all fields
             connector_style = {
-                "connector_shape": connector_shape,
+                "connector_shape": role_style.connector_shape,
+                "connector_style": role_style.connector_style,
+                "line_width": role_style.line_width,
+                "connector_color_index": role_style.connector_color_index,
+                "connector_brightness": role_style.connector_brightness,
+                "connector_opacity": role_style.connector_opacity,
             }
 
             edge_item.update_style(connector_style)
 
             # Trigger repaint (paint() will read latest config directly)
             edge_item.update()
-

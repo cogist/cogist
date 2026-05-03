@@ -2,29 +2,27 @@
 
 from .enums import NodeRole, PriorityLevel, SpacingLevel
 from .extended_styles import (
-    BackgroundStyle,
-    BorderStyle,
     ColorScheme,
-    EdgeConfig,
     EdgeStyle,
-    NodeShape,
-    RoleBasedStyle,
-    SpacingConfig,
-    Template,
+    RoleStyle,  # Flat role-based style
 )
 from .style_config import MindMapStyle
 from .style_resolver import (
     deserialize_color_scheme,
     deserialize_style,
-    deserialize_template,
-    resolve_style,
     serialize_color_scheme,
     serialize_style,
-    serialize_template,
 )
-from .templates import (
-    create_default_template,
-)
+
+# Note: create_default_template() has been removed.
+# - Production code should load templates from JSON files (template_loader.py)
+# - Test code should use _create_test_template() helper in test files
+
+# DEPRECATED CLASSES REMOVED:
+# - SpacingConfig, NodeShape, BackgroundStyle, BorderStyle: Replaced by flat fields in RoleStyle
+# - RoleBasedStyle: Replaced by RoleStyle (flat structure)
+# - EdgeConfig: Not used in current architecture
+# - Template: Replaced by MindMapStyle + ColorScheme separation
 
 __all__ = [
     # Enums
@@ -33,28 +31,16 @@ __all__ = [
     "SpacingLevel",
 
     # Extended styles (new architecture - authoritative)
-    "SpacingConfig",
-    "NodeShape",
-    "BackgroundStyle",
-    "BorderStyle",
     "EdgeStyle",
-    "EdgeConfig",
-    "RoleBasedStyle",
+    "RoleStyle",  # Flat role-based style (authoritative)
     "ColorScheme",
-    "Template",
 
     # Style resolver
-    "resolve_style",
     "serialize_style",
     "deserialize_style",
-    "serialize_template",
-    "deserialize_template",
     "serialize_color_scheme",
     "deserialize_color_scheme",
 
     # Main style configuration
     "MindMapStyle",
-
-    # Default template creator
-    "create_default_template",
 ]
