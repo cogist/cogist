@@ -1,31 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <!-- Color Wheel Icon - 8 segments using default color scheme -->
+  <!-- Color Wheel Icon - Ring shape with 8 segments -->
   
+  <!-- Outer ring (8 colored segments) -->
   <!-- Segment 1: Red (0-45°) -->
-  <path d="M 50 50 L 50 8 A 42 42 0 0 1 79.7 20.3 Z" fill="#EE3848"/>
+  <path d="M 50 50 L 50 15 A 35 35 0 0 1 74.7 25.3 Z" fill="#EE3848"/>
   
   <!-- Segment 2: Orange (45-90°) -->
-  <path d="M 50 50 L 79.7 20.3 A 42 42 0 0 1 92 50 Z" fill="#F48333"/>
+  <path d="M 50 50 L 74.7 25.3 A 35 35 0 0 1 85 50 Z" fill="#F48333"/>
   
   <!-- Segment 3: Yellow (90-135°) -->
-  <path d="M 50 50 L 92 50 A 42 42 0 0 1 79.7 79.7 Z" fill="#F1CF27"/>
+  <path d="M 50 50 L 85 50 A 35 35 0 0 1 74.7 74.7 Z" fill="#F1CF27"/>
   
   <!-- Segment 4: Green (135-180°) -->
-  <path d="M 50 50 L 79.7 79.7 A 42 42 0 0 1 50 92 Z" fill="#18DC6A"/>
+  <path d="M 50 50 L 74.7 74.7 A 35 35 0 0 1 50 85 Z" fill="#18DC6A"/>
   
   <!-- Segment 5: Teal (180-225°) -->
-  <path d="M 50 50 L 50 92 A 42 42 0 0 1 20.3 79.7 Z" fill="#14D0C1"/>
+  <path d="M 50 50 L 50 85 A 35 35 0 0 1 25.3 74.7 Z" fill="#14D0C1"/>
   
   <!-- Segment 6: Blue (225-270°) -->
-  <path d="M 50 50 L 20.3 79.7 A 42 42 0 0 1 8 50 Z" fill="#2A9CED"/>
+  <path d="M 50 50 L 25.3 74.7 A 35 35 0 0 1 15 50 Z" fill="#2A9CED"/>
   
   <!-- Segment 7: Purple (270-315°) -->
-  <path d="M 50 50 L 8 50 A 42 42 0 0 1 20.3 20.3 Z" fill="#8540E7"/>
+  <path d="M 50 50 L 15 50 A 35 35 0 0 1 25.3 25.3 Z" fill="#8540E7"/>
   
   <!-- Segment 8: Pink (315-360°) -->
-  <path d="M 50 50 L 20.3 20.3 A 42 42 0 0 1 50 8 Z" fill="#EA2E8C"/>
+  <path d="M 50 50 L 25.3 25.3 A 35 35 0 0 1 50 15 Z" fill="#EA2E8C"/>
   
-  <!-- Center hole (white circle) -->
-  <circle cx="50" cy="50" r="18" fill="#FFFFFF"/>
+  <!-- Inner circle (background color, creates ring effect) -->
+  <circle cx="50" cy="50" r="22" fill="#333333"/>
   
 </svg>

@@ -2,26 +2,26 @@
   <!-- Gear Icon - Settings/Advanced Mode -->
   
   <g fill="#4A90E2">
-    <!-- Main gear body -->
-    <circle cx="50" cy="50" r="25"/>
+    <!-- Main gear body (wider to connect with teeth) -->
+    <circle cx="50" cy="50" r="24"/>
     
-    <!-- Gear teeth (8 teeth, evenly spaced) -->
+    <!-- Gear teeth (8 teeth, larger) -->
     <!-- Top (0°) -->
-    <rect x="44.7" y="18" width="10.7" height="10" rx="2"/>
+    <rect x="44" y="14" width="12" height="12" rx="2"/>
     <!-- Top-right (45°) -->
-    <rect x="44.7" y="18" width="10.7" height="10" rx="2" transform="rotate(45, 50, 50)"/>
+    <rect x="44" y="14" width="12" height="12" rx="2" transform="rotate(45, 50, 50)"/>
     <!-- Right (90°) -->
-    <rect x="44.7" y="18" width="10.7" height="10" rx="2" transform="rotate(90, 50, 50)"/>
+    <rect x="44" y="14" width="12" height="12" rx="2" transform="rotate(90, 50, 50)"/>
     <!-- Bottom-right (135°) -->
-    <rect x="44.7" y="18" width="10.7" height="10" rx="2" transform="rotate(135, 50, 50)"/>
+    <rect x="44" y="14" width="12" height="12" rx="2" transform="rotate(135, 50, 50)"/>
     <!-- Bottom (180°) -->
-    <rect x="44.7" y="18" width="10.7" height="10" rx="2" transform="rotate(180, 50, 50)"/>
+    <rect x="44" y="14" width="12" height="12" rx="2" transform="rotate(180, 50, 50)"/>
     <!-- Bottom-left (225°) -->
-    <rect x="44.7" y="18" width="10.7" height="10" rx="2" transform="rotate(225, 50, 50)"/>
+    <rect x="44" y="14" width="12" height="12" rx="2" transform="rotate(225, 50, 50)"/>
     <!-- Left (270°) -->
-    <rect x="44.7" y="18" width="10.7" height="10" rx="2" transform="rotate(270, 50, 50)"/>
+    <rect x="44" y="14" width="12" height="12" rx="2" transform="rotate(270, 50, 50)"/>
     <!-- Top-left (315°) -->
-    <rect x="44.7" y="18" width="10.7" height="10" rx="2" transform="rotate(315, 50, 50)"/>
+    <rect x="44" y="14" width="12" height="12" rx="2" transform="rotate(315, 50, 50)"/>
   </g>
   
   <!-- Center hole (transparent - cut out from gear) -->
