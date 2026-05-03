@@ -131,12 +131,12 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: CHANGELOG.md
           files: |
             artifacts/Cogist-Linux/Cogist-Linux
             artifacts/Cogist-Windows/Cogist-Windows.zip
             artifacts/Cogist-macOS/Cogist-macOS
           draft: false
           prerelease: false
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

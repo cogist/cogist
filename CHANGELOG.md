@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-05-03
+
+### Added
+- **SVG Icons**: Professional activity bar icons
+  - Color wheel icon with ring design (8 colors from default scheme)
+  - Gear icon for advanced mode settings
+  - Transparent centers matching dark sidebar background
+- **GIF Demos**: Three interactive feature demonstrations in README
+  - Drag node demo (76KB) - shows smart layout and node following
+  - Rainbow mode demo (57KB) - shows color scheme switching
+  - Spacing adjustment demo (808KB) - shows real-time style preview
+- **Chinese README**: Complete Chinese documentation (README_zh-CN.md)
+
+### Changed
+- **UI Icons**: Improved activity bar button icons
+  - Color scheme icon: Changed from solid circle to ring shape
+  - Advanced mode icon: Larger gear body (r=24) with bigger teeth (12x12)
+  - Consistent sizing between both icons
+- **Release Process**: Automated release notes from CHANGELOG.md
+  - GitHub Actions now uses CHANGELOG.md for release descriptions
+  - Removed auto-generated release notes
+
 ## [0.5.0] - 2026-05-03
 
 ### Added
