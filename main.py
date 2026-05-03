@@ -717,16 +717,15 @@ class MainWindow(QMainWindow):
                     self.mindmap_view.selected_node_id = undo_delete_focus_id
                     selected_item = self.mindmap_view.node_items[undo_delete_focus_id]
                     selected_item.setSelected(True)
-                    self.mindmap_view.centerOn(selected_item)
+                    # Only scroll if node is not visible (prevents viewport jump)
+                    self.mindmap_view._ensure_node_visible(undo_delete_focus_id)
             elif (
                 self.mindmap_view.selected_node_id
                 and self.mindmap_view.selected_node_id in self.mindmap_view.node_items
             ):
                 # Normal undo (e.g., undoing a delete), focus stays on current selection
-                selected_item = self.mindmap_view.node_items[
-                    self.mindmap_view.selected_node_id
-                ]
-                self.mindmap_view.centerOn(selected_item)
+                # Only scroll if node is not visible (prevents viewport jump)
+                self.mindmap_view._ensure_node_visible(self.mindmap_view.selected_node_id)
 
     def _redo(self):
         """Redo the last undone operation."""
@@ -810,10 +809,8 @@ class MainWindow(QMainWindow):
                 and self.mindmap_view.selected_node_id in self.mindmap_view.node_items
             ):
                 # Normal redo (e.g., redoing a delete), focus stays on current selection
-                selected_item = self.mindmap_view.node_items[
-                    self.mindmap_view.selected_node_id
-                ]
-                self.mindmap_view.centerOn(selected_item)
+                # Only scroll if node is not visible (prevents viewport jump)
+                self.mindmap_view._ensure_node_visible(self.mindmap_view.selected_node_id)
 
     def _add_child(self):
         """Add a child node."""
