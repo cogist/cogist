@@ -125,6 +125,12 @@ class ChangeStyleCommand(Command):
         """
         backup = {}
 
+        # Handle global rainbow config (canvas layer or any layer)
+        if "use_rainbow_branches" in keys:
+            backup["use_rainbow_branches"] = self.style_config.use_rainbow_branches
+        if "color_pool" in keys:
+            backup["color_pool"] = self.style_config.color_pool.copy()
+
         if layer == "canvas":
             for key in keys:
                 if key == "bg_color":
@@ -235,6 +241,12 @@ class ChangeStyleCommand(Command):
             layer: Layer name
             style_updates: Dictionary of style properties to update
         """
+        # Handle global rainbow config (applies to all layers)
+        if "use_rainbow_branches" in style_updates:
+            self.style_config.use_rainbow_branches = style_updates["use_rainbow_branches"]
+        if "color_pool" in style_updates:
+            self.style_config.color_pool = style_updates["color_pool"].copy()
+
         if layer == "canvas":
             if "bg_color" in style_updates:
                 self.style_config.special_colors["canvas_bg"] = style_updates["bg_color"]

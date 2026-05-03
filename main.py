@@ -673,6 +673,10 @@ class MainWindow(QMainWindow):
                     # Prevent command creation during undo/redo refresh
                     self.style_panel.advanced_tab._updating_from_undo_redo = True
                     self.style_panel.advanced_tab.refresh_current_layer()
+
+                    # Sync color scheme tab with current style_config (for rainbow switch)
+                    self.style_panel.color_scheme_tab.set_style_config(self.mindmap_view.style_config)
+
                     self.style_panel.advanced_tab._updating_from_undo_redo = False
                 # Re-apply styles to all nodes
                 if hasattr(self.mindmap_view, 'node_items'):
@@ -761,6 +765,10 @@ class MainWindow(QMainWindow):
                     # Prevent command creation during undo/redo refresh
                     self.style_panel.advanced_tab._updating_from_undo_redo = True
                     self.style_panel.advanced_tab.refresh_current_layer()
+
+                    # Sync color scheme tab with current style_config (for rainbow switch)
+                    self.style_panel.color_scheme_tab.set_style_config(self.mindmap_view.style_config)
+
                     self.style_panel.advanced_tab._updating_from_undo_redo = False
                 # Re-apply styles to all nodes
                 if hasattr(self.mindmap_view, 'node_items'):

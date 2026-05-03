@@ -632,14 +632,53 @@ class AdvancedStyleTab(QWidget):
 
         # Handle global rainbow config FIRST (before checking role)
         # This ensures rainbow state is synced across all layers including canvas
-        # NEW: Use MindMapStyle fields directly
-        if "use_rainbow_branches" in colors:
-            self.style_config.use_rainbow_branches = colors["use_rainbow_branches"]
-            # Refresh UI to update node style section controls visibility
-            self._load_current_layer_style()
-        if "color_pool" in colors:
-            self.style_config.color_pool = colors["color_pool"]
+        # NOTE: Rainbow config changes are handled by command system below
+        # Do NOT modify style_config here to avoid duplicate updates
 
+        # Use command system if available
+        if self.command_history:
+            from cogist.application.commands import ChangeStyleCommand
+            from cogist.application.commands.change_style_command import StyleChange
+
+            style_updates = {}
+
+            # Build style updates based on changed colors
+            if "use_rainbow_branches" in colors:
+                style_updates["use_rainbow_branches"] = colors["use_rainbow_branches"]
+            if "color_pool" in colors:
+                style_updates["color_pool"] = colors["color_pool"]
+            if "bg_color" in colors:
+                style_updates["bg_color"] = colors["bg_color"]
+            if "text_color" in colors:
+                style_updates["text_color"] = colors["text_color"]
+            if "border_color" in colors:
+                style_updates["border_color"] = colors["border_color"]
+            if "connector_color" in colors:
+                style_updates["connector_color"] = colors["connector_color"]
+            if "canvas_bg" in colors:
+                style_updates["bg_color"] = colors["canvas_bg"]  # Map canvas_bg to bg_color for canvas layer
+
+            if style_updates:
+                change = StyleChange(
+                    layer=self.current_layer,
+                    style_updates=style_updates,
+                )
+                command = ChangeStyleCommand(
+                    style_config=self.style_config,
+                    changes=[change],
+                )
+                command.execute()
+                self.command_history.push(command)
+
+                # Apply styles to mindmap after command execution
+                self._apply_styles_to_mindmap()
+
+                # Refresh UI after rainbow config change
+                if "use_rainbow_branches" in style_updates or "color_pool" in style_updates:
+                    self._load_current_layer_style()
+                return
+
+        # Fallback: direct update without undo/redo
         if not role:
             # Canvas layer - handle canvas_bg if present
             if "canvas_bg" in colors:
@@ -677,78 +716,48 @@ class AdvancedStyleTab(QWidget):
         # Apply styles to mindmap after updating role configs
         self._apply_styles_to_mindmap()
 
-        # Use command system if available
-        if self.command_history:
-            from cogist.application.commands import ChangeStyleCommand
-            from cogist.application.commands.change_style_command import StyleChange
+        # Fallback: direct update without undo/redo (already handled above if command_history exists)
+        if not self.command_history and role in self.style_config.role_styles:
+            role_style = self.style_config.role_styles[role]
 
-            style_updates = {}
-
-            # Build style updates based on changed colors
+            # Handle node background color
             if "bg_color" in colors:
-                style_updates["bg_color"] = colors["bg_color"]
-            if "text_color" in colors:
-                style_updates["text_color"] = colors["text_color"]
-            if "border_color" in colors:
-                style_updates["border_color"] = colors["border_color"]
-            if "connector_color" in colors:
-                style_updates["connector_color"] = colors["connector_color"]
-
-            if style_updates:
-                change = StyleChange(
-                    layer=self.current_layer,
-                    style_updates=style_updates,
-                )
-                command = ChangeStyleCommand(
-                    style_config=self.style_config,
-                    changes=[change],
-                )
-                command.execute()
-                self.command_history.push(command)
-        else:
-            # Fallback: direct update without undo/redo
-            # Get role_style from new architecture
-            if role in self.style_config.role_styles:
-                role_style = self.style_config.role_styles[role]
-
-                # Handle node background color
-                if "bg_color" in colors:
-                    if role == NodeRole.ROOT:
-                        # Root node: update special_colors directly
-                        self.style_config.special_colors["root_background"] = colors["bg_color"]
-                    else:
-                        # Other nodes: find color index in color_pool
-                        if colors["bg_color"] in self.style_config.color_pool:
-                            role_style.bg_color_index = self.style_config.color_pool.index(colors["bg_color"])
-                        else:
-                            # If color not in pool, use default index
-                            role_style.bg_color_index = 0
-
-                # Handle text/foreground color
-                if "text_color" in colors:
-                    role_style.text_color = colors["text_color"]
-
-                # Handle border color
-                if "border_color" in colors:
-                    if role == NodeRole.ROOT:
-                        # Root node: update special_colors directly
-                        self.style_config.special_colors["root_border"] = colors["border_color"]
-                    else:
-                        # Other nodes: find color index in color_pool
-                        if colors["border_color"] in self.style_config.color_pool:
-                            role_style.border_color_index = self.style_config.color_pool.index(colors["border_color"])
-                        else:
-                            # If color not in pool, use default index
-                            role_style.border_color_index = 0
-
-                # Handle connector color
-                if "connector_color" in colors:
-                    # Find color index in color_pool
-                    if colors["connector_color"] in self.style_config.color_pool:
-                        role_style.connector_color_index = self.style_config.color_pool.index(colors["connector_color"])
+                if role == NodeRole.ROOT:
+                    # Root node: update special_colors directly
+                    self.style_config.special_colors["root_background"] = colors["bg_color"]
+                else:
+                    # Other nodes: find color index in color_pool
+                    if colors["bg_color"] in self.style_config.color_pool:
+                        role_style.bg_color_index = self.style_config.color_pool.index(colors["bg_color"])
                     else:
                         # If color not in pool, use default index
-                        role_style.connector_color_index = 0
+                        role_style.bg_color_index = 0
+
+            # Handle text/foreground color
+            if "text_color" in colors:
+                role_style.text_color = colors["text_color"]
+
+            # Handle border color
+            if "border_color" in colors:
+                if role == NodeRole.ROOT:
+                    # Root node: update special_colors directly
+                    self.style_config.special_colors["root_border"] = colors["border_color"]
+                else:
+                    # Other nodes: find color index in color_pool
+                    if colors["border_color"] in self.style_config.color_pool:
+                        role_style.border_color_index = self.style_config.color_pool.index(colors["border_color"])
+                    else:
+                        # If color not in pool, use default index
+                        role_style.border_color_index = 0
+
+            # Handle connector color
+            if "connector_color" in colors:
+                # Find color index in color_pool
+                if colors["connector_color"] in self.style_config.color_pool:
+                    role_style.connector_color_index = self.style_config.color_pool.index(colors["connector_color"])
+                else:
+                    # If color not in pool, use default index
+                    role_style.connector_color_index = 0
 
         self._apply_styles_to_mindmap()
 
