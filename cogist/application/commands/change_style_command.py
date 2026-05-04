@@ -224,11 +224,11 @@ class ChangeStyleCommand(Command):
                                 # Direct boolean backup
                                 if hasattr(role_style, 'font_italic'):
                                     backup[key] = role_style.font_italic
-                            elif key.startswith("border_") and hasattr(role_style, 'border'):
-                                # Backup border attributes from border object
+                            elif key.startswith("border_"):
+                                # Backup border attributes (RoleStyle has flat structure)
                                 border_attr = key
-                                if hasattr(role_style.border, border_attr):
-                                    backup[key] = getattr(role_style.border, border_attr)
+                                if hasattr(role_style, border_attr):
+                                    backup[key] = getattr(role_style, border_attr)
                             elif hasattr(role_style, key):
                                 backup[key] = getattr(role_style, key)
 
@@ -347,11 +347,11 @@ class ChangeStyleCommand(Command):
                                 # Direct boolean assignment
                                 if hasattr(role_style, 'font_italic'):
                                     role_style.font_italic = value
-                            elif key.startswith("border_") and hasattr(role_style, 'border'):
-                                # Apply border attributes to border object
+                            elif key.startswith("border_"):
+                                # Apply border attributes (RoleStyle has flat structure)
                                 border_attr = key
-                                if hasattr(role_style.border, border_attr):
-                                    setattr(role_style.border, border_attr, value)
+                                if hasattr(role_style, border_attr):
+                                    setattr(role_style, border_attr, value)
                             elif hasattr(role_style, key):
                                 # Direct attribute update (includes shadow_enabled, shadow_offset_x, etc.)
                                 setattr(role_style, key, value)
