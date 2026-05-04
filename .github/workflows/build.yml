@@ -156,11 +156,19 @@ jobs:
       - name: Debug - List built files
         run: |
           echo "=== Current directory ==="
-          pwd
+          pwd || cd
           echo "=== Files matching pattern ==="
-          ls -la ${{ matrix.artifact_name }}-* 2>/dev/null || echo "No files found matching pattern!"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            dir ${{ matrix.artifact_name }}-* 2>nul || echo "No files found matching pattern!"
+          else
+            ls -la ${{ matrix.artifact_name }}-* 2>/dev/null || echo "No files found matching pattern!"
+          fi
           echo "=== All files in current dir ==="
-          ls -la
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            dir
+          else
+            ls -la
+          fi
 
   release:
     name: Create Release
