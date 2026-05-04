@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-05-04
+
+### Fixed
+- **Sibling Node Overlap**: Resolved node overlap when sibling spacing is set to zero
+  - Changed border drawing strategy to extend FULL border_width outward (not half)
+  - Updated layout algorithm to consider visual height including border expansion
+  - Synced border_width from presentation layer to domain nodes for accurate layout calculation
+  - Fixed node positioning in _layout_side and _layout_branch_complex methods
+
+### Technical Details
+- **Border Rendering**: container_borders.py now extends outer_rect by full border_width instead of border_width/2
+- **Layout Calculation**: Visual height = node.height + border_width * 2 (top and bottom borders)
+- **Data Synchronization**: mindmap_view.py syncs border_width in _initialize_scene and _measure_actual_sizes
+- **Overlap Detection**: _get_branch_bounds uses full border_width for accurate boundary calculation
+
 ## [0.5.1] - 2026-05-03
 
 ### Added
