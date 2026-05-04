@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
             platform: linux
@@ -26,10 +26,6 @@ jobs:
             platform: windows
             arch: x64
             artifact_name: Cogist-Windows-x64
-          - os: macos-13
-            platform: macos
-            arch: x64
-            artifact_name: Cogist-macOS-x64
           - os: macos-latest
             platform: macos
             arch: arm64
@@ -135,7 +131,7 @@ jobs:
           & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' setup.iss
 
       - name: Create archive (macOS)
-        if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-latest'
         run: |
           # PyInstaller creates .app bundle on macOS with --windowed
           # Create a temporary directory with .app and Applications symlink
