@@ -48,4 +48,7 @@ app = BUNDLE(
     name='Cogist.app',
     icon='assets/icons/cogist.png',
     bundle_identifier=None,
+    info_plist={
+        'LSMinimumSystemVersion': '12.0',  # macOS 12 Monterey minimum
+    },
 )
