@@ -154,21 +154,14 @@ jobs:
           retention-days: 30
 
       - name: Debug - List built files
+        shell: bash
         run: |
           echo "=== Current directory ==="
           pwd || cd
           echo "=== Files matching pattern ==="
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            dir ${{ matrix.artifact_name }}-* 2>nul || echo "No files found matching pattern!"
-          else
-            ls -la ${{ matrix.artifact_name }}-* 2>/dev/null || echo "No files found matching pattern!"
-          fi
+          ls -la ${{ matrix.artifact_name }}-* 2>/dev/null || echo "No files found matching pattern!"
           echo "=== All files in current dir ==="
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            dir
-          else
-            ls -la
-          fi
+          ls -la
 
   release:
     name: Create Release
