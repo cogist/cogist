@@ -47,6 +47,16 @@
 
 ## 📥 Download
 
+### System Requirements
+
+| Platform | Minimum Version |
+|----------|----------------|
+| **Windows** | Windows 10 or later (64-bit) |
+| **macOS** | macOS 12.0 Monterey or later (Intel & Apple Silicon) |
+| **Linux** | glibc 2.27+ (Ubuntu 18.04+, CentOS 8+, Fedora 28+) |
+
+### Downloads
+
 | Platform | Architecture | Download Link |
 |----------|-------------|---------------|
 | Windows | x64 | [Coming Soon](https://github.com/cogist/cogist/releases) |
