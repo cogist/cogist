@@ -156,7 +156,10 @@ jobs:
         with:
           name: ${{ matrix.artifact_name }}
           path: |
-            ${{ matrix.artifact_name }}-*
+            ${{ matrix.artifact_name }}.AppImage
+            ${{ matrix.artifact_name }}-Portable.exe
+            ${{ matrix.artifact_name }}-Setup.exe
+            ${{ matrix.artifact_name }}.dmg
           retention-days: 30
 
   release:
