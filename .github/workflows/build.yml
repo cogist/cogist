@@ -81,6 +81,8 @@ jobs:
 
       - name: Build executable (macOS)
         if: matrix.platform == 'macos'
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "12.0"  # Ensure compatibility with macOS 12+
         run: |
           uv run pyinstaller \
             --name=Cogist \
