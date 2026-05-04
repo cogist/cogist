@@ -557,7 +557,8 @@ class EdgeItem(QGraphicsPathItem):
             Border width in pixels
         """
         try:
-            return node_item.template_style.border.border_width
+            # RoleStyle has flat structure, border_width is a direct field
+            return node_item.template_style.border_width
         except AttributeError:
             return 2.0  # Default border width
 

@@ -33,7 +33,7 @@ class EditableTextItem(QGraphicsTextItem):
     editing_cancelled = Signal()  # Emitted when editing is cancelled
     tab_pressed = Signal()  # Emitted when Tab key is pressed
 
-    def __init__(self, text: str = "", max_width: float = 200, parent=None, mindmap_view=None):
+    def __init__(self, text: str = "", max_width: float = 200, parent=None, mindmap_view=None, parent_node=None):
         super().__init__(text, parent)
 
         self._text_cache = text
@@ -42,6 +42,7 @@ class EditableTextItem(QGraphicsTextItem):
         self._updating = False  # Prevent recursive updates
         self._tab_pressed = False  # Track if Tab key was pressed
         self._mindmap_view = mindmap_view  # Store reference to MindMapView
+        self._parent_node = parent_node  # Store reference to parent NodeItem for real-time sync
 
         # Visual settings
         self._border_color = QColor(Qt.transparent)  # No border by default
@@ -90,6 +91,16 @@ class EditableTextItem(QGraphicsTextItem):
         """
         if not self._editing or self._updating:
             return
+
+        # CRITICAL: Sync text to NodeItem's text_item for real-time layout refresh
+        # This enables dynamic layout calculation during editing
+        if self._parent_node and hasattr(self._parent_node, 'text_item'):
+            # Update the underlying text_item with current edit content
+            self._parent_node.text_item.setPlainText(self.toPlainText())
+
+            # TODO: Trigger real-time layout refresh here
+            # For now, just update the text. Layout refresh will be added later.
+            # Example: self._parent_node._refresh_layout_with_animation()
 
         # Update layout to recalculate width
         self._update_layout()

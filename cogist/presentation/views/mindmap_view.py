@@ -247,6 +247,11 @@ class MindMapView(QGraphicsView):
         # Update node dimensions
         node.width = temp_item.node_width
         node.height = temp_item.node_height
+        # CRITICAL: Sync border_width for layout algorithm to calculate visual bounds
+        if hasattr(temp_item, 'template_style') and temp_item.template_style:
+            node.border_width = getattr(temp_item.template_style, 'border_width', 0)
+        else:
+            node.border_width = 0
 
     def _measure_actual_sizes(self, root: Node):
         """
@@ -275,6 +280,11 @@ class MindMapView(QGraphicsView):
             # Sync actual measured size back to domain node
             node.width = temp_item.node_width
             node.height = temp_item.node_height
+            # CRITICAL: Sync border_width for layout algorithm to calculate visual bounds
+            if hasattr(temp_item, 'template_style') and temp_item.template_style:
+                node.border_width = getattr(temp_item.template_style, 'border_width', 0)
+            else:
+                node.border_width = 0
 
             # Recursively measure children
             for child in node.children:

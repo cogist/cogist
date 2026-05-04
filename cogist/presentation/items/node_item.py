@@ -8,7 +8,7 @@ Handles all UI rendering and user interaction.
 import contextlib
 
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QFont, QPen
+from PySide6.QtGui import QBrush, QColor, QFont, QPainterPath
 from PySide6.QtWidgets import (
     QGraphicsRectItem,
     QGraphicsTextItem,
@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 from cogist.presentation.items.editable_text_item import EditableTextItem
 
 # === Color Adjustment Helper Functions ===
+
 
 def adjust_color_brightness(hex_color: str, brightness: float) -> str:
     """Adjust color brightness.
@@ -93,6 +94,7 @@ def blend_colors(fg_color: str, bg_color: str, fg_alpha: int = 255) -> str:
     Returns:
         Blended color in #FFRRGGBB format (fully opaque)
     """
+
     def parse_color(color: str) -> tuple:
         """Parse color to (r, g, b, a) tuple."""
         color = color.lstrip("#")
@@ -270,9 +272,16 @@ class NodeItem(QGraphicsRectItem):
         role = self._depth_to_role(depth)
 
         # NEW: Get role style from MindMapStyle.role_styles (flat structure)
-        if not hasattr(self.style_config, 'role_styles') or role not in self.style_config.role_styles:
+        if (
+            not hasattr(self.style_config, "role_styles")
+            or role not in self.style_config.role_styles
+        ):
             node_id = self.domain_node.id if self.domain_node else "unknown"
-            available_roles = list(self.style_config.role_styles.keys()) if hasattr(self.style_config, 'role_styles') else []
+            available_roles = (
+                list(self.style_config.role_styles.keys())
+                if hasattr(self.style_config, "role_styles")
+                else []
+            )
             raise RuntimeError(
                 f"Role {role} not found in style_config.role_styles for node {node_id}. Available: {available_roles}"
             )
@@ -291,32 +300,50 @@ class NodeItem(QGraphicsRectItem):
             # Level 1: Use rainbow colors
             if depth == 1 and self.domain_node and self.domain_node.parent:
                 try:
-                    branch_idx = self.domain_node.parent.children.index(self.domain_node)
+                    branch_idx = self.domain_node.parent.children.index(
+                        self.domain_node
+                    )
                     base_color = color_pool[branch_idx % 8]  # Cycle through 8 colors
 
                     # Apply background color with adjustments
                     if role_style.bg_enabled:
-                        bg_color = adjust_color_brightness(base_color, role_style.bg_brightness)
+                        bg_color = adjust_color_brightness(
+                            base_color, role_style.bg_brightness
+                        )
                         if role_style.bg_opacity < 255:
-                            bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                            bg_color = apply_opacity_to_color(
+                                bg_color, role_style.bg_opacity
+                            )
                     else:
                         bg_color = "#00000000"  # Transparent
 
                     # Apply border color with adjustments
                     if role_style.border_enabled:
-                        border_color = adjust_color_brightness(base_color, role_style.border_brightness)
+                        border_color = adjust_color_brightness(
+                            base_color, role_style.border_brightness
+                        )
                         if role_style.border_opacity < 255:
-                            border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                            border_color = apply_opacity_to_color(
+                                border_color, role_style.border_opacity
+                            )
                     else:
                         border_color = None
                 except (ValueError, AttributeError):
                     # Fallback to default color index
-                    bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
-                                                          role_style.bg_brightness, role_style.bg_opacity,
-                                                          role_style.bg_enabled)
-                    border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
-                                                             role_style.border_brightness, role_style.border_opacity,
-                                                             role_style.border_enabled)
+                    bg_color = self._get_color_from_index(
+                        role_style.bg_color_index,
+                        color_pool,
+                        role_style.bg_brightness,
+                        role_style.bg_opacity,
+                        role_style.bg_enabled,
+                    )
+                    border_color = self._get_color_from_index(
+                        role_style.border_color_index,
+                        color_pool,
+                        role_style.border_brightness,
+                        role_style.border_opacity,
+                        role_style.border_enabled,
+                    )
 
             # Level 2+: Inherit from Level 1 ancestor
             elif depth >= 2 and self.domain_node:
@@ -324,55 +351,93 @@ class NodeItem(QGraphicsRectItem):
                 if level_1_ancestor:
                     try:
                         if level_1_ancestor.parent:
-                            branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
+                            branch_idx = level_1_ancestor.parent.children.index(
+                                level_1_ancestor
+                            )
                             ancestor_color = color_pool[branch_idx % 8]
 
                             # Background
                             if role_style.bg_enabled:
-                                bg_color = adjust_color_brightness(ancestor_color, role_style.bg_brightness)
+                                bg_color = adjust_color_brightness(
+                                    ancestor_color, role_style.bg_brightness
+                                )
                                 if role_style.bg_opacity < 255:
-                                    bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                                    bg_color = apply_opacity_to_color(
+                                        bg_color, role_style.bg_opacity
+                                    )
                             else:
                                 bg_color = "#00000000"
 
                             # Border
                             if role_style.border_enabled:
-                                border_color = adjust_color_brightness(ancestor_color, role_style.border_brightness)
+                                border_color = adjust_color_brightness(
+                                    ancestor_color, role_style.border_brightness
+                                )
                                 if role_style.border_opacity < 255:
-                                    border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                                    border_color = apply_opacity_to_color(
+                                        border_color, role_style.border_opacity
+                                    )
                             else:
                                 border_color = None
                         else:
-                            bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
-                                                                 role_style.bg_brightness, role_style.bg_opacity,
-                                                                 role_style.bg_enabled)
-                            border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
-                                                                     role_style.border_brightness, role_style.border_opacity,
-                                                                     role_style.border_enabled)
+                            bg_color = self._get_color_from_index(
+                                role_style.bg_color_index,
+                                color_pool,
+                                role_style.bg_brightness,
+                                role_style.bg_opacity,
+                                role_style.bg_enabled,
+                            )
+                            border_color = self._get_color_from_index(
+                                role_style.border_color_index,
+                                color_pool,
+                                role_style.border_brightness,
+                                role_style.border_opacity,
+                                role_style.border_enabled,
+                            )
                     except (ValueError, AttributeError):
-                        bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
-                                                             role_style.bg_brightness, role_style.bg_opacity,
-                                                             role_style.bg_enabled)
-                        border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
-                                                                 role_style.border_brightness, role_style.border_opacity,
-                                                                 role_style.border_enabled)
+                        bg_color = self._get_color_from_index(
+                            role_style.bg_color_index,
+                            color_pool,
+                            role_style.bg_brightness,
+                            role_style.bg_opacity,
+                            role_style.bg_enabled,
+                        )
+                        border_color = self._get_color_from_index(
+                            role_style.border_color_index,
+                            color_pool,
+                            role_style.border_brightness,
+                            role_style.border_opacity,
+                            role_style.border_enabled,
+                        )
                 else:
-                    bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
-                                                         role_style.bg_brightness, role_style.bg_opacity,
-                                                         role_style.bg_enabled)
-                    border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
-                                                             role_style.border_brightness, role_style.border_opacity,
-                                                             role_style.border_enabled)
+                    bg_color = self._get_color_from_index(
+                        role_style.bg_color_index,
+                        color_pool,
+                        role_style.bg_brightness,
+                        role_style.bg_opacity,
+                        role_style.bg_enabled,
+                    )
+                    border_color = self._get_color_from_index(
+                        role_style.border_color_index,
+                        color_pool,
+                        role_style.border_brightness,
+                        role_style.border_opacity,
+                        role_style.border_enabled,
+                    )
             else:
                 # Root node (depth == 0): use special_colors
                 if role_style.bg_enabled:
                     bg_color = self.style_config.special_colors["root_background"]
                     # Apply brightness adjustment
                     if role_style.bg_brightness != 1.0:
-                        bg_color = adjust_color_brightness(bg_color, role_style.bg_brightness)
+                        bg_color = adjust_color_brightness(
+                            bg_color, role_style.bg_brightness
+                        )
                     # Apply opacity adjustment
                     if role_style.bg_opacity < 255:
-                        bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                        bg_color = apply_opacity_to_color(
+                            bg_color, role_style.bg_opacity
+                        )
                 else:
                     bg_color = None
 
@@ -380,10 +445,14 @@ class NodeItem(QGraphicsRectItem):
                     border_color = self.style_config.special_colors["root_border"]
                     # Apply brightness adjustment
                     if role_style.border_brightness != 1.0:
-                        border_color = adjust_color_brightness(border_color, role_style.border_brightness)
+                        border_color = adjust_color_brightness(
+                            border_color, role_style.border_brightness
+                        )
                     # Apply opacity adjustment
                     if role_style.border_opacity < 255:
-                        border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                        border_color = apply_opacity_to_color(
+                            border_color, role_style.border_opacity
+                        )
                 else:
                     border_color = None
         else:
@@ -394,10 +463,14 @@ class NodeItem(QGraphicsRectItem):
                     bg_color = self.style_config.special_colors["root_background"]
                     # Apply brightness adjustment
                     if role_style.bg_brightness != 1.0:
-                        bg_color = adjust_color_brightness(bg_color, role_style.bg_brightness)
+                        bg_color = adjust_color_brightness(
+                            bg_color, role_style.bg_brightness
+                        )
                     # Apply opacity adjustment
                     if role_style.bg_opacity < 255:
-                        bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                        bg_color = apply_opacity_to_color(
+                            bg_color, role_style.bg_opacity
+                        )
                 else:
                     bg_color = None
 
@@ -405,20 +478,32 @@ class NodeItem(QGraphicsRectItem):
                     border_color = self.style_config.special_colors["root_border"]
                     # Apply brightness adjustment
                     if role_style.border_brightness != 1.0:
-                        border_color = adjust_color_brightness(border_color, role_style.border_brightness)
+                        border_color = adjust_color_brightness(
+                            border_color, role_style.border_brightness
+                        )
                     # Apply opacity adjustment
                     if role_style.border_opacity < 255:
-                        border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                        border_color = apply_opacity_to_color(
+                            border_color, role_style.border_opacity
+                        )
                 else:
                     border_color = None
             else:
                 # Other nodes: use color indices directly
-                bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
-                                                     role_style.bg_brightness, role_style.bg_opacity,
-                                                     role_style.bg_enabled)
-                border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
-                                                         role_style.border_brightness, role_style.border_opacity,
-                                                         role_style.border_enabled)
+                bg_color = self._get_color_from_index(
+                    role_style.bg_color_index,
+                    color_pool,
+                    role_style.bg_brightness,
+                    role_style.bg_opacity,
+                    role_style.bg_enabled,
+                )
+                border_color = self._get_color_from_index(
+                    role_style.border_color_index,
+                    color_pool,
+                    role_style.border_brightness,
+                    role_style.border_opacity,
+                    role_style.border_enabled,
+                )
 
         # Text color: auto-contrast or manual
         if role_style.text_color:
@@ -639,8 +724,14 @@ class NodeItem(QGraphicsRectItem):
         # Return white for dark backgrounds, black for light
         return "#FFFFFFFF" if luminance < 0.5 else "#FF000000"
 
-    def _get_color_from_index(self, color_index: int, color_pool: list,
-                              brightness: float, opacity: int, enabled: bool) -> str | None:
+    def _get_color_from_index(
+        self,
+        color_index: int,
+        color_pool: list,
+        brightness: float,
+        opacity: int,
+        enabled: bool,
+    ) -> str | None:
         """Get color from color_pool index with adjustments.
 
         Args:
@@ -680,7 +771,11 @@ class NodeItem(QGraphicsRectItem):
             current = current.parent
 
         # Check if current's parent is root
-        if current.parent and hasattr(current.parent, 'is_root') and current.parent.is_root:
+        if (
+            current.parent
+            and hasattr(current.parent, "is_root")
+            and current.parent.is_root
+        ):
             return current
 
         return None
@@ -822,14 +917,23 @@ class NodeItem(QGraphicsRectItem):
                     # Check if rainbow branches are enabled
                     if self.style_config.use_rainbow_branches:
                         # Level 1: Use rainbow colors if enabled
-                        if self.depth == 1 and self.domain_node and self.domain_node.parent:
+                        if (
+                            self.depth == 1
+                            and self.domain_node
+                            and self.domain_node.parent
+                        ):
                             # Get branch index from parent's children list
                             try:
-                                branch_idx = self.domain_node.parent.children.index(self.domain_node)
+                                branch_idx = self.domain_node.parent.children.index(
+                                    self.domain_node
+                                )
                                 from cogist.domain.styles.extended_styles import (
                                     get_rainbow_branch_color,
                                 )
-                                branch_color = get_rainbow_branch_color(branch_idx, self.style_config.color_pool)
+
+                                branch_color = get_rainbow_branch_color(
+                                    branch_idx, self.style_config.color_pool
+                                )
 
                                 # In rainbow mode: switches control whether to draw color (rainbow) or not (transparent)
                                 # Background: if enabled, draw rainbow color; if disabled, no background
@@ -837,22 +941,32 @@ class NodeItem(QGraphicsRectItem):
                                     bg_color = branch_color
                                     # Apply brightness adjustment
                                     if role_style.bg_brightness != 1.0:
-                                        bg_color = self._adjust_color_brightness(bg_color, role_style.bg_brightness)
+                                        bg_color = self._adjust_color_brightness(
+                                            bg_color, role_style.bg_brightness
+                                        )
                                     # Apply opacity adjustment
                                     if role_style.bg_opacity < 255:
-                                        bg_color = self._apply_opacity(bg_color, role_style.bg_opacity)
+                                        bg_color = self._apply_opacity(
+                                            bg_color, role_style.bg_opacity
+                                        )
                                 else:
-                                    bg_color = "#00000000"  # Transparent (no background)
+                                    bg_color = (
+                                        "#00000000"  # Transparent (no background)
+                                    )
 
                                 # Border: if enabled, draw rainbow color; if disabled, no border
                                 if role_style.border_enabled:
                                     border_color = branch_color
                                     # Apply brightness adjustment
                                     if role_style.border_brightness != 1.0:
-                                        border_color = self._adjust_color_brightness(border_color, role_style.border_brightness)
+                                        border_color = self._adjust_color_brightness(
+                                            border_color, role_style.border_brightness
+                                        )
                                     # Apply opacity adjustment
                                     if role_style.border_opacity < 255:
-                                        border_color = self._apply_opacity(border_color, role_style.border_opacity)
+                                        border_color = self._apply_opacity(
+                                            border_color, role_style.border_opacity
+                                        )
                                 else:
                                     border_color = None  # No border
                             except (ValueError, AttributeError):
@@ -868,29 +982,49 @@ class NodeItem(QGraphicsRectItem):
                                 try:
                                     # Find the Level 1 node's position in its parent's children
                                     if level_1_ancestor.parent:
-                                        branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
+                                        branch_idx = (
+                                            level_1_ancestor.parent.children.index(
+                                                level_1_ancestor
+                                            )
+                                        )
                                         from cogist.domain.styles.extended_styles import (
                                             get_rainbow_branch_color,
                                         )
-                                        ancestor_branch_color = get_rainbow_branch_color(
-                                            branch_idx, self.style_config.color_pool
+
+                                        ancestor_branch_color = (
+                                            get_rainbow_branch_color(
+                                                branch_idx, self.style_config.color_pool
+                                            )
                                         )
 
                                         # Background: if enabled, draw rainbow color; if disabled, no background
                                         if role_style.bg_enabled:
-                                            bg_color = self._adjust_color_brightness(ancestor_branch_color, role_style.bg_brightness)
+                                            bg_color = self._adjust_color_brightness(
+                                                ancestor_branch_color,
+                                                role_style.bg_brightness,
+                                            )
                                             # Apply opacity adjustment (0-255)
                                             if role_style.bg_opacity < 255:
-                                                bg_color = self._apply_opacity(bg_color, role_style.bg_opacity)
+                                                bg_color = self._apply_opacity(
+                                                    bg_color, role_style.bg_opacity
+                                                )
                                         else:
                                             bg_color = "#00000000"  # Transparent (no background)
 
                                         # Border: if enabled, draw rainbow color; if disabled, no border
                                         if role_style.border_enabled:
-                                            border_color = self._adjust_color_brightness(ancestor_branch_color, role_style.border_brightness)
+                                            border_color = (
+                                                self._adjust_color_brightness(
+                                                    ancestor_branch_color,
+                                                    role_style.border_brightness,
+                                                )
+                                            )
                                             # Apply opacity adjustment to border as well
                                             if role_style.border_opacity < 255:
-                                                border_color = self._apply_opacity(border_color, role_style.border_opacity)
+                                                border_color = self._apply_opacity(
+                                                    border_color,
+                                                    role_style.border_opacity,
+                                                )
                                         else:
                                             border_color = None  # No border
                                     else:
@@ -905,24 +1039,36 @@ class NodeItem(QGraphicsRectItem):
                         else:
                             # Root node (depth == 0): use special_colors
                             if role_style.bg_enabled:
-                                bg_color = self.style_config.special_colors["root_background"]
+                                bg_color = self.style_config.special_colors[
+                                    "root_background"
+                                ]
                                 # Apply brightness adjustment
                                 if role_style.bg_brightness != 1.0:
-                                    bg_color = adjust_color_brightness(bg_color, role_style.bg_brightness)
+                                    bg_color = adjust_color_brightness(
+                                        bg_color, role_style.bg_brightness
+                                    )
                                 # Apply opacity adjustment
                                 if role_style.bg_opacity < 255:
-                                    bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                                    bg_color = apply_opacity_to_color(
+                                        bg_color, role_style.bg_opacity
+                                    )
                             else:
                                 bg_color = None
 
                             if role_style.border_enabled:
-                                border_color = self.style_config.special_colors["root_border"]
+                                border_color = self.style_config.special_colors[
+                                    "root_border"
+                                ]
                                 # Apply brightness adjustment
                                 if role_style.border_brightness != 1.0:
-                                    border_color = adjust_color_brightness(border_color, role_style.border_brightness)
+                                    border_color = adjust_color_brightness(
+                                        border_color, role_style.border_brightness
+                                    )
                                 # Apply opacity adjustment
                                 if role_style.border_opacity < 255:
-                                    border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                                    border_color = apply_opacity_to_color(
+                                        border_color, role_style.border_opacity
+                                    )
                             else:
                                 border_color = None
                     else:
@@ -930,34 +1076,54 @@ class NodeItem(QGraphicsRectItem):
                         if self.depth == 0:
                             # Root node: use special_colors
                             if role_style.bg_enabled:
-                                bg_color = self.style_config.special_colors["root_background"]
+                                bg_color = self.style_config.special_colors[
+                                    "root_background"
+                                ]
                                 # Apply brightness adjustment
                                 if role_style.bg_brightness != 1.0:
-                                    bg_color = adjust_color_brightness(bg_color, role_style.bg_brightness)
+                                    bg_color = adjust_color_brightness(
+                                        bg_color, role_style.bg_brightness
+                                    )
                                 # Apply opacity adjustment
                                 if role_style.bg_opacity < 255:
-                                    bg_color = apply_opacity_to_color(bg_color, role_style.bg_opacity)
+                                    bg_color = apply_opacity_to_color(
+                                        bg_color, role_style.bg_opacity
+                                    )
                             else:
                                 bg_color = None
 
                             if role_style.border_enabled:
-                                border_color = self.style_config.special_colors["root_border"]
+                                border_color = self.style_config.special_colors[
+                                    "root_border"
+                                ]
                                 # Apply brightness adjustment
                                 if role_style.border_brightness != 1.0:
-                                    border_color = adjust_color_brightness(border_color, role_style.border_brightness)
+                                    border_color = adjust_color_brightness(
+                                        border_color, role_style.border_brightness
+                                    )
                                 # Apply opacity adjustment
                                 if role_style.border_opacity < 255:
-                                    border_color = apply_opacity_to_color(border_color, role_style.border_opacity)
+                                    border_color = apply_opacity_to_color(
+                                        border_color, role_style.border_opacity
+                                    )
                             else:
                                 border_color = None
                         else:
                             # Other nodes: use color indices from role_style
-                            bg_color = self._get_color_from_index(role_style.bg_color_index, color_pool,
-                                                                 role_style.bg_brightness, role_style.bg_opacity,
-                                                                 role_style.bg_enabled)
-                            border_color = self._get_color_from_index(role_style.border_color_index, color_pool,
-                                                                     role_style.border_brightness, role_style.border_opacity,
-                                                                     role_style.border_enabled)
+                            bg_color = self._get_color_from_index(
+                                role_style.bg_color_index,
+                                color_pool,
+                                role_style.bg_brightness,
+                                role_style.bg_opacity,
+                                role_style.bg_enabled,
+                            )
+                            border_color = self._get_color_from_index(
+                                role_style.border_color_index,
+                                color_pool,
+                                role_style.border_brightness,
+                                role_style.border_opacity,
+                                role_style.border_enabled,
+                            )
 
                     # text_color from role_style or auto contrast
                     if not text_color:
@@ -969,14 +1135,20 @@ class NodeItem(QGraphicsRectItem):
                             text_color = self._auto_contrast(canvas_bg)
                         else:
                             # Background enabled: check if it's transparent or semi-transparent
-                            bg_alpha = int(bg_color[1:3], 16) if len(bg_color) == 9 else 255
+                            bg_alpha = (
+                                int(bg_color[1:3], 16) if len(bg_color) == 9 else 255
+                            )
 
                             if bg_alpha < 255:
                                 # Semi-transparent: blend node bg with canvas bg
-                                canvas_bg = self.style_config.special_colors["canvas_bg"]
+                                canvas_bg = self.style_config.special_colors[
+                                    "canvas_bg"
+                                ]
 
                                 # Blend node background over canvas background
-                                effective_bg = blend_colors(bg_color, canvas_bg, bg_alpha)
+                                effective_bg = blend_colors(
+                                    bg_color, canvas_bg, bg_alpha
+                                )
                                 text_color = self._auto_contrast(effective_bg)
                             else:
                                 # Fully opaque: use node background directly
@@ -1091,7 +1263,11 @@ class NodeItem(QGraphicsRectItem):
         painter.setRenderHint(QPainter.Antialiasing, True)
 
         # NEW: Use flat RoleStyle fields
-        shape_type = self.template_style.basic_shape if hasattr(self.template_style, 'basic_shape') else "rounded_rect"
+        shape_type = (
+            self.template_style.basic_shape
+            if hasattr(self.template_style, "basic_shape")
+            else "rounded_rect"
+        )
         rect = self.rect()
 
         # Use cached colors from update_style (no recalculation needed)
@@ -1101,10 +1277,18 @@ class NodeItem(QGraphicsRectItem):
         # Build style config dict for strategy
         style_config = {
             "bg_color": bg_color if self.template_style.bg_enabled else None,
-            "border_color": border_color if self.template_style.border_enabled else None,
-            "border_width": self.template_style.border_width if hasattr(self.template_style, 'border_width') else 0,
-            "border_radius": self.template_style.border_radius if hasattr(self.template_style, 'border_radius') else 8,
-            "border_style": self.template_style.border_style if hasattr(self.template_style, 'border_style') else "solid",
+            "border_color": border_color
+            if self.template_style.border_enabled
+            else None,
+            "border_width": self.template_style.border_width
+            if hasattr(self.template_style, "border_width")
+            else 0,
+            "border_radius": self.template_style.border_radius
+            if hasattr(self.template_style, "border_radius")
+            else 8,
+            "border_style": self.template_style.border_style
+            if hasattr(self.template_style, "border_style")
+            else "solid",
             "padding_w": self.template_style.padding_w,
             "padding_h": self.template_style.padding_h,
             "is_right_side": self.is_right_side,  # For adaptive decorative lines
@@ -1117,15 +1301,153 @@ class NodeItem(QGraphicsRectItem):
             # Fallback to default rounded rect
             strategy = BorderStrategyRegistry.get_strategy("rounded_rect")
 
-        # Draw selection highlight first (if selected)
-        if self.isSelected():
-            highlight_path = strategy.get_selection_path(rect, style_config)
-            painter.setPen(QPen(QColor("#FFD700"), 3))  # Gold border
-            painter.setBrush(Qt.NoBrush)
-            painter.drawPath(highlight_path)
-
-        # Draw node shape/border
+        # Draw node shape/border first
         strategy.draw(painter, rect, style_config)
+
+        # Draw selection highlight AFTER node (so focus borders sit on top)
+        if self.isSelected():
+            # Calculate WCAG-compliant focus color based on background
+            # (No longer used - replaced by dual-border strategy)
+            if bg_color and isinstance(bg_color, QColor) or bg_color and isinstance(bg_color, str):
+                pass  # bg_rgb calculation removed
+
+            # Double border strategy using QPainterPath subtraction (same technique as node border):
+            # Outer ring: semi-transparent complement of CANVAS background (visible on canvas)
+            # Inner ring: solid complement of NODE border/bg (visible on node)
+
+            # Get canvas background color
+            canvas_bg_hex = "#FFFFFF"  # Default
+            if self.style_config:
+                canvas_bg_hex = self.style_config.special_colors.get("canvas_bg", "#FFFFFF")
+
+            # Outer ring strategy: use white/black with high opacity for bright visibility
+            canvas_bg_obj = QColor(canvas_bg_hex)
+            canvas_rgb = (canvas_bg_obj.red(), canvas_bg_obj.green(), canvas_bg_obj.blue())
+            h_canvas, s_canvas, v_canvas = self._rgb_to_hsv(*canvas_rgb)
+
+            # Use appropriate alpha (opacity) for bright visibility on different backgrounds
+            # Qt setAlphaF() controls OPACITY: higher = more opaque = color dominates
+            # Light background + black: LOW opacity = soft gray = bright appearance
+            # Dark background + white: HIGH opacity = bright white = vivid appearance
+            if v_canvas < 0.5:  # Dark canvas → bright white glow
+                outer_base_rgb = (255, 255, 255)
+                glow_opacity = 0.70  # High opacity = bright white dominates
+            else:  # Light canvas → soft dark glow
+                outer_base_rgb = (0, 0, 0)
+                glow_opacity = 0.30  # Low opacity = soft gray (not too dark!)
+
+            # Calculate inner ring color based on node border (if exists) or background
+            if border_color and self.template_style.border_enabled:
+                # Node has border: use border's complement
+                target_color_obj = QColor(border_color)
+            else:
+                # No border: use background's complement
+                if bg_color and isinstance(bg_color, str):
+                    target_color_obj = QColor(bg_color)
+                elif bg_color and isinstance(bg_color, QColor):
+                    target_color_obj = bg_color
+                else:
+                    target_color_obj = QColor(255, 255, 255)  # Default white
+
+            target_rgb = (target_color_obj.red(), target_color_obj.green(), target_color_obj.blue())
+            h_target, s_target, v_target = self._rgb_to_hsv(*target_rgb)
+
+            # Special handling for low-saturation colors (gray/black/white)
+            # These colors don't have meaningful hue, so use opposite brightness
+            if s_target < 0.1:  # Very low saturation (gray scale)
+                h_target_comp = 0.5  # Doesn't matter, will be neutral
+                s_target_comp = 0.0  # Keep it neutral (no color)
+
+                # Dark gray/black → bright white, Light gray/white → dark black
+                if v_target < 0.3:
+                    v_target_comp = 0.95  # Dark → very bright
+                elif v_target > 0.7:
+                    v_target_comp = 0.1   # Light → very dark
+                else:
+                    v_target_comp = 0.9 if v_target < 0.5 else 0.1  # Medium → opposite
+            else:
+                # Normal saturated color: use complementary hue
+                h_target_comp = (h_target + 0.5) % 1
+                s_target_comp = min(1.0, s_target + 0.4)
+
+                # Adjust lightness: complementary color should be on opposite brightness
+                # Dark target → bright complement, Light target → dark complement
+                if v_target < 0.4:
+                    v_target_comp = 0.85  # Dark → bright
+                elif v_target > 0.6:
+                    v_target_comp = 0.85  # Light → also bright (for vivid colors)
+                else:
+                    v_target_comp = 0.85  # Medium → bright (default to visible)
+
+            inner_rgb = self._hsv_to_rgb(h_target_comp, s_target_comp, v_target_comp)
+
+            # NO contrast check fallback - always use complementary color
+            # The inner ring IS the complement, no need to verify contrast with itself
+
+            # Draw double border using QPainterPath subtraction (EXACTLY like node border)
+            # Create THREE concentric rings: node → inner ring → outer ring
+
+            # Ring 1: Node's outer edge (already drawn by strategy.draw())
+            # Ring 2: Inner focus ring (solid color, 3px, right next to node border)
+            # Ring 3: Outer focus ring (semi-transparent glow, 8px, outside inner ring)
+
+            # Get node's outer edge path (this is where node border ends)
+            node_outer_rect = rect.adjusted(
+                -style_config.get("border_width", 0) / 2.0,
+                -style_config.get("border_width", 0) / 2.0,
+                style_config.get("border_width", 0) / 2.0,
+                style_config.get("border_width", 0) / 2.0,
+            )
+            node_outer_radius = style_config.get("border_radius", 8) + style_config.get("border_width", 0) / 2.0
+
+            node_outer_path = QPainterPath()
+            if shape_type == "circle":
+                node_outer_path.addEllipse(node_outer_rect)
+            else:
+                node_outer_path.addRoundedRect(node_outer_rect, node_outer_radius, node_outer_radius)
+
+            # Inner ring: expand 3px from node outer edge
+            inner_expand = 3.0
+            inner_rect = node_outer_rect.adjusted(-inner_expand, -inner_expand,
+                                                   inner_expand, inner_expand)
+            inner_radius = node_outer_radius + inner_expand
+
+            inner_path = QPainterPath()
+            if shape_type == "circle":
+                inner_path.addEllipse(inner_rect)
+            else:
+                inner_path.addRoundedRect(inner_rect, inner_radius, inner_radius)
+
+            # Inner ring path = inner_path - node_outer_path
+            inner_ring_path = inner_path.subtracted(node_outer_path)
+
+            # Outer ring: expand 8px from inner ring
+            outer_expand = 8.0
+            outer_rect = inner_rect.adjusted(-outer_expand, -outer_expand,
+                                             outer_expand, outer_expand)
+            outer_radius = inner_radius + outer_expand
+
+            outer_path = QPainterPath()
+            if shape_type == "circle":
+                outer_path.addEllipse(outer_rect)
+            else:
+                outer_path.addRoundedRect(outer_rect, outer_radius, outer_radius)
+
+            # Outer ring path = outer_path - inner_path
+            outer_ring_path = outer_path.subtracted(inner_path)
+
+            # Draw order: inner ring first, then outer ring (outer covers inner's outer edge)
+            # Layer 1: Inner focus ring (solid color)
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(QColor(*inner_rgb)))
+            painter.drawPath(inner_ring_path)
+
+            # Layer 2: Outer focus ring (bright glow with high opacity)
+            outer_glow = QColor(*outer_base_rgb)
+            outer_glow.setAlphaF(glow_opacity)  # Use pre-calculated opacity
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(outer_glow))
+            painter.drawPath(outer_ring_path)
 
     def get_text(self) -> str:
         """Get node text."""
@@ -1300,12 +1622,16 @@ class NodeItem(QGraphicsRectItem):
             text=self.text_content,
             max_width=max_width,  # Read from style object
             mindmap_view=mindmap_view,  # Pass MindMapView reference
+            parent_node=self,  # Pass reference to parent NodeItem for real-time sync
         )
 
-        # Match the text item's font exactly
+        # Match the text item's font and color exactly
         font = self.text_item.font()
         self.edit_widget.setFont(font)
-        self.edit_widget.setDefaultTextColor(Qt.black)
+
+        # CRITICAL: Preserve the original text color during editing
+        # This ensures white text stays white, black text stays black
+        self.edit_widget.setDefaultTextColor(self.text_item.defaultTextColor())
 
         # Add to scene as child item (not via proxy widget)
         self.edit_widget.setParentItem(self)
@@ -1327,7 +1653,8 @@ class NodeItem(QGraphicsRectItem):
             -self.node_width / 2 + padding_left, -self.node_height / 2 + padding_top
         )
 
-        # Hide text item during editing
+        # Hide text item during editing (edit_widget will be the visible one)
+        # For real-time layout refresh, we'll sync text to text_item but keep it hidden
         self.text_item.setVisible(False)
 
         # Store callback for manual finish_editing calls
@@ -1447,10 +1774,15 @@ class NodeItem(QGraphicsRectItem):
             """Handle editing finished."""
             self.finish_editing(on_edit_callback)
 
+        def on_editing_cancelled():
+            """Handle editing cancelled (ESC key)."""
+            self.cancel_editing()
+
         self.edit_widget.width_changed.connect(on_width_changed)
         self.edit_widget.text_changed.connect(on_text_changed)
         self.edit_widget.tab_pressed.connect(on_tab_pressed)
         self.edit_widget.editing_finished.connect(on_editing_finished)
+        self.edit_widget.editing_cancelled.connect(on_editing_cancelled)
 
         # Start editing mode
         select_all = cursor_position < 0
@@ -1473,6 +1805,7 @@ class NodeItem(QGraphicsRectItem):
             self.edit_widget.text_changed.disconnect()
             self.edit_widget.tab_pressed.disconnect()
             self.edit_widget.editing_finished.disconnect()
+            self.edit_widget.editing_cancelled.disconnect()
 
         # Clear focus from edit widget
         self.edit_widget.clearFocus()
@@ -1516,6 +1849,189 @@ class NodeItem(QGraphicsRectItem):
             self.edit_widget.text_changed.disconnect()
             self.edit_widget.tab_pressed.disconnect()
             self.edit_widget.editing_finished.disconnect()
+            self.edit_widget.editing_cancelled.disconnect()
+
+        # Clear focus from edit widget
+        self.edit_widget.clearFocus()
+
+        # Remove edit widget from scene
+        scene = self.scene()
+        if scene and self.edit_widget:
+            scene.removeItem(self.edit_widget)
+
+        # Clear references
+        self.edit_widget = None
+
+        # Show text item again
+        self.text_item.setVisible(True)
+
+        # CRITICAL: Restore original text content (it was modified during editing for real-time sync)
+        self.text_item.setPlainText(self.text_content)
+
+        # Restore original dimensions
+        if hasattr(self, "_original_node_width") and hasattr(
+            self, "_original_node_height"
+        ):
+            self.node_width = self._original_node_width
+            self.node_height = self._original_node_height
+
+            # Update rect with original dimensions (centered)
+            new_rect_left = -self.node_width / 2
+            new_rect_top = -self.node_height / 2
+            self.setRect(new_rect_left, new_rect_top, self.node_width, self.node_height)
+
+    def _rgb_to_hsv(self, r, g, b):
+        """Convert RGB to HSV color space."""
+        r, g, b = r / 255, g / 255, b / 255
+        cmax = max(r, g, b)
+        cmin = min(r, g, b)
+        delta = cmax - cmin
+        h, s, v = 0, 0, cmax
+
+        if delta > 0:
+            s = delta / cmax
+            if cmax == r:
+                h = 60 * ((g - b) / delta % 6)
+            elif cmax == g:
+                h = 60 * ((b - r) / delta + 2)
+            else:
+                h = 60 * ((r - g) / delta + 4)
+        return h / 360, s, v
+
+    def _hsv_to_rgb(self, h, s, v):
+        """Convert HSV to RGB color space."""
+        h = h % 1
+        c = v * s
+        x = c * (1 - abs((h * 6) % 2 - 1))
+        m = v - c
+        r = g = b = 0
+
+        if 0 <= h < 1 / 6:
+            r, g = c, x
+        elif 1 / 6 <= h < 2 / 6:
+            r, g = x, c
+        elif 2 / 6 <= h < 3 / 6:
+            g, b = c, x
+        elif 3 / 6 <= h < 4 / 6:
+            g, b = x, c
+        elif 4 / 6 <= h < 5 / 6:
+            r, b = x, c
+        else:
+            r, b = c, x
+
+        return int((r + m) * 255), int((g + m) * 255), int((b + m) * 255)
+
+    def _relative_luminance(self, r, g, b):
+        """Calculate relative luminance for contrast ratio (WCAG standard)."""
+        r, g, b = r / 255, g / 255, b / 255
+
+        def conv(val):
+            return val / 12.92 if val <= 0.03928 else ((val + 0.055) / 1.055) ** 2.4
+
+        r, g, b = conv(r), conv(g), conv(b)
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+    def _contrast_ratio(self, rgb1, rgb2):
+        """Calculate contrast ratio (WCAG standard formula)."""
+        l1 = self._relative_luminance(*rgb1) + 0.05
+        l2 = self._relative_luminance(*rgb2) + 0.05
+        return max(l1, l2) / min(l1, l2)
+
+    def _get_wcag_focus_style(self, bg_rgb, original_border_width=1.0):
+        """
+        Calculate high-contrast focus style with dual-background awareness.
+
+        Design principles:
+        1. Must contrast with BOTH node background AND canvas background
+        2. Use complementary color strategy with fallback to pure black/white
+        3. Thick border (4px) for clear visibility
+        4. No overlay to avoid visual noise
+
+        Args:
+            bg_rgb: Node background color as (R, G, B) tuple
+            original_border_width: Original border width
+
+        Returns:
+            Dictionary with focus style parameters
+        """
+        # Get canvas background for dual-contrast check
+        if self.style_config:
+            canvas_bg_hex = self.style_config.special_colors.get("canvas_bg", "#FFFFFF")
+        else:
+            canvas_bg_hex = "#FFFFFF"  # Default to white
+        canvas_bg_obj = QColor(canvas_bg_hex)
+        canvas_rgb = (canvas_bg_obj.red(), canvas_bg_obj.green(), canvas_bg_obj.blue())
+
+        h, s, v = self._rgb_to_hsv(*bg_rgb)
+
+        # Strategy 1: Try complementary color of node background
+        h_complement = (h + 0.5) % 1
+        s_focus = min(1.0, s + 0.4)
+
+        # Adjust lightness based on node background
+        if v < 0.2:
+            v_focus = 0.95
+        elif v > 0.8:
+            v_focus = 0.25
+        else:
+            v_focus = 0.85 if v < 0.5 else 0.3
+
+        focus_rgb = self._hsv_to_rgb(h_complement, s_focus, v_focus)
+
+        # Check contrast against BOTH backgrounds
+        contrast_node = self._contrast_ratio(focus_rgb, bg_rgb)
+        contrast_canvas = self._contrast_ratio(focus_rgb, canvas_rgb)
+
+        # If either contrast is too low, use fallback strategy
+        if contrast_node < 5.0 or contrast_canvas < 5.0:
+            # Strategy 2: Calculate average luminance and use opposite
+            lum_node = self._relative_luminance(*bg_rgb)
+            lum_canvas = self._relative_luminance(*canvas_rgb)
+            avg_lum = (lum_node + lum_canvas) / 2
+
+            # Use opposite extreme
+            focus_rgb = (30, 30, 30) if avg_lum > 0.5 else (240, 240, 240)
+
+            # Verify this works
+            contrast_node = self._contrast_ratio(focus_rgb, bg_rgb)
+            contrast_canvas = self._contrast_ratio(focus_rgb, canvas_rgb)
+
+            # CRITICAL: If still not good enough with node background, force opposite of node
+            if contrast_node < 4.5:
+                # Directly choose based on node luminance only
+                focus_rgb = (0, 0, 0) if lum_node > 0.5 else (255, 255, 255)
+
+        # Thick border for clear visibility (4px)
+        focus_border_w = 4.0
+
+        # Calculate final contrast ratios
+        final_contrast_node = self._contrast_ratio(focus_rgb, bg_rgb)
+        final_contrast_canvas = self._contrast_ratio(focus_rgb, canvas_rgb)
+
+        return {
+            "focus_border_width": focus_border_w,
+            "focus_border_color": focus_rgb,
+            "overlay_alpha": 0.0,
+            "overlay_color": (0, 0, 0),
+            "wcag_contrast_ratio": round(min(final_contrast_node, final_contrast_canvas), 2)
+        }
+
+    def _finish_editing(self):
+        """Finish editing and restore original dimensions."""
+        if not self.edit_widget:
+            return
+
+        # Get new text
+        new_text = self.edit_widget.toPlainText().strip()
+        if not new_text:
+            new_text = "Node"
+
+        # Hide edit widget first to avoid visual glitch
+        self.edit_widget.setVisible(False)
+
+        # Update node text
+        self.text_content = new_text
+        self.text_item.setPlainText(new_text)
 
         # Clear focus from edit widget
         self.edit_widget.clearFocus()

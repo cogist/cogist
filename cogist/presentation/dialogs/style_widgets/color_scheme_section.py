@@ -233,10 +233,17 @@ class ColorSchemeSection(CollapsiblePanel):
             self._pending_style = style
             return
 
+        # Block signals to prevent creating new commands during undo/redo
+        was_blocked = self.rainbow_check.blockSignals(True) if self.rainbow_check else False
+
         if "use_rainbow_branches" in style:
             self._rainbow_visible = style["use_rainbow_branches"]
             if self.rainbow_check:
                 self.rainbow_check.setChecked(self._rainbow_visible)
+
+        # Restore signal blocking state
+        if self.rainbow_check:
+            self.rainbow_check.blockSignals(was_blocked)
 
         if "color_pool" in style:
             self.rainbow_colors = style["color_pool"].copy()

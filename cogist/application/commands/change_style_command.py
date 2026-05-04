@@ -125,6 +125,12 @@ class ChangeStyleCommand(Command):
         """
         backup = {}
 
+        # Handle global rainbow config (canvas layer or any layer)
+        if "use_rainbow_branches" in keys:
+            backup["use_rainbow_branches"] = self.style_config.use_rainbow_branches
+        if "color_pool" in keys:
+            backup["color_pool"] = self.style_config.color_pool.copy()
+
         if layer == "canvas":
             for key in keys:
                 if key == "bg_color":
@@ -218,11 +224,11 @@ class ChangeStyleCommand(Command):
                                 # Direct boolean backup
                                 if hasattr(role_style, 'font_italic'):
                                     backup[key] = role_style.font_italic
-                            elif key.startswith("border_") and hasattr(role_style, 'border'):
-                                # Backup border attributes from border object
+                            elif key.startswith("border_"):
+                                # Backup border attributes (RoleStyle has flat structure)
                                 border_attr = key
-                                if hasattr(role_style.border, border_attr):
-                                    backup[key] = getattr(role_style.border, border_attr)
+                                if hasattr(role_style, border_attr):
+                                    backup[key] = getattr(role_style, border_attr)
                             elif hasattr(role_style, key):
                                 backup[key] = getattr(role_style, key)
 
@@ -235,6 +241,12 @@ class ChangeStyleCommand(Command):
             layer: Layer name
             style_updates: Dictionary of style properties to update
         """
+        # Handle global rainbow config (applies to all layers)
+        if "use_rainbow_branches" in style_updates:
+            self.style_config.use_rainbow_branches = style_updates["use_rainbow_branches"]
+        if "color_pool" in style_updates:
+            self.style_config.color_pool = style_updates["color_pool"].copy()
+
         if layer == "canvas":
             if "bg_color" in style_updates:
                 self.style_config.special_colors["canvas_bg"] = style_updates["bg_color"]
@@ -335,11 +347,11 @@ class ChangeStyleCommand(Command):
                                 # Direct boolean assignment
                                 if hasattr(role_style, 'font_italic'):
                                     role_style.font_italic = value
-                            elif key.startswith("border_") and hasattr(role_style, 'border'):
-                                # Apply border attributes to border object
+                            elif key.startswith("border_"):
+                                # Apply border attributes (RoleStyle has flat structure)
                                 border_attr = key
-                                if hasattr(role_style.border, border_attr):
-                                    setattr(role_style.border, border_attr, value)
+                                if hasattr(role_style, border_attr):
+                                    setattr(role_style, border_attr, value)
                             elif hasattr(role_style, key):
                                 # Direct attribute update (includes shadow_enabled, shadow_offset_x, etc.)
                                 setattr(role_style, key, value)

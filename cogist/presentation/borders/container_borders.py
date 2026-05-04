@@ -27,10 +27,10 @@ class RoundedRectBorder(BorderStrategy):
             # Use compound QPainterPath to create a ring/border-only shape
             # This prevents semi-transparent overlap between border and background
 
-            # Outer path (extends half border width outward)
-            half_width = border_width / 2.0
-            outer_rect = rect.adjusted(-half_width, -half_width, half_width, half_width)
-            outer_radius = radius + half_width
+            # CRITICAL: Border extends FULL border_width outward from rect
+            # Outer path (extends full border width outward)
+            outer_rect = rect.adjusted(-border_width, -border_width, border_width, border_width)
+            outer_radius = radius + border_width
             outer_path = QPainterPath()
             outer_path.addRoundedRect(outer_rect, outer_radius, outer_radius)
 
@@ -97,9 +97,9 @@ class CircleBorder(BorderStrategy):
             # Use compound QPainterPath to create a ring/border-only shape
             # This prevents semi-transparent overlap between border and background
 
-            # Outer path (extends half border width outward)
-            half_width = border_width / 2.0
-            outer_rect = rect.adjusted(-half_width, -half_width, half_width, half_width)
+            # CRITICAL: Border extends FULL border_width outward from rect
+            # Outer path (extends full border width outward)
+            outer_rect = rect.adjusted(-border_width, -border_width, border_width, border_width)
             outer_path = QPainterPath()
             outer_path.addEllipse(outer_rect)
 

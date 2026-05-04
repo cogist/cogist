@@ -463,8 +463,12 @@ class DefaultLayout(BaseLayout):
         for node in nodes:
             # Node's own bounds
             # CRITICAL FIX: position[1] is the CENTER Y coordinate, not the top
-            node_top = node.position[1] - node.height / 2.0
-            node_bottom = node.position[1] + node.height / 2.0
+            # CRITICAL: Border extends FULL border_width outward from rect (not half!)
+            # Visual bounds = rect bounds + border_width on each side
+            border_width = getattr(node, 'border_width', 0)
+
+            node_top = node.position[1] - node.height / 2.0 - border_width
+            node_bottom = node.position[1] + node.height / 2.0 + border_width
             min_y = min(min_y, node_top)
             max_y = max(max_y, node_bottom)
 
@@ -543,7 +547,8 @@ class DefaultLayout(BaseLayout):
             canvas_height: Canvas height for centering
         """
         # Calculate total height of nodes only (not subtrees)
-        nodes_height = sum(node.height for node in nodes)
+        # CRITICAL: Visual height includes border expansion on both top and bottom
+        nodes_height = sum(node.height + getattr(node, 'border_width', 0) * 2 for node in nodes)
 
         # Get spacing based on node depth
         if nodes:
@@ -598,8 +603,11 @@ class DefaultLayout(BaseLayout):
         # Start Y for vertical centering
         # CRITICAL FIX: total_height is from top of first node to bottom of last node
         # So we need to add half of first node's height to get its center
+        # CRITICAL: Visual height includes border expansion
         if nodes:
-            start_y = parent_center_y - total_height / 2.0 + nodes[0].height / 2.0
+            first_node_border = getattr(nodes[0], 'border_width', 0)
+            first_node_visual_height = nodes[0].height + first_node_border * 2
+            start_y = parent_center_y - total_height / 2.0 + first_node_visual_height / 2.0
         else:
             start_y = parent_center_y
         current_y = start_y
@@ -658,7 +666,8 @@ class DefaultLayout(BaseLayout):
                     child_direction = 1 if node_center_x >= parent_center_x else -1
                 self._layout_side(node.children, node, canvas_height, child_direction)
 
-            current_y += node.height + sibling_spacing
+            # CRITICAL: Move current_y by visual height (including border expansion)
+            current_y += node.height + getattr(node, 'border_width', 0) * 2 + sibling_spacing
 
     def _layout_branch_complex(
         self, nodes: list, parent_node, direction: int, canvas_height: float
@@ -727,7 +736,8 @@ class DefaultLayout(BaseLayout):
                 node_x = aligned_edge_x + node_half_width
 
             node.position = (node_x, current_y)
-            current_y += node.height + sibling_spacing
+            # CRITICAL: Move current_y by visual height (including border expansion)
+            current_y += node.height + getattr(node, 'border_width', 0) * 2 + sibling_spacing
 
         # Step 2: Layout children and detect overlaps iteratively
         max_iterations = 20
@@ -766,10 +776,9 @@ class DefaultLayout(BaseLayout):
                     # Get bounds of subtree j
                     top_j, bottom_j = self._get_branch_bounds([nodes[j]])
 
-                    # FIX: Use child depth (nodes[i].depth + 1) for sibling spacing
-                    # because we're checking spacing between children of these nodes
-                    child_depth = nodes[i].depth + 1
-                    sibling_spacing = self._get_sibling_spacing_for_depth(child_depth)
+                    # CRITICAL: Use the current sibling nodes' depth for spacing
+                    # NOT child depth - we're checking spacing between siblings at this level
+                    sibling_spacing = self._get_sibling_spacing_for_depth(nodes[i].depth)
 
                     # Check if subtree i overlaps with subtree j
                     if bottom_i + sibling_spacing > top_j:
