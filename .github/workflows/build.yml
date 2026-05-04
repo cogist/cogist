@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13]
+        os: [ubuntu-latest, windows-latest, macos-13-xlarge]
         include:
           - os: ubuntu-latest
             platform: linux
@@ -26,7 +26,7 @@ jobs:
             platform: windows
             arch: x64
             artifact_name: Cogist-Windows-x64
-          - os: macos-13
+          - os: macos-13-xlarge
             platform: macos
             arch: arm64
             artifact_name: Cogist-macOS-arm64
@@ -129,6 +129,25 @@ jobs:
           Set-Content -Path setup.iss -Value $issContent -Encoding UTF8
           
           & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' setup.iss
+
+      - name: Verify macOS app starts successfully
+        if: matrix.platform == 'macos'
+        run: |
+          # Start the app in background
+          ./dist/Cogist.app/Contents/MacOS/Cogist &
+          APP_PID=$!
+          
+          # Wait 5 seconds to see if it crashes
+          sleep 5
+          
+          # Check if process is still running
+          if kill -0 $APP_PID 2>/dev/null; then
+            echo "✅ App started successfully and is running"
+            kill $APP_PID
+          else
+            echo "❌ App crashed during startup"
+            exit 1
+          fi
 
       - name: Create archive (macOS)
         if: matrix.platform == 'macos'

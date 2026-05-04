@@ -22,7 +22,13 @@ def get_builtin_template(name: str = "default") -> dict[str, Any] | None:
         # Get the base directory (project root or executable directory)
         if getattr(sys, 'frozen', False):
             # Running as compiled executable
-            base_dir = Path(sys.executable).parent
+            # For macOS .app bundles, resources are in Contents/Resources/
+            if sys.platform == 'darwin' and '.app' in str(Path(sys.executable)):
+                # macOS .app bundle: go up from MacOS/ to Contents/, then to Resources/
+                base_dir = Path(sys.executable).parent.parent / 'Resources'
+            else:
+                # Other platforms: resources are next to executable
+                base_dir = Path(sys.executable).parent
         else:
             # Running as script
             base_dir = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
