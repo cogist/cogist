@@ -153,6 +153,15 @@ jobs:
             ${{ matrix.artifact_name }}-*
           retention-days: 30
 
+      - name: Debug - List built files
+        run: |
+          echo "=== Current directory ==="
+          pwd
+          echo "=== Files matching pattern ==="
+          ls -la ${{ matrix.artifact_name }}-* 2>/dev/null || echo "No files found matching pattern!"
+          echo "=== All files in current dir ==="
+          ls -la
+
   release:
     name: Create Release
     needs: build
