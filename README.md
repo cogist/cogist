@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
-[![PySide6 6.8+](https://img.shields.io/badge/PySide6-6.8+-green.svg)](https://doc.qt.io/qtforpython-6/)
+[![PySide6 6.7+](https://img.shields.io/badge/PySide6-6.7+-green.svg)](https://doc.qt.io/qtforpython-6/)
 [![Version: 0.5.3](https://img.shields.io/badge/version-0.5.3-purple.svg)](https://github.com/cogist/cogist/releases/tag/v0.5.3)
 [![Changelog](https://img.shields.io/badge/changelog-latest-orange.svg)](CHANGELOG.md)
 
