@@ -5,8 +5,8 @@ Provides icon-based navigation to switch between different panels:
 - Future: Layout, Theme, Settings, etc.
 """
 
-import os
 import sys
+from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QIcon
@@ -17,12 +17,12 @@ def get_resource_path(relative_path: str) -> str:
     """Get absolute path to resource, works for dev and for PyInstaller."""
     if hasattr(sys, '_MEIPASS'):
         # PyInstaller mode
-        base_path = sys._MEIPASS
+        base_path = Path(sys._MEIPASS)
     else:
-        # Development mode
-        base_path = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+        # Development mode - go up 4 levels from this file to project root
+        base_path = Path(__file__).resolve().parent.parent.parent.parent
 
-    return os.path.join(base_path, relative_path)
+    return str(base_path / relative_path)
 
 
 class ActivityBarButton(QPushButton):

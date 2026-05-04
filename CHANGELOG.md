@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2026-05-04
+
+### Fixed
+- **macOS Compatibility**: Downgraded PySide6 from 6.11.0 to 6.7.3 for macOS 12 support
+  - Qt 6.10+ (PySide6 6.8+) requires macOS 13 (Ventura)
+  - Qt 6.7 (PySide6 6.7.x) supports macOS 12 (Monterey)
+  - Fixes GitHub Actions build failing on macOS 12 with 'Qt requires 13.0.0' error
+
+### Technical Details
+- **Dependency Update**: Changed pyside6 requirement from >=6.8.0 to >=6.7.0,<6.8.0
+- **Version Downgrade**: PySide6 6.11.0 → 6.7.3, pyside6-addons 6.11.0 → 6.7.3, pyside6-essentials 6.11.0 → 6.7.3, shiboken6 6.11.0 → 6.7.3
+
 ## [0.5.2] - 2026-05-04
 
 ### Fixed
