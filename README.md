@@ -47,21 +47,12 @@
 
 ## 📥 Download
 
-### System Requirements
-
-| Platform | Minimum Version |
-|----------|----------------|
-| **Windows** | Windows 10 or later (64-bit) |
-| **macOS** | macOS 12.0 Monterey or later (Intel & Apple Silicon) |
-| **Linux** | glibc 2.27+ (Ubuntu 18.04+, CentOS 8+, Fedora 28+) |
-
-### Downloads
-
-| Platform | Architecture | Download Link |
-|----------|-------------|---------------|
-| Windows | x64 | [Coming Soon](https://github.com/cogist/cogist/releases) |
-| macOS | Universal (Intel + Apple Silicon) | [Coming Soon](https://github.com/cogist/cogist/releases) |
-| Linux | x64 | [Coming Soon](https://github.com/cogist/cogist/releases) |
+| Platform | Architecture | Minimum Version | Download |
+|----------|-------------|-----------------|----------|
+| **Windows** | x64 | Windows 10 or later (64-bit) | [Download](https://github.com/cogist/cogist/releases/latest/download/Cogist-Windows-x64-Setup.exe) |
+| **macOS** | Intel (x64) | macOS 12.0 Monterey or later | [Download](https://github.com/cogist/cogist/releases/latest/download/Cogist-macOS-x64.dmg) |
+| **macOS** | Apple Silicon (arm64) | macOS 12.0 Monterey or later | [Download](https://github.com/cogist/cogist/releases/latest/download/Cogist-macOS-arm64.dmg) |
+| **Linux** | x64 | glibc 2.27+ (Ubuntu 18.04+, CentOS 8+, Fedora 28+) | [Download](https://github.com/cogist/cogist/releases/latest/download/Cogist-Linux-x64.AppImage) |
 
 > 💡 **Tip**: You can also run from source (requires Python 3.13+ and uv)
 > ```bash
