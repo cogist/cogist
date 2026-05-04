@@ -43,7 +43,6 @@ class EditableTextItem(QGraphicsTextItem):
         self._tab_pressed = False  # Track if Tab key was pressed
         self._mindmap_view = mindmap_view  # Store reference to MindMapView
         self._parent_node = parent_node  # Store reference to parent NodeItem for real-time sync
-        self._original_palette = None  # Cache original palette for restoration
 
         # Visual settings
         self._border_color = QColor(Qt.transparent)  # No border by default
@@ -159,38 +158,6 @@ class EditableTextItem(QGraphicsTextItem):
         self._editing = True
         self._text_cache = self.toPlainText()
 
-        # CRITICAL: Set custom selection palette for QWidgetTextControl
-        # This controls the text selection color in QGraphicsTextItem during editing
-        from PySide6.QtGui import QPalette
-        from PySide6.QtWidgets import QApplication
-
-        # Cache original palette before modification
-        # Note: palette() without arguments returns the global palette
-        # We use QWidgetTextControl class name to get the specific palette
-        self._original_palette = QApplication.palette()  # type: ignore[assignment]
-
-        # Create custom palette for text selection
-        custom_palette = QPalette(self._original_palette)
-
-        # Get current text color to determine appropriate selection colors
-        current_text_color = self.defaultTextColor()
-        brightness = (current_text_color.red() * 299 +
-                     current_text_color.green() * 587 +
-                     current_text_color.blue() * 114) / 1000
-
-        # Set selection colors based on text brightness
-        if brightness > 128:  # Light text (white on dark background)
-            # Semi-transparent blue background, keep original light text color
-            custom_palette.setColor(QPalette.ColorRole.Highlight, QColor(100, 150, 255, 180))
-            custom_palette.setColor(QPalette.ColorRole.HighlightedText, current_text_color)
-        else:  # Dark text (black on light background)
-            # Semi-transparent blue background, keep original dark text color
-            custom_palette.setColor(QPalette.ColorRole.Highlight, QColor(100, 150, 255, 180))
-            custom_palette.setColor(QPalette.ColorRole.HighlightedText, current_text_color)
-
-        # Apply custom palette to QWidgetTextControl
-        QApplication.setPalette(custom_palette, "QWidgetTextControl")
-
         # CRITICAL: Use WrapAnywhere mode to match NodeItem's calculation strategy
         # This ensures consistent size measurement between display and edit modes
         from PySide6.QtGui import QTextOption
@@ -242,12 +209,6 @@ class EditableTextItem(QGraphicsTextItem):
         if not self._editing:
             return
 
-        # CRITICAL: Restore original palette before finishing
-        if self._original_palette is not None:
-            from PySide6.QtWidgets import QApplication
-            QApplication.setPalette(self._original_palette, "QWidgetTextControl")
-            self._original_palette = None
-
         self._editing = False
         self.setTextInteractionFlags(Qt.NoTextInteraction)
         self.clearFocus()
@@ -263,12 +224,6 @@ class EditableTextItem(QGraphicsTextItem):
         """Cancel editing and restore cached text."""
         if not self._editing:
             return
-
-        # CRITICAL: Restore original palette before cancelling
-        if self._original_palette is not None:
-            from PySide6.QtWidgets import QApplication
-            QApplication.setPalette(self._original_palette, "QWidgetTextControl")
-            self._original_palette = None
 
         # Restore cached text
         self.setPlainText(self._text_cache)

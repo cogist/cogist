@@ -766,10 +766,9 @@ class DefaultLayout(BaseLayout):
                     # Get bounds of subtree j
                     top_j, bottom_j = self._get_branch_bounds([nodes[j]])
 
-                    # FIX: Use child depth (nodes[i].depth + 1) for sibling spacing
-                    # because we're checking spacing between children of these nodes
-                    child_depth = nodes[i].depth + 1
-                    sibling_spacing = self._get_sibling_spacing_for_depth(child_depth)
+                    # CRITICAL: Use the current sibling nodes' depth for spacing
+                    # NOT child depth - we're checking spacing between siblings at this level
+                    sibling_spacing = self._get_sibling_spacing_for_depth(nodes[i].depth)
 
                     # Check if subtree i overlaps with subtree j
                     if bottom_i + sibling_spacing > top_j:
