@@ -80,7 +80,7 @@ jobs:
             main.py
 
       - name: Build executable (macOS)
-        if: matrix.os == 'macos-latest'
+        if: matrix.platform == 'macos'
         run: |
           uv run pyinstaller \
             --name=Cogist \
