@@ -5,7 +5,7 @@ description = "A Beautiful Mind Mapping Tool with Intelligent Layout Algorithms"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "pyside6>=6.8.0",
+    "pyside6>=6.7.0,<6.8.0",  # 6.7.x supports macOS 12, 6.8+ requires macOS 13
     "qdarkstyle>=3.2",
     "qt-material>=2.14",
     "pyobjc-framework-CoreText; sys_platform == 'darwin'",
