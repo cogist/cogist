@@ -25,8 +25,8 @@ def generate_rounded_rect_preview(size: QSize, selected: bool = False) -> QPixma
 
     # Draw rounded rect with border
     # Use relative margins to adapt to different sizes
-    margin_x = size.width() * 0.08  # 8% horizontal margin
-    margin_y = size.height() * 0.1  # 10% vertical margin
+    margin_x = int(size.width() * 0.08)  # 8% horizontal margin
+    margin_y = int(size.height() * 0.1)  # 10% vertical margin
     rect = pixmap.rect().adjusted(margin_x, margin_y, -margin_x, -margin_y)
 
     color = QColor("#FFFFFF") if selected else QColor("#000000")
@@ -56,8 +56,8 @@ def generate_circle_preview(size: QSize, selected: bool = False) -> QPixmap:
 
     # Draw circle
     # Use relative margins to adapt to different sizes
-    margin_x = size.width() * 0.08  # 8% horizontal margin
-    margin_y = size.height() * 0.1  # 10% vertical margin
+    margin_x = int(size.width() * 0.08)  # 8% horizontal margin
+    margin_y = int(size.height() * 0.1)  # 10% vertical margin
     rect = pixmap.rect().adjusted(margin_x, margin_y, -margin_x, -margin_y)
 
     color = QColor("#FFFFFF") if selected else QColor("#000000")
@@ -88,8 +88,8 @@ def generate_bottom_line_preview(size: QSize, selected: bool = False) -> QPixmap
     painter.setRenderHint(QPainter.Antialiasing)
 
     # Use relative margins to adapt to different sizes
-    margin_x = size.width() * 0.08  # 8% horizontal margin
-    margin_y = size.height() * 0.1  # 10% vertical margin
+    margin_x = int(size.width() * 0.08)  # 8% horizontal margin
+    margin_y = int(size.height() * 0.1)  # 10% vertical margin
     rect = pixmap.rect().adjusted(margin_x, margin_y, -margin_x, -margin_y)
 
     color = QColor("#FFFFFF") if selected else QColor("#000000")
@@ -133,8 +133,8 @@ def generate_left_line_preview(size: QSize, selected: bool = False) -> QPixmap:
     painter.setRenderHint(QPainter.Antialiasing)
 
     # Use relative margins to adapt to different sizes
-    margin_x = size.width() * 0.08  # 8% horizontal margin
-    margin_y = size.height() * 0.1  # 10% vertical margin
+    margin_x = int(size.width() * 0.08)  # 8% horizontal margin
+    margin_y = int(size.height() * 0.1)  # 10% vertical margin
     rect = pixmap.rect().adjusted(margin_x, margin_y, -margin_x, -margin_y)
 
     color = QColor("#FFFFFF") if selected else QColor("#000000")
