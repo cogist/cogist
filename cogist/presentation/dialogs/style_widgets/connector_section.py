@@ -177,7 +177,7 @@ class ConnectorSection(CollapsiblePanel):
         self.connector_width_spin = SpinBox()
         self.connector_width_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.connector_width_spin.setRange(1, 10)
-        self.connector_width_spin.setValue(self.current_style["line_width"])
+        self.connector_width_spin.setValue(int(self.current_style["line_width"]))
         self.connector_width_spin.setAlignment(Qt.AlignLeft)
         self.connector_width_spin.valueChanged.connect(self._on_width_changed)
         layout.addWidget(self.connector_width_spin, 2, 1)
@@ -258,6 +258,7 @@ class ConnectorSection(CollapsiblePanel):
             "Dash-Dot": "dash_dot",
         }
         self.current_style["connector_style"] = style_map.get(value, "solid")
+        print(f"[CONNECTOR] _set_connector_style: value={value} -> connector_style={self.current_style['connector_style']}")
         self._emit_style_changed()
 
     def _on_width_changed(self, value: int):

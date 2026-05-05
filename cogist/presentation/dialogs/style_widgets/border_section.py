@@ -4,6 +4,7 @@ Provides controls for customizing node border appearance.
 Implements lazy initialization for better performance.
 """
 
+from qtpy.compat import isalive
 from qtpy.QtCore import QPoint, Qt, Signal
 from qtpy.QtWidgets import (
     QGridLayout,
@@ -11,7 +12,6 @@ from qtpy.QtWidgets import (
     QMenu,
     QPushButton,
 )
-from qtpy.compat import isalive
 
 from cogist.presentation.widgets import ColorPoolPopup, ToggleSwitch
 

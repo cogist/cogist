@@ -4,6 +4,7 @@ Provides controls for customizing node appearance including shape, colors,
 padding, and font properties. Implements lazy initialization for better performance.
 """
 
+from qtpy.compat import isalive
 from qtpy.QtCore import QSize, Qt, Signal
 from qtpy.QtWidgets import (
     QGridLayout,
@@ -11,7 +12,6 @@ from qtpy.QtWidgets import (
     QPushButton,
     QWidget,
 )
-from qtpy.compat import isalive
 
 from cogist.presentation.widgets import ToggleSwitch, VisualPreviewButton
 from cogist.presentation.widgets.node_shape_previews import (

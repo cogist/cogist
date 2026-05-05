@@ -30,7 +30,9 @@ class EdgeItem(QGraphicsPathItem):
     - Auto-update on node move
     """
 
-    def __init__(self, source_item, target_item, color: str = "#FF90CAF9", style_config=None):
+    def __init__(
+        self, source_item, target_item, color: str = "#FF90CAF9", style_config=None
+    ):
         super().__init__()
         self.source_item = source_item
         self.target_item = target_item
@@ -61,7 +63,7 @@ class EdgeItem(QGraphicsPathItem):
         painter.setRenderHint(QPainter.Antialiasing)
 
         # Read style from global config if available (real-time, no caching)
-        if self.style_config and hasattr(self.source_item, 'depth'):
+        if self.style_config and hasattr(self.source_item, "depth"):
             from cogist.domain.styles.extended_styles import NodeRole
 
             source_depth = self.source_item.depth
@@ -86,69 +88,104 @@ class EdgeItem(QGraphicsPathItem):
             enable_gradient = True
 
             # NEW: Get connector style from MindMapStyle.role_styles (flat structure)
-            if (hasattr(self.style_config, 'role_styles') and
-                connector_role in self.style_config.role_styles):
+            if (
+                hasattr(self.style_config, "role_styles")
+                and connector_role in self.style_config.role_styles
+            ):
                 role_style = self.style_config.role_styles[connector_role]
 
                 # Get connector color from color pool index with brightness/opacity
                 color_pool = self.style_config.color_pool
-                color_str = self._get_color_from_index(
-                    role_style.connector_color_index,
-                    color_pool,
-                    role_style.connector_brightness,
-                    role_style.connector_opacity,
-                    True  # connector is always enabled
-                ) or "#FF666666"
+                color_str = (
+                    self._get_color_from_index(
+                        role_style.connector_color_index,
+                        color_pool,
+                        role_style.connector_brightness,
+                        role_style.connector_opacity,
+                        True,  # connector is always enabled
+                    )
+                    or "#FF666666"
+                )
 
                 line_width = role_style.line_width
                 connector_style_str = role_style.connector_style
                 connector_shape = role_style.connector_shape
-                enable_gradient = (connector_shape == "bezier")
+                enable_gradient = connector_shape == "bezier"
 
             # Rainbow branch handling
             # Apply rainbow color to:
             # 1. Root -> Level 1 edges (target is Level 1)
             # 2. Level 1 -> Level 2+ edges (source is Level 1)
             # 3. Level 2+ -> Level 2+ edges (inherit from Level 1 ancestor)
-            if self.style_config.use_rainbow_branches and len(self.style_config.color_pool) >= 8:
+            if (
+                self.style_config.use_rainbow_branches
+                and len(self.style_config.color_pool) >= 8
+            ):
                 branch_idx = None
 
                 # Case 1: Target is a Level 1 node (Root -> Level 1 edge)
-                if (hasattr(self.target_item, 'domain_node') and self.target_item.domain_node and
-                        self.target_item.domain_node.parent and target_depth == 1):
+                if (
+                    hasattr(self.target_item, "domain_node")
+                    and self.target_item.domain_node
+                    and self.target_item.domain_node.parent
+                    and target_depth == 1
+                ):
                     with contextlib.suppress(ValueError, AttributeError):
-                        branch_idx = self.target_item.domain_node.parent.children.index(self.target_item.domain_node)
+                        branch_idx = self.target_item.domain_node.parent.children.index(
+                            self.target_item.domain_node
+                        )
 
                 # Case 2: Source is a Level 1 node (Level 1 -> Level 2+ edge)
-                elif (hasattr(self.source_item, 'domain_node') and self.source_item.domain_node and
-                      self.source_item.domain_node.parent and source_depth == 1):
+                elif (
+                    hasattr(self.source_item, "domain_node")
+                    and self.source_item.domain_node
+                    and self.source_item.domain_node.parent
+                    and source_depth == 1
+                ):
                     with contextlib.suppress(ValueError, AttributeError):
-                        branch_idx = self.source_item.domain_node.parent.children.index(self.source_item.domain_node)
+                        branch_idx = self.source_item.domain_node.parent.children.index(
+                            self.source_item.domain_node
+                        )
 
                 # Case 3: Level 2+ -> Level 2+ edges (inherit from Level 1 ancestor)
-                elif target_depth >= 2 and hasattr(self.target_item, '_find_level_1_ancestor'):
+                elif target_depth >= 2 and hasattr(
+                    self.target_item, "_find_level_1_ancestor"
+                ):
                     level_1_ancestor = self.target_item._find_level_1_ancestor()
                     if level_1_ancestor and level_1_ancestor.parent:
                         with contextlib.suppress(ValueError, AttributeError):
-                            branch_idx = level_1_ancestor.parent.children.index(level_1_ancestor)
+                            branch_idx = level_1_ancestor.parent.children.index(
+                                level_1_ancestor
+                            )
 
                 # Apply rainbow color if branch index found
-                if branch_idx is not None and branch_idx < len(self.style_config.color_pool):
+                if branch_idx is not None and branch_idx < len(
+                    self.style_config.color_pool
+                ):
                     # Get base rainbow color from color_pool array (NO brightness/opacity applied yet)
-                    rainbow_base = self.style_config.color_pool[branch_idx % 8]  # Only use indices 0-7
+                    rainbow_base = self.style_config.color_pool[
+                        branch_idx % 8
+                    ]  # Only use indices 0-7
 
                     # Apply brightness and opacity adjustments based on TARGET depth
                     # This ensures each level can have different brightness/opacity
-                    if hasattr(self.style_config, 'role_styles') and adjustment_role in self.style_config.role_styles:
+                    if (
+                        hasattr(self.style_config, "role_styles")
+                        and adjustment_role in self.style_config.role_styles
+                    ):
                         role_style = self.style_config.role_styles[adjustment_role]
 
                         # Apply brightness adjustment
                         if role_style.connector_brightness != 1.0:
-                            rainbow_base = self._adjust_color_brightness(rainbow_base, role_style.connector_brightness)
+                            rainbow_base = self._adjust_color_brightness(
+                                rainbow_base, role_style.connector_brightness
+                            )
 
                         # Apply opacity adjustment
                         if role_style.connector_opacity < 255:
-                            rainbow_base = self._apply_opacity(rainbow_base, role_style.connector_opacity)
+                            rainbow_base = self._apply_opacity(
+                                rainbow_base, role_style.connector_opacity
+                            )
 
                     color_str = rainbow_base
 
@@ -207,7 +244,8 @@ class EdgeItem(QGraphicsPathItem):
                 else:
                     # Gradient width: draw segment by segment
                     for (start, end), width in self._gradient_path:  # type: ignore[union-attr]
-                        pen = QPen(color, width, Qt.SolidLine, Qt.RoundCap)
+                        # CRITICAL: Use FlatCap instead of RoundCap to prevent overlap on thick lines
+                        pen = QPen(color, width, Qt.SolidLine, Qt.FlatCap)
                         painter.setPen(pen)
                         painter.drawLine(start, end)
             else:
@@ -281,8 +319,14 @@ class EdgeItem(QGraphicsPathItem):
         # Apply new opacity
         return f"#{opacity:02X}{rgb_hex}"
 
-    def _get_color_from_index(self, color_index: int, color_pool: list,
-                              brightness: float, opacity: int, enabled: bool) -> str | None:
+    def _get_color_from_index(
+        self,
+        color_index: int,
+        color_pool: list,
+        brightness: float,
+        opacity: int,
+        enabled: bool,
+    ) -> str | None:
         """Get color from color_pool index with adjustments.
 
         Args:
@@ -319,6 +363,10 @@ class EdgeItem(QGraphicsPathItem):
         This method uses a manual dash algorithm that works for all connector shapes
         (bezier, straight, orthogonal) and supports gradient widths.
 
+        CRITICAL: Gap accounts for Qt.RoundCap extension (0.5×width on each end).
+        When using Qt.RoundCap, each line segment extends by 0.5×width at both ends.
+        Solution: Add 1.0×width to gap to compensate for the extension.
+
         Args:
             painter: QPainter instance
             color: Line color
@@ -327,13 +375,18 @@ class EdgeItem(QGraphicsPathItem):
         assert self._gradient_path is not None
 
         # Define dash patterns as list of (segment_length, is_visible)
-        # Match the patterns used for uniform width lines
-        dash_patterns = {
+        # Base patterns will be adjusted dynamically based on line width
+        base_patterns = {
             Qt.DashLine: [(6.0, True), (4.0, False)],  # Dash-Gap
-            Qt.DotLine: [(1.0, True), (3.0, False)],   # Dot-Gap
-            Qt.DashDotLine: [(6.0, True), (4.0, False), (1.0, True), (4.0, False)],  # Dash-Gap-Dot-Gap
+            Qt.DotLine: [(1.0, True), (3.0, False)],  # Dot-Gap
+            Qt.DashDotLine: [
+                (6.0, True),
+                (4.0, False),
+                (1.0, True),
+                (4.0, False),
+            ],  # Dash-Gap-Dot-Gap
         }
-        pattern = dash_patterns.get(line_style, [(6.0, True), (4.0, False)])
+        base_pattern = base_patterns.get(line_style, [(6.0, True), (4.0, False)])
 
         # Manual dash implementation with gradient width support
         pattern_position = 0.0  # Current position within current pattern segment
@@ -341,9 +394,24 @@ class EdgeItem(QGraphicsPathItem):
 
         for (start, end), width in self._gradient_path:  # type: ignore[union-attr]
             # Calculate segment length
-            seg_length = ((end.x() - start.x())**2 + (end.y() - start.y())**2) ** 0.5
+            seg_length = (
+                (end.x() - start.x()) ** 2 + (end.y() - start.y()) ** 2
+            ) ** 0.5
             if seg_length < 0.001:
                 continue
+
+            # CRITICAL: Adjust gap based on current segment width
+            # Qt.RoundCap extends each segment by 0.5×width at both ends
+            # To maintain visible gap, we add 1.0×width to compensate
+            pattern = []
+            for seg_len, is_visible in base_pattern:
+                if is_visible:
+                    # Dash/dot length stays the same
+                    pattern.append((seg_len, True))
+                else:
+                    # Gap: add 1.0×width to compensate for RoundCap extension
+                    adjusted_gap = seg_len + 1.0 * width
+                    pattern.append((adjusted_gap, False))
 
             # Get current pattern segment
             seg_len, is_visible = pattern[pattern_index]
@@ -361,11 +429,12 @@ class EdgeItem(QGraphicsPathItem):
                 t = draw_length / seg_length
                 sub_end = QPointF(
                     segment_start.x() + (end.x() - segment_start.x()) * t,
-                    segment_start.y() + (end.y() - segment_start.y()) * t
+                    segment_start.y() + (end.y() - segment_start.y()) * t,
                 )
 
                 if is_visible:
                     # Draw this sub-segment with its specific width (gradient preserved!)
+                    # Use RoundCap for smooth line ends
                     pen = QPen(color, width, Qt.SolidLine, Qt.RoundCap)
                     painter.setPen(pen)
                     painter.drawLine(segment_start, sub_end)
@@ -391,11 +460,15 @@ class EdgeItem(QGraphicsPathItem):
         """
         # If widths not provided, read from global config
         if start_width is None or end_width is None:
-            if self.style_config and hasattr(self.source_item, 'depth'):
+            if self.style_config and hasattr(self.source_item, "depth"):
                 from cogist.domain.styles.extended_styles import NodeRole
 
                 source_depth = self.source_item.depth
-                role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
+                role_map = {
+                    0: NodeRole.ROOT,
+                    1: NodeRole.PRIMARY,
+                    2: NodeRole.SECONDARY,
+                }
                 role = role_map.get(source_depth, NodeRole.TERTIARY)
 
                 # Default values
@@ -407,7 +480,7 @@ class EdgeItem(QGraphicsPathItem):
                     role_style = self.style_config.role_styles[role]
                     line_width = role_style.line_width
                     connector_shape = role_style.connector_shape
-                    enable_gradient = (connector_shape == "bezier")
+                    enable_gradient = connector_shape == "bezier"
 
                 is_uniform_bezier = connector_shape == "bezier_uniform"
                 is_bezier = isinstance(self.connector_strategy, BezierConnector)
@@ -439,9 +512,12 @@ class EdgeItem(QGraphicsPathItem):
         total_length = path.length()
 
         # Ensure segments are small enough for dash patterns
-        # Max segment length should be smaller than smallest dash pattern unit (1.0 for dots)
-        max_segment_length = 1.0  # Small enough for smooth gradient and accurate dashes
-        segments = max(20, int(total_length / max_segment_length))  # At least 20 segments
+        # Max segment length should be smaller than smallest dash pattern unit
+        # Using 4.0 for good balance between smoothness and performance
+        max_segment_length = 4.0  # 4px segments - fewer segments = faster dash drawing
+        segments = max(
+            20, int(total_length / max_segment_length)
+        )  # At least 20 segments
         segments = min(segments, 200)  # Cap at 200 to avoid performance issues
 
         points = []
@@ -479,7 +555,7 @@ class EdgeItem(QGraphicsPathItem):
 
         # Get connector width from style config if available
         connector_width = 2.0  # Default value
-        if self.style_config and hasattr(self.source_item, 'depth'):
+        if self.style_config and hasattr(self.source_item, "depth"):
             from cogist.domain.styles.extended_styles import NodeRole
 
             source_depth = self.source_item.depth
@@ -487,8 +563,10 @@ class EdgeItem(QGraphicsPathItem):
             role = role_map.get(source_depth, NodeRole.TERTIARY)
 
             # NEW: Use MindMapStyle.role_styles
-            if (hasattr(self.style_config, 'role_styles') and
-                role in self.style_config.role_styles):
+            if (
+                hasattr(self.style_config, "role_styles")
+                and role in self.style_config.role_styles
+            ):
                 role_style = self.style_config.role_styles[role]
                 connector_width = role_style.line_width
 
@@ -563,7 +641,12 @@ class EdgeItem(QGraphicsPathItem):
             return 2.0  # Default border width
 
     def _get_edge_point_for_shape(
-        self, rect, edge: str, shape_type: str, border_width: float = 2.0, connector_width: float = 2.0
+        self,
+        rect,
+        edge: str,
+        shape_type: str,
+        border_width: float = 2.0,
+        connector_width: float = 2.0,
     ) -> QPointF:
         """Get connection point on node edge based on border shape.
 
@@ -651,7 +734,9 @@ class EdgeItem(QGraphicsPathItem):
                 "sharp_first_rounded": SharpFirstRoundedConnector(),
             }
             new_strategy = shape_map.get(style_config["connector_shape"])
-            if new_strategy and not isinstance(self.connector_strategy, type(new_strategy)):
+            if new_strategy and not isinstance(
+                self.connector_strategy, type(new_strategy)
+            ):
                 self.connector_strategy = new_strategy
                 # Path changed, need to recalculate
                 self.update_curve()

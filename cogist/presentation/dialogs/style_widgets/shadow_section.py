@@ -4,9 +4,9 @@ Provides controls for configuring node shadow effects.
 Implements lazy initialization for better performance.
 """
 
+from qtpy.compat import isalive
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import QGridLayout, QLabel, QPushButton
-from qtpy.compat import isalive
 
 from .collapsible_panel import CollapsiblePanel
 from .color_picker import create_color_picker
