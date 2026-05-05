@@ -8,9 +8,9 @@ Provides icon-based navigation to switch between different panels:
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QFrame, QPushButton, QVBoxLayout
+from qtpy.QtCore import QSize, Qt, Signal
+from qtpy.QtGui import QIcon
+from qtpy.QtWidgets import QFrame, QPushButton, QVBoxLayout
 
 
 def get_resource_path(relative_path: str) -> str:

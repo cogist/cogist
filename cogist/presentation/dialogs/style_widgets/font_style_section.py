@@ -10,8 +10,8 @@ Provides controls for customizing font properties including:
 Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,
@@ -73,8 +73,8 @@ class FontStyleSection(CollapsiblePanel):
 
     def _load_fonts(self):
         """Pre-load all available fonts in background thread on initialization."""
-        from PySide6.QtCore import QThread, Signal
-        from PySide6.QtGui import QFontDatabase
+        from qtpy.QtCore import QThread, Signal
+        from qtpy.QtGui import QFontDatabase
 
         class FontLoaderThread(QThread):
             """Background thread for loading fonts."""
@@ -82,8 +82,8 @@ class FontStyleSection(CollapsiblePanel):
 
             def run(self):
                 """Load and process fonts."""
-                font_db = QFontDatabase()
-                families = font_db.families()
+                # Qt6: QFontDatabase constructor is deprecated, use static methods
+                families = QFontDatabase.families()
 
                 # Filter out bitmap/system fonts
                 filtered_families = []
@@ -92,7 +92,7 @@ class FontStyleSection(CollapsiblePanel):
                         continue
                     if any(keyword in family.lower() for keyword in ['bitmap', 'dingbats', 'symbol', 'icon']):
                         continue
-                    if not font_db.styles(family):
+                    if not QFontDatabase.styles(family):
                         continue
                     filtered_families.append(family)
 
@@ -368,9 +368,9 @@ class FontStyleSection(CollapsiblePanel):
         Uses a frameless dialog with single-click selection for better UX.
         Uses pre-loaded font cache for instant display.
         """
-        from PySide6.QtCore import Qt
-        from PySide6.QtGui import QFont
-        from PySide6.QtWidgets import (
+        from qtpy.QtCore import Qt
+        from qtpy.QtGui import QFont
+        from qtpy.QtWidgets import (
             QDialog,
             QListWidget,
             QVBoxLayout,
@@ -488,8 +488,8 @@ class FontStyleSection(CollapsiblePanel):
 
     def _populate_fonts_from_cache(self, font_list, dialog):
         """Populate font list from pre-loaded cache."""
-        from PySide6.QtGui import QFont
-        from PySide6.QtWidgets import QListWidget, QListWidgetItem
+        from qtpy.QtGui import QFont
+        from qtpy.QtWidgets import QListWidget, QListWidgetItem
 
         # Check if cache is ready
         if self._font_data_cache is None:
@@ -630,7 +630,7 @@ class FontStyleSection(CollapsiblePanel):
         Filters out italic/oblique styles and sorts by weight priority.
         Detects and removes duplicate weights (e.g., Normal/Regular may be the same).
         """
-        from PySide6.QtGui import QFontDatabase
+        from qtpy.QtGui import QFontDatabase
 
         font_family = self.current_style.get("font_family", "Arial")
         font_db = QFontDatabase()

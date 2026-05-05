@@ -1,7 +1,7 @@
 """Color Scheme Panel - Global color pool and rainbow mode configuration."""
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
@@ -26,7 +26,7 @@ class ColorSchemeTab(QWidget):
         main_layout.setSpacing(0)
 
         # Create scroll area
-        from PySide6.QtWidgets import QScrollArea
+        from qtpy.QtWidgets import QScrollArea
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)

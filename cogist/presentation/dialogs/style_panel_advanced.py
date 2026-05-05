@@ -7,8 +7,8 @@ Uses modular components with lazy initialization for better performance.
 Refactored version: Uses component-based architecture from style_widgets/
 """
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 
 from ..items.node_item import adjust_color_brightness
 from .style_widgets import (

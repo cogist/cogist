@@ -1,7 +1,7 @@
 """Decorative line border strategies (single-side lines, no background)."""
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 
 from .base import BorderStrategy
 

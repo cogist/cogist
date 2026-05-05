@@ -7,9 +7,9 @@ This module contains the MindMapView class which handles:
 - Node selection and focus management
 """
 
-from PySide6.QtCore import QEvent, QPointF, Qt, QTimer, Signal
-from PySide6.QtGui import QPainter, QWheelEvent
-from PySide6.QtWidgets import (
+from qtpy.QtCore import QEvent, QPointF, Qt, QTimer, Signal
+from qtpy.QtGui import QPainter, QWheelEvent
+from qtpy.QtWidgets import (
     QApplication,
     QFileDialog,
     QGraphicsScene,
@@ -377,7 +377,7 @@ class MindMapView(QGraphicsView):
     def _update_canvas_background(self):
         """Update canvas background color from style config."""
         if hasattr(self, "style_config") and self.style_config:
-            from PySide6.QtGui import QBrush, QColor
+            from qtpy.QtGui import QBrush, QColor
 
             canvas_color = self.style_config.special_colors["canvas_bg"]
             self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
@@ -387,7 +387,7 @@ class MindMapView(QGraphicsView):
 
         # Apply canvas background color from style config
         if hasattr(self, "style_config") and self.style_config:
-            from PySide6.QtGui import QBrush, QColor
+            from qtpy.QtGui import QBrush, QColor
 
             canvas_color = self.style_config.special_colors["canvas_bg"]
             self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))

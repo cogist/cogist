@@ -6,9 +6,9 @@ Provides a reusable color picker with:
 - Screen-aware positioning
 """
 
-from PySide6.QtCore import Signal
-from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QColorDialog, QWidget
+from qtpy.QtCore import Signal
+from qtpy.QtGui import QColor
+from qtpy.QtWidgets import QColorDialog, QWidget
 
 
 class ColorPicker(QColorDialog):

@@ -2,8 +2,8 @@
 
 from abc import ABC, abstractmethod
 
-from PySide6.QtCore import QRectF
-from PySide6.QtGui import QPainter, QPainterPath
+from qtpy.QtCore import QRectF
+from qtpy.QtGui import QPainter, QPainterPath
 
 
 class BorderStrategy(ABC):

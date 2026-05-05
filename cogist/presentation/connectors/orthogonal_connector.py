@@ -1,7 +1,7 @@
 """Orthogonal (right-angle) connector strategy."""
 
-from PySide6.QtCore import QPointF
-from PySide6.QtGui import QPainterPath
+from qtpy.QtCore import QPointF
+from qtpy.QtGui import QPainterPath
 
 from .base import ConnectorStrategy
 

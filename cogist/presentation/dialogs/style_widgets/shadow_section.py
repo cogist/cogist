@@ -4,8 +4,8 @@ Provides controls for configuring node shadow effects.
 Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QGridLayout, QLabel, QPushButton
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtWidgets import QGridLayout, QLabel, QPushButton
 from shiboken6 import isValid
 
 from .collapsible_panel import CollapsiblePanel
@@ -175,7 +175,7 @@ class ShadowSection(CollapsiblePanel):
             self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
             # Enable alpha channel for shadow color (shadows need transparency)
-            from PySide6.QtWidgets import QColorDialog
+            from qtpy.QtWidgets import QColorDialog
             self._color_picker.setOption(QColorDialog.ShowAlphaChannel, True)
 
         # Set current color (MUST call before show!)

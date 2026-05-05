@@ -6,9 +6,9 @@ Similar to iOS/macOS system switches.
 This widget can be reused across the application for any on/off toggle functionality.
 """
 
-from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QColor, QPainter, QPainterPath
-from PySide6.QtWidgets import QPushButton
+from qtpy.QtCore import QRectF, Qt
+from qtpy.QtGui import QColor, QPainter, QPainterPath
+from qtpy.QtWidgets import QPushButton
 
 
 class ToggleSwitch(QPushButton):

@@ -4,8 +4,8 @@ Provides controls for customizing edge appearance between nodes.
 Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import QPoint, QSize, Qt, Signal
-from PySide6.QtWidgets import (
+from qtpy.QtCore import QPoint, QSize, Qt, Signal
+from qtpy.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,

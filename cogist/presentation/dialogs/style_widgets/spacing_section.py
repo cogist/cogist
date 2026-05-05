@@ -4,8 +4,8 @@ Provides controls for customizing spacing values for parent-child and sibling sp
 Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QGridLayout, QLabel
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtWidgets import QGridLayout, QLabel
 
 from .collapsible_panel import CollapsiblePanel
 from .spinbox import SpinBox

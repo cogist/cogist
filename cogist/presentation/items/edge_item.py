@@ -7,9 +7,9 @@ Connector edge between nodes with strategy pattern support.
 import colorsys
 import contextlib
 
-from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QPen
-from PySide6.QtWidgets import QGraphicsPathItem
+from qtpy.QtCore import QPointF, Qt
+from qtpy.QtGui import QColor, QPen
+from qtpy.QtWidgets import QGraphicsPathItem
 
 from cogist.presentation.connectors import (
     BezierConnector,
@@ -56,7 +56,7 @@ class EdgeItem(QGraphicsPathItem):
 
     def paint(self, painter, option, widget=None):
         """Custom paint with gradient line width."""
-        from PySide6.QtGui import QPainter
+        from qtpy.QtGui import QPainter
 
         painter.setRenderHint(QPainter.Antialiasing)
 

@@ -4,8 +4,8 @@ Provides controls for customizing node border appearance.
 Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import QPoint, Qt, Signal
-from PySide6.QtWidgets import (
+from qtpy.QtCore import QPoint, Qt, Signal
+from qtpy.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,

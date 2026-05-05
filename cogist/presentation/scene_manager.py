@@ -9,8 +9,8 @@ Architecture:
 - Export support: Allows temporary precise sceneRect for SVG/PNG/PDF export
 """
 
-from PySide6.QtCore import QRectF
-from PySide6.QtWidgets import QGraphicsScene, QGraphicsView
+from qtpy.QtCore import QRectF
+from qtpy.QtWidgets import QGraphicsScene, QGraphicsView
 
 
 class SceneRectManager:

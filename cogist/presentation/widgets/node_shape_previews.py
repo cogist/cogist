@@ -4,8 +4,8 @@ Provides functions to generate visual previews for different node shapes,
 used in the VisualSelector widget for shape selection.
 """
 
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
+from qtpy.QtCore import QSize, Qt
+from qtpy.QtGui import QColor, QPainter, QPen, QPixmap
 
 
 def generate_rounded_rect_preview(size: QSize, selected: bool = False) -> QPixmap:

@@ -4,8 +4,8 @@ Provides controls for customizing node appearance including shape, colors,
 padding, and font properties. Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtWidgets import (
+from qtpy.QtCore import QSize, Qt, Signal
+from qtpy.QtWidgets import (
     QGridLayout,
     QLabel,
     QPushButton,
@@ -207,7 +207,7 @@ class NodeStyleSection(CollapsiblePanel):
         row += 1
 
         # Background enabled - Toggle Switch with label on same row (right-aligned like rainbow switch)
-        from PySide6.QtWidgets import QHBoxLayout
+        from qtpy.QtWidgets import QHBoxLayout
         bg_switch_row = QHBoxLayout()
         bg_switch_row.setContentsMargins(0, 0, 0, 0)
         bg_switch_row.setSpacing(0)
@@ -407,8 +407,8 @@ class NodeStyleSection(CollapsiblePanel):
 
         Displays a dialog with 8 color buttons (indices 0-7) for user to select.
         """
-        from PySide6.QtCore import Qt
-        from PySide6.QtWidgets import QDialog, QGridLayout, QLabel, QPushButton
+        from qtpy.QtCore import Qt
+        from qtpy.QtWidgets import QDialog, QGridLayout, QLabel, QPushButton
 
         parent = self._advanced_tab
         if not (parent and hasattr(parent, 'style_config') and parent.style_config):

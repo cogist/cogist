@@ -3,8 +3,8 @@
 Simplified to only manage color pool and rainbow branch mode.
 Background, border, brightness, opacity controls moved to their respective panels.
 """
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
