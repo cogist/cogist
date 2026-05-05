@@ -6,7 +6,7 @@ Implements lazy initialization for better performance.
 
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import QGridLayout, QLabel, QPushButton
-from shiboken6 import isValid
+from qtpy.compat import isalive
 
 from .collapsible_panel import CollapsiblePanel
 from .color_picker import create_color_picker
@@ -168,7 +168,7 @@ class ShadowSection(CollapsiblePanel):
         top_level = self.window() if self.window() else self
 
         # Check if color picker still exists (may have been deleted by WA_DeleteOnClose)
-        if self._color_picker is None or not isValid(self._color_picker):
+        if self._color_picker is None or not isalive(self._color_picker):
             self._color_picker = create_color_picker(top_level)
             self._color_picker.color_selected.connect(self._on_shadow_color_selected)
             # Ensure dialog closes when parent window closes

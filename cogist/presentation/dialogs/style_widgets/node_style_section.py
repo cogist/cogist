@@ -11,7 +11,7 @@ from qtpy.QtWidgets import (
     QPushButton,
     QWidget,
 )
-from shiboken6 import isValid
+from qtpy.compat import isalive
 
 from cogist.presentation.widgets import ToggleSwitch, VisualPreviewButton
 from cogist.presentation.widgets.node_shape_previews import (
@@ -378,7 +378,7 @@ class NodeStyleSection(CollapsiblePanel):
         if self.is_root_mode:
             # Root mode: show color picker for special_colors["root_background"] (same as CanvasPanel)
             # Check if color picker still exists (may have been deleted by WA_DeleteOnClose)
-            if self._color_picker is None or not isValid(self._color_picker):
+            if self._color_picker is None or not isalive(self._color_picker):
                 # Get the top-level window to ensure proper dialog lifecycle
                 top_level = self.window() if self.window() else parent
                 self._color_picker = create_color_picker(top_level)
