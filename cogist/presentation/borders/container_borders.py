@@ -159,13 +159,13 @@ class RoundedRectBorder(BorderStrategy):
                 painter.setBrush(QBrush(QColor(bg_color)))
                 painter.drawPath(inner_path)
 
-            # Step 2: Draw border using QPainterPathStroker for dashed/dotted support
+            # Step 2: Draw border by filling the ring shape (not stroking)
+            # This completely avoids semi-transparent overlap issues
             if border_style == "solid":
-                # Solid line: use simple pen
-                pen = QPen(QColor(border_color), border_width, Qt.SolidLine, Qt.RoundCap)
-                painter.setPen(pen)
-                painter.setBrush(Qt.NoBrush)
-                painter.drawPath(inner_path)
+                # Solid border: fill the ring path directly
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(QColor(border_color)))
+                painter.drawPath(border_ring)
             else:
                 # Dashed/dotted/dash-dot: use QPainterPathStroker for proper dash rendering
                 # This avoids the segmentation issues with manual drawing
@@ -248,13 +248,13 @@ class CircleBorder(BorderStrategy):
                 painter.setBrush(QBrush(QColor(bg_color)))
                 painter.drawPath(inner_path)
 
-            # Step 2: Draw border using QPainterPathStroker for dashed/dotted support
+            # Step 2: Draw border by filling the ring shape (not stroking)
+            # This completely avoids semi-transparent overlap issues
             if border_style == "solid":
-                # Solid line: use simple pen
-                pen = QPen(QColor(border_color), border_width, Qt.SolidLine, Qt.RoundCap)
-                painter.setPen(pen)
-                painter.setBrush(Qt.NoBrush)
-                painter.drawPath(inner_path)
+                # Solid border: fill the ring path directly
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(QColor(border_color)))
+                painter.drawPath(border_ring)
             else:
                 # Dashed/dotted/dash-dot: use QPainterPathStroker for proper dash rendering
                 # This avoids the segmentation issues with manual drawing
