@@ -633,8 +633,8 @@ class FontStyleSection(CollapsiblePanel):
         from qtpy.QtGui import QFontDatabase
 
         font_family = self.current_style.get("font_family", "Arial")
-        font_db = QFontDatabase()
-        styles = font_db.styles(font_family)
+        # Qt6: styles() is a static method, no need to create instance
+        styles = QFontDatabase.styles(font_family)
 
         if not styles:
             # Fallback to default weights if no styles found
@@ -702,7 +702,8 @@ class FontStyleSection(CollapsiblePanel):
 
         for style in sorted_styles:
             # Get the weight value for this style using QFontDatabase
-            weight_value = font_db.weight(font_family, style)
+            # Qt6: weight() is a static method
+            weight_value = QFontDatabase.weight(font_family, style)
 
             # Get priority for this style name (lower is better)
             priority = weight_name_priority.get(style, 100)
@@ -719,7 +720,8 @@ class FontStyleSection(CollapsiblePanel):
         # Build final list maintaining sort order
         seen_in_final = set()
         for style in sorted_styles:
-            weight_value = font_db.weight(font_family, style)
+            # Qt6: weight() is a static method
+            weight_value = QFontDatabase.weight(font_family, style)
             if weight_value in seen_weights:
                 best_style, _ = seen_weights[weight_value]
                 if best_style == style and style not in seen_in_final:
