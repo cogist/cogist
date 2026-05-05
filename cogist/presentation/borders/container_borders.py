@@ -167,8 +167,9 @@ class RoundedRectBorder(BorderStrategy):
                 painter.setBrush(QBrush(QColor(border_color)))
                 painter.drawPath(border_ring)
             else:
-                # Dashed/dotted/dash-dot: use QPainterPathStroker for proper dash rendering
-                # This avoids the segmentation issues with manual drawing
+                # Dashed/dotted/dash-dot: Use QPainterPathStroker for proper dash rendering
+                # CRITICAL: Stroke inner_path (not outer_path) to avoid gap with background
+                # Then subtract inner_path to prevent overlap (same principle as solid)
                 from qtpy.QtGui import QPainterPathStroker
 
                 stroker = QPainterPathStroker()
@@ -176,23 +177,63 @@ class RoundedRectBorder(BorderStrategy):
                 stroker.setCapStyle(Qt.RoundCap)
                 stroker.setJoinStyle(Qt.RoundJoin)
 
-                # Set dash pattern (in units of pen width, as per Qt docs)
+                # Create dashed stroke path
+                # CRITICAL: Create a path that extends border_width/2 outward
+                # When stroker adds border_width/2 on both sides, inner edge = inner_path position
+                half_expanded_rect = rect.adjusted(-border_width/2, -border_width/2, border_width/2, border_width/2)
+                half_expanded_radius = radius + border_width/2
+                stroke_base_path = QPainterPath()
+                stroke_base_path.addRoundedRect(half_expanded_rect, half_expanded_radius, half_expanded_radius)
+
+                # Dash patterns - Calculate perimeter and adjust for uniform distribution
+                # This prevents dash segments from clustering at corners
+                path_length = stroke_base_path.length()
+
+                # Base pattern in pixels
                 if border_style == "dashed":
-                    stroker.setDashPattern([4.0, 2.0])  # Dash(4x width) - Gap(2x width)
+                    base_pattern = [6.0, 4.0 + 1.0 * border_width]  # dash, gap (with RoundCap compensation)
                 elif border_style == "dotted":
-                    stroker.setDashPattern([0.5, 2.0])  # Dot(0.5x width) - Gap(2x width)
-                elif border_style == "dash_dot":
-                    stroker.setDashPattern([4.0, 2.0, 0.5, 2.0])  # Dash-Gap-Dot-Gap
+                    base_pattern = [1.0, 3.0 + 1.0 * border_width]  # dot, gap
+                else:  # dash_dot
+                    base_pattern = [6.0, 4.0 + 1.0 * border_width, 1.0, 4.0 + 1.0 * border_width]  # dash, gap, dot, gap
 
-                # Create stroke path and fill it
-                border_stroke_path = stroker.createStroke(inner_path)
+                # Calculate pattern length and adjust to fit path evenly
+                pattern_length = sum(base_pattern)
+                num_patterns = path_length / pattern_length
+                num_rounded = max(1, round(num_patterns))
 
-                # Subtract inner path to avoid overlap with background
-                border_ring = border_stroke_path.subtracted(inner_path)
+                # Adjust gap to make pattern fit evenly (keep dash/dot length fixed)
+                # This ensures uniform distribution around the entire path
+                if len(base_pattern) == 2:  # dashed or dotted
+                    dash_len = base_pattern[0] / border_width
+                    # Adjust gap so that n * (dash + gap) = path_length
+                    adjusted_gap = (path_length / num_rounded - base_pattern[0]) / border_width
+                    stroker.setDashPattern([dash_len, adjusted_gap])
+                else:  # dash_dot (len == 4)
+                    dash_len = base_pattern[0] / border_width
+                    dot_len = base_pattern[2] / border_width
+                    # Adjust both gaps proportionally
+                    total_fixed = base_pattern[0] + base_pattern[2]
+                    total_gap_needed = path_length / num_rounded - total_fixed
+                    gap_ratio = base_pattern[1] / (base_pattern[1] + base_pattern[3])
+                    adjusted_gap1 = (total_gap_needed * gap_ratio) / border_width
+                    adjusted_gap2 = (total_gap_needed * (1.0 - gap_ratio)) / border_width
+                    stroker.setDashPattern([dash_len, adjusted_gap1, dot_len, adjusted_gap2])
+
+                # CRITICAL: Calculate dash offset to center pattern and avoid clustering at corners
+                # Offset by half pattern length to distribute evenly around the path
+                # For closed paths, this prevents dash segments from overlapping at start/end point
+                dash_offset = (path_length / num_rounded) / 2.0
+                stroker.setDashOffset(dash_offset / border_width)  # Convert to width multiples
+
+                dashed_stroke_path = stroker.createStroke(stroke_base_path)
+
+                # Subtract inner_path to get only the outer portion (no overlap with background)
+                dashed_border_ring = dashed_stroke_path.subtracted(inner_path)
 
                 painter.setPen(Qt.NoPen)
                 painter.setBrush(QBrush(QColor(border_color)))
-                painter.drawPath(border_ring)
+                painter.drawPath(dashed_border_ring)
         else:
             # No border, just draw background
             if bg_color:
@@ -256,8 +297,9 @@ class CircleBorder(BorderStrategy):
                 painter.setBrush(QBrush(QColor(border_color)))
                 painter.drawPath(border_ring)
             else:
-                # Dashed/dotted/dash-dot: use QPainterPathStroker for proper dash rendering
-                # This avoids the segmentation issues with manual drawing
+                # Dashed/dotted/dash-dot: Use QPainterPathStroker for proper dash rendering
+                # CRITICAL: Stroke inner_path (not outer_path) to avoid gap with background
+                # Then subtract inner_path to prevent overlap (same principle as solid)
                 from qtpy.QtGui import QPainterPathStroker
 
                 stroker = QPainterPathStroker()
@@ -265,23 +307,62 @@ class CircleBorder(BorderStrategy):
                 stroker.setCapStyle(Qt.RoundCap)
                 stroker.setJoinStyle(Qt.RoundJoin)
 
-                # Set dash pattern (in units of pen width, as per Qt docs)
+                # Create dashed stroke path for ellipse
+                # CRITICAL: Create a path that extends border_width/2 outward
+                # When stroker adds border_width/2 on both sides, inner edge = inner_path position
+                half_expanded_rect = rect.adjusted(-border_width/2, -border_width/2, border_width/2, border_width/2)
+                stroke_base_path = QPainterPath()
+                stroke_base_path.addEllipse(half_expanded_rect)
+
+                # Dash patterns - Calculate perimeter and adjust for uniform distribution
+                # This prevents dash segments from clustering at corners
+                path_length = stroke_base_path.length()
+
+                # Base pattern in pixels
                 if border_style == "dashed":
-                    stroker.setDashPattern([4.0, 2.0])  # Dash(4x width) - Gap(2x width)
+                    base_pattern = [6.0, 4.0 + 1.0 * border_width]  # dash, gap (with RoundCap compensation)
                 elif border_style == "dotted":
-                    stroker.setDashPattern([0.5, 2.0])  # Dot(0.5x width) - Gap(2x width)
-                elif border_style == "dash_dot":
-                    stroker.setDashPattern([4.0, 2.0, 0.5, 2.0])  # Dash-Gap-Dot-Gap
+                    base_pattern = [1.0, 3.0 + 1.0 * border_width]  # dot, gap
+                else:  # dash_dot
+                    base_pattern = [6.0, 4.0 + 1.0 * border_width, 1.0, 4.0 + 1.0 * border_width]  # dash, gap, dot, gap
 
-                # Create stroke path and fill it
-                border_stroke_path = stroker.createStroke(inner_path)
+                # Calculate pattern length and adjust to fit path evenly
+                pattern_length = sum(base_pattern)
+                num_patterns = path_length / pattern_length
+                num_rounded = max(1, round(num_patterns))
 
-                # Subtract inner path to avoid overlap with background
-                border_ring = border_stroke_path.subtracted(inner_path)
+                # Adjust gap to make pattern fit evenly (keep dash/dot length fixed)
+                # This ensures uniform distribution around the entire path
+                if len(base_pattern) == 2:  # dashed or dotted
+                    dash_len = base_pattern[0] / border_width
+                    # Adjust gap so that n * (dash + gap) = path_length
+                    adjusted_gap = (path_length / num_rounded - base_pattern[0]) / border_width
+                    stroker.setDashPattern([dash_len, adjusted_gap])
+                else:  # dash_dot (len == 4)
+                    dash_len = base_pattern[0] / border_width
+                    dot_len = base_pattern[2] / border_width
+                    # Adjust both gaps proportionally
+                    total_fixed = base_pattern[0] + base_pattern[2]
+                    total_gap_needed = path_length / num_rounded - total_fixed
+                    gap_ratio = base_pattern[1] / (base_pattern[1] + base_pattern[3])
+                    adjusted_gap1 = (total_gap_needed * gap_ratio) / border_width
+                    adjusted_gap2 = (total_gap_needed * (1.0 - gap_ratio)) / border_width
+                    stroker.setDashPattern([dash_len, adjusted_gap1, dot_len, adjusted_gap2])
+
+                # CRITICAL: Calculate dash offset to center pattern and avoid clustering at corners
+                # Offset by half pattern length to distribute evenly around the path
+                # For closed paths, this prevents dash segments from overlapping at start/end point
+                dash_offset = (path_length / num_rounded) / 2.0
+                stroker.setDashOffset(dash_offset / border_width)  # Convert to width multiples
+
+                dashed_stroke_path = stroker.createStroke(stroke_base_path)
+
+                # Subtract inner_path to get only the outer portion (no overlap with background)
+                dashed_border_ring = dashed_stroke_path.subtracted(inner_path)
 
                 painter.setPen(Qt.NoPen)
                 painter.setBrush(QBrush(QColor(border_color)))
-                painter.drawPath(border_ring)
+                painter.drawPath(dashed_border_ring)
         else:
             # No border, just draw background
             if bg_color:
