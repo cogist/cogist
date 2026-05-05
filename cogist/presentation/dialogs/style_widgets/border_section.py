@@ -517,7 +517,7 @@ class BorderSection(CollapsiblePanel):
                 )
 
             if "border_width" in style:
-                self.border_width_spin.setValue(style["border_width"])
+                self.border_width_spin.setValue(int(style["border_width"]))
 
             # Update brightness spinbox (support multiple field names)
             if "brightness" in style and hasattr(self, "brightness_spin"):

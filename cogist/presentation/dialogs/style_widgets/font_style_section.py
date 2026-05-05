@@ -169,7 +169,7 @@ class FontStyleSection(CollapsiblePanel):
         self.font_size_spin = SpinBox()
         self.font_size_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.font_size_spin.setRange(8, 72)
-        self.font_size_spin.setValue(self.current_style["font_size"])
+        self.font_size_spin.setValue(int(self.current_style["font_size"]))
         self.font_size_spin.setAlignment(Qt.AlignLeft)
         self.font_size_spin.valueChanged.connect(self._on_font_size_changed)
         layout.addWidget(self.font_size_spin, row, 1)
@@ -805,7 +805,7 @@ class FontStyleSection(CollapsiblePanel):
                 localized_name = self._get_localized_font_name(style["font_family"])
                 self.font_family_combo.setText(localized_name)
             if "font_size" in style:
-                self.font_size_spin.setValue(style["font_size"])
+                self.font_size_spin.setValue(int(style["font_size"]))
             if "font_weight" in style:
                 self.font_weight_combo.setText(style["font_weight"])
 

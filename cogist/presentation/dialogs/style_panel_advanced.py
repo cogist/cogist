@@ -1059,7 +1059,6 @@ class AdvancedStyleTab(QWidget):
 
     def _on_connector_style_changed(self, style: dict):
         """Handle connector style changes for the current layer."""
-        print(f"[CONNECTOR] _on_connector_style_changed: style={style}, current_layer={self.current_layer}")
         if self.current_layer != "canvas":
             assert self.style_config is not None
 
@@ -1082,8 +1081,6 @@ class AdvancedStyleTab(QWidget):
                 connector_updates["connector_brightness"] = style["connector_brightness"]
             if "connector_opacity" in style:
                 connector_updates["connector_opacity"] = style["connector_opacity"]
-
-            print(f"[CONNECTOR] connector_updates={connector_updates}, role={role}")
 
             # Use command system if available
             if (
@@ -1109,7 +1106,6 @@ class AdvancedStyleTab(QWidget):
             elif self.command_history and connector_updates:
                 from cogist.application.commands import ChangeStyleCommand
                 from cogist.application.commands.change_style_command import StyleChange
-                print("[CONNECTOR] Using command system")
 
                 change = StyleChange(
                     layer=self.current_layer,
@@ -1119,11 +1115,8 @@ class AdvancedStyleTab(QWidget):
                     style_config=self.style_config,
                     changes=[change],
                 )
-                print("[CONNECTOR] Executing command...")
                 command.execute()
-                print("[CONNECTOR] Command executed, pushing to history...")
                 self.command_history.push(command)
-                print(f"[CONNECTOR] Command pushed, role_style.connector_style={self.style_config.role_styles[role].connector_style}")
             elif connector_updates:
                 # Fallback: direct update to role-based config without undo/redo
                 if role in self.style_config.role_styles:
@@ -1133,7 +1126,6 @@ class AdvancedStyleTab(QWidget):
                         role_style.connector_shape = style["connector_shape"]
                     if "connector_style" in style:
                         role_style.connector_style = style["connector_style"]
-                        print(f"[CONNECTOR] Updated role_style.connector_style={role_style.connector_style}")
                     if "line_width" in style:
                         role_style.line_width = style["line_width"]
                     if "connector_color_index" in style:
@@ -1377,7 +1369,6 @@ class AdvancedStyleTab(QWidget):
 
     def _apply_connector_styles_to_mindmap(self, mindmap_view):
         """Apply connector (edge) styles to all edges in the mind map (per-layer)."""
-        print(f"[APPLY] _apply_connector_styles_to_mindmap called, current_layer={self.current_layer}")
         if not hasattr(mindmap_view, "edge_items"):
             return
 
@@ -1419,7 +1410,6 @@ class AdvancedStyleTab(QWidget):
                 "connector_opacity": role_style.connector_opacity,
             }
 
-            print(f"[APPLY] edge target_depth={target_depth}, role={role}, connector_style={role_style.connector_style}")
             edge_item.update_style(connector_style)
 
             # Trigger repaint (paint() will read latest config directly)

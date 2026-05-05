@@ -77,7 +77,7 @@ class ShadowSection(CollapsiblePanel):
         self.shadow_offset_x_spin = SpinBox()
         self.shadow_offset_x_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.shadow_offset_x_spin.setRange(-20, 20)
-        self.shadow_offset_x_spin.setValue(self.current_shadow["offset_x"])
+        self.shadow_offset_x_spin.setValue(int(self.current_shadow["offset_x"]))
         self.shadow_offset_x_spin.setAlignment(Qt.AlignLeft)
         self.shadow_offset_x_spin.valueChanged.connect(self._on_shadow_changed)
         layout.addWidget(self.shadow_offset_x_spin, row, 1)
@@ -93,7 +93,7 @@ class ShadowSection(CollapsiblePanel):
         self.shadow_offset_y_spin = SpinBox()
         self.shadow_offset_y_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.shadow_offset_y_spin.setRange(-20, 20)
-        self.shadow_offset_y_spin.setValue(self.current_shadow["offset_y"])
+        self.shadow_offset_y_spin.setValue(int(self.current_shadow["offset_y"]))
         self.shadow_offset_y_spin.setAlignment(Qt.AlignLeft)
         self.shadow_offset_y_spin.valueChanged.connect(self._on_shadow_changed)
         layout.addWidget(self.shadow_offset_y_spin, row, 1)
@@ -109,7 +109,7 @@ class ShadowSection(CollapsiblePanel):
         self.shadow_blur_spin = SpinBox()
         self.shadow_blur_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.shadow_blur_spin.setRange(0, 20)
-        self.shadow_blur_spin.setValue(self.current_shadow["blur"])
+        self.shadow_blur_spin.setValue(int(self.current_shadow["blur"]))
         self.shadow_blur_spin.setAlignment(Qt.AlignLeft)
         self.shadow_blur_spin.valueChanged.connect(self._on_shadow_changed)
         layout.addWidget(self.shadow_blur_spin, row, 1)
@@ -231,11 +231,11 @@ class ShadowSection(CollapsiblePanel):
         if self._initialized:
             # Note: 'enabled' is handled by NodeStyleSection, not here
             if "offset_x" in shadow:
-                self.shadow_offset_x_spin.setValue(shadow["offset_x"])
+                self.shadow_offset_x_spin.setValue(int(shadow["offset_x"]))
             if "offset_y" in shadow:
-                self.shadow_offset_y_spin.setValue(shadow["offset_y"])
+                self.shadow_offset_y_spin.setValue(int(shadow["offset_y"]))
             if "blur" in shadow:
-                self.shadow_blur_spin.setValue(shadow["blur"])
+                self.shadow_blur_spin.setValue(int(shadow["blur"]))
             if "color" in shadow:
                 # Convert #AARRGGBB to rgba() format for Qt CSS
                 color_value = shadow["color"]

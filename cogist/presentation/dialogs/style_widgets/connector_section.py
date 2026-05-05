@@ -258,7 +258,6 @@ class ConnectorSection(CollapsiblePanel):
             "Dash-Dot": "dash_dot",
         }
         self.current_style["connector_style"] = style_map.get(value, "solid")
-        print(f"[CONNECTOR] _set_connector_style: value={value} -> connector_style={self.current_style['connector_style']}")
         self._emit_style_changed()
 
     def _on_width_changed(self, value: int):
@@ -384,7 +383,7 @@ class ConnectorSection(CollapsiblePanel):
                 )
 
             if "line_width" in style:
-                self.connector_width_spin.setValue(style["line_width"])
+                self.connector_width_spin.setValue(int(style["line_width"]))
 
             # Update connector color button display
             if "connector_color_index" in style:

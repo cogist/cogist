@@ -70,7 +70,7 @@ class SpacingSection(CollapsiblePanel):
         self.parent_child_spin = SpinBox()
         self.parent_child_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.parent_child_spin.setRange(0, 100)
-        self.parent_child_spin.setValue(self.current_spacing["parent_child"])
+        self.parent_child_spin.setValue(int(self.current_spacing["parent_child"]))
         self.parent_child_spin.valueChanged.connect(self._on_spacing_changed)
         layout.addWidget(self.parent_child_spin, row, 1)
         row += 1
@@ -84,7 +84,7 @@ class SpacingSection(CollapsiblePanel):
         self.sibling_spin = SpinBox()
         self.sibling_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.sibling_spin.setRange(0, 100)
-        self.sibling_spin.setValue(self.current_spacing["sibling"])
+        self.sibling_spin.setValue(int(self.current_spacing["sibling"]))
         self.sibling_spin.valueChanged.connect(self._on_spacing_changed)
         layout.addWidget(self.sibling_spin, row, 1)
 
@@ -118,9 +118,9 @@ class SpacingSection(CollapsiblePanel):
 
             try:
                 if "parent_child" in spacing:
-                    self.parent_child_spin.setValue(spacing["parent_child"])
+                    self.parent_child_spin.setValue(int(spacing["parent_child"]))
                 if "sibling" in spacing:
-                    self.sibling_spin.setValue(spacing["sibling"])
+                    self.sibling_spin.setValue(int(spacing["sibling"]))
             finally:
                 # Restore signal emission
                 self.parent_child_spin.blockSignals(False)

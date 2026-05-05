@@ -143,7 +143,7 @@ class NodeStyleSection(CollapsiblePanel):
         self.radius_spin = SpinBox()
         self.radius_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.radius_spin.setRange(0, 30)
-        self.radius_spin.setValue(self.current_style["radius"])
+        self.radius_spin.setValue(int(self.current_style["radius"]))
         self.radius_spin.setAlignment(Qt.AlignLeft)
         self.radius_spin.valueChanged.connect(self._on_radius_changed)
 
@@ -169,7 +169,7 @@ class NodeStyleSection(CollapsiblePanel):
         self.padding_w_spin = SpinBox()
         self.padding_w_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.padding_w_spin.setRange(0, 50)
-        self.padding_w_spin.setValue(self.current_style["padding_w"])
+        self.padding_w_spin.setValue(int(self.current_style["padding_w"]))
         self.padding_w_spin.setAlignment(Qt.AlignLeft)
         self.padding_w_spin.valueChanged.connect(self._on_padding_changed)
         layout.addWidget(self.padding_w_spin, row, 1)
@@ -184,7 +184,7 @@ class NodeStyleSection(CollapsiblePanel):
         self.padding_h_spin = SpinBox()
         self.padding_h_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.padding_h_spin.setRange(0, 50)
-        self.padding_h_spin.setValue(self.current_style["padding_h"])
+        self.padding_h_spin.setValue(int(self.current_style["padding_h"]))
         self.padding_h_spin.setAlignment(Qt.AlignLeft)
         self.padding_h_spin.valueChanged.connect(self._on_padding_changed)
         layout.addWidget(self.padding_h_spin, row, 1)
@@ -639,15 +639,15 @@ class NodeStyleSection(CollapsiblePanel):
                                 break
 
             if "radius" in style:
-                self.radius_spin.setValue(style["radius"])
+                self.radius_spin.setValue(int(style["radius"]))
 
             if "padding_w" in style:
-                self.padding_w_spin.setValue(style["padding_w"])
+                self.padding_w_spin.setValue(int(style["padding_w"]))
             if "padding_h" in style:
-                self.padding_h_spin.setValue(style["padding_h"])
+                self.padding_h_spin.setValue(int(style["padding_h"]))
 
             if "max_text_width" in style:
-                self.max_text_width_spin.setValue(style["max_text_width"])
+                self.max_text_width_spin.setValue(int(style["max_text_width"]))
 
             # Update background enabled toggle
             if "bg_enabled" in style and hasattr(self, 'bg_enabled_toggle'):
