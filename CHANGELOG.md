@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Qt 6.7 (PySide6 6.7.x) supports macOS 12 (Monterey)
   - Fixes GitHub Actions build failing on macOS 12 with 'Qt requires 13.0.0' error
 
+### Known Issues
+- **Rendering problems on MacBook Pro 2015 (Intel Iris Graphics 6100) with macOS 12**:
+  - Rainbow branch colors may appear white instead of colored
+  - Dragged nodes may display with mixed colors
+  - Nodes may position far outside the visible viewport
+  - **Cause**: Qt 6.7 Metal backend has compatibility issues with older Intel GPUs
+  - **Workaround**: Currently no known workaround. Consider upgrading to a newer Mac or using the app in a virtual machine.
+  - **Status**: Under investigation. May be fixed in future Qt 6.7.x patch releases.
+
 ### Technical Details
 - **Dependency Update**: Changed pyside6 requirement from >=6.8.0 to >=6.7.0,<6.8.0
 - **Version Downgrade**: PySide6 6.11.0 → 6.7.3, pyside6-addons 6.11.0 → 6.7.3, pyside6-essentials 6.11.0 → 6.7.3, shiboken6 6.11.0 → 6.7.3
