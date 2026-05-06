@@ -523,12 +523,27 @@ class MindMapView(QGraphicsView):
         return get_app_context().get_main_window()
 
     def focusOutEvent(self, event):
-        """Handle focus lost event."""
+        """Handle focus lost event.
+
+        Save selected node state before losing focus to panel or other widgets.
+        """
+        # Save current selection state
+        if self.selected_node_id:
+            self._saved_selected_node_id = self.selected_node_id
         super().focusOutEvent(event)
 
     def focusInEvent(self, event):
-        """Handle focus gained event."""
+        """Handle focus gained event.
+
+        Restore previously saved selection state when regaining focus.
+        """
         super().focusInEvent(event)
+        # Restore selection if we had a saved state
+        if hasattr(self, '_saved_selected_node_id') and self._saved_selected_node_id:
+            if self._saved_selected_node_id in self.node_items:
+                self._select_node_by_id(self._saved_selected_node_id)
+            # Clear the saved state after restoration
+            self._saved_selected_node_id = None
 
     def keyPressEvent(self, event):
         """Handle key press events.
