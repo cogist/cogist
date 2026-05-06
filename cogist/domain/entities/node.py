@@ -46,6 +46,7 @@ class Node:
     priority_level: PriorityLevel = PriorityLevel.LEVEL_1  # Default: Normal
     custom_style: dict | None = None  # Reserved for future node-level override
     is_locked_position: bool = False  # Lock for rebalancing (prevents moving to other side)
+    rainbow_branch_index: int | None = None  # Fixed color index for rainbow mode (0-7)
 
     # Runtime attributes (not part of equality)
     _ui_item: Any = field(default=None, repr=False, init=False)

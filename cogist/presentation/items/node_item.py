@@ -300,12 +300,17 @@ class NodeItem(QGraphicsRectItem):
         # === Color Resolution ===
         # Check if rainbow branches are enabled
         if self.style_config.use_rainbow_branches and len(color_pool) >= 8:
-            # Level 1: Use rainbow colors
+            # Level 1: Use fixed rainbow branch index
             if depth == 1 and self.domain_node and self.domain_node.parent:
                 try:
-                    branch_idx = self.domain_node.parent.children.index(
-                        self.domain_node
-                    )
+                    # Use fixed rainbow_branch_index if available, otherwise fallback to dynamic calculation
+                    if self.domain_node.rainbow_branch_index is not None:
+                        branch_idx = self.domain_node.rainbow_branch_index
+                    else:
+                        # Fallback for old data without rainbow_branch_index
+                        branch_idx = self.domain_node.parent.children.index(
+                            self.domain_node
+                        )
                     base_color = color_pool[branch_idx % 8]  # Cycle through 8 colors
 
                     # Apply background color with adjustments
@@ -354,9 +359,14 @@ class NodeItem(QGraphicsRectItem):
                 if level_1_ancestor:
                     try:
                         if level_1_ancestor.parent:
-                            branch_idx = level_1_ancestor.parent.children.index(
-                                level_1_ancestor
-                            )
+                            # Use fixed rainbow_branch_index if available, otherwise fallback
+                            if level_1_ancestor.rainbow_branch_index is not None:
+                                branch_idx = level_1_ancestor.rainbow_branch_index
+                            else:
+                                # Fallback for old data without rainbow_branch_index
+                                branch_idx = level_1_ancestor.parent.children.index(
+                                    level_1_ancestor
+                                )
                             ancestor_color = color_pool[branch_idx % 8]
 
                             # Background
@@ -927,9 +937,14 @@ class NodeItem(QGraphicsRectItem):
                         ):
                             # Get branch index from parent's children list
                             try:
-                                branch_idx = self.domain_node.parent.children.index(
-                                    self.domain_node
-                                )
+                                # Use fixed rainbow_branch_index if available, otherwise fallback
+                                if self.domain_node.rainbow_branch_index is not None:
+                                    branch_idx = self.domain_node.rainbow_branch_index
+                                else:
+                                    # Fallback for old data without rainbow_branch_index
+                                    branch_idx = self.domain_node.parent.children.index(
+                                        self.domain_node
+                                    )
                                 from cogist.domain.styles.extended_styles import (
                                     get_rainbow_branch_color,
                                 )
@@ -985,11 +1000,16 @@ class NodeItem(QGraphicsRectItem):
                                 try:
                                     # Find the Level 1 node's position in its parent's children
                                     if level_1_ancestor.parent:
-                                        branch_idx = (
-                                            level_1_ancestor.parent.children.index(
-                                                level_1_ancestor
+                                        # Use fixed rainbow_branch_index if available, otherwise fallback
+                                        if level_1_ancestor.rainbow_branch_index is not None:
+                                            branch_idx = level_1_ancestor.rainbow_branch_index
+                                        else:
+                                            # Fallback for old data without rainbow_branch_index
+                                            branch_idx = (
+                                                level_1_ancestor.parent.children.index(
+                                                    level_1_ancestor
+                                                )
                                             )
-                                        )
                                         from cogist.domain.styles.extended_styles import (
                                             get_rainbow_branch_color,
                                         )

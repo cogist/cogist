@@ -131,9 +131,14 @@ class EdgeItem(QGraphicsPathItem):
                     and target_depth == 1
                 ):
                     with contextlib.suppress(ValueError, AttributeError):
-                        branch_idx = self.target_item.domain_node.parent.children.index(
-                            self.target_item.domain_node
-                        )
+                        # Use fixed rainbow_branch_index if available, otherwise fallback
+                        if self.target_item.domain_node.rainbow_branch_index is not None:
+                            branch_idx = self.target_item.domain_node.rainbow_branch_index
+                        else:
+                            # Fallback for old data without rainbow_branch_index
+                            branch_idx = self.target_item.domain_node.parent.children.index(
+                                self.target_item.domain_node
+                            )
 
                 # Case 2: Source is a Level 1 node (Level 1 -> Level 2+ edge)
                 elif (
@@ -143,9 +148,14 @@ class EdgeItem(QGraphicsPathItem):
                     and source_depth == 1
                 ):
                     with contextlib.suppress(ValueError, AttributeError):
-                        branch_idx = self.source_item.domain_node.parent.children.index(
-                            self.source_item.domain_node
-                        )
+                        # Use fixed rainbow_branch_index if available, otherwise fallback
+                        if self.source_item.domain_node.rainbow_branch_index is not None:
+                            branch_idx = self.source_item.domain_node.rainbow_branch_index
+                        else:
+                            # Fallback for old data without rainbow_branch_index
+                            branch_idx = self.source_item.domain_node.parent.children.index(
+                                self.source_item.domain_node
+                            )
 
                 # Case 3: Level 2+ -> Level 2+ edges (inherit from Level 1 ancestor)
                 elif target_depth >= 2 and hasattr(
@@ -154,9 +164,14 @@ class EdgeItem(QGraphicsPathItem):
                     level_1_ancestor = self.target_item._find_level_1_ancestor()
                     if level_1_ancestor and level_1_ancestor.parent:
                         with contextlib.suppress(ValueError, AttributeError):
-                            branch_idx = level_1_ancestor.parent.children.index(
-                                level_1_ancestor
-                            )
+                            # Use fixed rainbow_branch_index if available, otherwise fallback
+                            if level_1_ancestor.rainbow_branch_index is not None:
+                                branch_idx = level_1_ancestor.rainbow_branch_index
+                            else:
+                                # Fallback for old data without rainbow_branch_index
+                                branch_idx = level_1_ancestor.parent.children.index(
+                                    level_1_ancestor
+                                )
 
                 # Apply rainbow color if branch index found
                 if branch_idx is not None and branch_idx < len(
