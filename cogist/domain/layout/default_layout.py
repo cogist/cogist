@@ -202,6 +202,11 @@ class DefaultLayout(BaseLayout):
             context: Optional context information
                      - focused_node_id: ID of the currently focused/selected node
         """
+        # Extract focused_node_id from context if provided
+        focused_node_id = None
+        if context and "focused_node_id" in context:
+            focused_node_id = context["focused_node_id"]
+
         # Node sizes are already set from UI layer measurement
         # No need to estimate - we use actual rendered sizes
 
@@ -219,13 +224,19 @@ class DefaultLayout(BaseLayout):
         if not children:
             return
 
+        # Find which top-level child contains the focused node
+        locked_side_child = None
+        if focused_node_id:
+            locked_side_child = self._find_top_level_child_with_focus(
+                root_node, focused_node_id
+            )
+
         # Children order is preserved from the children list
         children = root_node.children
 
         # Balance distribution: intelligently assign nodes to left/right for height balance
-        # Nodes with is_locked_position=True will stay on their current side
         left_children, right_children = self._balance_branches(
-            children, parent_node=root_node
+            children, locked_side_child, parent_node=root_node
         )
 
         # Layout left branch
@@ -315,41 +326,34 @@ class DefaultLayout(BaseLayout):
         """
         Get the appropriate sibling spacing for a list of nodes.
 
-        For adjacent subtrees, use spacing based on the maximum depth among all subtrees.
-        This ensures uniform spacing between nodes at the same visual level.
-
         Args:
             nodes: List of sibling nodes
-            parent_depth: Optional parent depth (used to determine spacing level)
 
         Returns:
-            Sibling spacing based on the maximum subtree depth
+            Sibling spacing based on the nodes' depth level
         """
         if not nodes:
             return self.sibling_spacing
 
-        # Find the maximum depth across all subtrees
-        # This ensures adjacent subtrees use consistent spacing
-        max_depth = max(self._get_max_subtree_depth(node) for node in nodes)
-
-        # Use spacing at the deepest level
-        # Cap at depth 3 to avoid excessive spacing
-        effective_depth = min(max_depth, 3)
-        return self._get_sibling_spacing_for_depth(effective_depth)
+        # Use spacing at the nodes' own depth level
+        # For multiple siblings: use their depth
+        # For children list: use children's depth (which determines spacing between them)
+        return self._get_sibling_spacing_for_depth(nodes[0].depth)
 
     def _balance_branches(
-        self, nodes: list, parent_node=None
+        self, nodes: list, locked_side_child=None, parent_node=None
     ) -> tuple[list, list]:
         """
         Intelligently distribute nodes to left and right branches for height balance.
 
         Strategy:
-        1. Identify nodes with is_locked_position=True
-        2. Distribute non-locked nodes to achieve balance
+        1. Lock the side of the focused node's top-level ancestor
+        2. Distribute remaining nodes to achieve balance
         3. Only move non-locked nodes between sides
 
         Args:
             nodes: List of child nodes to distribute
+            locked_side_child: The top-level child that must stay on its current side
             parent_node: The parent node (used to determine left/right sides)
 
         Returns:
@@ -363,15 +367,19 @@ class DefaultLayout(BaseLayout):
 
         if len(nodes) == 1:
             # Single node: determine side based on current position relative to parent
-            # Rule 2: Compare center points, not left edge positions
-            node_center_x = nodes[0].position[0] + nodes[0].width / 2
-            parent_center_x = (
-                parent_x + parent_node.width / 2 if parent_node else parent_x
-            )
-            if node_center_x < parent_center_x:
-                return (nodes, [])
-            else:
-                return ([], nodes)
+            if locked_side_child and nodes[0] == locked_side_child:
+                # Locked node: keep on its current side
+                # Rule 2: Compare center points, not left edge positions
+                node_center_x = nodes[0].position[0] + nodes[0].width / 2
+                parent_center_x = (
+                    parent_x + parent_node.width / 2 if parent_node else parent_x
+                )
+                if node_center_x < parent_center_x:
+                    return (nodes, [])
+                else:
+                    return ([], nodes)
+            # Default to right side for first child (Default style)
+            return ([], nodes)
 
         # Step 1: Determine original sides based on current X positions relative to parent
         parent_x_estimate = parent_node.position[0] if parent_node else 600.0
@@ -398,13 +406,23 @@ class DefaultLayout(BaseLayout):
                 else:
                     right_original.append(node)
 
-        # Step 2: Identify locked nodes (nodes with is_locked_position flag set)
-        # These nodes should stay on their current side during rebalancing
-        # Use node.id for hashable comparison
-        locked_node_ids = set()
-        for node in nodes:
-            if getattr(node, "is_locked_position", False):
-                locked_node_ids.add(node.id)
+        # Step 2: If we have a locked child, ensure it stays on its original side
+        # Only lock if the locked_child is directly in our nodes list AND has children
+        # (locking leaf nodes is unnecessary since they have no subtree to preserve)
+        locked_node_for_rebalance = None  # Default: no locked node
+
+        if (
+            locked_side_child
+            and locked_side_child in nodes
+            and locked_side_child.children
+        ):
+            if locked_side_child in left_original:
+                pass  # Locked node is on the left side
+            elif locked_side_child in right_original:
+                pass  # Locked node is on the right side
+            locked_node_for_rebalance = (
+                locked_side_child  # Only set if we're actually locking
+            )
 
         # Step 3: Calculate heights for each side
         left_heights = [self._calculate_subtree_height(node) for node in left_original]
@@ -439,7 +457,7 @@ class DefaultLayout(BaseLayout):
             self._rebalance_branches(
                 from_side=left_children,
                 to_side=right_children,
-                locked_node_ids=locked_node_ids,
+                locked_node=locked_node_for_rebalance,
                 from_height=left_height,
                 to_height=right_height,
             )
@@ -448,7 +466,7 @@ class DefaultLayout(BaseLayout):
             self._rebalance_branches(
                 from_side=right_children,
                 to_side=left_children,
-                locked_node_ids=locked_node_ids,
+                locked_node=locked_node_for_rebalance,
                 from_height=right_height,
                 to_height=left_height,
             )
@@ -459,61 +477,28 @@ class DefaultLayout(BaseLayout):
         self,
         from_side: list,
         to_side: list,
-        locked_node_ids: set,
+        locked_node: object,
         from_height: float,
         to_height: float,
     ) -> None:
         """
         Rebalance by moving nodes from one side to another.
 
-        Strategy for drag operations:
-        - If dragged node is at bottom: move from top (protect bottom)
-        - Otherwise (dragged at top/middle): move from bottom (protect top)
-
-        Default strategy (no drag): move from bottom to keep top stable
-
         Args:
             from_side: List of nodes to move from (modified in place)
             to_side: List of nodes to move to (modified in place)
-            locked_node_ids: Set of node IDs that cannot be moved (is_locked_position=True)
+            locked_node: Node that cannot be moved
             from_height: Current height of the source side
             to_height: Current height of the target side
         """
-        # Exclude locked nodes from candidates
+        # Move oldest nodes first to keep newer nodes stable on their side
+        # Use original order: oldest nodes are at the beginning of the list
+        # CRITICAL: Also exclude nodes with is_locked_position flag set
         candidates = [
             (node, self._calculate_subtree_height(node))
             for node in from_side
-            if node.id not in locked_node_ids
+            if node != locked_node and not getattr(node, "is_locked_position", False)
         ]
-
-        # For drag operations: adjust order based on dragged node position
-        # If there are locked nodes, this is a drag operation
-        if locked_node_ids and len(candidates) > 0:
-            # Find locked nodes in to_side (the side where dragged node was placed)
-            locked_in_to_side = [node for node in to_side if node.id in locked_node_ids]
-
-            if locked_in_to_side:
-                # Determine if dragged node is at the bottom of to_side
-                # Bottom means: last position in the list
-                is_dragged_to_bottom = (
-                    len(locked_in_to_side) > 0 and
-                    locked_in_to_side[-1] == to_side[-1]
-                )
-
-                # If dragged to bottom, reverse order: move from top first
-                # Otherwise: move from bottom first (reverse the list)
-                if is_dragged_to_bottom:
-                    # Dragged to bottom: protect bottom, move from top
-                    # Keep original order (top to bottom)
-                    pass
-                else:
-                    # Dragged to top/middle: protect top, move from bottom
-                    # Reverse order (bottom to top)
-                    candidates = list(reversed(candidates))
-        else:
-            # Default: no drag operation, move from bottom to keep top stable
-            # Reverse order: bottom to top
-            candidates = list(reversed(candidates))
 
         for node, height in candidates:
             if from_height <= to_height:
@@ -533,6 +518,24 @@ class DefaultLayout(BaseLayout):
                 to_side.append(node)
                 from_height = new_from
                 to_height = new_to
+
+    def _has_complex_branch(self, nodes: list) -> bool:
+        """
+        Check if any node in the list has >= 2 children (recursively).
+
+        Args:
+            nodes: List of nodes to check
+
+        Returns:
+            True if any node has >= 2 children
+        """
+        for node in nodes:
+            if len(node.children) >= 2:
+                return True
+            # Recursively check children
+            if node.children and self._has_complex_branch(node.children):
+                return True
+        return False
 
     def _get_root_node(self, node):
         """Get the root node by traversing up the parent chain.
@@ -609,9 +612,10 @@ class DefaultLayout(BaseLayout):
         Default-style: Each node's X position is calculated based on its parent,
         not aligned to a fixed column. This allows short branches to stay compact.
 
-        Uses unified layout logic with iterative overlap detection:
-        - For simple branches (no overlaps): detection loop exits immediately
-        - For complex branches (overlaps detected): split movement equally
+        Implements the three principles:
+        1. Simple case: vertical centering when no node has >= 2 children
+        2. Complex case: upward expansion when any node has >= 2 children
+        3. Recursive avoidance: move all sibling subtrees when overlap occurs
 
         Args:
             nodes: List of sibling nodes
@@ -622,22 +626,152 @@ class DefaultLayout(BaseLayout):
         if not nodes:
             return
 
-        # Unified layout logic - works for both simple and complex cases
-        self._layout_branch(nodes, parent_node, direction, canvas_height)
+        # Default-style: Calculate X position for each node based on its parent
+        # Not a fixed column - each branch extends naturally
+        # This will be done in _layout_branch_simple and _layout_branch_complex
 
-    def _layout_branch(
+        # Check if this is a complex branch (any node has >= 2 children)
+        is_complex = self._has_complex_branch(nodes)
+
+        if not is_complex:
+            # === Principle 1: Simple case - vertical centering ===
+            # All nodes have 0 or 1 child, use simple vertical centering
+            # Note: position[1] is already the center Y coordinate
+            self._layout_branch_simple(
+                nodes,
+                parent_node,
+                parent_node.position[1],  # position is the center point
+                direction,
+                canvas_height,
+            )
+        else:
+            # === Principle 2 & 3: Complex case - recursive avoidance ===
+            self._layout_branch_complex(nodes, parent_node, direction, canvas_height)
+
+    def _layout_branch_simple(
+        self,
+        nodes: list,
+        parent_node,
+        parent_center_y: float,
+        direction: int,
+        canvas_height: float = 800.0,
+    ) -> None:
+        """
+        Layout a simple branch where no node has >= 2 children.
+
+        Default-style: Each node's X is calculated based on its own parent,
+        not a shared column X.
+
+        Args:
+            nodes: List of sibling nodes
+            parent_node: The parent of these nodes
+            parent_center_y: Parent node's center Y coordinate
+            direction: -1 for left, 1 for right
+            canvas_height: Canvas height for centering
+        """
+        # Calculate total height of nodes only (not subtrees)
+        # CRITICAL: Visual height includes border expansion on both top and bottom
+        nodes_height = sum(self._get_visual_height(node) for node in nodes)
+
+        # Rule 1: Sibling spacing must be >= nodes' own level spacing (minimum requirement)
+        nodes_level_spacing = self._get_sibling_spacing_for_depth(nodes[0].depth)
+
+        # Rule 2: If nodes have children, spacing between their subtrees
+        # uses the deepest level among adjacent subtrees
+        # Final spacing = max(rule1_minimum, rule2_subtree_spacing)
+        if any(node.children for node in nodes):
+            # Find max depth across all subtrees
+            max_depth = max(self._get_max_subtree_depth(node) for node in nodes if node.children)
+            effective_depth = min(max_depth, 3)
+            subtree_spacing = self._get_sibling_spacing_for_depth(effective_depth)
+            # Must satisfy BOTH rules: >= nodes' level AND use subtree depth
+            sibling_spacing = max(nodes_level_spacing, subtree_spacing)
+        else:
+            # No children, just use nodes' own level spacing
+            sibling_spacing = nodes_level_spacing
+
+        nodes_spacing = (len(nodes) - 1) * sibling_spacing
+        total_height = nodes_height + nodes_spacing
+
+        # Calculate the aligned edge position for all sibling nodes
+        aligned_edge_x = self._calculate_aligned_edge(parent_node, nodes, direction)
+
+        # Special case: single node should be vertically centered with parent
+        if len(nodes) == 1:
+            # Single node: center it with parent's center
+            node = nodes[0]
+            # Calculate node center position using unified method
+            node_x = self._calculate_node_position(node, aligned_edge_x, direction)
+
+            # Center the node vertically with parent
+            node_y = parent_center_y
+
+            node.position = (node_x, node_y)
+
+            # Layout children if any
+            if node.children:
+                self._layout_side(node.children, node, canvas_height, direction)
+
+            return
+
+        # Multiple nodes: use the original logic with start_y calculation
+        # Start Y for vertical centering
+        # CRITICAL FIX: total_height is from top of first node to bottom of last node
+        # So we need to add half of first node's height to get its center
+        # CRITICAL: Visual height includes border expansion
+        if nodes:
+            first_node_visual_height = self._get_visual_height(nodes[0])
+            start_y = parent_center_y - total_height / 2.0 + first_node_visual_height / 2.0
+        else:
+            start_y = parent_center_y
+        current_y = start_y
+
+        # Calculate the aligned edge position for all sibling nodes
+        aligned_edge_x = self._calculate_aligned_edge(parent_node, nodes, direction)
+
+        for node in nodes:
+            # Calculate node center position using unified method
+            node_x = self._calculate_node_position(node, aligned_edge_x, direction)
+
+            node.position = (node_x, current_y)
+
+            # Layout children if any
+            if node.children:
+                # Recursively layout children using _layout_side (checks for complex branches)
+                # The parent of node.children is 'node', so we pass 'node' directly
+                # Rule 4: Left node's children on left, right node's children on right
+                # CRITICAL: Compare node's center with ROOT's center, not parent's center!
+                # Find root by traversing up the parent chain
+                root_node = self._get_root_node(node)
+                if root_node:
+                    root_center_x = root_node.position[0] + root_node.width / 2
+                    node_center_x = node.position[0] + node.width / 2
+                    child_direction = 1 if node_center_x >= root_center_x else -1
+                else:
+                    # Fallback: use parent as reference
+                    parent_center_x = (
+                        parent_node.position[0] + parent_node.width / 2
+                        if parent_node
+                        else 0.0
+                    )
+                    node_center_x = node.position[0] + node.width / 2
+                    child_direction = 1 if node_center_x >= parent_center_x else -1
+                self._layout_side(node.children, node, canvas_height, child_direction)
+
+            # CRITICAL: Move current_y by visual height (including border expansion)
+            current_y += self._get_visual_height(node) + sibling_spacing
+
+    def _layout_branch_complex(
         self, nodes: list, parent_node, direction: int, canvas_height: float
     ) -> None:
         """
-        Layout a branch with iterative overlap detection.
+        Layout a complex branch where some nodes have >= 2 children.
 
         Default-style: Each node's X is calculated based on its parent.
-        Uses iterative detection and avoidance with bidirectional expansion:
+        Uses iterative detection and avoidance with TRUE BIDIRECTIONAL expansion:
         1. Start with vertical centering
-        2. Detect overlaps from subtrees iteratively
+        2. Detect overlaps from subtrees
         3. Split the overlap evenly: move upper nodes up, lower nodes down
-
-        For simple branches (no overlaps), the detection loop exits immediately.
 
         Args:
             nodes: List of sibling nodes

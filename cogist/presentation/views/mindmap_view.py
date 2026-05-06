@@ -884,10 +884,12 @@ class MindMapView(QGraphicsView):
 
     def mouseReleaseEvent(self, event):
         """Handle mouse release - reparent node and refresh layout."""
+
         # Clear drag state FIRST to prevent further drag events
         dragged_id = self._dragged_node_id
         potential_parent = self._current_potential_parent
         is_cross_side = self._is_dragging_cross_side
+        drag_start_pos = getattr(self, '_drag_start_pos', None)
 
         self._dragged_node_id = None
         self._drag_offset = None
@@ -898,13 +900,20 @@ class MindMapView(QGraphicsView):
         if dragged_id:
             dragged_node = self._find_node_by_id(self.root_node, dragged_id)
 
-            if dragged_node and potential_parent:
-                new_parent = potential_parent
+            # Check if actual drag occurred (mouse moved from start position)
+            current_pos = self.mapToScene(event.position().toPoint())
 
-                if (
-                    dragged_node != new_parent
-                    and new_parent not in dragged_node.get_all_descendants()
-                ):
+            # Calculate distance moved
+            distance = 0
+            if drag_start_pos:
+                distance = (current_pos - drag_start_pos).manhattanLength()
+
+            # Only process drag if mouse actually moved
+            if drag_start_pos and distance > 5:
+                # Real drag occurred - process it
+                if dragged_node and potential_parent:
+                    new_parent = potential_parent
+
                     # Save old parent and index BEFORE modifying
                     old_parent = dragged_node.parent
                     old_index = (
@@ -961,8 +970,13 @@ class MindMapView(QGraphicsView):
                                 dragged_node, new_parent_item.is_right_side
                             )
 
-                    # CRITICAL: Update the top-level node's position[0] to the new side
-                    # This ensures the layout algorithm assigns it to the correct side
+                    # CRITICAL: Node relationships have changed, must rebuild edges completely
+                    # Incremental update won't work because parent-child connections changed
+                    # FIX: Re-measure dragged node and all its descendants since depth may have changed
+                    self._measure_actual_sizes(dragged_node)
+
+                    # CRITICAL: Sync dragged node position to current UI position BEFORE layout
+                    # This ensures node.position matches the actual drag destination
                     def get_top_level_ancestor(node):
                         """Get the direct child of root for this node."""
                         current = node
@@ -971,27 +985,16 @@ class MindMapView(QGraphicsView):
                         return current
 
                     top_level_node = get_top_level_ancestor(dragged_node)
+                    if top_level_node and top_level_node.id in self.node_items:
+                        # Sync position to actual UI position (not temporary values!)
+                        top_level_node.position = (
+                            self.node_items[top_level_node.id].scenePos().x(),
+                            top_level_node.position[1]
+                        )
+
+                    # Mark as locked to prevent layout from moving it during rebalancing
                     if top_level_node:
-                        # Use is_currently_right to determine the target side
-                        is_currently_right = self._is_node_on_right_side(dragged_id)
-
-                        # Update position[0] to a clear side indicator
-                        # This is CRITICAL for the layout algorithm to correctly assign the node
-                        if is_currently_right:
-                            # R node: position far to the right
-                            top_level_node.position = (800.0, top_level_node.position[1])
-                        else:
-                            # L node: position far to the left (must be < -parent.width/2)
-                            # Use -800.0 to ensure it's clearly on the left side
-                            top_level_node.position = (-800.0, top_level_node.position[1])
-
-                        # Mark as locked so layout won't move it during rebalancing
-                    top_level_node.is_locked_position = True
-
-                    # CRITICAL: Node relationships have changed, must rebuild edges completely
-                    # Incremental update won't work because parent-child connections changed
-                    # FIX: Re-measure dragged node and all its descendants since depth may have changed
-                    self._measure_actual_sizes(dragged_node)
+                        top_level_node.is_locked_position = True
 
                     # Now refresh layout with skip_measurement=True since we just measured
                     # CRITICAL: Clear locked positions after this layout - drag operation is complete!
@@ -1004,10 +1007,14 @@ class MindMapView(QGraphicsView):
                     # Parent didn't change, but still need to refresh layout to snap node back
                     self._measure_actual_sizes(dragged_node)
                     self._refresh_layout(skip_measurement=True, force_rebuild_edges=False)
-            elif dragged_node:
-                # No potential parent detected, refresh layout to snap node back to original position
+            elif dragged_node and distance > 5:
+                # No potential parent detected (mouse moved but no valid drop target)
+                # Only refresh if this was a real drag (not just a click)
                 self._measure_actual_sizes(dragged_node)
                 self._refresh_layout(skip_measurement=True, force_rebuild_edges=False)
+            else:
+                # Mouse didn't move enough - this is just a CLICK, not a drag
+                pass
 
         # Clean up temp edge
         if self._temp_drag_edge:
