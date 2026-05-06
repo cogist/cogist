@@ -326,19 +326,27 @@ class DefaultLayout(BaseLayout):
         """
         Get the appropriate sibling spacing for a list of nodes.
 
+        For adjacent subtrees, use spacing based on the maximum depth among all subtrees.
+        This ensures uniform spacing between nodes at the same visual level.
+
         Args:
             nodes: List of sibling nodes
+            parent_depth: Optional parent depth (used to determine spacing level)
 
         Returns:
-            Sibling spacing based on the nodes' depth level
+            Sibling spacing based on the maximum subtree depth
         """
         if not nodes:
             return self.sibling_spacing
 
-        # Use spacing at the nodes' own depth level
-        # For multiple siblings: use their depth
-        # For children list: use children's depth (which determines spacing between them)
-        return self._get_sibling_spacing_for_depth(nodes[0].depth)
+        # Find the maximum depth across all subtrees
+        # This ensures adjacent subtrees use consistent spacing
+        max_depth = max(self._get_max_subtree_depth(node) for node in nodes)
+
+        # Use spacing at the deepest level
+        # Cap at depth 3 to avoid excessive spacing
+        effective_depth = min(max_depth, 3)
+        return self._get_sibling_spacing_for_depth(effective_depth)
 
     def _balance_branches(
         self, nodes: list, locked_side_child=None, parent_node=None
