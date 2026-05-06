@@ -1640,6 +1640,9 @@ class NodeItem(QGraphicsRectItem):
         if self.edit_widget is not None:
             return  # Already editing
 
+        # CRITICAL: Store mindmap_view reference for layout refresh during editing
+        self._mindmap_view = mindmap_view
+
         # Create editable text item with proper Tab key handling
         # CRITICAL: Read max_text_width from template_style, never use hardcoded constants
         if hasattr(self, "template_style") and self.template_style:
@@ -1792,9 +1795,22 @@ class NodeItem(QGraphicsRectItem):
             for edge in self.connected_edges:
                 edge.update_curve()
 
-        def on_text_changed(new_text):
+        def on_text_changed(_new_text):
             """Handle text changes during editing."""
-            pass  # Width change handler will take care of everything
+            # CRITICAL: Directly trigger layout refresh when text changes
+            # This ensures child nodes reposition in real-time
+            print(f"[NODE_ITEM] on_text_changed called, text='{_new_text}'")
+            if self._mindmap_view:
+                print("[NODE_ITEM] Calling _refresh_layout()")
+                try:
+                    self._mindmap_view._refresh_layout()
+                    print("[NODE_ITEM] _refresh_layout() completed successfully")
+                except Exception as e:
+                    print(f"[NODE_ITEM] ERROR in _refresh_layout(): {e}")
+                    import traceback
+                    traceback.print_exc()
+            else:
+                print("[NODE_ITEM] ERROR: _mindmap_view is None!")
 
         def on_tab_pressed():
             """Handle Tab key press - set flag to add child after editing."""
@@ -1811,7 +1827,9 @@ class NodeItem(QGraphicsRectItem):
             self.cancel_editing()
 
         self.edit_widget.width_changed.connect(on_width_changed)
+        print("[NODE_ITEM] Connecting text_changed signal...")
         self.edit_widget.text_changed.connect(on_text_changed)
+        print("[NODE_ITEM] text_changed signal connected successfully")
         self.edit_widget.tab_pressed.connect(on_tab_pressed)
         self.edit_widget.editing_finished.connect(on_editing_finished)
         self.edit_widget.editing_cancelled.connect(on_editing_cancelled)

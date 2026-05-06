@@ -89,7 +89,11 @@ class EditableTextItem(QGraphicsTextItem):
         - Chinese/Japanese IME confirmation
         - Paste operations
         """
+        # DEBUG: Log entry
+        print(f"[EDITABLE] _on_document_changed: editing={self._editing}, updating={self._updating}")
+
         if not self._editing or self._updating:
+            print(f"[EDITABLE] Returning early: editing={self._editing}, updating={self._updating}")
             return
 
         # CRITICAL: Sync text to NodeItem's text_item for real-time layout refresh
@@ -98,9 +102,11 @@ class EditableTextItem(QGraphicsTextItem):
             # Update the underlying text_item with current edit content
             self._parent_node.text_item.setPlainText(self.toPlainText())
 
-            # TODO: Trigger real-time layout refresh here
-            # For now, just update the text. Layout refresh will be added later.
-            # Example: self._parent_node._refresh_layout_with_animation()
+            # CRITICAL: Emit text_changed signal to trigger layout refresh
+            # This ensures child nodes reposition in real-time during editing
+            print(f"[EDITABLE] About to emit text_changed signal: '{self.toPlainText()}'")
+            self.text_changed.emit(self.toPlainText())
+            print("[EDITABLE] text_changed signal emitted successfully")
 
         # Update layout to recalculate width
         self._update_layout()
@@ -155,6 +161,7 @@ class EditableTextItem(QGraphicsTextItem):
             select_all: If True, select all text; otherwise position cursor at end
             initial_width: Initial text width to maintain layout consistency (if provided, uses it; otherwise calculates from content)
         """
+        print("[EDITABLE] start_editing called, setting _editing=True")
         self._editing = True
         self._text_cache = self.toPlainText()
 
