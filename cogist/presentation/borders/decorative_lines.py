@@ -32,6 +32,9 @@ class BottomLineBorder(BorderStrategy):
             return
 
         # Draw bottom line
+        # CRITICAL: Line should extend outward by border_width/2 (like full border)
+        # When using Qt.RoundCap, line extends by 0.5×width at both ends
+        # So we draw at rect.bottom() + border_width/2 to make outer edge = rect.bottom() + border_width
         pen = QPen(QColor(border_color), border_width)
         pen.setCapStyle(Qt.RoundCap)  # Rounded ends look better
 
@@ -49,9 +52,11 @@ class BottomLineBorder(BorderStrategy):
         painter.setPen(pen)
 
         # Calculate line endpoints (full width)
-        y = rect.bottom()
-        x1 = rect.left()
-        x2 = rect.right()
+        # Line center is at rect.bottom() + border_width/2
+        # Outer edge of line (with RoundCap) will be at rect.bottom() + border_width
+        y = int(rect.bottom() + border_width / 2)
+        x1 = int(rect.left())
+        x2 = int(rect.right())
 
         painter.drawLine(x1, y, x2, y)
 
@@ -110,11 +115,11 @@ class LeftLineBorder(BorderStrategy):
         painter.setPen(pen)
 
         # Calculate line endpoints (full height)
-        y1 = rect.top()
-        y2 = rect.bottom()
+        y1 = int(rect.top())
+        y2 = int(rect.bottom())
 
         # Adaptive direction: draw on the side facing the parent
-        x = rect.left() if is_right_side else rect.right()
+        x = int(rect.left()) if is_right_side else int(rect.right())
 
         painter.drawLine(x, y1, x, y2)
 
