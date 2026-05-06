@@ -158,8 +158,12 @@ class MainWindow(QMainWindow):
             self.style_panel.advanced_tab.refresh_current_layer()
 
         # Also update color scheme tab
-        if hasattr(self, "style_panel") and hasattr(self.style_panel, "color_scheme_tab"):
-            self.style_panel.color_scheme_tab.set_style_config(self.mindmap_view.style_config)
+        if hasattr(self, "style_panel") and hasattr(
+            self.style_panel, "color_scheme_tab"
+        ):
+            self.style_panel.color_scheme_tab.set_style_config(
+                self.mindmap_view.style_config
+            )
 
         # Enable document mode to reduce decorations
         self.setDocumentMode(True)
@@ -333,7 +337,9 @@ class MainWindow(QMainWindow):
                 builtin_data = template_loader.get_builtin_template("default")
                 if builtin_data:
                     self.current_style = (
-                        template_deserializer.deserialize_complete_template(builtin_data)
+                        template_deserializer.deserialize_complete_template(
+                            builtin_data
+                        )
                     )
                 else:
                     raise RuntimeError(
@@ -354,7 +360,9 @@ class MainWindow(QMainWindow):
         # Step 2: Load color scheme INDEPENDENTLY (colors only)
         # Color scheme completely overrides template's color_pool
         try:
-            color_scheme_data = color_scheme_loader.load_color_scheme_with_fallback("default")
+            color_scheme_data = color_scheme_loader.load_color_scheme_with_fallback(
+                "default"
+            )
             # Override color_pool from color scheme (ignore template's colors)
             if "color_pool" in color_scheme_data:
                 self.current_style.color_pool = color_scheme_data["color_pool"]
@@ -582,6 +590,38 @@ class MainWindow(QMainWindow):
             traceback.print_exc()
             QMessageBox.critical(self, "Error", f"Failed to save template:\n{str(e)}")
 
+    def closeEvent(self, event):
+        """Handle window close event with unsaved changes prompt.
+
+        Args:
+            event: Close event
+        """
+        # Check for unsaved changes
+        if self.mindmap_service.is_modified():
+            reply = QMessageBox.warning(
+                self,
+                "Unsaved Changes",
+                "The current mind map has unsaved changes.\n\nDo you want to save before exiting?",
+                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                QMessageBox.Save,
+            )
+
+            if reply == QMessageBox.Save:
+                # Save current file first
+                self.mindmap_view._save_file()
+                # If save was cancelled or failed, don't close
+                if self.mindmap_service.is_modified():
+                    event.ignore()  # Cancel close
+                    return
+            elif reply == QMessageBox.Discard:
+                pass  # Discard changes and close
+            else:
+                event.ignore()  # Cancelled, don't close
+                return
+
+        # No unsaved changes or user chose to discard - allow close
+        event.accept()
+
     def _new_file(self):
         """Create a new mind map."""
         # CRITICAL: Check for unsaved changes
@@ -669,22 +709,24 @@ class MainWindow(QMainWindow):
             if is_change_style_command:
                 self.mindmap_view._update_canvas_background()
                 # Update style panel controls to reflect the undone state
-                if hasattr(self, 'style_panel') and self.style_panel.isVisible():
+                if hasattr(self, "style_panel") and self.style_panel.isVisible():
                     # Prevent command creation during undo/redo refresh
                     self.style_panel.advanced_tab._updating_from_undo_redo = True
                     self.style_panel.advanced_tab.refresh_current_layer()
 
                     # Sync color scheme tab with current style_config (for rainbow switch)
-                    self.style_panel.color_scheme_tab.set_style_config(self.mindmap_view.style_config)
+                    self.style_panel.color_scheme_tab.set_style_config(
+                        self.mindmap_view.style_config
+                    )
 
                     self.style_panel.advanced_tab._updating_from_undo_redo = False
                 # Re-apply styles to all nodes
-                if hasattr(self.mindmap_view, 'node_items'):
+                if hasattr(self.mindmap_view, "node_items"):
                     for node_item in self.mindmap_view.node_items.values():
-                        if hasattr(node_item, 'update_style'):
+                        if hasattr(node_item, "update_style"):
                             node_item.update_style(self.mindmap_view.style_config)
                 # Apply spacing configuration to mindmap_view and refresh layout
-                if hasattr(self, 'style_panel') and self.style_panel.isVisible():
+                if hasattr(self, "style_panel") and self.style_panel.isVisible():
                     self.style_panel.advanced_tab._apply_styles_to_mindmap()
                 return
 
@@ -729,7 +771,9 @@ class MainWindow(QMainWindow):
             ):
                 # Normal undo (e.g., undoing a delete), focus stays on current selection
                 # Only scroll if node is not visible (prevents viewport jump)
-                self.mindmap_view._ensure_node_visible(self.mindmap_view.selected_node_id)
+                self.mindmap_view._ensure_node_visible(
+                    self.mindmap_view.selected_node_id
+                )
 
     def _redo(self):
         """Redo the last undone operation."""
@@ -761,22 +805,24 @@ class MainWindow(QMainWindow):
             if is_change_style_command:
                 self.mindmap_view._update_canvas_background()
                 # Update style panel controls to reflect the redone state
-                if hasattr(self, 'style_panel') and self.style_panel.isVisible():
+                if hasattr(self, "style_panel") and self.style_panel.isVisible():
                     # Prevent command creation during undo/redo refresh
                     self.style_panel.advanced_tab._updating_from_undo_redo = True
                     self.style_panel.advanced_tab.refresh_current_layer()
 
                     # Sync color scheme tab with current style_config (for rainbow switch)
-                    self.style_panel.color_scheme_tab.set_style_config(self.mindmap_view.style_config)
+                    self.style_panel.color_scheme_tab.set_style_config(
+                        self.mindmap_view.style_config
+                    )
 
                     self.style_panel.advanced_tab._updating_from_undo_redo = False
                 # Re-apply styles to all nodes
-                if hasattr(self.mindmap_view, 'node_items'):
+                if hasattr(self.mindmap_view, "node_items"):
                     for node_item in self.mindmap_view.node_items.values():
-                        if hasattr(node_item, 'update_style'):
+                        if hasattr(node_item, "update_style"):
                             node_item.update_style(self.mindmap_view.style_config)
                 # Apply spacing configuration to mindmap_view and refresh layout
-                if hasattr(self, 'style_panel') and self.style_panel.isVisible():
+                if hasattr(self, "style_panel") and self.style_panel.isVisible():
                     self.style_panel.advanced_tab._apply_styles_to_mindmap()
                 return
 
@@ -818,7 +864,9 @@ class MainWindow(QMainWindow):
             ):
                 # Normal redo (e.g., redoing a delete), focus stays on current selection
                 # Only scroll if node is not visible (prevents viewport jump)
-                self.mindmap_view._ensure_node_visible(self.mindmap_view.selected_node_id)
+                self.mindmap_view._ensure_node_visible(
+                    self.mindmap_view.selected_node_id
+                )
 
     def _add_child(self):
         """Add a child node."""
@@ -874,7 +922,9 @@ class MainWindow(QMainWindow):
         # CRITICAL: Calculate minimum allowed scale factor
         # Prevent zooming out beyond: scene + padding fits viewport exactly
         current_transform = view.transform()
-        current_scale = current_transform.m11()  # Get current scale (m11 = m22 for uniform scale)
+        current_scale = (
+            current_transform.m11()
+        )  # Get current scale (m11 = m22 for uniform scale)
 
         # Calculate the minimum scale needed for scene to fit viewport
         scene_rect = view.sceneRect()
