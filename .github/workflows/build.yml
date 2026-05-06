@@ -213,10 +213,26 @@ jobs:
           echo "\n=== All files ==="
           find artifacts/ -type f || echo "No files found!"
 
+      - name: Extract changelog for current version
+        run: |
+          # Extract version from tag (e.g., v0.5.4 -> 0.5.4)
+          VERSION=${GITHUB_REF_NAME#v}
+          
+          # Extract the changelog section for this version only
+          # Find the line with ## [VERSION] and extract until next ## or EOF
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\\[(" ver ")\\\]" { found=1; next }
+            found && /^## / { found=0 }
+            found { print }
+          ' CHANGELOG.md > release_notes.md
+          
+          echo "=== Release Notes for v${VERSION} ==="
+          cat release_notes.md
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          body_path: CHANGELOG.md
+          body_path: release_notes.md
           files: |
             artifacts/**/*.AppImage
             artifacts/**/*.exe
