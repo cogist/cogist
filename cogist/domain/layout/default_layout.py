@@ -202,11 +202,6 @@ class DefaultLayout(BaseLayout):
             context: Optional context information
                      - focused_node_id: ID of the currently focused/selected node
         """
-        # Extract focused_node_id from context if provided
-        focused_node_id = None
-        if context and "focused_node_id" in context:
-            focused_node_id = context["focused_node_id"]
-
         # Node sizes are already set from UI layer measurement
         # No need to estimate - we use actual rendered sizes
 
@@ -224,19 +219,13 @@ class DefaultLayout(BaseLayout):
         if not children:
             return
 
-        # Find which top-level child contains the focused node
-        locked_side_child = None
-        if focused_node_id:
-            locked_side_child = self._find_top_level_child_with_focus(
-                root_node, focused_node_id
-            )
-
         # Children order is preserved from the children list
         children = root_node.children
 
         # Balance distribution: intelligently assign nodes to left/right for height balance
+        # Nodes with is_locked_position=True will stay on their current side
         left_children, right_children = self._balance_branches(
-            children, locked_side_child, parent_node=root_node
+            children, parent_node=root_node
         )
 
         # Layout left branch
@@ -349,19 +338,18 @@ class DefaultLayout(BaseLayout):
         return self._get_sibling_spacing_for_depth(effective_depth)
 
     def _balance_branches(
-        self, nodes: list, locked_side_child=None, parent_node=None
+        self, nodes: list, parent_node=None
     ) -> tuple[list, list]:
         """
         Intelligently distribute nodes to left and right branches for height balance.
 
         Strategy:
-        1. Lock the side of the focused node's top-level ancestor
-        2. Distribute remaining nodes to achieve balance
+        1. Identify nodes with is_locked_position=True
+        2. Distribute non-locked nodes to achieve balance
         3. Only move non-locked nodes between sides
 
         Args:
             nodes: List of child nodes to distribute
-            locked_side_child: The top-level child that must stay on its current side
             parent_node: The parent node (used to determine left/right sides)
 
         Returns:
@@ -375,19 +363,15 @@ class DefaultLayout(BaseLayout):
 
         if len(nodes) == 1:
             # Single node: determine side based on current position relative to parent
-            if locked_side_child and nodes[0] == locked_side_child:
-                # Locked node: keep on its current side
-                # Rule 2: Compare center points, not left edge positions
-                node_center_x = nodes[0].position[0] + nodes[0].width / 2
-                parent_center_x = (
-                    parent_x + parent_node.width / 2 if parent_node else parent_x
-                )
-                if node_center_x < parent_center_x:
-                    return (nodes, [])
-                else:
-                    return ([], nodes)
-            # Default to right side for first child (Default style)
-            return ([], nodes)
+            # Rule 2: Compare center points, not left edge positions
+            node_center_x = nodes[0].position[0] + nodes[0].width / 2
+            parent_center_x = (
+                parent_x + parent_node.width / 2 if parent_node else parent_x
+            )
+            if node_center_x < parent_center_x:
+                return (nodes, [])
+            else:
+                return ([], nodes)
 
         # Step 1: Determine original sides based on current X positions relative to parent
         parent_x_estimate = parent_node.position[0] if parent_node else 600.0
@@ -414,23 +398,13 @@ class DefaultLayout(BaseLayout):
                 else:
                     right_original.append(node)
 
-        # Step 2: If we have a locked child, ensure it stays on its original side
-        # Only lock if the locked_child is directly in our nodes list AND has children
-        # (locking leaf nodes is unnecessary since they have no subtree to preserve)
-        locked_node_for_rebalance = None  # Default: no locked node
-
-        if (
-            locked_side_child
-            and locked_side_child in nodes
-            and locked_side_child.children
-        ):
-            if locked_side_child in left_original:
-                pass  # Locked node is on the left side
-            elif locked_side_child in right_original:
-                pass  # Locked node is on the right side
-            locked_node_for_rebalance = (
-                locked_side_child  # Only set if we're actually locking
-            )
+        # Step 2: Identify locked nodes (nodes with is_locked_position flag set)
+        # These nodes should stay on their current side during rebalancing
+        # Use node.id for hashable comparison
+        locked_node_ids = set()
+        for node in nodes:
+            if getattr(node, "is_locked_position", False):
+                locked_node_ids.add(node.id)
 
         # Step 3: Calculate heights for each side
         left_heights = [self._calculate_subtree_height(node) for node in left_original]
@@ -465,7 +439,7 @@ class DefaultLayout(BaseLayout):
             self._rebalance_branches(
                 from_side=left_children,
                 to_side=right_children,
-                locked_node=locked_node_for_rebalance,
+                locked_node_ids=locked_node_ids,
                 from_height=left_height,
                 to_height=right_height,
             )
@@ -474,7 +448,7 @@ class DefaultLayout(BaseLayout):
             self._rebalance_branches(
                 from_side=right_children,
                 to_side=left_children,
-                locked_node=locked_node_for_rebalance,
+                locked_node_ids=locked_node_ids,
                 from_height=right_height,
                 to_height=left_height,
             )
@@ -485,7 +459,7 @@ class DefaultLayout(BaseLayout):
         self,
         from_side: list,
         to_side: list,
-        locked_node: object,
+        locked_node_ids: set,
         from_height: float,
         to_height: float,
     ) -> None:
@@ -495,17 +469,17 @@ class DefaultLayout(BaseLayout):
         Args:
             from_side: List of nodes to move from (modified in place)
             to_side: List of nodes to move to (modified in place)
-            locked_node: Node that cannot be moved
+            locked_node_ids: Set of node IDs that cannot be moved (is_locked_position=True)
             from_height: Current height of the source side
             to_height: Current height of the target side
         """
         # Move oldest nodes first to keep newer nodes stable on their side
         # Use original order: oldest nodes are at the beginning of the list
-        # CRITICAL: Also exclude nodes with is_locked_position flag set
+        # CRITICAL: Exclude nodes with is_locked_position flag set
         candidates = [
             (node, self._calculate_subtree_height(node))
             for node in from_side
-            if node != locked_node and not getattr(node, "is_locked_position", False)
+            if node.id not in locked_node_ids
         ]
 
         for node, height in candidates:

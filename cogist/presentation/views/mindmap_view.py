@@ -966,7 +966,7 @@ class MindMapView(QGraphicsView):
                             top_level_node.position = (400.0, top_level_node.position[1])
 
                         # Mark as locked so layout won't move it during rebalancing
-                        top_level_node.is_locked_position = True
+                    top_level_node.is_locked_position = True
 
                     # CRITICAL: Node relationships have changed, must rebuild edges completely
                     # Incremental update won't work because parent-child connections changed
@@ -974,7 +974,12 @@ class MindMapView(QGraphicsView):
                     self._measure_actual_sizes(dragged_node)
 
                     # Now refresh layout with skip_measurement=True since we just measured
-                    self._refresh_layout(skip_measurement=True, force_rebuild_edges=True)
+                    # CRITICAL: Don't clear locked positions - we need them for this layout!
+                    self._refresh_layout(
+                        skip_measurement=True,
+                        force_rebuild_edges=True,
+                        clear_locked_positions=False
+                    )
                 else:
                     # Parent didn't change, but still need to refresh layout to snap node back
                     self._measure_actual_sizes(dragged_node)
@@ -1861,8 +1866,13 @@ class MindMapView(QGraphicsView):
         # This is typically done after drag operations or node additions
         # For undo/redo of text edits, we should preserve locked states
         if clear_locked_positions and self.root_node:
-            for child in self.root_node.children:
-                child.is_locked_position = False
+            # Recursively clear all locked positions in the tree
+            def clear_locks(node):
+                node.is_locked_position = False
+                for child in node.children:
+                    clear_locks(child)
+
+            clear_locks(self.root_node)
 
         # Step 3: OPTIMIZATION - Try incremental UI update first
         # This is much faster than clearing and recreating all items
