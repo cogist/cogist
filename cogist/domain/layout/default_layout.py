@@ -172,6 +172,19 @@ class DefaultLayout(BaseLayout):
 
         return node_x
 
+    def _get_visual_height(self, node) -> float:
+        """
+        Get the visual height of a node (including border expansion).
+
+        Args:
+            node: The node to measure
+
+        Returns:
+            Visual height including border on top and bottom
+        """
+        border_width = getattr(node, 'border_width', 0)
+        return node.height + border_width * 2
+
     def layout(
         self,
         root_node,
@@ -271,16 +284,12 @@ class DefaultLayout(BaseLayout):
         Returns:
             Total height including all descendants and spacing
         """
-        # Get border width (default to 0 if not set)
-        border_width = getattr(node, 'border_width', 0)
-        # Visual height includes border expansion on both top and bottom
-        visual_height = node.height + border_width * 2
-
         if not node.children:
-            return visual_height
+            return self._get_visual_height(node)
 
-        # Get spacing for this depth level
-        sibling_spacing = self._get_sibling_spacing_for_depth(node.depth + 1)
+        # Get spacing for node's children (which are at depth = node.depth + 1)
+        # Use the maximum depth among children subtrees
+        sibling_spacing = self._get_sibling_spacing_for_nodes(node.children)
 
         # Calculate heights of all children subtrees
         child_heights = [
@@ -293,7 +302,51 @@ class DefaultLayout(BaseLayout):
 
         # The node itself takes max(visual_height, total_child_height)
         # because children are centered around the node
-        return max(visual_height, total_child_height + total_spacing)
+        return max(self._get_visual_height(node), total_child_height + total_spacing)
+
+    def _get_max_subtree_depth(self, node) -> int:
+        """
+        Get the maximum depth in a subtree.
+
+        Args:
+            node: Root of the subtree
+
+        Returns:
+            Maximum depth in the subtree
+        """
+        if not node.children:
+            return node.depth
+
+        max_child_depth = max(
+            self._get_max_subtree_depth(child) for child in node.children
+        )
+        return max_child_depth
+
+    def _get_sibling_spacing_for_nodes(self, nodes: list, parent_depth: int | None = None) -> float:
+        """
+        Get the appropriate sibling spacing for a list of nodes.
+
+        For adjacent subtrees, use spacing based on the maximum depth among all subtrees.
+        This ensures uniform spacing between nodes at the same visual level.
+
+        Args:
+            nodes: List of sibling nodes
+            parent_depth: Optional parent depth (used to determine spacing level)
+
+        Returns:
+            Sibling spacing based on the maximum subtree depth
+        """
+        if not nodes:
+            return self.sibling_spacing
+
+        # Find the maximum depth across all subtrees
+        # This ensures adjacent subtrees use consistent spacing
+        max_depth = max(self._get_max_subtree_depth(node) for node in nodes)
+
+        # Use spacing at the deepest level
+        # Cap at depth 3 to avoid excessive spacing
+        effective_depth = min(max_depth, 3)
+        return self._get_sibling_spacing_for_depth(effective_depth)
 
     def _balance_branches(
         self, nodes: list, locked_side_child=None, parent_node=None
@@ -385,8 +438,10 @@ class DefaultLayout(BaseLayout):
             self._calculate_subtree_height(node) for node in right_original
         ]
 
-        # Use spacing for level 1 nodes (depth 1)
-        level1_spacing = self._get_sibling_spacing_for_depth(1)
+        # Use spacing based on the maximum depth among all root's children subtrees
+        # This ensures adjacent subtrees use the deepest level's spacing
+        level1_spacing = self._get_sibling_spacing_for_nodes(left_original + right_original)
+
         left_total = (
             sum(left_heights) + (len(left_original) - 1) * level1_spacing
             if left_original
@@ -456,8 +511,8 @@ class DefaultLayout(BaseLayout):
         for node, height in candidates:
             if from_height <= to_height:
                 break
-            # Get spacing for this depth level
-            sibling_spacing = self._get_sibling_spacing_for_depth(node.depth)
+            # Get spacing based on the maximum depth of this node's subtree
+            sibling_spacing = self._get_sibling_spacing_for_nodes([node])
             # Try moving this node
             actual_move = height + (sibling_spacing if to_side else 0)
             actual_remove = height + (sibling_spacing if len(from_side) > 1 else 0)
@@ -471,24 +526,6 @@ class DefaultLayout(BaseLayout):
                 to_side.append(node)
                 from_height = new_from
                 to_height = new_to
-
-    def _has_complex_branch(self, nodes: list) -> bool:
-        """
-        Check if any node in the list has >= 2 children (recursively).
-
-        Args:
-            nodes: List of nodes to check
-
-        Returns:
-            True if any node has >= 2 children
-        """
-        for node in nodes:
-            if len(node.children) >= 2:
-                return True
-            # Recursively check children
-            if node.children and self._has_complex_branch(node.children):
-                return True
-        return False
 
     def _get_root_node(self, node):
         """Get the root node by traversing up the parent chain.
@@ -541,10 +578,10 @@ class DefaultLayout(BaseLayout):
             # CRITICAL FIX: position[1] is the CENTER Y coordinate, not the top
             # CRITICAL: Border extends FULL border_width outward from rect (not half!)
             # Visual bounds = rect bounds + border_width on each side
-            border_width = getattr(node, 'border_width', 0)
+            visual_half_height = self._get_visual_height(node) / 2.0
 
-            node_top = node.position[1] - node.height / 2.0 - border_width
-            node_bottom = node.position[1] + node.height / 2.0 + border_width
+            node_top = node.position[1] - visual_half_height
+            node_bottom = node.position[1] + visual_half_height
             min_y = min(min_y, node_top)
             max_y = max(max_y, node_bottom)
 
@@ -565,10 +602,9 @@ class DefaultLayout(BaseLayout):
         Default-style: Each node's X position is calculated based on its parent,
         not aligned to a fixed column. This allows short branches to stay compact.
 
-        Implements the three principles:
-        1. Simple case: vertical centering when no node has >= 2 children
-        2. Complex case: upward expansion when any node has >= 2 children
-        3. Recursive avoidance: move all sibling subtrees when overlap occurs
+        Uses unified layout logic with iterative overlap detection:
+        - For simple branches (no overlaps): detection loop exits immediately
+        - For complex branches (overlaps detected): split movement equally
 
         Args:
             nodes: List of sibling nodes
@@ -579,142 +615,22 @@ class DefaultLayout(BaseLayout):
         if not nodes:
             return
 
-        # Default-style: Calculate X position for each node based on its parent
-        # Not a fixed column - each branch extends naturally
-        # This will be done in _layout_branch_simple and _layout_branch_complex
+        # Unified layout logic - works for both simple and complex cases
+        self._layout_branch(nodes, parent_node, direction, canvas_height)
 
-        # Check if this is a complex branch (any node has >= 2 children)
-        is_complex = self._has_complex_branch(nodes)
-
-        if not is_complex:
-            # === Principle 1: Simple case - vertical centering ===
-            # All nodes have 0 or 1 child, use simple vertical centering
-            # Note: position[1] is already the center Y coordinate
-            self._layout_branch_simple(
-                nodes,
-                parent_node,
-                parent_node.position[1],  # position is the center point
-                direction,
-                canvas_height,
-            )
-        else:
-            # === Principle 2 & 3: Complex case - recursive avoidance ===
-            self._layout_branch_complex(nodes, parent_node, direction, canvas_height)
-
-    def _layout_branch_simple(
-        self,
-        nodes: list,
-        parent_node,
-        parent_center_y: float,
-        direction: int,
-        canvas_height: float = 800.0,
-    ) -> None:
-        """
-        Layout a simple branch where no node has >= 2 children.
-
-        Default-style: Each node's X is calculated based on its own parent,
-        not a shared column X.
-
-        Args:
-            nodes: List of sibling nodes
-            parent_node: The parent of these nodes
-            parent_center_y: Parent node's center Y coordinate
-            direction: -1 for left, 1 for right
-            canvas_height: Canvas height for centering
-        """
-        # Calculate total height of nodes only (not subtrees)
-        # CRITICAL: Visual height includes border expansion on both top and bottom
-        nodes_height = sum(node.height + getattr(node, 'border_width', 0) * 2 for node in nodes)
-
-        # Get spacing based on node depth
-        if nodes:
-            sibling_spacing = self._get_sibling_spacing_for_depth(nodes[0].depth)
-        else:
-            sibling_spacing = self.sibling_spacing
-
-        nodes_spacing = (len(nodes) - 1) * sibling_spacing
-        total_height = nodes_height + nodes_spacing
-
-        # Calculate the aligned edge position for all sibling nodes
-        aligned_edge_x = self._calculate_aligned_edge(parent_node, nodes, direction)
-
-        # Special case: single node should be vertically centered with parent
-        if len(nodes) == 1:
-            # Single node: center it with parent's center
-            node = nodes[0]
-            # Calculate node center position using unified method
-            node_x = self._calculate_node_position(node, aligned_edge_x, direction)
-
-            # Center the node vertically with parent
-            node_y = parent_center_y
-
-            node.position = (node_x, node_y)
-
-            # Layout children if any
-            if node.children:
-                self._layout_side(node.children, node, canvas_height, direction)
-
-            return
-
-        # Multiple nodes: use the original logic with start_y calculation
-        # Start Y for vertical centering
-        # CRITICAL FIX: total_height is from top of first node to bottom of last node
-        # So we need to add half of first node's height to get its center
-        # CRITICAL: Visual height includes border expansion
-        if nodes:
-            first_node_border = getattr(nodes[0], 'border_width', 0)
-            first_node_visual_height = nodes[0].height + first_node_border * 2
-            start_y = parent_center_y - total_height / 2.0 + first_node_visual_height / 2.0
-        else:
-            start_y = parent_center_y
-        current_y = start_y
-
-        # Calculate the aligned edge position for all sibling nodes
-        aligned_edge_x = self._calculate_aligned_edge(parent_node, nodes, direction)
-
-        for node in nodes:
-            # Calculate node center position using unified method
-            node_x = self._calculate_node_position(node, aligned_edge_x, direction)
-
-            node.position = (node_x, current_y)
-
-            # Layout children if any
-            if node.children:
-                # Recursively layout children using _layout_side (checks for complex branches)
-                # The parent of node.children is 'node', so we pass 'node' directly
-                # Rule 4: Left node's children on left, right node's children on right
-                # CRITICAL: Compare node's center with ROOT's center, not parent's center!
-                # Find root by traversing up the parent chain
-                root_node = self._get_root_node(node)
-                if root_node:
-                    root_center_x = root_node.position[0] + root_node.width / 2
-                    node_center_x = node.position[0] + node.width / 2
-                    child_direction = 1 if node_center_x >= root_center_x else -1
-                else:
-                    # Fallback: use parent as reference
-                    parent_center_x = (
-                        parent_node.position[0] + parent_node.width / 2
-                        if parent_node
-                        else 0.0
-                    )
-                    node_center_x = node.position[0] + node.width / 2
-                    child_direction = 1 if node_center_x >= parent_center_x else -1
-                self._layout_side(node.children, node, canvas_height, child_direction)
-
-            # CRITICAL: Move current_y by visual height (including border expansion)
-            current_y += node.height + getattr(node, 'border_width', 0) * 2 + sibling_spacing
-
-    def _layout_branch_complex(
+    def _layout_branch(
         self, nodes: list, parent_node, direction: int, canvas_height: float
     ) -> None:
         """
-        Layout a complex branch where some nodes have >= 2 children.
+        Layout a branch with iterative overlap detection.
 
         Default-style: Each node's X is calculated based on its parent.
-        Uses iterative detection and avoidance with TRUE BIDIRECTIONAL expansion:
+        Uses iterative detection and avoidance with bidirectional expansion:
         1. Start with vertical centering
-        2. Detect overlaps from subtrees
+        2. Detect overlaps from subtrees iteratively
         3. Split the overlap evenly: move upper nodes up, lower nodes down
+
+        For simple branches (no overlaps), the detection loop exits immediately.
 
         Args:
             nodes: List of sibling nodes
@@ -723,13 +639,24 @@ class DefaultLayout(BaseLayout):
             canvas_height: Canvas height for centering
         """
         # Step 1: Initial vertical centering
-        nodes_height = sum(node.height for node in nodes)
+        nodes_height = sum(self._get_visual_height(node) for node in nodes)
 
-        # Get spacing based on node depth
-        if nodes:
-            sibling_spacing = self._get_sibling_spacing_for_depth(nodes[0].depth)
+        # Rule 1: Sibling spacing must be >= nodes' own level spacing (minimum requirement)
+        nodes_level_spacing = self._get_sibling_spacing_for_depth(nodes[0].depth)
+
+        # Rule 2: If nodes have children, spacing between their subtrees
+        # uses the deepest level among adjacent subtrees
+        # Final spacing = max(rule1_minimum, rule2_subtree_spacing)
+        if any(node.children for node in nodes):
+            # Find max depth across all subtrees
+            max_depth = max(self._get_max_subtree_depth(node) for node in nodes if node.children)
+            effective_depth = min(max_depth, 3)
+            subtree_spacing = self._get_sibling_spacing_for_depth(effective_depth)
+            # Must satisfy BOTH rules: >= nodes' level AND use subtree depth
+            sibling_spacing = max(nodes_level_spacing, subtree_spacing)
         else:
-            sibling_spacing = self.sibling_spacing
+            # No children, just use nodes' own level spacing
+            sibling_spacing = nodes_level_spacing
 
         nodes_spacing = (len(nodes) - 1) * sibling_spacing
         total_height = nodes_height + nodes_spacing
@@ -737,7 +664,7 @@ class DefaultLayout(BaseLayout):
         # So we need to add half of first node's height to get its center
         if nodes:
             start_y = (
-                parent_node.position[1] - total_height / 2.0 + nodes[0].height / 2.0
+                parent_node.position[1] - total_height / 2.0 + self._get_visual_height(nodes[0]) / 2.0
             )
         else:
             start_y = parent_node.position[1]
@@ -770,7 +697,7 @@ class DefaultLayout(BaseLayout):
 
             node.position = (node_x, current_y)
             # CRITICAL: Move current_y by visual height (including border expansion)
-            current_y += node.height + getattr(node, 'border_width', 0) * 2 + sibling_spacing
+            current_y += self._get_visual_height(node) + sibling_spacing
 
         # Step 2: Layout children and detect overlaps iteratively
         max_iterations = 20
@@ -809,9 +736,9 @@ class DefaultLayout(BaseLayout):
                     # Get bounds of subtree j
                     top_j, bottom_j = self._get_branch_bounds([nodes[j]])
 
-                    # CRITICAL: Use the current sibling nodes' depth for spacing
-                    # NOT child depth - we're checking spacing between siblings at this level
-                    sibling_spacing = self._get_sibling_spacing_for_depth(nodes[i].depth)
+                    # CRITICAL: Use the maximum depth between the two subtrees for spacing
+                    # This ensures we use the appropriate spacing for the deepest level
+                    sibling_spacing = self._get_sibling_spacing_for_nodes([nodes[i], nodes[j]])
 
                     # Check if subtree i overlaps with subtree j
                     if bottom_i + sibling_spacing > top_j:
