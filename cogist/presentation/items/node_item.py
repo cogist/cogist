@@ -1406,13 +1406,11 @@ class NodeItem(QGraphicsRectItem):
             # Ring 3: Outer focus ring (semi-transparent glow, 8px, outside inner ring)
 
             # Get node's outer edge path (this is where node border ends)
-            node_outer_rect = rect.adjusted(
-                -style_config.get("border_width", 0) / 2.0,
-                -style_config.get("border_width", 0) / 2.0,
-                style_config.get("border_width", 0) / 2.0,
-                style_config.get("border_width", 0) / 2.0,
-            )
-            node_outer_radius = style_config.get("border_radius", 8) + style_config.get("border_width", 0) / 2.0
+            # CRITICAL: Border now extends FULL border_width outward from rect
+            # So node outer edge = rect.adjusted(-border_width, -border_width, border_width, border_width)
+            border_width = style_config.get("border_width", 0)
+            node_outer_rect = rect.adjusted(-border_width, -border_width, border_width, border_width)
+            node_outer_radius = style_config.get("border_radius", 8) + border_width
 
             node_outer_path = QPainterPath()
             if shape_type == "circle":
