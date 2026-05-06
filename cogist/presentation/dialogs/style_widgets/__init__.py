@@ -1,6 +1,6 @@
-"""Style widgets package for advanced style panel.
+"""Style widgets package for style editor.
 
-This package contains modular components for the advanced style panel,
+This package contains modular components for the style editor,
 implementing lazy initialization and collapsible panels for better UX.
 """
 

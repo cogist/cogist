@@ -46,10 +46,10 @@ class NodeStyleSection(CollapsiblePanel):
     def __init__(self, parent=None):
         super().__init__("Node Style", collapsed=True, parent=parent)
 
-        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        # Get LABEL_WIDTH from parent (StyleEditorTab) if available, otherwise use class default
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
-        # Store reference to AdvancedStyleTab for accessing style_config
+        # Store reference to StyleEditorTab for accessing style_config
         # Note: parent() returns _content_widget, so we need to store the actual parent
         self._advanced_tab = parent
 
@@ -369,7 +369,7 @@ class NodeStyleSection(CollapsiblePanel):
 
     def _on_bg_color_clicked(self):
         """Handle background color button click."""
-        # Use stored reference to AdvancedStyleTab instead of parent()
+        # Use stored reference to StyleEditorTab instead of parent()
         parent = self._advanced_tab
 
         if not (parent and hasattr(parent, 'style_config') and parent.style_config):
@@ -496,7 +496,7 @@ class NodeStyleSection(CollapsiblePanel):
     def _on_bg_color_selected(self, hex_color: str):
         """Handle color selection from picker (root mode only)."""
         # Update the color in color_pool
-        # Use stored reference to AdvancedStyleTab instead of parent()
+        # Use stored reference to StyleEditorTab instead of parent()
         parent = self._advanced_tab
 
         if parent and hasattr(parent, 'style_config') and parent.style_config:

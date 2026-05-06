@@ -1,4 +1,4 @@
-"""Layer selector widget for advanced style panel.
+"""Layer selector widget for style editor.
 
 Provides a dropdown menu to select different layers (Canvas, Root, Level 1-3+, etc.)
 Always visible, no collapsible behavior.
@@ -33,7 +33,7 @@ class LayerSelector(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        # Get LABEL_WIDTH from parent (StyleEditorTab) if available, otherwise use class default
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
         # Current layer

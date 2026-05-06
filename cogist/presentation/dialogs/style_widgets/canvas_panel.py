@@ -29,10 +29,10 @@ class CanvasPanel(CollapsiblePanel):
     def __init__(self, parent=None):
         super().__init__("Background", collapsed=True, parent=parent)
 
-        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        # Get LABEL_WIDTH from parent (StyleEditorTab) if available, otherwise use class default
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
-        # Store reference to AdvancedStyleTab for accessing style_config
+        # Store reference to StyleEditorTab for accessing style_config
         # Note: parent() returns _content_widget, so we need to store the actual parent
         self._advanced_tab = parent
 
@@ -132,7 +132,7 @@ class CanvasPanel(CollapsiblePanel):
             self._color_picker.finished.connect(lambda: setattr(self, '_color_picker', None))
 
         # Get current color from style data object (no fallback)
-        # Use stored reference to AdvancedStyleTab instead of parent()
+        # Use stored reference to StyleEditorTab instead of parent()
         parent = self._advanced_tab
 
         if parent and hasattr(parent, 'style_config') and parent.style_config:

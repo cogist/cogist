@@ -28,7 +28,7 @@ class SpacingSection(CollapsiblePanel):
     def __init__(self, parent=None):
         super().__init__("Spacing", collapsed=True, parent=parent)
 
-        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        # Get LABEL_WIDTH from parent (StyleEditorTab) if available, otherwise use class default
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
         # State - will be initialized from style_config when loaded

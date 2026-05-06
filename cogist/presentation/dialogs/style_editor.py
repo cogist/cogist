@@ -1,7 +1,7 @@
 """
-Style Panel - Advanced Mode for Template Creation (Refactored)
+Style Editor - Real-time Style Editing and Template Creation (Refactored)
 
-A dockable panel for real-time style debugging and template creation.
+A dockable panel for real-time style editing and template creation.
 Uses modular components with lazy initialization for better performance.
 
 Refactored version: Uses component-based architecture from style_widgets/
@@ -23,8 +23,8 @@ from .style_widgets import (
 )
 
 
-class AdvancedStyleTab(QWidget):
-    """Advanced mode tab using modular components with lazy initialization.
+class StyleEditorTab(QWidget):
+    """Style editor tab using modular components with lazy initialization.
 
     This refactored version uses component-based architecture:
     - LayerSelector: Layer switching
@@ -489,7 +489,7 @@ class AdvancedStyleTab(QWidget):
     def _apply_styles(self):
         """Apply custom QSS styles to the panel."""
         self.setStyleSheet("""
-            AdvancedStyleTab {
+            StyleEditorTab {
                 background-color: #F5F5F5;
             }
             QGroupBox {

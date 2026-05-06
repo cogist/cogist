@@ -100,7 +100,7 @@ class MainWindow(QMainWindow):
 
         # Connect color scheme tab signals to advanced tab handlers
         self.style_panel.color_scheme_tab.style_changed.connect(
-            self.style_panel.advanced_tab._on_color_scheme_changed
+            self.style_panel.style_editor_tab._on_color_scheme_changed
         )
 
         # Create horizontal layout: ActivityBar | StylePanel | MindMapView
@@ -154,9 +154,9 @@ class MainWindow(QMainWindow):
         """Handle style config change (e.g., after loading a file)."""
         # CRITICAL: Update style panel's style_config reference to match mindmap view
         if hasattr(self, "style_panel") and hasattr(self.style_panel, "advanced_tab"):
-            self.style_panel.advanced_tab.style_config = self.mindmap_view.style_config
+            self.style_panel.style_editor_tab.style_config = self.mindmap_view.style_config
             # Refresh UI controls to match new style config
-            self.style_panel.advanced_tab.refresh_current_layer()
+            self.style_panel.style_editor_tab.refresh_current_layer()
 
         # Also update color scheme tab
         if hasattr(self, "style_panel") and hasattr(
@@ -713,15 +713,15 @@ class MainWindow(QMainWindow):
                 # Update style panel controls to reflect the undone state
                 if hasattr(self, "style_panel") and self.style_panel.isVisible():
                     # Prevent command creation during undo/redo refresh
-                    self.style_panel.advanced_tab._updating_from_undo_redo = True
-                    self.style_panel.advanced_tab.refresh_current_layer()
+                    self.style_panel.style_editor_tab._updating_from_undo_redo = True
+                    self.style_panel.style_editor_tab.refresh_current_layer()
 
                     # Sync color scheme tab with current style_config (for rainbow switch)
                     self.style_panel.color_scheme_tab.set_style_config(
                         self.mindmap_view.style_config
                     )
 
-                    self.style_panel.advanced_tab._updating_from_undo_redo = False
+                    self.style_panel.style_editor_tab._updating_from_undo_redo = False
                 # Re-apply styles to all nodes
                 if hasattr(self.mindmap_view, "node_items"):
                     for node_item in self.mindmap_view.node_items.values():
@@ -729,7 +729,7 @@ class MainWindow(QMainWindow):
                             node_item.update_style(self.mindmap_view.style_config)
                 # Apply spacing configuration to mindmap_view and refresh layout
                 if hasattr(self, "style_panel") and self.style_panel.isVisible():
-                    self.style_panel.advanced_tab._apply_styles_to_mindmap()
+                    self.style_panel.style_editor_tab._apply_styles_to_mindmap()
                 return
 
             # Determine if we need to re-measure dimensions
@@ -813,15 +813,15 @@ class MainWindow(QMainWindow):
                 # Update style panel controls to reflect the redone state
                 if hasattr(self, "style_panel") and self.style_panel.isVisible():
                     # Prevent command creation during undo/redo refresh
-                    self.style_panel.advanced_tab._updating_from_undo_redo = True
-                    self.style_panel.advanced_tab.refresh_current_layer()
+                    self.style_panel.style_editor_tab._updating_from_undo_redo = True
+                    self.style_panel.style_editor_tab.refresh_current_layer()
 
                     # Sync color scheme tab with current style_config (for rainbow switch)
                     self.style_panel.color_scheme_tab.set_style_config(
                         self.mindmap_view.style_config
                     )
 
-                    self.style_panel.advanced_tab._updating_from_undo_redo = False
+                    self.style_panel.style_editor_tab._updating_from_undo_redo = False
                 # Re-apply styles to all nodes
                 if hasattr(self.mindmap_view, "node_items"):
                     for node_item in self.mindmap_view.node_items.values():
@@ -829,7 +829,7 @@ class MainWindow(QMainWindow):
                             node_item.update_style(self.mindmap_view.style_config)
                 # Apply spacing configuration to mindmap_view and refresh layout
                 if hasattr(self, "style_panel") and self.style_panel.isVisible():
-                    self.style_panel.advanced_tab._apply_styles_to_mindmap()
+                    self.style_panel.style_editor_tab._apply_styles_to_mindmap()
                 return
 
             # Determine if we need to re-measure dimensions

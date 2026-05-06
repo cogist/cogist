@@ -16,7 +16,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from .style_panel_advanced import AdvancedStyleTab
+from .style_editor import StyleEditorTab
 from .style_panel_color import ColorSchemeTab
 
 
@@ -51,7 +51,7 @@ class StylePanel(QWidget):
 
         # Create tabs
         self.color_scheme_tab = ColorSchemeTab(style_config=self.style_config)
-        self.advanced_tab = AdvancedStyleTab(
+        self.style_editor_tab = StyleEditorTab(
             style_config=self.style_config,
             config_manager=self.config_manager,
             command_history=self.command_history,
@@ -81,7 +81,7 @@ class StylePanel(QWidget):
         if panel_name == "color_scheme":
             layout.addWidget(self.color_scheme_tab)
         elif panel_name == "advanced":
-            layout.addWidget(self.advanced_tab)
+            layout.addWidget(self.style_editor_tab)
 
         self.current_panel = panel_name
 
