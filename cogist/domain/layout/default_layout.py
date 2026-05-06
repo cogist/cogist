@@ -101,6 +101,77 @@ class DefaultLayout(BaseLayout):
         # Fallback to config's sibling_spacing
         return self.config.sibling_spacing
 
+    def _calculate_aligned_edge(
+        self,
+        parent_node,
+        child_nodes: list,
+        direction: int,
+    ) -> float:
+        """
+        Calculate the aligned edge position for child nodes.
+
+        This ensures all siblings align on the side closest to parent.
+
+        Args:
+            parent_node: The parent node
+            child_nodes: List of child nodes to align
+            direction: -1 for left side, 1 for right side
+
+        Returns:
+            The x-coordinate where children should align their edges
+        """
+        # Get horizontal spacing for this parent-child relationship
+        level_spacing = self._get_level_spacing_for_depth(parent_node.depth + 1)
+
+        # Use visual width/height (including border expansion)
+        parent_border = getattr(parent_node, 'border_width', 0)
+        parent_visual_width = parent_node.width + parent_border * 2
+
+        aligned_edge_x = 0.0  # Will be set based on direction
+
+        # For left side (direction=-1): align right edge of children
+        # For right side (direction=1): align left edge of children
+        if direction == -1:  # Left side
+            # Parent's visual left edge
+            parent_visual_left = parent_node.position[0] - parent_visual_width / 2.0
+            aligned_edge_x = parent_visual_left - level_spacing
+        else:  # Right side
+            # Parent's visual right edge
+            parent_visual_right = parent_node.position[0] + parent_visual_width / 2.0
+            aligned_edge_x = parent_visual_right + level_spacing
+
+        return aligned_edge_x
+
+    def _calculate_node_position(
+        self,
+        node,
+        aligned_edge_x: float,
+        direction: int,
+    ) -> tuple[float, float]:
+        """
+        Calculate node center position based on aligned edge.
+
+        Args:
+            node: The node to position
+            aligned_edge_x: The x-coordinate where the node's visual edge should align
+            direction: -1 for left side, 1 for right side
+
+        Returns:
+            Tuple of (node_x, node_y) - node center position
+        """
+        # Calculate visual half width (including border expansion)
+        node_border = getattr(node, 'border_width', 0)
+        node_visual_half_width = (node.width + node_border * 2) / 2.0
+
+        if direction == -1:  # Left side - align right visual edge
+            # Visual center = aligned_edge_x - visual_half_width
+            node_x = aligned_edge_x - node_visual_half_width
+        else:  # Right side - align left visual edge
+            # Visual center = aligned_edge_x + visual_half_width
+            node_x = aligned_edge_x + node_visual_half_width
+
+        return node_x
+
     def layout(
         self,
         root_node,
@@ -200,8 +271,13 @@ class DefaultLayout(BaseLayout):
         Returns:
             Total height including all descendants and spacing
         """
+        # Get border width (default to 0 if not set)
+        border_width = getattr(node, 'border_width', 0)
+        # Visual height includes border expansion on both top and bottom
+        visual_height = node.height + border_width * 2
+
         if not node.children:
-            return node.height
+            return visual_height
 
         # Get spacing for this depth level
         sibling_spacing = self._get_sibling_spacing_for_depth(node.depth + 1)
@@ -215,9 +291,9 @@ class DefaultLayout(BaseLayout):
         total_child_height = sum(child_heights)
         total_spacing = (len(node.children) - 1) * sibling_spacing
 
-        # The node itself takes max(node.height, total_child_height)
+        # The node itself takes max(visual_height, total_child_height)
         # because children are centered around the node
-        return max(node.height, total_child_height + total_spacing)
+        return max(visual_height, total_child_height + total_spacing)
 
     def _balance_branches(
         self, nodes: list, locked_side_child=None, parent_node=None
@@ -560,33 +636,14 @@ class DefaultLayout(BaseLayout):
         total_height = nodes_height + nodes_spacing
 
         # Calculate the aligned edge position for all sibling nodes
-        # This ensures all siblings align on the side closest to parent
-        # Use child's depth (parent.depth + 1) for spacing lookup
-        level_spacing = self._get_level_spacing_for_depth(parent_node.depth + 1)
-        aligned_edge_x = 0.0  # Will be set based on direction
-
-        # For left side (direction=-1): align right edge of children
-        # For right side (direction=1): align left edge of children
-        if direction == -1:  # Left side
-            # Parent left edge
-            parent_left_edge = parent_node.position[0] - parent_node.width / 2.0
-            # All children's right edge aligns at this position
-            aligned_edge_x = parent_left_edge - level_spacing
-        else:  # Right side
-            # Parent right edge
-            parent_right_edge = parent_node.position[0] + parent_node.width / 2.0
-            # All children's left edge aligns at this position
-            aligned_edge_x = parent_right_edge + level_spacing
+        aligned_edge_x = self._calculate_aligned_edge(parent_node, nodes, direction)
 
         # Special case: single node should be vertically centered with parent
         if len(nodes) == 1:
             # Single node: center it with parent's center
             node = nodes[0]
-            node_half_width = node.width / 2.0
-            if direction == -1:  # Left side - align right edge
-                node_x = aligned_edge_x - node_half_width
-            else:  # Right side - align left edge
-                node_x = aligned_edge_x + node_half_width
+            # Calculate node center position using unified method
+            node_x = self._calculate_node_position(node, aligned_edge_x, direction)
 
             # Center the node vertically with parent
             node_y = parent_center_y
@@ -613,33 +670,11 @@ class DefaultLayout(BaseLayout):
         current_y = start_y
 
         # Calculate the aligned edge position for all sibling nodes
-        # This ensures all siblings align on the side closest to parent
-        # Use child's depth (parent.depth + 1) for spacing lookup
-        level_spacing = self._get_level_spacing_for_depth(parent_node.depth + 1)
-        aligned_edge_x = 0.0  # Will be set based on direction
-
-        # For left side (direction=-1): align right edge of children
-        # For right side (direction=1): align left edge of children
-        if direction == -1:  # Left side
-            # Parent left edge
-            parent_left_edge = parent_node.position[0] - parent_node.width / 2.0
-            # All children's right edge aligns at this position
-            aligned_edge_x = parent_left_edge - level_spacing
-        else:  # Right side
-            # Parent right edge
-            parent_right_edge = parent_node.position[0] + parent_node.width / 2.0
-            # All children's left edge aligns at this position
-            aligned_edge_x = parent_right_edge + level_spacing
+        aligned_edge_x = self._calculate_aligned_edge(parent_node, nodes, direction)
 
         for node in nodes:
-            # Position node so its aligned edge matches the calculated position
-            node_half_width = node.width / 2.0
-            if direction == -1:  # Left side - align right edge
-                # node.position[0] + node_half_width = aligned_edge_x
-                node_x = aligned_edge_x - node_half_width
-            else:  # Right side - align left edge
-                # node.position[0] - node_half_width = aligned_edge_x
-                node_x = aligned_edge_x + node_half_width
+            # Calculate node center position using unified method
+            node_x = self._calculate_node_position(node, aligned_edge_x, direction)
 
             node.position = (node_x, current_y)
 
@@ -716,24 +751,22 @@ class DefaultLayout(BaseLayout):
 
         # For left side (direction=-1): align right edge of children
         # For right side (direction=1): align left edge of children
+        # Use visual width (including border expansion)
+        parent_border = getattr(parent_node, 'border_width', 0)
+        parent_visual_width = parent_node.width + parent_border * 2
+
         if direction == -1:  # Left side
-            # Parent left edge
-            parent_left_edge = parent_node.position[0] - parent_node.width / 2.0
-            # All children's right edge aligns at this position
-            aligned_edge_x = parent_left_edge - level_spacing
+            # Parent's visual left edge
+            parent_visual_left = parent_node.position[0] - parent_visual_width / 2.0
+            aligned_edge_x = parent_visual_left - level_spacing
         else:  # Right side
-            # Parent right edge
-            parent_right_edge = parent_node.position[0] + parent_node.width / 2.0
-            # All children's left edge aligns at this position
-            aligned_edge_x = parent_right_edge + level_spacing
+            # Parent's visual right edge
+            parent_visual_right = parent_node.position[0] + parent_visual_width / 2.0
+            aligned_edge_x = parent_visual_right + level_spacing
 
         for node in nodes:
-            # Default-style: Calculate X based on this node's parent with aligned edge
-            node_half_width = node.width / 2.0
-            if direction == -1:  # Left side - align right edge
-                node_x = aligned_edge_x - node_half_width
-            else:  # Right side - align left edge
-                node_x = aligned_edge_x + node_half_width
+            # Calculate node center position using unified method
+            node_x = self._calculate_node_position(node, aligned_edge_x, direction)
 
             node.position = (node_x, current_y)
             # CRITICAL: Move current_y by visual height (including border expansion)
