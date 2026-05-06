@@ -1,6 +1,6 @@
 """Common widget utilities for consistent UI behavior."""
 
-from PySide6.QtWidgets import QSpinBox
+from qtpy.QtWidgets import QSpinBox
 
 
 class SpinBox(QSpinBox):

@@ -3,7 +3,7 @@
 Provides common helper functions for dialog positioning and interaction.
 """
 
-from PySide6.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication
 
 
 def position_color_dialog(color_dialog, button):

@@ -4,8 +4,8 @@ Provides controls for customizing edge appearance between nodes.
 Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import QPoint, QSize, Qt, Signal
-from PySide6.QtWidgets import (
+from qtpy.QtCore import QPoint, QSize, Qt, Signal
+from qtpy.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,
@@ -177,7 +177,7 @@ class ConnectorSection(CollapsiblePanel):
         self.connector_width_spin = SpinBox()
         self.connector_width_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.connector_width_spin.setRange(1, 10)
-        self.connector_width_spin.setValue(self.current_style["line_width"])
+        self.connector_width_spin.setValue(int(self.current_style["line_width"]))
         self.connector_width_spin.setAlignment(Qt.AlignLeft)
         self.connector_width_spin.valueChanged.connect(self._on_width_changed)
         layout.addWidget(self.connector_width_spin, 2, 1)
@@ -383,7 +383,7 @@ class ConnectorSection(CollapsiblePanel):
                 )
 
             if "line_width" in style:
-                self.connector_width_spin.setValue(style["line_width"])
+                self.connector_width_spin.setValue(int(style["line_width"]))
 
             # Update connector color button display
             if "connector_color_index" in style:

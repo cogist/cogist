@@ -1,7 +1,7 @@
 """Reusable button with QMenu that doesn't show arrow indicator."""
 
-from PySide6.QtCore import QPoint, Signal
-from PySide6.QtWidgets import QMenu, QPushButton
+from qtpy.QtCore import QPoint, Signal
+from qtpy.QtWidgets import QMenu, QPushButton
 
 
 class MenuButton(QPushButton):

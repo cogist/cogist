@@ -7,9 +7,9 @@ Handles all UI rendering and user interaction.
 
 import contextlib
 
-from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QPainterPath
-from PySide6.QtWidgets import (
+from qtpy.QtCore import QPointF, Qt
+from qtpy.QtGui import QBrush, QColor, QFont, QPainterPath
+from qtpy.QtWidgets import (
     QGraphicsRectItem,
     QGraphicsTextItem,
 )
@@ -256,7 +256,7 @@ class NodeItem(QGraphicsRectItem):
         self.text_item = QGraphicsTextItem(text, self)
 
         # Set text alignment to left-top with forced wrapping
-        from PySide6.QtGui import QTextOption
+        from qtpy.QtGui import QTextOption
 
         doc = self.text_item.document()
         doc.setDocumentMargin(0)  # Remove default document margin
@@ -859,7 +859,7 @@ class NodeItem(QGraphicsRectItem):
         This method is called in __init__ and update_style to ensure shadow
         effect is always in sync with the current style configuration.
         """
-        from PySide6.QtWidgets import QGraphicsDropShadowEffect
+        from qtpy.QtWidgets import QGraphicsDropShadowEffect
 
         if not hasattr(self.template_style, "shadow_enabled"):
             return
@@ -1256,7 +1256,7 @@ class NodeItem(QGraphicsRectItem):
 
     def paint(self, painter, option, widget=None):
         """Custom paint using border strategy pattern."""
-        from PySide6.QtGui import QPainter
+        from qtpy.QtGui import QPainter
 
         from cogist.presentation.borders.registry import BorderStrategyRegistry
 
@@ -1501,7 +1501,7 @@ class NodeItem(QGraphicsRectItem):
             padding_height = style["padding_height"]
 
         # Ensure wrap mode is set based on max_text_width
-        from PySide6.QtGui import QTextOption
+        from qtpy.QtGui import QTextOption
 
         doc = self.text_item.document()
         text_option = doc.defaultTextOption()

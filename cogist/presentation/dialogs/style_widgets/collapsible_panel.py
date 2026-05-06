@@ -1,8 +1,8 @@
 """Collapsible panel widget without checkbox."""
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QMouseEvent
-from PySide6.QtWidgets import QFrame, QGridLayout, QLabel, QVBoxLayout, QWidget
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtGui import QMouseEvent
+from qtpy.QtWidgets import QFrame, QGridLayout, QLabel, QVBoxLayout, QWidget
 
 
 class _TitleBar(QWidget):

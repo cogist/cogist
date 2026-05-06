@@ -17,9 +17,9 @@ os.environ["QT_LOGGING_RULES"] = (
     "*.debug=false;qt.scenegraph=false;qt.qpa.keymapper=false;qt.qpa.input=false"
 )
 
-from PySide6.QtCore import Qt, qInstallMessageHandler
-from PySide6.QtGui import QAction, QKeySequence, QShortcut
-from PySide6.QtWidgets import (
+from qtpy.QtCore import Qt, qInstallMessageHandler
+from qtpy.QtGui import QAction, QKeySequence, QShortcut
+from qtpy.QtWidgets import (
     QHBoxLayout,
     QMainWindow,
     QMessageBox,
@@ -528,7 +528,7 @@ class MainWindow(QMainWindow):
             return
 
         # Show dialog to get template name
-        from PySide6.QtWidgets import QInputDialog
+        from qtpy.QtWidgets import QInputDialog
 
         template_name, ok = QInputDialog.getText(
             self, "Save as Template", "Enter template name:", text="My Custom Template"
@@ -1016,7 +1016,7 @@ class MainWindow(QMainWindow):
 
 def main():
     """Main entry point for the application."""
-    from PySide6.QtWidgets import QApplication
+    from qtpy.QtWidgets import QApplication
 
     # Set application name for macOS menu bar
     app = QApplication(sys.argv)

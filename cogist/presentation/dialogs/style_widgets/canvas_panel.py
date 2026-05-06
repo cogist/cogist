@@ -4,8 +4,8 @@ Provides controls for customizing canvas background appearance.
 Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QGridLayout, QLabel, QPushButton
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtWidgets import QGridLayout, QLabel, QPushButton
 
 from .collapsible_panel import CollapsiblePanel
 from .color_picker import create_color_picker
@@ -121,7 +121,7 @@ class CanvasPanel(CollapsiblePanel):
         """Handle background color button click."""
         if self._color_picker is None:
             # Get the top-level window to ensure proper dialog lifecycle
-            from PySide6.QtCore import Qt
+            from qtpy.QtCore import Qt
             top_level = self.window() if self.window() else self._advanced_tab
             self._color_picker = create_color_picker(top_level)
             self._color_picker.color_selected.connect(self._on_bg_color_selected)

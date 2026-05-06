@@ -4,14 +4,14 @@ Provides controls for customizing node appearance including shape, colors,
 padding, and font properties. Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtWidgets import (
+from qtpy.compat import isalive
+from qtpy.QtCore import QSize, Qt, Signal
+from qtpy.QtWidgets import (
     QGridLayout,
     QLabel,
     QPushButton,
     QWidget,
 )
-from shiboken6 import isValid
 
 from cogist.presentation.widgets import ToggleSwitch, VisualPreviewButton
 from cogist.presentation.widgets.node_shape_previews import (
@@ -143,7 +143,7 @@ class NodeStyleSection(CollapsiblePanel):
         self.radius_spin = SpinBox()
         self.radius_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.radius_spin.setRange(0, 30)
-        self.radius_spin.setValue(self.current_style["radius"])
+        self.radius_spin.setValue(int(self.current_style["radius"]))
         self.radius_spin.setAlignment(Qt.AlignLeft)
         self.radius_spin.valueChanged.connect(self._on_radius_changed)
 
@@ -169,7 +169,7 @@ class NodeStyleSection(CollapsiblePanel):
         self.padding_w_spin = SpinBox()
         self.padding_w_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.padding_w_spin.setRange(0, 50)
-        self.padding_w_spin.setValue(self.current_style["padding_w"])
+        self.padding_w_spin.setValue(int(self.current_style["padding_w"]))
         self.padding_w_spin.setAlignment(Qt.AlignLeft)
         self.padding_w_spin.valueChanged.connect(self._on_padding_changed)
         layout.addWidget(self.padding_w_spin, row, 1)
@@ -184,7 +184,7 @@ class NodeStyleSection(CollapsiblePanel):
         self.padding_h_spin = SpinBox()
         self.padding_h_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.padding_h_spin.setRange(0, 50)
-        self.padding_h_spin.setValue(self.current_style["padding_h"])
+        self.padding_h_spin.setValue(int(self.current_style["padding_h"]))
         self.padding_h_spin.setAlignment(Qt.AlignLeft)
         self.padding_h_spin.valueChanged.connect(self._on_padding_changed)
         layout.addWidget(self.padding_h_spin, row, 1)
@@ -207,7 +207,7 @@ class NodeStyleSection(CollapsiblePanel):
         row += 1
 
         # Background enabled - Toggle Switch with label on same row (right-aligned like rainbow switch)
-        from PySide6.QtWidgets import QHBoxLayout
+        from qtpy.QtWidgets import QHBoxLayout
         bg_switch_row = QHBoxLayout()
         bg_switch_row.setContentsMargins(0, 0, 0, 0)
         bg_switch_row.setSpacing(0)
@@ -378,7 +378,7 @@ class NodeStyleSection(CollapsiblePanel):
         if self.is_root_mode:
             # Root mode: show color picker for special_colors["root_background"] (same as CanvasPanel)
             # Check if color picker still exists (may have been deleted by WA_DeleteOnClose)
-            if self._color_picker is None or not isValid(self._color_picker):
+            if self._color_picker is None or not isalive(self._color_picker):
                 # Get the top-level window to ensure proper dialog lifecycle
                 top_level = self.window() if self.window() else parent
                 self._color_picker = create_color_picker(top_level)
@@ -407,8 +407,8 @@ class NodeStyleSection(CollapsiblePanel):
 
         Displays a dialog with 8 color buttons (indices 0-7) for user to select.
         """
-        from PySide6.QtCore import Qt
-        from PySide6.QtWidgets import QDialog, QGridLayout, QLabel, QPushButton
+        from qtpy.QtCore import Qt
+        from qtpy.QtWidgets import QDialog, QGridLayout, QLabel, QPushButton
 
         parent = self._advanced_tab
         if not (parent and hasattr(parent, 'style_config') and parent.style_config):
@@ -639,15 +639,15 @@ class NodeStyleSection(CollapsiblePanel):
                                 break
 
             if "radius" in style:
-                self.radius_spin.setValue(style["radius"])
+                self.radius_spin.setValue(int(style["radius"]))
 
             if "padding_w" in style:
-                self.padding_w_spin.setValue(style["padding_w"])
+                self.padding_w_spin.setValue(int(style["padding_w"]))
             if "padding_h" in style:
-                self.padding_h_spin.setValue(style["padding_h"])
+                self.padding_h_spin.setValue(int(style["padding_h"]))
 
             if "max_text_width" in style:
-                self.max_text_width_spin.setValue(style["max_text_width"])
+                self.max_text_width_spin.setValue(int(style["max_text_width"]))
 
             # Update background enabled toggle
             if "bg_enabled" in style and hasattr(self, 'bg_enabled_toggle'):

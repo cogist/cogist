@@ -6,8 +6,8 @@ selection (connector shapes, node shapes, etc.).
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QPoint, QSize, Qt, Signal
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
+from qtpy.QtCore import QPoint, QSize, Qt, Signal
+from qtpy.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
 
 from .visual_list_popup import VisualListPopup
 

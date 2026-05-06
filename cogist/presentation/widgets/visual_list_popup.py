@@ -6,9 +6,9 @@ with preview images (connector shapes, node shapes, etc.).
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QPoint, QSize, Qt, Signal
-from PySide6.QtGui import QColor
-from PySide6.QtWidgets import (
+from qtpy.QtCore import QPoint, QSize, Qt, Signal
+from qtpy.QtGui import QColor
+from qtpy.QtWidgets import (
     QDialog,
     QGraphicsDropShadowEffect,
     QLabel,
@@ -142,7 +142,7 @@ class VisualListPopup(QDialog):
         Args:
             position: Global position to show the popup (typically below trigger button)
         """
-        from PySide6.QtWidgets import QApplication
+        from qtpy.QtWidgets import QApplication
 
         # Get screen geometry
         screen = QApplication.screenAt(position)

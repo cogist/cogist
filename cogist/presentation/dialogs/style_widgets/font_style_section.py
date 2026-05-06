@@ -10,8 +10,8 @@ Provides controls for customizing font properties including:
 Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,
@@ -73,8 +73,8 @@ class FontStyleSection(CollapsiblePanel):
 
     def _load_fonts(self):
         """Pre-load all available fonts in background thread on initialization."""
-        from PySide6.QtCore import QThread, Signal
-        from PySide6.QtGui import QFontDatabase
+        from qtpy.QtCore import QThread, Signal
+        from qtpy.QtGui import QFontDatabase
 
         class FontLoaderThread(QThread):
             """Background thread for loading fonts."""
@@ -82,8 +82,8 @@ class FontStyleSection(CollapsiblePanel):
 
             def run(self):
                 """Load and process fonts."""
-                font_db = QFontDatabase()
-                families = font_db.families()
+                # Qt6: QFontDatabase constructor is deprecated, use static methods
+                families = QFontDatabase.families()
 
                 # Filter out bitmap/system fonts
                 filtered_families = []
@@ -92,7 +92,7 @@ class FontStyleSection(CollapsiblePanel):
                         continue
                     if any(keyword in family.lower() for keyword in ['bitmap', 'dingbats', 'symbol', 'icon']):
                         continue
-                    if not font_db.styles(family):
+                    if not QFontDatabase.styles(family):
                         continue
                     filtered_families.append(family)
 
@@ -169,7 +169,7 @@ class FontStyleSection(CollapsiblePanel):
         self.font_size_spin = SpinBox()
         self.font_size_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.font_size_spin.setRange(8, 72)
-        self.font_size_spin.setValue(self.current_style["font_size"])
+        self.font_size_spin.setValue(int(self.current_style["font_size"]))
         self.font_size_spin.setAlignment(Qt.AlignLeft)
         self.font_size_spin.valueChanged.connect(self._on_font_size_changed)
         layout.addWidget(self.font_size_spin, row, 1)
@@ -368,9 +368,9 @@ class FontStyleSection(CollapsiblePanel):
         Uses a frameless dialog with single-click selection for better UX.
         Uses pre-loaded font cache for instant display.
         """
-        from PySide6.QtCore import Qt
-        from PySide6.QtGui import QFont
-        from PySide6.QtWidgets import (
+        from qtpy.QtCore import Qt
+        from qtpy.QtGui import QFont
+        from qtpy.QtWidgets import (
             QDialog,
             QListWidget,
             QVBoxLayout,
@@ -488,8 +488,8 @@ class FontStyleSection(CollapsiblePanel):
 
     def _populate_fonts_from_cache(self, font_list, dialog):
         """Populate font list from pre-loaded cache."""
-        from PySide6.QtGui import QFont
-        from PySide6.QtWidgets import QListWidget, QListWidgetItem
+        from qtpy.QtGui import QFont
+        from qtpy.QtWidgets import QListWidget, QListWidgetItem
 
         # Check if cache is ready
         if self._font_data_cache is None:
@@ -630,11 +630,11 @@ class FontStyleSection(CollapsiblePanel):
         Filters out italic/oblique styles and sorts by weight priority.
         Detects and removes duplicate weights (e.g., Normal/Regular may be the same).
         """
-        from PySide6.QtGui import QFontDatabase
+        from qtpy.QtGui import QFontDatabase
 
         font_family = self.current_style.get("font_family", "Arial")
-        font_db = QFontDatabase()
-        styles = font_db.styles(font_family)
+        # Qt6: styles() is a static method, no need to create instance
+        styles = QFontDatabase.styles(font_family)
 
         if not styles:
             # Fallback to default weights if no styles found
@@ -702,7 +702,8 @@ class FontStyleSection(CollapsiblePanel):
 
         for style in sorted_styles:
             # Get the weight value for this style using QFontDatabase
-            weight_value = font_db.weight(font_family, style)
+            # Qt6: weight() is a static method
+            weight_value = QFontDatabase.weight(font_family, style)
 
             # Get priority for this style name (lower is better)
             priority = weight_name_priority.get(style, 100)
@@ -719,7 +720,8 @@ class FontStyleSection(CollapsiblePanel):
         # Build final list maintaining sort order
         seen_in_final = set()
         for style in sorted_styles:
-            weight_value = font_db.weight(font_family, style)
+            # Qt6: weight() is a static method
+            weight_value = QFontDatabase.weight(font_family, style)
             if weight_value in seen_weights:
                 best_style, _ = seen_weights[weight_value]
                 if best_style == style and style not in seen_in_final:
@@ -803,7 +805,7 @@ class FontStyleSection(CollapsiblePanel):
                 localized_name = self._get_localized_font_name(style["font_family"])
                 self.font_family_combo.setText(localized_name)
             if "font_size" in style:
-                self.font_size_spin.setValue(style["font_size"])
+                self.font_size_spin.setValue(int(style["font_size"]))
             if "font_weight" in style:
                 self.font_weight_combo.setText(style["font_weight"])
 

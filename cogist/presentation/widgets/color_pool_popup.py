@@ -4,9 +4,9 @@ This is a generic dialog that displays color swatches from the color pool
 and allows users to select one by clicking.
 """
 
-from PySide6.QtCore import QPoint, Qt, Signal
-from PySide6.QtGui import QColor
-from PySide6.QtWidgets import (
+from qtpy.QtCore import QPoint, Qt, Signal
+from qtpy.QtGui import QColor
+from qtpy.QtWidgets import (
     QDialog,
     QGraphicsDropShadowEffect,
     QHBoxLayout,
@@ -150,7 +150,7 @@ class ColorPoolPopup(QDialog):
             position: Global position to show the popup (typically below trigger button)
             trigger_width: Width of the trigger button (popup will match this width)
         """
-        from PySide6.QtWidgets import QApplication
+        from qtpy.QtWidgets import QApplication
 
         # Set popup width to match trigger button if provided
         # But ensure minimum width for 4 color buttons (4 * 30 + 3 * 6 = 138px)

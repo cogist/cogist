@@ -3,8 +3,8 @@
 Provides functions to generate visual previews for different connector shapes.
 """
 
-from PySide6.QtCore import QPointF, QSize, Qt
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QPixmap
+from qtpy.QtCore import QPointF, QSize, Qt
+from qtpy.QtGui import QColor, QPainter, QPainterPath, QPen, QPixmap
 
 
 def generate_bezier_preview(size: QSize, selected: bool = False) -> QPixmap:

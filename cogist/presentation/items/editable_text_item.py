@@ -11,9 +11,9 @@ Features:
 - Enter/Escape key handling for finish/cancel editing
 """
 
-from PySide6.QtCore import QEvent, QRectF, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QPainter, QPen, QTextCursor
-from PySide6.QtWidgets import QGraphicsTextItem
+from qtpy.QtCore import QEvent, QRectF, Qt, Signal
+from qtpy.QtGui import QBrush, QColor, QPainter, QPen, QTextCursor
+from qtpy.QtWidgets import QGraphicsTextItem
 
 
 class EditableTextItem(QGraphicsTextItem):
@@ -122,7 +122,7 @@ class EditableTextItem(QGraphicsTextItem):
         # - If ideal_width >= max_width: enable wrapping at max_width with WrapAnywhere
         if self._max_width > 0 and self._current_ideal_width > self._max_width:
             # Enable wrapping at max width with forced wrapping for long words
-            from PySide6.QtGui import QTextOption
+            from qtpy.QtGui import QTextOption
             doc = self.document()
             text_option = doc.defaultTextOption()
             text_option.setWrapMode(QTextOption.WrapAnywhere)  # Force wrap at any character
@@ -133,7 +133,7 @@ class EditableTextItem(QGraphicsTextItem):
         else:
             # No wrapping (either unlimited or natural width)
             # Use WrapAnywhere mode to match NodeItem._calculate_node_size behavior
-            from PySide6.QtGui import QTextOption
+            from qtpy.QtGui import QTextOption
             doc = self.document()
             text_option = doc.defaultTextOption()
             text_option.setWrapMode(QTextOption.WrapAnywhere)
@@ -160,7 +160,7 @@ class EditableTextItem(QGraphicsTextItem):
 
         # CRITICAL: Use WrapAnywhere mode to match NodeItem's calculation strategy
         # This ensures consistent size measurement between display and edit modes
-        from PySide6.QtGui import QTextOption
+        from qtpy.QtGui import QTextOption
         doc = self.document()
         text_option = QTextOption(Qt.AlignLeft | Qt.AlignTop)
 

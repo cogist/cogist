@@ -2,8 +2,8 @@
 
 from abc import ABC, abstractmethod
 
-from PySide6.QtCore import QPointF
-from PySide6.QtGui import QPainterPath
+from qtpy.QtCore import QPointF
+from qtpy.QtGui import QPainterPath
 
 
 class ConnectorStrategy(ABC):

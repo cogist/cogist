@@ -6,9 +6,9 @@ supporting both dynamically drawn graphics and bitmap images.
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
+from qtpy.QtCore import QSize, Qt, Signal
+from qtpy.QtGui import QColor, QPainter, QPen, QPixmap
+from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
 
 class VisualOption:

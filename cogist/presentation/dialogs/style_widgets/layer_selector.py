@@ -4,8 +4,8 @@ Provides a dropdown menu to select different layers (Canvas, Root, Level 1-3+, e
 Always visible, no collapsible behavior.
 """
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtWidgets import (
     QFrame,
     QGridLayout,
     QLabel,

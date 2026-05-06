@@ -4,9 +4,9 @@ Provides controls for configuring node shadow effects.
 Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QGridLayout, QLabel, QPushButton
-from shiboken6 import isValid
+from qtpy.compat import isalive
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtWidgets import QGridLayout, QLabel, QPushButton
 
 from .collapsible_panel import CollapsiblePanel
 from .color_picker import create_color_picker
@@ -77,7 +77,7 @@ class ShadowSection(CollapsiblePanel):
         self.shadow_offset_x_spin = SpinBox()
         self.shadow_offset_x_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.shadow_offset_x_spin.setRange(-20, 20)
-        self.shadow_offset_x_spin.setValue(self.current_shadow["offset_x"])
+        self.shadow_offset_x_spin.setValue(int(self.current_shadow["offset_x"]))
         self.shadow_offset_x_spin.setAlignment(Qt.AlignLeft)
         self.shadow_offset_x_spin.valueChanged.connect(self._on_shadow_changed)
         layout.addWidget(self.shadow_offset_x_spin, row, 1)
@@ -93,7 +93,7 @@ class ShadowSection(CollapsiblePanel):
         self.shadow_offset_y_spin = SpinBox()
         self.shadow_offset_y_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.shadow_offset_y_spin.setRange(-20, 20)
-        self.shadow_offset_y_spin.setValue(self.current_shadow["offset_y"])
+        self.shadow_offset_y_spin.setValue(int(self.current_shadow["offset_y"]))
         self.shadow_offset_y_spin.setAlignment(Qt.AlignLeft)
         self.shadow_offset_y_spin.valueChanged.connect(self._on_shadow_changed)
         layout.addWidget(self.shadow_offset_y_spin, row, 1)
@@ -109,7 +109,7 @@ class ShadowSection(CollapsiblePanel):
         self.shadow_blur_spin = SpinBox()
         self.shadow_blur_spin.setFixedHeight(self.WIDGET_HEIGHT)
         self.shadow_blur_spin.setRange(0, 20)
-        self.shadow_blur_spin.setValue(self.current_shadow["blur"])
+        self.shadow_blur_spin.setValue(int(self.current_shadow["blur"]))
         self.shadow_blur_spin.setAlignment(Qt.AlignLeft)
         self.shadow_blur_spin.valueChanged.connect(self._on_shadow_changed)
         layout.addWidget(self.shadow_blur_spin, row, 1)
@@ -168,14 +168,14 @@ class ShadowSection(CollapsiblePanel):
         top_level = self.window() if self.window() else self
 
         # Check if color picker still exists (may have been deleted by WA_DeleteOnClose)
-        if self._color_picker is None or not isValid(self._color_picker):
+        if self._color_picker is None or not isalive(self._color_picker):
             self._color_picker = create_color_picker(top_level)
             self._color_picker.color_selected.connect(self._on_shadow_color_selected)
             # Ensure dialog closes when parent window closes
             self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
             # Enable alpha channel for shadow color (shadows need transparency)
-            from PySide6.QtWidgets import QColorDialog
+            from qtpy.QtWidgets import QColorDialog
             self._color_picker.setOption(QColorDialog.ShowAlphaChannel, True)
 
         # Set current color (MUST call before show!)
@@ -231,11 +231,11 @@ class ShadowSection(CollapsiblePanel):
         if self._initialized:
             # Note: 'enabled' is handled by NodeStyleSection, not here
             if "offset_x" in shadow:
-                self.shadow_offset_x_spin.setValue(shadow["offset_x"])
+                self.shadow_offset_x_spin.setValue(int(shadow["offset_x"]))
             if "offset_y" in shadow:
-                self.shadow_offset_y_spin.setValue(shadow["offset_y"])
+                self.shadow_offset_y_spin.setValue(int(shadow["offset_y"]))
             if "blur" in shadow:
-                self.shadow_blur_spin.setValue(shadow["blur"])
+                self.shadow_blur_spin.setValue(int(shadow["blur"]))
             if "color" in shadow:
                 # Convert #AARRGGBB to rgba() format for Qt CSS
                 color_value = shadow["color"]

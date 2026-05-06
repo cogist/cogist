@@ -4,14 +4,14 @@ Provides controls for customizing node border appearance.
 Implements lazy initialization for better performance.
 """
 
-from PySide6.QtCore import QPoint, Qt, Signal
-from PySide6.QtWidgets import (
+from qtpy.compat import isalive
+from qtpy.QtCore import QPoint, Qt, Signal
+from qtpy.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,
     QPushButton,
 )
-from shiboken6 import isValid
 
 from cogist.presentation.widgets import ColorPoolPopup, ToggleSwitch
 
@@ -336,7 +336,7 @@ class BorderSection(CollapsiblePanel):
         if self.is_root_mode:
             # Root mode: show color picker for special_colors["root_border"] (same as CanvasPanel)
             # Check if color picker still exists (may have been deleted by WA_DeleteOnClose)
-            if self._color_picker is None or not isValid(self._color_picker):
+            if self._color_picker is None or not isalive(self._color_picker):
                 # Get the top-level window to ensure proper dialog lifecycle
                 top_level = self.window() if self.window() else parent
                 self._color_picker = create_color_picker(top_level)
@@ -517,7 +517,7 @@ class BorderSection(CollapsiblePanel):
                 )
 
             if "border_width" in style:
-                self.border_width_spin.setValue(style["border_width"])
+                self.border_width_spin.setValue(int(style["border_width"]))
 
             # Update brightness spinbox (support multiple field names)
             if "brightness" in style and hasattr(self, "brightness_spin"):

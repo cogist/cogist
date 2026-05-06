@@ -8,8 +8,8 @@ Panels for style configuration:
 Note: Activity Bar has been moved to the main window level (VSCode-style).
 """
 
-from PySide6.QtCore import Signal
-from PySide6.QtWidgets import (
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import (
     QLabel,
     QVBoxLayout,
     QWidget,
