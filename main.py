@@ -503,7 +503,7 @@ class MainWindow(QMainWindow):
 
         # Toggle Style Panel
         toggle_style_panel_action = QAction("Toggle Style &Panel", self)
-        toggle_style_panel_action.setShortcut("Ctrl+Shift+S")
+        toggle_style_panel_action.setShortcut("Ctrl+L")
         toggle_style_panel_action.setCheckable(True)
         toggle_style_panel_action.triggered.connect(self._toggle_style_panel)
         view_menu.addAction(toggle_style_panel_action)
