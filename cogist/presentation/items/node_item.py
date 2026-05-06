@@ -247,6 +247,9 @@ class NodeItem(QGraphicsRectItem):
         # Z-value: nodes above edges
         self.setZValue(1)
 
+        # Track selection state to manage Z-value for focus frame visibility
+        self._is_selected = False
+
         # Inline editing support
         self.edit_widget = None
         self.edit_proxy = None
@@ -1236,7 +1239,7 @@ class NodeItem(QGraphicsRectItem):
         self.update()
 
     def itemChange(self, change, value):
-        """Handle position changes - update edges and children."""
+        """Handle position changes and selection state changes."""
         if change == QGraphicsRectItem.ItemPositionHasChanged:
             new_pos = value
             offset = new_pos - self._last_pos
@@ -1251,6 +1254,17 @@ class NodeItem(QGraphicsRectItem):
             # Update all connected edges (both incoming from parent and outgoing to children)
             for edge in self.connected_edges:
                 edge.update_curve()
+
+        # Handle selection state changes - bring selected node to front
+        elif change == QGraphicsRectItem.ItemSelectedHasChanged:
+            is_selected = bool(value)
+            if is_selected != self._is_selected:
+                self._is_selected = is_selected
+                # Bring selected node to front so focus frame is not obscured
+                if is_selected:
+                    self.setZValue(2)  # Higher than normal nodes (1)
+                else:
+                    self.setZValue(1)  # Back to normal
 
         return super().itemChange(change, value)
 
