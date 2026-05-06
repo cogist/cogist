@@ -669,6 +669,7 @@ class MainWindow(QMainWindow):
         is_edit_text_command = command_type_name == "EditTextCommand"
         is_delete_node_command = command_type_name == "DeleteNodeCommand"
         is_reparent_command = command_type_name == "ReparentNodeCommand"
+        is_drag_command = command_type_name == "DragNodeCommand"
         is_change_style_command = command_type_name == "ChangeStyleCommand"
 
         # Save selection state BEFORE undo
@@ -734,20 +735,24 @@ class MainWindow(QMainWindow):
             # EditTextCommand: Text change affects node size -> must re-measure
             # DeleteNodeCommand undo: Restoring nodes -> must re-measure
             # ReparentNodeCommand undo: Depth changes may affect styles -> must re-measure
+            # DragNodeCommand undo: Structure changes -> must re-measure
             # AddNodeCommand undo: Removing nodes -> can skip (old sizes preserved)
             needs_measurement = (
-                is_edit_text_command or is_delete_node_command or is_reparent_command
+                is_edit_text_command
+                or is_delete_node_command
+                or is_reparent_command
+                or is_drag_command
             )
 
             # For text edits, preserve locked position states
-            # For node structure changes (add/delete/reparent), clear locked positions
+            # For node structure changes (add/delete/reparent/drag), clear locked positions
             should_clear_locks = not is_edit_text_command
 
             self.mindmap_view._refresh_layout(
                 skip_measurement=not needs_measurement,
                 saved_selection_id=node_id_before_undo,
                 parent_id=parent_id_before_undo,
-                force_rebuild_edges=is_reparent_command,  # Rebuild edges for reparent
+                force_rebuild_edges=is_reparent_command or is_drag_command,  # Rebuild edges for reparent/drag
                 clear_locked_positions=should_clear_locks,
             )
 

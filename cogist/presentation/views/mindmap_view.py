@@ -710,6 +710,10 @@ class MindMapView(QGraphicsView):
 
                 # Save initial relative positions of entire subtree
                 self._save_subtree_relative_positions(current_node)
+
+                # CRITICAL: Save state for undo/redo BEFORE drag starts
+                # This captures the complete state needed to restore after drag
+                self._save_drag_state_for_undo(current_node)
         else:
             self._deselect_node()
 
@@ -907,18 +911,33 @@ class MindMapView(QGraphicsView):
                         old_parent.children.index(dragged_node) if old_parent else 0
                     )
 
-                    # Create and execute reparent command (Application Layer)
-                    from cogist.application.commands.reparent_node_command import (
-                        ReparentNodeCommand,
+                    # Create and execute drag command (Application Layer)
+                    from cogist.application.commands.drag_node_command import (
+                        DragNodeCommand,
                     )
 
-                    command = ReparentNodeCommand(
-                        dragged_node=dragged_node,
-                        old_parent=old_parent,
-                        new_parent=new_parent,
-                        old_index=old_index,
-                        is_cross_side=is_cross_side,
-                    )
+                    # Use saved drag state for undo/redo
+                    drag_state = getattr(self, '_drag_undo_state', None)
+                    if drag_state:
+                        command = DragNodeCommand(
+                            dragged_node=dragged_node,
+                            old_parent=drag_state['old_parent'],
+                            new_parent=new_parent,
+                            old_index=drag_state['old_index'],
+                            old_left_primary_node_ids=drag_state['old_left_primary_node_ids'],
+                            is_cross_side=is_cross_side,
+                        )
+                    else:
+                        # Fallback if state not saved
+                        command = DragNodeCommand(
+                            dragged_node=dragged_node,
+                            old_parent=old_parent,
+                            new_parent=new_parent,
+                            old_index=old_index,
+                            old_left_primary_node_ids=None,
+                            is_cross_side=is_cross_side,
+                        )
+
                     command.execute()
 
                     # Push to command history for undo/redo
@@ -1005,6 +1024,36 @@ class MindMapView(QGraphicsView):
                 self._restore_parent_edge(dragged_node)
 
         super().mouseReleaseEvent(event)
+
+    def _save_drag_state_for_undo(self, dragged_node):
+        """
+        Save minimal state before drag for undo/redo support.
+
+        Two scenarios:
+        1. Simple drag (no layout rebalance): Only old_parent and old_index
+        2. Cross-side drag (may trigger rebalance): Plus left side primary node IDs
+
+        Args:
+            dragged_node: The node being dragged
+        """
+        # Find old parent and index
+        old_parent = dragged_node.parent
+        old_index = old_parent.children.index(dragged_node) if old_parent else 0
+
+        # Save left side primary node IDs (only needed for cross-side drag)
+        # Using IDs instead of node references for memory efficiency
+        old_left_primary_node_ids = [
+            child.id for child in self.root_node.children
+            if not self._is_node_on_right_side(child.id)
+        ]
+
+        # Save all state
+        self._drag_undo_state = {
+            'old_parent': old_parent,
+            'old_index': old_index,
+            'old_left_primary_node_ids': old_left_primary_node_ids,
+            'is_cross_side': False,  # Will be updated during drag
+        }
 
     def _select_node(self, node_item: NodeItem):
         """Select a node."""
