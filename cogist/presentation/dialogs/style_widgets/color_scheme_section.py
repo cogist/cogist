@@ -170,6 +170,10 @@ class ColorSchemeSection(CollapsiblePanel):
 
     def _on_rainbow_toggled(self, checked: bool):
         """Handle rainbow branch mode toggle."""
+        # Only emit if value actually changed (prevent duplicate signals on panel close)
+        if checked == self._rainbow_visible:
+            return
+
         self._rainbow_visible = checked
 
         # Note: Color pool is always visible (no show/hide)

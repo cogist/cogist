@@ -20,6 +20,7 @@ os.environ["QT_LOGGING_RULES"] = (
 from qtpy.QtCore import Qt, qInstallMessageHandler
 from qtpy.QtGui import QAction, QKeySequence, QShortcut
 from qtpy.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QMainWindow,
     QMessageBox,
@@ -1043,25 +1044,35 @@ class MainWindow(QMainWindow):
 
         if not is_visible:
             # Opening panel: viewport shrinks
+            # Record current scroll value before changing visibility
+            current_scroll = h_bar.value()
             self.style_panel.setVisible(True)
             self.activity_bar.setVisible(True)
             # Content shifts right, scroll left to compensate
-            h_bar.setValue(h_bar.value() + compensation)
+            # Delay scroll adjustment to next event loop to allow layout update
+            from qtpy.QtCore import QTimer
+            QTimer.singleShot(0, lambda: h_bar.setValue(current_scroll + compensation))
         else:
             # Closing panel: viewport expands
+            # Record current scroll value before changing visibility
+            current_scroll = h_bar.value()
             self.style_panel.setVisible(False)
             self.activity_bar.setVisible(False)
             # Content shifts left, scroll right to compensate
-            h_bar.setValue(h_bar.value() - compensation)
+            # Delay scroll adjustment to next event loop to allow layout update
+            from qtpy.QtCore import QTimer
+            QTimer.singleShot(0, lambda: h_bar.setValue(current_scroll - compensation))
 
         # Update activity bar button state
         if not is_visible:
             # If showing, activate color scheme by default
             self.activity_bar.activate_panel("color_scheme")
         else:
-            # If hiding, uncheck all buttons
+            # If hiding, uncheck all buttons (block signals to prevent recursive calls)
             for btn in self.activity_bar.buttons.values():
+                btn.blockSignals(True)
                 btn.setChecked(False)
+                btn.blockSignals(False)
 
     def _open_style_panel(self):
         """Open the style panel via activity bar."""
@@ -1071,7 +1082,6 @@ class MainWindow(QMainWindow):
 
 def main():
     """Main entry point for the application."""
-    from qtpy.QtWidgets import QApplication
 
     # Set application name for macOS menu bar
     app = QApplication(sys.argv)
