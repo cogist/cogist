@@ -104,6 +104,9 @@ class MindMapView(QGraphicsView):
         # Selection
         self.selected_node_id = None
 
+        # Track node selection before losing focus (for restoration)
+        self._saved_selected_node_id = None
+
         # Drag and drop state
         self._dragged_node_id: str | None = None
         self._drag_offset: QPointF | None = None
@@ -525,12 +528,30 @@ class MindMapView(QGraphicsView):
     def focusOutEvent(self, event):
         """Handle focus lost event.
 
-        When the view loses keyboard focus, clear the node selection state
-        to ensure visual consistency with the focus state.
+        When the view loses keyboard focus, save the current node selection state
+        so it can be restored when focus returns.
         """
+        # Save current selection before clearing
+        if self.selected_node_id is not None:
+            self._saved_selected_node_id = self.selected_node_id
+
         # Clear node selection when view loses focus
         self._deselect_node()
         super().focusOutEvent(event)
+
+    def focusInEvent(self, event):
+        """Handle focus gained event.
+
+        Restore previously saved node selection if exists.
+        """
+        # Restore saved selection if it exists and the node is still valid
+        if self._saved_selected_node_id is not None:
+            if self._saved_selected_node_id in self.node_items:
+                self._select_node_by_id(self._saved_selected_node_id)
+            # Clear the saved state
+            self._saved_selected_node_id = None
+
+        super().focusInEvent(event)
 
     def keyPressEvent(self, event):
         """Handle key press events.

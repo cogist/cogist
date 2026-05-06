@@ -10,6 +10,7 @@ Note: Activity Bar has been moved to the main window level (VSCode-style).
 
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import (
+    QApplication,
     QLabel,
     QVBoxLayout,
     QWidget,
@@ -30,11 +31,17 @@ class StylePanel(QWidget):
         self.config_manager = config_manager
         self.command_history = command_history
 
+        # Track previously selected node ID for focus restoration
+        self._previous_selected_node_id = None
+
         # Set fixed width
         self.setMinimumWidth(self.PANEL_WIDTH)
         self.setMaximumWidth(self.PANEL_WIDTH)
 
         self._init_ui()
+
+        # Connect to global focus change signal
+        QApplication.instance().focusChanged.connect(self._on_focus_changed)
 
     def _init_ui(self):
         """Initialize the user interface with stacked panels."""
@@ -77,6 +84,38 @@ class StylePanel(QWidget):
             layout.addWidget(self.advanced_tab)
 
         self.current_panel = panel_name
+
+    def _on_focus_changed(self, old: QWidget, now: QWidget):
+        """Handle global focus changes."""
+        if now is None:
+            return
+
+        # Check if the new focus widget is inside this panel
+        if self.isAncestorOf(now) or now == self:
+            # Panel gained focus - save current node selection
+            parent = self.parent()
+            while parent and not hasattr(parent, 'mindmap_view'):
+                parent = parent.parent()
+
+            if parent and hasattr(parent, 'mindmap_view'):
+                view = parent.mindmap_view
+                # Only save if we don't already have a saved state
+                if self._previous_selected_node_id is None:
+                    self._previous_selected_node_id = view.selected_node_id
+        else:
+            # Focus moved outside panel - check if it was previously inside
+            if self._previous_selected_node_id is not None and old and (self.isAncestorOf(old) or old == self):
+                parent = self.parent()
+                while parent and not hasattr(parent, 'mindmap_view'):
+                    parent = parent.parent()
+
+                if parent and hasattr(parent, 'mindmap_view'):
+                    view = parent.mindmap_view
+                    # Restore the previously selected node if it still exists
+                    if self._previous_selected_node_id in view.node_items:
+                        view._select_node_by_id(self._previous_selected_node_id)
+                    # Clear the saved state
+                    self._previous_selected_node_id = None
 
 
 class SimpleStyleTab(QWidget):
