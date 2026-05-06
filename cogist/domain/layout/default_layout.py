@@ -466,6 +466,12 @@ class DefaultLayout(BaseLayout):
         """
         Rebalance by moving nodes from one side to another.
 
+        Strategy for drag operations:
+        - If dragged node is at bottom: move from top (protect bottom)
+        - Otherwise (dragged at top/middle): move from bottom (protect top)
+
+        Default strategy (no drag): move from bottom to keep top stable
+
         Args:
             from_side: List of nodes to move from (modified in place)
             to_side: List of nodes to move to (modified in place)
@@ -473,14 +479,41 @@ class DefaultLayout(BaseLayout):
             from_height: Current height of the source side
             to_height: Current height of the target side
         """
-        # Move oldest nodes first to keep newer nodes stable on their side
-        # Use original order: oldest nodes are at the beginning of the list
-        # CRITICAL: Exclude nodes with is_locked_position flag set
+        # Exclude locked nodes from candidates
         candidates = [
             (node, self._calculate_subtree_height(node))
             for node in from_side
             if node.id not in locked_node_ids
         ]
+
+        # For drag operations: adjust order based on dragged node position
+        # If there are locked nodes, this is a drag operation
+        if locked_node_ids and len(candidates) > 0:
+            # Find locked nodes in to_side (the side where dragged node was placed)
+            locked_in_to_side = [node for node in to_side if node.id in locked_node_ids]
+
+            if locked_in_to_side:
+                # Determine if dragged node is at the bottom of to_side
+                # Bottom means: last position in the list
+                is_dragged_to_bottom = (
+                    len(locked_in_to_side) > 0 and
+                    locked_in_to_side[-1] == to_side[-1]
+                )
+
+                # If dragged to bottom, reverse order: move from top first
+                # Otherwise: move from bottom first (reverse the list)
+                if is_dragged_to_bottom:
+                    # Dragged to bottom: protect bottom, move from top
+                    # Keep original order (top to bottom)
+                    pass
+                else:
+                    # Dragged to top/middle: protect top, move from bottom
+                    # Reverse order (bottom to top)
+                    candidates = list(reversed(candidates))
+        else:
+            # Default: no drag operation, move from bottom to keep top stable
+            # Reverse order: bottom to top
+            candidates = list(reversed(candidates))
 
         for node, height in candidates:
             if from_height <= to_height:
