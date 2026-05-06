@@ -962,8 +962,9 @@ class MindMapView(QGraphicsView):
                             # R node: position far to the right
                             top_level_node.position = (800.0, top_level_node.position[1])
                         else:
-                            # L node: position far to the left
-                            top_level_node.position = (400.0, top_level_node.position[1])
+                            # L node: position far to the left (must be < -parent.width/2)
+                            # Use -800.0 to ensure it's clearly on the left side
+                            top_level_node.position = (-800.0, top_level_node.position[1])
 
                         # Mark as locked so layout won't move it during rebalancing
                     top_level_node.is_locked_position = True
@@ -974,11 +975,11 @@ class MindMapView(QGraphicsView):
                     self._measure_actual_sizes(dragged_node)
 
                     # Now refresh layout with skip_measurement=True since we just measured
-                    # CRITICAL: Don't clear locked positions - we need them for this layout!
+                    # CRITICAL: Clear locked positions after this layout - drag operation is complete!
                     self._refresh_layout(
                         skip_measurement=True,
                         force_rebuild_edges=True,
-                        clear_locked_positions=False
+                        clear_locked_positions=True  # Clear after layout
                     )
                 else:
                     # Parent didn't change, but still need to refresh layout to snap node back
@@ -1585,7 +1586,14 @@ class MindMapView(QGraphicsView):
         Args:
             new_node: The newly added domain node
         """
+        # For new top-level nodes: force position to the right side
+        # This ensures new primary nodes always appear on the right by default
+        if new_node.parent and new_node.parent.is_root:
+            # Set initial position far to the right
+            new_node.position = (800.0, 0.0)
+
         # Mark new node as locked for rebalancing
+        # This prevents the balance algorithm from moving it to the left side
         new_node.is_locked_position = True
 
         # OPTIMIZATION: Only measure the new node, not the entire tree
