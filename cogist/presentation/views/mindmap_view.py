@@ -999,11 +999,11 @@ class MindMapView(QGraphicsView):
 
                     top_level_node = get_top_level_ancestor(dragged_node)
                     if top_level_node and top_level_node.id in self.node_items:
-                        # Sync position to actual UI position (not temporary values!)
-                        top_level_node.position = (
-                            self.node_items[top_level_node.id].scenePos().x(),
-                            top_level_node.position[1]
-                        )
+                        # CRITICAL: Sync BOTH X and Y coordinates to actual UI position
+                        # Previously only X was synced, causing incorrect drag position detection
+                        # when sorting nodes by Y coordinate in layout algorithm
+                        ui_pos = self.node_items[top_level_node.id].scenePos()
+                        top_level_node.position = (ui_pos.x(), ui_pos.y())
 
                     # Mark as locked to prevent layout from moving it during rebalancing
                     if top_level_node:

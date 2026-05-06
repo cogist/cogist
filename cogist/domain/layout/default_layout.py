@@ -494,25 +494,35 @@ class DefaultLayout(BaseLayout):
             to_height: Current height of the target side
         """
         # Exclude locked nodes from candidates
+        # CRITICAL: Sort from_side by Y position so reversal works correctly
+        from_side_sorted = sorted(from_side, key=lambda n: n.position[1])
+
         candidates = [
             (node, self._calculate_subtree_height(node))
-            for node in from_side
+            for node in from_side_sorted
             if node.id not in locked_node_ids
         ]
 
         # For drag operations: adjust order based on dragged node position
         # If there are locked nodes, this is a drag operation
         if locked_node_ids and len(candidates) > 0:
-            # Find locked nodes in to_side (the side where dragged node was placed)
-            locked_in_to_side = [node for node in to_side if node.id in locked_node_ids]
+            # Find locked nodes in from_side (the side where dragged node currently is)
+            locked_in_from_side = [node for node in from_side_sorted if node.id in locked_node_ids]
 
-            if locked_in_to_side:
-                # Determine if dragged node is at the bottom of to_side
-                # Bottom means: last position in the list
-                is_dragged_to_bottom = (
-                    len(locked_in_to_side) > 0 and
-                    locked_in_to_side[-1] == to_side[-1]
-                )
+            if locked_in_from_side:
+                # Determine if dragged node is at the bottom of from_side
+                # CRITICAL: Use children list index, not Y coordinate!
+                # Y coordinates may be 0.0 for newly added nodes before layout
+                dragged_node = locked_in_from_side[-1]  # The dragged node
+
+                # Find the dragged node's index in the parent's children list
+                parent = dragged_node.parent
+                if parent:
+                    dragged_index = parent.children.index(dragged_node)
+                    is_dragged_to_bottom = (dragged_index == len(parent.children) - 1)
+                else:
+                    # Fallback: no parent, assume not at bottom
+                    is_dragged_to_bottom = False
 
                 # If dragged to bottom, reverse order: move from top first
                 # Otherwise: move from bottom first (reverse the list)
