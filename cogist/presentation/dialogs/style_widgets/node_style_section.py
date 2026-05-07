@@ -531,8 +531,10 @@ class NodeStyleSection(ColorDialogUndoMixin, CollapsiblePanel):
                         "text-align: left;"
                     )
 
-                # Emit style changed to trigger redraw
-                self._emit_style_changed()
+                # DO NOT emit signal in root mode - mixin will create undo command on dialog close
+                # Just trigger UI refresh without creating commands
+                if hasattr(parent, '_apply_styles_to_mindmap'):
+                    parent._apply_styles_to_mindmap(force_rebuild=False)
             else:
                 # Normal mode: update color_pool at bg_color_index
                 color_index = self.current_style.get("bg_color_index", 0)

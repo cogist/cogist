@@ -129,6 +129,12 @@ class CanvasPanel(ColorDialogUndoMixin, CollapsiblePanel):
             # Ensure dialog closes when parent window closes
             self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
+        # Get current color from style data object (no fallback)
+        parent = self._advanced_tab
+
+        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
+            return
+
         # Setup undo support using mixin
         self.setup_color_dialog_undo(
             color_picker=self._color_picker,
@@ -136,12 +142,6 @@ class CanvasPanel(ColorDialogUndoMixin, CollapsiblePanel):
             style_key="bg_color",
             get_current_color=lambda: parent.style_config.special_colors["canvas_bg"],
         )
-
-        # Get current color from style data object (no fallback)
-        parent = self._advanced_tab
-
-        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
-            return
 
         # Save original color for undo command
         self._original_canvas_color = parent.style_config.special_colors["canvas_bg"]

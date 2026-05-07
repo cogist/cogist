@@ -139,6 +139,13 @@ class ChangeStyleCommand(Command):
             for key in keys:
                 if key == "bg_color":
                     backup[key] = self.style_config.special_colors["canvas_bg"]
+        elif layer == "root":
+            # Root layer background/border colors use special_colors
+            for key in keys:
+                if key == "bg_color":
+                    backup[key] = self.style_config.special_colors["root_background"]
+                elif key == "border_color":
+                    backup[key] = self.style_config.special_colors["root_border"]
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}
@@ -214,10 +221,6 @@ class ChangeStyleCommand(Command):
                                 # Backup border radius
                                 if hasattr(role_style, 'border_radius'):
                                     backup[key] = role_style.border_radius
-                            elif key == "bg_color":
-                                # Background color: root layer uses special_colors["root_background"] directly
-                                # For other layers, this shouldn't happen (they use bg_color_index)
-                                backup[key] = None  # Skip backup for bg_color
                             elif key == "text_color":
                                 # Text color from role_style
                                 backup[key] = role_style.text_color
@@ -254,6 +257,12 @@ class ChangeStyleCommand(Command):
         if layer == "canvas":
             if "bg_color" in style_updates:
                 self.style_config.special_colors["canvas_bg"] = style_updates["bg_color"]
+        elif layer == "root":
+            # Root layer background/border colors use special_colors
+            if "bg_color" in style_updates:
+                self.style_config.special_colors["root_background"] = style_updates["bg_color"]
+            if "border_color" in style_updates:
+                self.style_config.special_colors["root_border"] = style_updates["border_color"]
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}
