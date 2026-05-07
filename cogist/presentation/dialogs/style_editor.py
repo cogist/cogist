@@ -459,7 +459,7 @@ class StyleEditorTab(QWidget):
         self.spacing_section = SpacingSection(parent=self)
         self.node_style_section = NodeStyleSection(parent=self)
         self.font_style_section = FontStyleSection()
-        self.shadow_section = ShadowSection()
+        self.shadow_section = ShadowSection(parent=self)
         self.border_section = BorderSection(parent=self)
         self.connector_section = ConnectorSection(parent=self)
 

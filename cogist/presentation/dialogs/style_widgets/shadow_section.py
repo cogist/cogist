@@ -9,12 +9,13 @@ from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import QGridLayout, QLabel, QPushButton
 
 from .collapsible_panel import CollapsiblePanel
+from .color_dialog_undo import ColorDialogUndoMixin
 from .color_picker import create_color_picker
 from .dialog_utils import position_color_dialog
 from .spinbox import SpinBox
 
 
-class ShadowSection(CollapsiblePanel):
+class ShadowSection(ColorDialogUndoMixin, CollapsiblePanel):
     """Font Shadow effect configuration settings with lazy initialization.
 
     Signals:
@@ -33,6 +34,9 @@ class ShadowSection(CollapsiblePanel):
 
         # Get LABEL_WIDTH from parent (StyleEditorTab) if available, otherwise use class default
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
+
+        # Store reference to StyleEditorTab for accessing style_config and current_layer
+        self._advanced_tab = parent
 
         # State
         self._initialized = False
@@ -190,9 +194,22 @@ class ShadowSection(CollapsiblePanel):
             from qtpy.QtWidgets import QColorDialog
             self._color_picker.setOption(QColorDialog.ShowAlphaChannel, True)
 
+        # Get parent StyleEditorTab to access style_config and current_layer
+        parent = self._advanced_tab if hasattr(self, '_advanced_tab') else None
+
+        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
+            return
+
+        # Setup undo support using mixin
+        self.setup_color_dialog_undo(
+            color_picker=self._color_picker,
+            layer=parent.current_layer,
+            style_key="shadow_color",
+            get_current_color=lambda: self.current_shadow.get("color", "#000000"),
+        )
+
         # Set current color (MUST call before show!)
-        # Trust data integrity: color must exist in current_shadow
-        current_color = self.current_shadow["color"]
+        current_color = self.current_shadow.get("color", "#000000")
         self._color_picker.set_current_color(current_color)
 
         # Show color picker
@@ -204,7 +221,29 @@ class ShadowSection(CollapsiblePanel):
         position_color_dialog(self._color_picker, self.shadow_color_btn)
 
     def _on_shadow_color_selected(self, hex_color: str):
-        """Handle shadow color selection from picker."""
+        """Handle shadow color selection from picker (real-time preview)."""
+        # Get parent StyleEditorTab
+        parent = self._advanced_tab if hasattr(self, '_advanced_tab') else None
+
+        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
+            return
+
+        # Real-time preview: update style_config directly
+        from cogist.domain.styles import NodeRole
+
+        layer_to_role = {
+            "root": NodeRole.ROOT,
+            "level_1": NodeRole.PRIMARY,
+            "level_2": NodeRole.SECONDARY,
+            "level_3_plus": NodeRole.TERTIARY,
+        }
+        role = layer_to_role.get(parent.current_layer)
+
+        if role and role in parent.style_config.role_styles:
+            role_style = parent.style_config.role_styles[role]
+            role_style.shadow_color = hex_color
+
+        # Update local state
         self.current_shadow["color"] = hex_color
 
         # Convert #AARRGGBB to rgba() format for Qt CSS
@@ -223,14 +262,22 @@ class ShadowSection(CollapsiblePanel):
             self.shadow_color_btn.setStyleSheet(
                 f"background-color: {hex_color}; border: 1px solid #ccc; border-radius: 4px;"
             )
-        # Emit with shadow_ prefix to match role_style field names
-        self.shadow_changed.emit({
-            "shadow_color": hex_color,
-        })
+
+        # DO NOT emit signal - mixin will create undo command on dialog close
+        # Just trigger UI refresh without creating commands
+        if hasattr(parent, '_apply_styles_to_mindmap'):
+            parent._apply_styles_to_mindmap(force_rebuild=False)
 
     def _emit_shadow_changed(self):
         """Emit shadow changed signal."""
         self.shadow_changed.emit(self.current_shadow.copy())
+
+    def _get_final_color(self) -> str:
+        """Get the final color from the color picker for undo command.
+
+        Required by ColorDialogUndoMixin.
+        """
+        return self.current_shadow.get("color", "#000000")
 
     def get_shadow(self) -> dict:
         """Get current shadow configuration."""
