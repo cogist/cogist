@@ -152,12 +152,47 @@ class CanvasPanel(CollapsiblePanel):
         position_color_dialog(self._color_picker, self.bg_color_btn)
 
     def _on_color_dialog_closed(self):
-        """Handle color dialog close - reset reference."""
-        # WA_DeleteOnClose has already destroyed the object, just reset the reference
+        """Handle color dialog close - create undo command."""
+        parent = self._advanced_tab
+        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
+            return
+
+        if not hasattr(parent, 'command_history') or not parent.command_history:
+            return
+
+        # Get final color (already updated by real-time preview)
+        final_color = parent.style_config.special_colors["canvas_bg"]
+        original_color = getattr(self, '_original_canvas_color', None)
+
+        if original_color is None:
+            return
+
+        # Only create undo command if color actually changed
+        if final_color != original_color:
+            from cogist.application.commands import ChangeStyleCommand
+            from cogist.application.commands.change_style_command import StyleChange
+
+            change = StyleChange(
+                layer="canvas",
+                style_updates={"bg_color": final_color}
+            )
+            command = ChangeStyleCommand(
+                style_config=parent.style_config,
+                changes=[change]
+            )
+            # Manually set old_values to the original color before any changes
+            command.old_values.append({
+                "layer": "canvas",
+                "old_values": {"bg_color": original_color}
+            })
+            command.execute()
+            parent.command_history.push(command)
+
+        # Reset reference (WA_DeleteOnClose has already destroyed the object)
         self._color_picker = None
 
     def _on_bg_color_selected(self, hex_color: str):
-        """Handle color selection from picker (real-time preview with undo support)."""
+        """Handle color selection from picker (real-time preview only)."""
         parent = self._advanced_tab
         if not (parent and hasattr(parent, 'style_config') and parent.style_config):
             return
@@ -175,31 +210,6 @@ class CanvasPanel(CollapsiblePanel):
                 "font-size: 13px; "
                 "text-align: left;"
             )
-
-        # Create undo command immediately (same as numeric styles - will be coalesced)
-        if hasattr(parent, 'command_history') and parent.command_history:
-            from cogist.application.commands import ChangeStyleCommand
-            from cogist.application.commands.change_style_command import StyleChange
-
-            change = StyleChange(
-                layer="canvas",
-                style_updates={"bg_color": hex_color}
-            )
-            command = ChangeStyleCommand(
-                style_config=parent.style_config,
-                changes=[change]
-            )
-
-            # Manually backup the original color (saved when dialog opened)
-            original_color = getattr(self, '_original_canvas_color', None)
-            if original_color and not command.old_values:
-                command.old_values.append({
-                    "layer": "canvas",
-                    "old_values": {"bg_color": original_color}
-                })
-
-            command.execute()
-            parent.command_history.push(command)
 
         # Emit style changed signal (triggers UI refresh)
         self._emit_style_changed()
