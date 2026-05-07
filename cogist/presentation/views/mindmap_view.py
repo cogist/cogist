@@ -295,7 +295,6 @@ class MindMapView(QGraphicsView):
                             padding_width = 40  # Safe fallback
 
                     # Update domain node width with dynamic width + padding
-                    old_width = node.width
                     node.width = dynamic_text_width + padding_width
 
                     # CRITICAL: Sync border_width for layout algorithm (respecting border_enabled)
@@ -307,8 +306,6 @@ class MindMapView(QGraphicsView):
                             node.border_width = 0  # Border disabled
                     else:
                         node.border_width = 0
-
-                    print(f"[MEASURE] Editing node '{node.text}' - text_width={dynamic_text_width}, padding={padding_width}, total_width={node.width} (was {old_width})")
 
                     # Still measure children
                     for child in node.children:
@@ -369,27 +366,17 @@ class MindMapView(QGraphicsView):
         Only updates positions of existing items, creates new ones if needed,
         and removes deleted ones.
         """
-        # DEBUG: Log entry
-        print("[UI UPDATE] _update_ui_positions_incremental called")
-
         # Step 1: Update or create node items
         created_nodes = set()
         for node in self._traverse_tree(self.root_node):
             if node.id in self.node_items:
                 # Existing node - update position AND size
                 item = self.node_items[node.id]
-                old_pos = (item.pos().x(), item.pos().y())
                 item.setPos(node.position[0], node.position[1])
-                new_pos = (item.pos().x(), item.pos().y())
-
-                # DEBUG: Log position changes
-                if abs(old_pos[0] - new_pos[0]) > 0.1 or abs(old_pos[1] - new_pos[1]) > 0.1:
-                    print(f"[UI UPDATE] Node '{node.text}' moved from {old_pos} to {new_pos}")
 
                 # CRITICAL: Check if text content has changed (e.g., after undo/redo)
                 if item.text_content != node.text:
                     # Text changed - need full rebuild to update text display
-                    print(f"[UI UPDATE] Text changed for '{node.text}', returning False")
                     return False
 
                 # CRITICAL: Sync domain node size to UI item
@@ -1906,25 +1893,12 @@ class MindMapView(QGraphicsView):
                 # Find the node for measurement
                 node = self._find_node_by_id(self.root_node, editing_node_id)
                 if node:
-                    # DEBUG: Log before measurement
-                    print(f"[EDIT] Before measure - node.width={node.width}, node.text='{node.text}'")
-
                     # CRITICAL: Measure the ENTIRE tree to ensure layout algorithm has correct sizes
                     # Without this, child nodes won't reposition when parent size changes
                     self._measure_actual_sizes(self.root_node)
 
-                    # DEBUG: Log after measurement
-                    print(f"[EDIT] After measure - node.width={node.width}")
-                    for child in node.children:
-                        print(f"[EDIT] Child {child.text} - position=({child.position[0]}, {child.position[1]})")
-
                     # Re-layout with skip_measurement=False to use new measurements
                     self._refresh_layout(skip_measurement=False)
-
-                    # DEBUG: Log after layout
-                    print(f"[EDIT] After layout - node.width={node.width}")
-                    for child in node.children:
-                        print(f"[EDIT] Child {child.text} - position=({child.position[0]}, {child.position[1]})")
 
                     # Check if we need to add a child node after editing (e.g., Tab was pressed)
                     if (
@@ -1999,15 +1973,12 @@ class MindMapView(QGraphicsView):
             clear_locked_positions: If True, clear is_locked_position flags after layout.
                                    Set to False for undo/redo of text edits.
         """
-        print(f"[LAYOUT] _refresh_layout called, skip_measurement={skip_measurement}")
-
         # Save selected node ID before clearing (if not provided)
         if saved_selection_id is None:
             saved_selection_id = self.selected_node_id
 
         # Step 1: Re-measure actual sizes (unless skipped - e.g., after editing)
         if not skip_measurement:
-            print("[LAYOUT] Calling _measure_actual_sizes")
             self._measure_actual_sizes(self.root_node)
 
         # Step 2: Re-apply layout, passing selected node to preserve its side
@@ -2037,13 +2008,6 @@ class MindMapView(QGraphicsView):
                 item = self.node_items[node.id]
                 if hasattr(item, 'edit_widget') and item.edit_widget is not None:
                     editing_nodes_before[node.id] = (node.position[0], node.position[1])
-                    print(f"[LAYOUT] Before layout - Node '{node.text}' position: {node.position}, width: {node.width}")
-                    # Also log parent position
-                    if node.parent:
-                        parent_visual_width = node.parent.width + getattr(node.parent, 'border_width', 0) * 2
-                        parent_visual_right = node.parent.position[0] + parent_visual_width / 2.0
-                        print(f"[LAYOUT]   Parent '{node.parent.text}' position: {node.parent.position}, width: {node.parent.width}")
-                        print(f"[LAYOUT]   Parent visual right edge: {parent_visual_right}")
 
         layout.layout(
             self.root_node,
@@ -2058,13 +2022,10 @@ class MindMapView(QGraphicsView):
             if node:
                 new_pos = (node.position[0], node.position[1])
                 if abs(old_pos[0] - new_pos[0]) > 0.1 or abs(old_pos[1] - new_pos[1]) > 0.1:
-                    print(f"[LAYOUT] After layout - Node '{node.text}' moved from {old_pos} to {new_pos}")
-
                     # CRITICAL: Restore original position for editing nodes
                     # This prevents the editing node from moving while its width changes,
                     # which would cause its children's aligned edge to shift.
                     node.position = old_pos
-                    print(f"[LAYOUT] Restored Node '{node.text}' position to {old_pos}")
 
         # Clear locked position flags after layout (only when requested)
         # This is typically done after drag operations or node additions

@@ -866,35 +866,9 @@ class DefaultLayout(BaseLayout):
         # Calculate the aligned edge position for all sibling nodes
         aligned_edge_x = self._calculate_aligned_edge(parent_node, nodes, direction)
 
-        # DEBUG: Log aligned edge calculation for all nodes
-        print(f"[LAYOUT ALGO] _layout_side - direction={direction}, parent='{parent_node.text}'")
-        print(f"[LAYOUT ALGO]   Parent position: {parent_node.position}, width: {parent_node.width}")
-        parent_visual_width = self._get_visual_width(parent_node)
-        if direction == -1:
-            parent_visual_left = parent_node.position[0] - parent_visual_width / 2.0
-            print(f"[LAYOUT ALGO]   Parent visual left edge: {parent_visual_left}")
-        else:
-            parent_visual_right = parent_node.position[0] + parent_visual_width / 2.0
-            print(f"[LAYOUT ALGO]   Parent visual right edge: {parent_visual_right}")
-        print(f"[LAYOUT ALGO]   Aligned edge x: {aligned_edge_x}")
-        for node in nodes:
-            print(f"[LAYOUT ALGO]   Node '{node.text}' width: {node.width}, old position: {node.position}")
-
         for i, node in enumerate(nodes):
             # Calculate node center position using unified method
             node_x = self._calculate_node_position(node, aligned_edge_x, direction)
-
-            # DEBUG: Log calculated position and edge
-            if node.text.startswith('fasfsdaj'):
-                # Calculate visual half width (including border expansion)
-                node_visual_half_width = self._get_visual_width(node) / 2.0
-                if direction == -1:
-                    calculated_left_edge = node_x - node_visual_half_width
-                    print(f"[LAYOUT ALGO] Node '{node.text}' - node_x: {node_x}, half_width: {node_visual_half_width}, left_edge: {calculated_left_edge}, aligned_edge_x: {aligned_edge_x}")
-                else:
-                    calculated_left_edge = node_x - node_visual_half_width
-                    print(f"[LAYOUT ALGO] Node '{node.text}' - node_x: {node_x}, half_width: {node_visual_half_width}, left_edge: {calculated_left_edge}, aligned_edge_x: {aligned_edge_x}")
-
             node.position = (node_x, current_y)
 
             # Layout children if any

@@ -1426,9 +1426,9 @@ class NodeItem(QGraphicsRectItem):
             # Ring 3: Outer focus ring (semi-transparent glow, 8px, outside inner ring)
 
             # Get node's outer edge path (this is where node border ends)
-            # CRITICAL: Border now extends FULL border_width outward from rect
-            # So node outer edge = rect.adjusted(-border_width, -border_width, border_width, border_width)
-            border_width = style_config.get("border_width", 0)
+            # Only include border_width if border is enabled
+            border_enabled = self.template_style.border_enabled if self.template_style else True
+            border_width = style_config.get("border_width", 0) if border_enabled else 0
             node_outer_rect = rect.adjusted(-border_width, -border_width, border_width, border_width)
             node_outer_radius = style_config.get("border_radius", 8) + border_width
 
@@ -1799,18 +1799,12 @@ class NodeItem(QGraphicsRectItem):
             """Handle text changes during editing."""
             # CRITICAL: Directly trigger layout refresh when text changes
             # This ensures child nodes reposition in real-time
-            print(f"[NODE_ITEM] on_text_changed called, text='{_new_text}'")
             if self._mindmap_view:
-                print("[NODE_ITEM] Calling _refresh_layout()")
                 try:
                     self._mindmap_view._refresh_layout()
-                    print("[NODE_ITEM] _refresh_layout() completed successfully")
-                except Exception as e:
-                    print(f"[NODE_ITEM] ERROR in _refresh_layout(): {e}")
+                except Exception:
                     import traceback
                     traceback.print_exc()
-            else:
-                print("[NODE_ITEM] ERROR: _mindmap_view is None!")
 
         def on_tab_pressed():
             """Handle Tab key press - set flag to add child after editing."""
@@ -1827,9 +1821,7 @@ class NodeItem(QGraphicsRectItem):
             self.cancel_editing()
 
         self.edit_widget.width_changed.connect(on_width_changed)
-        print("[NODE_ITEM] Connecting text_changed signal...")
         self.edit_widget.text_changed.connect(on_text_changed)
-        print("[NODE_ITEM] text_changed signal connected successfully")
         self.edit_widget.tab_pressed.connect(on_tab_pressed)
         self.edit_widget.editing_finished.connect(on_editing_finished)
         self.edit_widget.editing_cancelled.connect(on_editing_cancelled)
