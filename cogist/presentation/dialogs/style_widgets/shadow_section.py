@@ -152,15 +152,27 @@ class ShadowSection(CollapsiblePanel):
 
     def _on_shadow_changed(self):
         """Handle shadow parameter changes."""
-        self.current_shadow["offset_x"] = self.shadow_offset_x_spin.value()
-        self.current_shadow["offset_y"] = self.shadow_offset_y_spin.value()
-        self.current_shadow["blur"] = self.shadow_blur_spin.value()
-        # Emit with shadow_ prefix to match role_style field names
-        self.shadow_changed.emit({
-            "shadow_offset_x": self.current_shadow["offset_x"],
-            "shadow_offset_y": self.current_shadow["offset_y"],
-            "shadow_blur": self.current_shadow["blur"],
-        })
+        # Track which fields actually changed
+        changed_fields = {}
+
+        new_offset_x = self.shadow_offset_x_spin.value()
+        if new_offset_x != self.current_shadow.get("offset_x"):
+            changed_fields["shadow_offset_x"] = new_offset_x
+            self.current_shadow["offset_x"] = new_offset_x
+
+        new_offset_y = self.shadow_offset_y_spin.value()
+        if new_offset_y != self.current_shadow.get("offset_y"):
+            changed_fields["shadow_offset_y"] = new_offset_y
+            self.current_shadow["offset_y"] = new_offset_y
+
+        new_blur = self.shadow_blur_spin.value()
+        if new_blur != self.current_shadow.get("blur"):
+            changed_fields["shadow_blur"] = new_blur
+            self.current_shadow["blur"] = new_blur
+
+        # Only emit if something actually changed
+        if changed_fields:
+            self.shadow_changed.emit(changed_fields)
 
     def _pick_color(self):
         """Open non-modal color picker dialog for shadow color."""
