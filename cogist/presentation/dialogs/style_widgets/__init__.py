@@ -7,6 +7,7 @@ implementing lazy initialization and collapsible panels for better UX.
 from .border_section import BorderSection
 from .canvas_panel import CanvasPanel
 from .collapsible_panel import CollapsiblePanel
+from .color_dialog_manager import ColorDialogManager, show_color_dialog_with_undo
 from .color_scheme_section import ColorSchemeSection
 from .connector_section import ConnectorSection
 from .font_style_section import FontStyleSection
@@ -28,4 +29,6 @@ __all__ = [
     "MenuButton",
     "ColorSchemeSection",
     "CanvasPanel",
+    "ColorDialogManager",
+    "show_color_dialog_with_undo",
 ]
