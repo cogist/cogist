@@ -22,12 +22,13 @@ from cogist.presentation.widgets.node_shape_previews import (
 )
 
 from .collapsible_panel import CollapsiblePanel
+from .color_dialog_undo import ColorDialogUndoMixin
 from .color_picker import create_color_picker
 from .dialog_utils import position_color_dialog
 from .spinbox import SpinBox
 
 
-class NodeStyleSection(CollapsiblePanel):
+class NodeStyleSection(ColorDialogUndoMixin, CollapsiblePanel):
     """Node style settings with lazy initialization.
 
     Signals:
@@ -385,14 +386,17 @@ class NodeStyleSection(CollapsiblePanel):
                 self._color_picker.color_selected.connect(self._on_bg_color_selected)
                 # Ensure dialog closes when parent window closes
                 self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
-                # Reset reference when dialog closes
-                self._color_picker.finished.connect(self._on_root_bg_color_dialog_closed)
 
-            # Save original color for undo command
-            current_color = parent.style_config.special_colors["root_background"]
-            self._original_root_bg_color = current_color
+            # Setup undo support using mixin
+            self.setup_color_dialog_undo(
+                color_picker=self._color_picker,
+                layer="root",
+                style_key="bg_color",
+                get_current_color=lambda: parent.style_config.special_colors["root_background"],
+            )
 
             # Set current color (MUST call before show!)
+            current_color = parent.style_config.special_colors["root_background"]
             self._color_picker.set_current_color(current_color)
 
             # Show color picker
@@ -497,45 +501,12 @@ class NodeStyleSection(CollapsiblePanel):
         # Emit style changed
         self._emit_style_changed()
 
-    def _on_root_bg_color_dialog_closed(self):
-        """Handle root background color dialog close - create undo command."""
+    def _get_final_color(self):
+        """Get final root background color."""
         parent = self._advanced_tab
-        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
-            return
-
-        if not hasattr(parent, 'command_history') or not parent.command_history:
-            return
-
-        if not self.is_root_mode:
-            return
-
-        # Get final color (already updated by real-time preview)
-        final_color = parent.style_config.special_colors["root_background"]
-        original_color = getattr(self, '_original_root_bg_color', None)
-
-        if original_color is None:
-            return
-
-        # Only create undo command if color actually changed
-        if final_color != original_color:
-            from cogist.application.commands import ChangeStyleCommand
-            from cogist.application.commands.change_style_command import StyleChange
-
-            change = StyleChange(
-                layer="root",
-                style_updates={"bg_color": final_color}
-            )
-            command = ChangeStyleCommand(
-                style_config=parent.style_config,
-                changes=[change]
-            )
-            # Manually set old_values to the original color before any changes
-            command.old_values.append({
-                "layer": "root",
-                "old_values": {"bg_color": original_color}
-            })
-            command.execute()
-            parent.command_history.push(command)
+        if parent and hasattr(parent, 'style_config') and parent.style_config:
+            return parent.style_config.special_colors["root_background"]
+        return None
 
     def _on_bg_color_selected(self, hex_color: str):
         """Handle color selection from picker (root mode only - real-time preview)."""

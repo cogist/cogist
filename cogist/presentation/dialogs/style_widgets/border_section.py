@@ -16,13 +16,14 @@ from qtpy.QtWidgets import (
 from cogist.presentation.widgets import ColorPoolPopup, ToggleSwitch
 
 from .collapsible_panel import CollapsiblePanel
+from .color_dialog_undo import ColorDialogUndoMixin
 from .color_picker import create_color_picker
 from .dialog_utils import position_color_dialog
 from .menu_button import MenuButton
 from .spinbox import SpinBox
 
 
-class BorderSection(CollapsiblePanel):
+class BorderSection(ColorDialogUndoMixin, CollapsiblePanel):
     """Border style settings with lazy initialization.
 
     Signals:
@@ -347,14 +348,17 @@ class BorderSection(CollapsiblePanel):
                 self._color_picker.setAttribute(
                     Qt.WidgetAttribute.WA_DeleteOnClose, True
                 )
-                # Reset reference and create undo command when dialog closes
-                self._color_picker.finished.connect(self._on_root_border_color_dialog_closed)
 
-            # Save original color for undo command
-            current_color = parent.style_config.special_colors["root_border"]
-            self._original_root_border_color = current_color
+            # Setup undo support using mixin
+            self.setup_color_dialog_undo(
+                color_picker=self._color_picker,
+                layer="root",
+                style_key="border_color",
+                get_current_color=lambda: parent.style_config.special_colors["root_border"],
+            )
 
             # Set current color (MUST call before show!)
+            current_color = parent.style_config.special_colors["root_border"]
             self._color_picker.set_current_color(current_color)
 
             # Show color picker
@@ -426,45 +430,12 @@ class BorderSection(CollapsiblePanel):
         # Emit style changed
         self._emit_style_changed()
 
-    def _on_root_border_color_dialog_closed(self):
-        """Handle root border color dialog close - create undo command."""
+    def _get_final_color(self):
+        """Get final root border color."""
         parent = self._advanced_tab
-        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
-            return
-
-        if not hasattr(parent, 'command_history') or not parent.command_history:
-            return
-
-        if not self.is_root_mode:
-            return
-
-        # Get final color (already updated by real-time preview)
-        final_color = parent.style_config.special_colors["root_border"]
-        original_color = getattr(self, '_original_root_border_color', None)
-
-        if original_color is None:
-            return
-
-        # Only create undo command if color actually changed
-        if final_color != original_color:
-            from cogist.application.commands import ChangeStyleCommand
-            from cogist.application.commands.change_style_command import StyleChange
-
-            change = StyleChange(
-                layer="root",
-                style_updates={"border_color": final_color}
-            )
-            command = ChangeStyleCommand(
-                style_config=parent.style_config,
-                changes=[change]
-            )
-            # Manually set old_values to the original color before any changes
-            command.old_values.append({
-                "layer": "root",
-                "old_values": {"border_color": original_color}
-            })
-            command.execute()
-            parent.command_history.push(command)
+        if parent and hasattr(parent, 'style_config') and parent.style_config:
+            return parent.style_config.special_colors["root_border"]
+        return None
 
     def _on_border_color_selected(self, hex_color: str):
         """Handle border color selection from picker (root mode only - real-time preview)."""
