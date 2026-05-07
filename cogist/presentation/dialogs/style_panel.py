@@ -10,12 +10,13 @@ Note: Activity Bar has been moved to the main window level (VSCode-style).
 
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import (
+    QApplication,
     QLabel,
     QVBoxLayout,
     QWidget,
 )
 
-from .style_panel_advanced import AdvancedStyleTab
+from .style_editor import StyleEditorTab
 from .style_panel_color import ColorSchemeTab
 
 
@@ -30,11 +31,22 @@ class StylePanel(QWidget):
         self.config_manager = config_manager
         self.command_history = command_history
 
+        # Track previously selected node ID for focus restoration
+        self._previous_selected_node_id = None
+
+        # Session state - remember panel state during this session
+        self._session_state = {
+            "current_panel": "color_scheme",  # Which panel is active: "color_scheme" or "advanced"
+        }
+
         # Set fixed width
         self.setMinimumWidth(self.PANEL_WIDTH)
         self.setMaximumWidth(self.PANEL_WIDTH)
 
         self._init_ui()
+
+        # Connect to global focus change signal
+        QApplication.instance().focusChanged.connect(self._on_focus_changed)
 
     def _init_ui(self):
         """Initialize the user interface with stacked panels."""
@@ -44,7 +56,7 @@ class StylePanel(QWidget):
 
         # Create tabs
         self.color_scheme_tab = ColorSchemeTab(style_config=self.style_config)
-        self.advanced_tab = AdvancedStyleTab(
+        self.style_editor_tab = StyleEditorTab(
             style_config=self.style_config,
             config_manager=self.config_manager,
             command_history=self.command_history,
@@ -52,7 +64,7 @@ class StylePanel(QWidget):
 
         # Initially show color scheme tab (first)
         main_layout.addWidget(self.color_scheme_tab)
-        self.current_panel = "color_scheme"
+        self.current_panel = self._session_state.get("current_panel", "color_scheme")
 
     def switch_panel(self, panel_name: str):
         """Switch between color scheme and advanced panels."""
@@ -74,9 +86,44 @@ class StylePanel(QWidget):
         if panel_name == "color_scheme":
             layout.addWidget(self.color_scheme_tab)
         elif panel_name == "advanced":
-            layout.addWidget(self.advanced_tab)
+            layout.addWidget(self.style_editor_tab)
 
         self.current_panel = panel_name
+
+        # Save state for session restoration
+        self._session_state["current_panel"] = panel_name
+
+    def _on_focus_changed(self, old: QWidget, now: QWidget):
+        """Handle global focus changes."""
+        if now is None:
+            return
+
+        # Check if the new focus widget is inside this panel
+        if self.isAncestorOf(now) or now == self:
+            # Panel gained focus - save current node selection
+            parent = self.parent()
+            while parent and not hasattr(parent, 'mindmap_view'):
+                parent = parent.parent()
+
+            if parent and hasattr(parent, 'mindmap_view'):
+                view = parent.mindmap_view
+                # Only save if we don't already have a saved state
+                if self._previous_selected_node_id is None:
+                    self._previous_selected_node_id = view.selected_node_id
+        else:
+            # Focus moved outside panel - check if it was previously inside
+            if self._previous_selected_node_id is not None and old and (self.isAncestorOf(old) or old == self):
+                parent = self.parent()
+                while parent and not hasattr(parent, 'mindmap_view'):
+                    parent = parent.parent()
+
+                if parent and hasattr(parent, 'mindmap_view'):
+                    view = parent.mindmap_view
+                    # Restore the previously selected node if it still exists
+                    if self._previous_selected_node_id in view.node_items:
+                        view._select_node_by_id(self._previous_selected_node_id)
+                    # Clear the saved state
+                    self._previous_selected_node_id = None
 
 
 class SimpleStyleTab(QWidget):

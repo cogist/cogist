@@ -43,7 +43,7 @@ class FontStyleSection(CollapsiblePanel):
     def __init__(self, parent=None):
         super().__init__("Font Style", collapsed=True, parent=parent)
 
-        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        # Get LABEL_WIDTH from parent (StyleEditorTab) if available, otherwise use class default
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
         # State
@@ -759,8 +759,9 @@ class FontStyleSection(CollapsiblePanel):
     def _on_font_shadow_toggled(self, checked: bool):
         """Handle font shadow checkbox toggle."""
         self.current_style["shadow_enabled"] = checked
+        # Only emit shadow_enabled_changed signal to avoid creating duplicate commands
+        # (style_changed would also be triggered and create a second command)
         self.shadow_enabled_changed.emit(checked)
-        self._emit_style_changed()
 
     def _emit_style_changed(self):
         """Emit style changed signal with only changed fields."""
@@ -816,4 +817,4 @@ class FontStyleSection(CollapsiblePanel):
             if "font_strikeout" in style:
                 self.font_strikeout_check.setChecked(style["font_strikeout"])
             if "shadow_enabled" in style:
-                self.font_shadow_check.setChecked(style["shadow_enabled"])
+                self.font_shadow_check.set_checked(style["shadow_enabled"])

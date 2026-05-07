@@ -22,12 +22,13 @@ from cogist.presentation.widgets.node_shape_previews import (
 )
 
 from .collapsible_panel import CollapsiblePanel
+from .color_dialog_undo import ColorDialogUndoMixin
 from .color_picker import create_color_picker
 from .dialog_utils import position_color_dialog
 from .spinbox import SpinBox
 
 
-class NodeStyleSection(CollapsiblePanel):
+class NodeStyleSection(ColorDialogUndoMixin, CollapsiblePanel):
     """Node style settings with lazy initialization.
 
     Signals:
@@ -46,10 +47,10 @@ class NodeStyleSection(CollapsiblePanel):
     def __init__(self, parent=None):
         super().__init__("Node Style", collapsed=True, parent=parent)
 
-        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        # Get LABEL_WIDTH from parent (StyleEditorTab) if available, otherwise use class default
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
-        # Store reference to AdvancedStyleTab for accessing style_config
+        # Store reference to StyleEditorTab for accessing style_config
         # Note: parent() returns _content_widget, so we need to store the actual parent
         self._advanced_tab = parent
 
@@ -369,7 +370,7 @@ class NodeStyleSection(CollapsiblePanel):
 
     def _on_bg_color_clicked(self):
         """Handle background color button click."""
-        # Use stored reference to AdvancedStyleTab instead of parent()
+        # Use stored reference to StyleEditorTab instead of parent()
         parent = self._advanced_tab
 
         if not (parent and hasattr(parent, 'style_config') and parent.style_config):
@@ -386,9 +387,16 @@ class NodeStyleSection(CollapsiblePanel):
                 # Ensure dialog closes when parent window closes
                 self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
-            current_color = parent.style_config.special_colors["root_background"]
+            # Setup undo support using mixin
+            self.setup_color_dialog_undo(
+                color_picker=self._color_picker,
+                layer="root",
+                style_key="bg_color",
+                get_current_color=lambda: parent.style_config.special_colors["root_background"],
+            )
 
             # Set current color (MUST call before show!)
+            current_color = parent.style_config.special_colors["root_background"]
             self._color_picker.set_current_color(current_color)
 
             # Show color picker
@@ -493,14 +501,20 @@ class NodeStyleSection(CollapsiblePanel):
         # Emit style changed
         self._emit_style_changed()
 
+    def _get_final_color(self):
+        """Get final root background color."""
+        parent = self._advanced_tab
+        if parent and hasattr(parent, 'style_config') and parent.style_config:
+            return parent.style_config.special_colors["root_background"]
+        return None
+
     def _on_bg_color_selected(self, hex_color: str):
-        """Handle color selection from picker (root mode only)."""
-        # Update the color in color_pool
-        # Use stored reference to AdvancedStyleTab instead of parent()
+        """Handle color selection from picker (root mode only - real-time preview)."""
         parent = self._advanced_tab
 
         if parent and hasattr(parent, 'style_config') and parent.style_config:
             if self.is_root_mode:
+                # Real-time preview: update style_config for immediate UI feedback
                 parent.style_config.special_colors["root_background"] = hex_color
 
                 # CRITICAL: Update current_style to match CanvasPanel behavior
@@ -517,8 +531,10 @@ class NodeStyleSection(CollapsiblePanel):
                         "text-align: left;"
                     )
 
-                # Emit style changed to trigger redraw
-                self._emit_style_changed()
+                # DO NOT emit signal in root mode - mixin will create undo command on dialog close
+                # Just trigger UI refresh without creating commands
+                if hasattr(parent, '_apply_styles_to_mindmap'):
+                    parent._apply_styles_to_mindmap(force_rebuild=False)
             else:
                 # Normal mode: update color_pool at bg_color_index
                 color_index = self.current_style.get("bg_color_index", 0)
@@ -655,6 +671,10 @@ class NodeStyleSection(CollapsiblePanel):
                 # Update controls visibility based on new enabled state
                 if not self.use_rainbow or self.is_root_mode:
                     self._update_background_controls_visibility()
+
+            # Update shadow enabled toggle
+            if "shadow_enabled" in style and hasattr(self, 'shadow_enabled_toggle'):
+                self.shadow_enabled_toggle.set_checked(style["shadow_enabled"])
 
             # Update brightness spinbox (support multiple field names)
             if "brightness" in style and hasattr(self, 'brightness_spin'):

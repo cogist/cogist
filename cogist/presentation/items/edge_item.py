@@ -131,9 +131,14 @@ class EdgeItem(QGraphicsPathItem):
                     and target_depth == 1
                 ):
                     with contextlib.suppress(ValueError, AttributeError):
-                        branch_idx = self.target_item.domain_node.parent.children.index(
-                            self.target_item.domain_node
-                        )
+                        # Use fixed rainbow_branch_index if available, otherwise fallback
+                        if self.target_item.domain_node.rainbow_branch_index is not None:
+                            branch_idx = self.target_item.domain_node.rainbow_branch_index
+                        else:
+                            # Fallback for old data without rainbow_branch_index
+                            branch_idx = self.target_item.domain_node.parent.children.index(
+                                self.target_item.domain_node
+                            )
 
                 # Case 2: Source is a Level 1 node (Level 1 -> Level 2+ edge)
                 elif (
@@ -143,9 +148,14 @@ class EdgeItem(QGraphicsPathItem):
                     and source_depth == 1
                 ):
                     with contextlib.suppress(ValueError, AttributeError):
-                        branch_idx = self.source_item.domain_node.parent.children.index(
-                            self.source_item.domain_node
-                        )
+                        # Use fixed rainbow_branch_index if available, otherwise fallback
+                        if self.source_item.domain_node.rainbow_branch_index is not None:
+                            branch_idx = self.source_item.domain_node.rainbow_branch_index
+                        else:
+                            # Fallback for old data without rainbow_branch_index
+                            branch_idx = self.source_item.domain_node.parent.children.index(
+                                self.source_item.domain_node
+                            )
 
                 # Case 3: Level 2+ -> Level 2+ edges (inherit from Level 1 ancestor)
                 elif target_depth >= 2 and hasattr(
@@ -154,9 +164,14 @@ class EdgeItem(QGraphicsPathItem):
                     level_1_ancestor = self.target_item._find_level_1_ancestor()
                     if level_1_ancestor and level_1_ancestor.parent:
                         with contextlib.suppress(ValueError, AttributeError):
-                            branch_idx = level_1_ancestor.parent.children.index(
-                                level_1_ancestor
-                            )
+                            # Use fixed rainbow_branch_index if available, otherwise fallback
+                            if level_1_ancestor.rainbow_branch_index is not None:
+                                branch_idx = level_1_ancestor.rainbow_branch_index
+                            else:
+                                # Fallback for old data without rainbow_branch_index
+                                branch_idx = level_1_ancestor.parent.children.index(
+                                    level_1_ancestor
+                                )
 
                 # Apply rainbow color if branch index found
                 if branch_idx is not None and branch_idx < len(
@@ -552,6 +567,8 @@ class EdgeItem(QGraphicsPathItem):
         target_shape = self._get_node_border_shape(self.target_item)
         source_border_width = self._get_node_border_width(self.source_item)
         target_border_width = self._get_node_border_width(self.target_item)
+        source_border_enabled = self._is_node_border_enabled(self.source_item)
+        target_border_enabled = self._is_node_border_enabled(self.target_item)
 
         # Get connector width from style config if available
         connector_width = 2.0  # Default value
@@ -577,25 +594,25 @@ class EdgeItem(QGraphicsPathItem):
             # Child is on right: connect from source's right edge
             # Adjust connection point based on border shape
             source_local_right = self._get_edge_point_for_shape(
-                source_rect, "right", source_shape, source_border_width, connector_width
+                source_rect, "right", source_shape, source_border_width, connector_width, source_border_enabled
             )
             source_point = self.source_item.mapToScene(source_local_right)
 
             # Connect to target's left edge
             target_local_left = self._get_edge_point_for_shape(
-                target_rect, "left", target_shape, target_border_width, connector_width
+                target_rect, "left", target_shape, target_border_width, connector_width, target_border_enabled
             )
             target_point = self.target_item.mapToScene(target_local_left)
         else:
             # Child is on left: connect from source's left edge
             source_local_left = self._get_edge_point_for_shape(
-                source_rect, "left", source_shape, source_border_width, connector_width
+                source_rect, "left", source_shape, source_border_width, connector_width, source_border_enabled
             )
             source_point = self.source_item.mapToScene(source_local_left)
 
             # Connect to target's right edge
             target_local_right = self._get_edge_point_for_shape(
-                target_rect, "right", target_shape, target_border_width, connector_width
+                target_rect, "right", target_shape, target_border_width, connector_width, target_border_enabled
             )
             target_point = self.target_item.mapToScene(target_local_right)
 
@@ -640,6 +657,20 @@ class EdgeItem(QGraphicsPathItem):
         except AttributeError:
             return 2.0  # Default border width
 
+    def _is_node_border_enabled(self, node_item) -> bool:
+        """Check if border is enabled for a node.
+
+        Args:
+            node_item: NodeItem instance
+
+        Returns:
+            True if border is enabled, False otherwise
+        """
+        try:
+            return node_item.template_style.border_enabled
+        except AttributeError:
+            return True  # Default to enabled
+
     def _get_edge_point_for_shape(
         self,
         rect,
@@ -647,42 +678,61 @@ class EdgeItem(QGraphicsPathItem):
         shape_type: str,
         border_width: float = 2.0,
         connector_width: float = 2.0,
+        border_enabled: bool = True,
     ) -> QPointF:
         """Get connection point on node edge based on border shape.
+
+        Unified anchor point calculation for all border styles:
+        - Full border (rounded_rect, circle): anchor at border outer edge
+        - Bottom line: anchor at bottom edge (y=rect.bottom())
+        - Left line: anchor at left/right edge based on is_right_side
+        - No border: anchor at rect edge
 
         Args:
             rect: Node rectangle in local coordinates
             edge: Which edge to connect from ('left' or 'right')
-            shape_type: Border shape type (e.g., 'bottom_line', 'left_line')
-            border_width: Border width (unused: node height is now forced to even numbers)
-            connector_width: Connector line width (unused: node height is now forced to even numbers)
+            shape_type: Border shape type (e.g., 'bottom_line', 'left_line', 'rounded_rect')
+            border_width: Border width for anchor position calculation
+            connector_width: Connector line width
+            border_enabled: Whether border is enabled for the node
 
         Returns:
             QPointF in local coordinates for the connection point
         """
-        # Decorative line shapes: connect to the decorative line position
+        # Calculate offset based on border width and enabled state
+        # If border is enabled, anchor should be at outer edge of border
+        # If border is disabled, anchor should be at rect edge
+        offset = border_width if (border_enabled and border_width > 0) else 0
+
+        # Handle different border shapes
         if shape_type == "bottom_line":
-            # CRITICAL: Use exact rect.bottom() to match decorative line drawing coordinate.
-            # Node height is now forced to be even (see node_item.py), so rect.bottom()
-            # is always an integer, ensuring crisp anti-aliased rendering for both lines.
-            y = rect.bottom()
+            # Bottom decorative line: connect at bottom corners
+            # CRITICAL: Line center is at rect.bottom() + border_width/2
+            # Connect to line center (not outer edge) for proper visual alignment
+            y = rect.bottom() + border_width / 2
 
             if edge == "left":
                 return QPointF(rect.left(), y)
             else:
                 return QPointF(rect.right(), y)
+
         elif shape_type == "left_line":
-            # Left line is drawn exactly at rect.left()
+            # Left decorative line: connect at the line position
+            # The line is drawn at rect.left() or rect.right() based on is_right_side
+            # For connection purposes, we use the edge that matches the connector direction
+            # Y coordinate stays at center (no vertical offset for left line)
             if edge == "left":
-                return QPointF(rect.left(), rect.center().y())
-            else:  # edge == 'right', shouldn't happen for left_line but handle gracefully
-                return QPointF(rect.right(), rect.center().y())
+                return QPointF(rect.left() - offset, rect.center().y())
+            else:
+                return QPointF(rect.right() + offset, rect.center().y())
+
         else:
-            # Default: connect to edge center (for rounded_rect, circle, etc.)
+            # Default: full border (rounded_rect, circle, etc.)
+            # Connect at edge center with border offset
             if edge == "left":
-                return QPointF(rect.left(), rect.center().y())
+                return QPointF(rect.left() - offset, rect.center().y())
             else:  # edge == 'right'
-                return QPointF(rect.right(), rect.center().y())
+                return QPointF(rect.right() + offset, rect.center().y())
 
     def _find_edge_point(
         self, center: QPointF, direction_x: float, direction_y: float, item

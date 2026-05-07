@@ -1,90 +1,179 @@
 """
 Drag Node Command - Application Layer
 
-Command for dragging a node and optionally reparenting it.
-Supports undo/redo for the final position and parent change.
+Command for dragging a node with full undo/redo support.
+Captures only the minimal state needed to restore the structure.
 """
 
 
+from typing import TYPE_CHECKING
+
 from cogist.application.commands.command import Command
-from cogist.domain.node import Node
+
+if TYPE_CHECKING:
+    from cogist.domain.entities.node import Node
 
 
 class DragNodeCommand(Command):
     """
-    Command for dragging a node.
+    Command for dragging a node with undo/redo support.
 
-    This command captures the state before and after a drag operation,
-    allowing for undo/redo of the position and parent changes.
+    Records two scenarios:
+    1. Simple drag (no layout rebalance): Only old_parent and old_index
+    2. Complex drag (with layout rebalance): Plus old_side_primary_nodes
+
+    The undo() method only restores data structure - layout is triggered
+    by the Presentation Layer after undo completes.
     """
 
     def __init__(
         self,
-        node: Node,
-        old_position: tuple[float, float],
-        new_position: tuple[float, float],
-        old_parent: Node | None,
-        new_parent: Node | None,
-        old_is_right_side: bool,
-        new_is_right_side: bool,
+        dragged_node: "Node",
+        old_parent: "Node | None",
+        new_parent: "Node",
+        old_index: int,
+        old_left_primary_node_ids: list[str] | None = None,
+        is_cross_side: bool = False,
     ):
         """
         Initialize the drag node command.
 
         Args:
-            node: The node being dragged
-            old_position: Position before drag (x, y)
-            new_position: Position after drag (x, y)
-            old_parent: Parent before drag (or None)
-            new_parent: Parent after drag (or None)
-            old_is_right_side: Whether node was on right side before drag
-            new_is_right_side: Whether node is on right side after drag
+            dragged_node: The node being dragged
+            old_parent: Parent before drag
+            new_parent: Parent after drag
+            old_index: Original index in old_parent's children list
+            old_left_primary_node_ids: IDs of primary nodes that were on left side before drag (optional)
+            is_cross_side: Whether drag crossed from left to right or vice versa
         """
-        self.node = node
-        self.old_position = old_position
-        self.new_position = new_position
+        self.dragged_node = dragged_node
         self.old_parent = old_parent
         self.new_parent = new_parent
-        self.old_is_right_side = old_is_right_side
-        self.new_is_right_side = new_is_right_side
+        self.old_index = old_index
+        self.old_left_primary_node_ids = old_left_primary_node_ids
+        self.is_cross_side = is_cross_side
 
     def execute(self) -> None:
-        """Execute the drag - apply the new position and parent."""
-        self._apply_state(self.new_position, self.new_parent, self.new_is_right_side)
+        """Execute the drag - apply new position and parent."""
+        # Remove from old parent
+        if self.old_parent and self.dragged_node in self.old_parent.children:
+            self.old_parent.remove_child(self.dragged_node)
+
+        # Add to new parent
+        self.new_parent.add_child(self.dragged_node)
+
+        # Update depths recursively
+        self._update_depths_recursive(self.dragged_node)
 
     def undo(self) -> None:
-        """Undo the drag - restore the old position and parent."""
-        self._apply_state(self.old_position, self.old_parent, self.old_is_right_side)
-
-    def _apply_state(
-        self,
-        position: tuple[float, float],
-        parent: Node | None,
-        is_right_side: bool,
-    ) -> None:
         """
-        Apply a state to the node.
+        Undo the drag - restore data structure only.
+
+        This restores:
+        1. Parent-child relationships
+        2. Sibling order in old parent
+        3. Primary nodes side information (if recorded)
+
+        Note: Does NOT call layout.layout() - that's handled by Presentation Layer.
+        """
+        # Remove from new parent
+        if self.dragged_node in self.new_parent.children:
+            self.new_parent.remove_child(self.dragged_node)
+
+        # Restore to old parent at original index
+        if self.old_parent:
+            # Insert at original index
+            self.old_parent.children.insert(self.old_index, self.dragged_node)
+            self.dragged_node.parent = self.old_parent
+            self.dragged_node.depth = self.old_parent.depth + 1
+
+            # If we have left side primary node IDs, restore side information
+            if self.old_left_primary_node_ids:
+                self._restore_primary_nodes_sides()
+        else:
+            # Should not happen for non-root nodes
+            self.dragged_node.parent = None
+            self.dragged_node.depth = 0
+
+        # Update depths for all affected nodes
+        if self.old_parent:
+            self._update_depths_recursive(self.old_parent)
+        self._update_depths_recursive(self.new_parent)
+
+    def _restore_primary_nodes_sides(self) -> None:
+        """
+        Restore the side (left/right) information for primary nodes.
+
+        This sets temporary position[0] values to guide the layout algorithm:
+        - Left side nodes: position[0] = -400.0
+        - Right side nodes: position[0] = 800.0
+
+        The layout algorithm will use these as hints to reassign nodes to correct sides.
+
+        Note: Uses node IDs for memory efficiency - only stores ID strings instead of node references.
+        """
+        if not self.old_left_primary_node_ids:
+            return
+
+        # Find root node by looking up any node from the ID list
+        root = None
+        left_nodes = []
+        for node_id in self.old_left_primary_node_ids:
+            node = self._find_node_by_id(node_id)
+            if node and node.parent and node.parent.is_root:
+                root = node.parent
+                left_nodes.append(node)
+
+        if not root or not left_nodes:
+            return
+
+        # Set left side nodes to negative X (will be assigned to left by layout)
+        for node in left_nodes:
+            node.position = (-400.0, node.position[1])
+
+        # Set right side nodes to positive X (will be assigned to right by layout)
+        for node in root.children:
+            if node.id not in self.old_left_primary_node_ids:
+                node.position = (800.0, node.position[1])
+
+    def _find_node_by_id(self, node_id: str) -> "Node | None":
+        """
+        Find a node by ID starting from the dragged node's hierarchy.
 
         Args:
-            position: Position to apply (x, y)
-            parent: Parent to apply (or None)
-            is_right_side: Whether node should be on right side
+            node_id: The ID of the node to find
+
+        Returns:
+            The node if found, None otherwise
         """
-        # Update position
-        self.node.position = list(position)
+        # Start from dragged node and traverse up to find root
+        current = self.dragged_node
+        while current.parent:
+            current = current.parent
 
-        # Update parent if changed
-        if parent != self.node.parent:
-            if self.node.parent and self.node in self.node.parent.children:
-                # Remove from old parent's children
-                self.node.parent.children.remove(self.node)
+        # Now current should be root, search down
+        return self._search_node_by_id_recursive(current, node_id)
 
-            self.node.parent = parent
+    def _search_node_by_id_recursive(
+        self, node: "Node", node_id: str
+    ) -> "Node | None":
+        """Recursively search for a node by ID."""
+        if node.id == node_id:
+            return node
 
-            if parent and self.node not in parent.children:
-                # Add to new parent's children
-                parent.children.append(self.node)
+        for child in node.children:
+            result = self._search_node_by_id_recursive(child, node_id)
+            if result:
+                return result
 
-        # Update is_right_side flag (for presentation layer to use)
-        # Note: This is a domain property that the presentation layer observes
-        self.node.is_right_side = is_right_side
+        return None
+
+    def _update_depths_recursive(self, node: "Node") -> None:
+        """Update depth for a node and all its descendants."""
+        if node.parent:
+            node.depth = node.parent.depth + 1
+        else:
+            node.depth = 0
+
+        for child in node.children:
+            self._update_depths_recursive(child)

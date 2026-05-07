@@ -36,6 +36,10 @@ class DefaultLayout(BaseLayout):
         supports_mixed=False,
     )
 
+    # Balance hysteresis threshold: prevent oscillation when spacing changes
+    # Only rebalance when height difference exceeds this threshold (in pixels)
+    BALANCE_HYSTERESIS_THRESHOLD = 100.0
+
     def __init__(self, config: DefaultLayoutConfig | None = None):
         """
         Initialize layout algorithm.
@@ -100,6 +104,101 @@ class DefaultLayout(BaseLayout):
 
         # Fallback to config's sibling_spacing
         return self.config.sibling_spacing
+
+    def _calculate_aligned_edge(
+        self,
+        parent_node,
+        child_nodes: list,
+        direction: int,
+    ) -> float:
+        """
+        Calculate the aligned edge position for child nodes.
+
+        This ensures all siblings align on the side closest to parent.
+
+        Args:
+            parent_node: The parent node
+            child_nodes: List of child nodes to align
+            direction: -1 for left side, 1 for right side
+
+        Returns:
+            The x-coordinate where children should align their edges
+        """
+        # Get horizontal spacing for this parent-child relationship
+        level_spacing = self._get_level_spacing_for_depth(parent_node.depth + 1)
+
+        # Use visual width/height (including border expansion)
+        parent_visual_width = self._get_visual_width(parent_node)
+
+        aligned_edge_x = 0.0  # Will be set based on direction
+
+        # For left side (direction=-1): align right edge of children
+        # For right side (direction=1): align left edge of children
+        if direction == -1:  # Left side
+            # Parent's visual left edge
+            parent_visual_left = parent_node.position[0] - parent_visual_width / 2.0
+            aligned_edge_x = parent_visual_left - level_spacing
+        else:  # Right side
+            # Parent's visual right edge
+            parent_visual_right = parent_node.position[0] + parent_visual_width / 2.0
+            aligned_edge_x = parent_visual_right + level_spacing
+
+        return aligned_edge_x
+
+    def _calculate_node_position(
+        self,
+        node,
+        aligned_edge_x: float,
+        direction: int,
+    ) -> float:
+        """
+        Calculate node center X position based on aligned edge.
+
+        Args:
+            node: The node to position
+            aligned_edge_x: The x-coordinate where the node's visual edge should align
+            direction: -1 for left side, 1 for right side
+
+        Returns:
+            node_x - node center X position
+        """
+        # Calculate visual half width (including border expansion)
+        node_visual_half_width = self._get_visual_width(node) / 2.0
+
+        if direction == -1:  # Left side - align right visual edge
+            # Visual center = aligned_edge_x - visual_half_width
+            node_x = aligned_edge_x - node_visual_half_width
+        else:  # Right side - align left visual edge
+            # Visual center = aligned_edge_x + visual_half_width
+            node_x = aligned_edge_x + node_visual_half_width
+
+        return node_x
+
+    def _get_visual_height(self, node) -> float:
+        """
+        Get the visual height of a node (including border expansion).
+
+        Args:
+            node: The node to measure
+
+        Returns:
+            Visual height including border on top and bottom
+        """
+        border_width = getattr(node, 'border_width', 0)
+        return node.height + border_width * 2
+
+    def _get_visual_width(self, node) -> float:
+        """
+        Get the visual width of a node (including border expansion).
+
+        Args:
+            node: The node to measure
+
+        Returns:
+            Visual width including border on left and right
+        """
+        border_width = getattr(node, 'border_width', 0)
+        return node.width + border_width * 2
 
     def layout(
         self,
@@ -201,10 +300,11 @@ class DefaultLayout(BaseLayout):
             Total height including all descendants and spacing
         """
         if not node.children:
-            return node.height
+            return self._get_visual_height(node)
 
-        # Get spacing for this depth level
-        sibling_spacing = self._get_sibling_spacing_for_depth(node.depth + 1)
+        # Get spacing for node's children (which are at depth = node.depth + 1)
+        # Use the maximum depth among children subtrees
+        sibling_spacing = self._get_sibling_spacing_for_nodes(node.children)
 
         # Calculate heights of all children subtrees
         child_heights = [
@@ -215,9 +315,103 @@ class DefaultLayout(BaseLayout):
         total_child_height = sum(child_heights)
         total_spacing = (len(node.children) - 1) * sibling_spacing
 
-        # The node itself takes max(node.height, total_child_height)
+        # The node itself takes max(visual_height, total_child_height)
         # because children are centered around the node
-        return max(node.height, total_child_height + total_spacing)
+        return max(self._get_visual_height(node), total_child_height + total_spacing)
+
+    def _get_max_subtree_depth(self, node) -> int:
+        """
+        Get the maximum depth in a subtree.
+
+        Args:
+            node: Root of the subtree
+
+        Returns:
+            Maximum depth in the subtree
+        """
+        if not node.children:
+            return node.depth
+
+        max_child_depth = max(
+            self._get_max_subtree_depth(child) for child in node.children
+        )
+        return max_child_depth
+
+    def _get_sibling_spacing_for_nodes(self, nodes: list, parent_depth: int | None = None) -> float:
+        """
+        Get the appropriate sibling spacing for a list of nodes.
+
+        Strategy:
+        1. If NO node has children → use nodes' own depth spacing
+        2. If ANY node has children → use max depth across all subtrees
+
+        This ensures:
+        - Direct siblings without children use their level spacing
+        - Subtrees with children use the deepest level spacing for visual uniformity
+
+        Args:
+            nodes: List of sibling nodes
+            parent_depth: Optional parent depth (used to determine spacing level)
+
+        Returns:
+            Sibling spacing based on subtree depth analysis
+        """
+        if not nodes:
+            return self.sibling_spacing
+
+        # Check if any node has children
+        has_children = any(node.children for node in nodes)
+
+        if has_children:
+            # Strategy 2: At least one node has children
+            # Use the maximum depth across all subtrees
+            max_depth = max(self._get_max_subtree_depth(node) for node in nodes)
+            # Cap at depth 3 to avoid excessive spacing
+            effective_depth = min(max_depth, 3)
+            return self._get_sibling_spacing_for_depth(effective_depth)
+        else:
+            # Strategy 1: No node has children
+            # Use nodes' own depth
+            return self._get_sibling_spacing_for_depth(nodes[0].depth)
+
+    def _get_spacing_for_adjacent_pair(self, node1, node2) -> float:
+        """
+        Get spacing between two adjacent sibling nodes.
+
+        Strategy:
+        - Calculate spacing based on subtree depth
+        - Ensure spacing is at least the maximum of both nodes' own level spacing
+
+        Args:
+            node1: First node in the pair
+            node2: Second node in the pair
+
+        Returns:
+            Spacing between the two nodes
+        """
+        # Check if either node has children
+        has_children = node1.children or node2.children
+
+        if has_children:
+            # At least one has children: use max subtree depth
+            max_depth = max(
+                self._get_max_subtree_depth(node1),
+                self._get_max_subtree_depth(node2)
+            )
+            effective_depth = min(max_depth, 3)
+            subtree_spacing = self._get_sibling_spacing_for_depth(effective_depth)
+        else:
+            # Neither has children: use their own depth
+            subtree_spacing = self._get_sibling_spacing_for_depth(node1.depth)
+
+        # CRITICAL: Ensure spacing meets both nodes' minimum level requirements
+        # Use max() to satisfy both nodes' spacing needs
+        node1_level_spacing = self._get_sibling_spacing_for_depth(node1.depth)
+        node2_level_spacing = self._get_sibling_spacing_for_depth(node2.depth)
+        min_required_spacing = max(node1_level_spacing, node2_level_spacing)
+
+        # Final spacing = max(subtree-based spacing, minimum required spacing)
+        return max(subtree_spacing, min_required_spacing)
 
     def _balance_branches(
         self, nodes: list, locked_side_child=None, parent_node=None
@@ -285,23 +479,11 @@ class DefaultLayout(BaseLayout):
                 else:
                     right_original.append(node)
 
-        # Step 2: If we have a locked child, ensure it stays on its original side
-        # Only lock if the locked_child is directly in our nodes list AND has children
-        # (locking leaf nodes is unnecessary since they have no subtree to preserve)
-        locked_node_for_rebalance = None  # Default: no locked node
-
-        if (
-            locked_side_child
-            and locked_side_child in nodes
-            and locked_side_child.children
-        ):
-            if locked_side_child in left_original:
-                pass  # Locked node is on the left side
-            elif locked_side_child in right_original:
-                pass  # Locked node is on the right side
-            locked_node_for_rebalance = (
-                locked_side_child  # Only set if we're actually locking
-            )
+        # Step 2: Collect all locked node IDs (nodes with is_locked_position=True)
+        locked_node_ids = set()
+        for node in nodes:
+            if getattr(node, "is_locked_position", False):
+                locked_node_ids.add(node.id)
 
         # Step 3: Calculate heights for each side
         left_heights = [self._calculate_subtree_height(node) for node in left_original]
@@ -309,8 +491,10 @@ class DefaultLayout(BaseLayout):
             self._calculate_subtree_height(node) for node in right_original
         ]
 
-        # Use spacing for level 1 nodes (depth 1)
-        level1_spacing = self._get_sibling_spacing_for_depth(1)
+        # Use spacing based on the maximum depth among all root's children subtrees
+        # This ensures adjacent subtrees use the deepest level's spacing
+        level1_spacing = self._get_sibling_spacing_for_nodes(left_original + right_original)
+
         left_total = (
             sum(left_heights) + (len(left_original) - 1) * level1_spacing
             if left_original
@@ -328,13 +512,23 @@ class DefaultLayout(BaseLayout):
         left_height = left_total
         right_height = right_total
 
-        # Determine which side is taller and try to move nodes from it
-        if left_height > right_height:
+        # CRITICAL FIX: Add hysteresis threshold to prevent oscillation
+        # When sibling spacing changes slightly, the height difference between
+        # left/right sides may flip-flop, causing nodes to jump back and forth.
+        # We only rebalance when the height difference exceeds a fixed threshold.
+        # Threshold: 100px - significant enough to prevent oscillation from spacing changes
+        height_diff = abs(left_height - right_height)
+
+        if height_diff <= self.BALANCE_HYSTERESIS_THRESHOLD:
+            # Height difference is within tolerance, keep original distribution
+            # This prevents oscillation when spacing changes slightly
+            pass
+        elif left_height > right_height:
             # Move nodes from left to right
             self._rebalance_branches(
                 from_side=left_children,
                 to_side=right_children,
-                locked_node=locked_node_for_rebalance,
+                locked_node_ids=locked_node_ids,
                 from_height=left_height,
                 to_height=right_height,
             )
@@ -343,7 +537,7 @@ class DefaultLayout(BaseLayout):
             self._rebalance_branches(
                 from_side=right_children,
                 to_side=left_children,
-                locked_node=locked_node_for_rebalance,
+                locked_node_ids=locked_node_ids,
                 from_height=right_height,
                 to_height=left_height,
             )
@@ -354,34 +548,77 @@ class DefaultLayout(BaseLayout):
         self,
         from_side: list,
         to_side: list,
-        locked_node: object,
+        locked_node_ids: set,
         from_height: float,
         to_height: float,
     ) -> None:
         """
         Rebalance by moving nodes from one side to another.
 
+        Strategy for drag operations:
+        - If dragged node is at bottom: move from top (protect bottom)
+        - Otherwise (dragged at top/middle): move from bottom (protect top)
+
+        Default strategy (no drag): move from bottom to keep top stable
+
         Args:
             from_side: List of nodes to move from (modified in place)
             to_side: List of nodes to move to (modified in place)
-            locked_node: Node that cannot be moved
+            locked_node_ids: Set of node IDs that cannot be moved (is_locked_position=True)
             from_height: Current height of the source side
             to_height: Current height of the target side
         """
-        # Move oldest nodes first to keep newer nodes stable on their side
-        # Use original order: oldest nodes are at the beginning of the list
-        # CRITICAL: Also exclude nodes with is_locked_position flag set
+        # Exclude locked nodes from candidates
+        # CRITICAL: Sort from_side by Y position so reversal works correctly
+        from_side_sorted = sorted(from_side, key=lambda n: n.position[1])
+
         candidates = [
             (node, self._calculate_subtree_height(node))
-            for node in from_side
-            if node != locked_node and not getattr(node, "is_locked_position", False)
+            for node in from_side_sorted
+            if node.id not in locked_node_ids
         ]
+
+        # For drag operations: adjust order based on dragged node position
+        # If there are locked nodes, this is a drag operation
+        if locked_node_ids and len(candidates) > 0:
+            # Find locked nodes in from_side (the side where dragged node currently is)
+            locked_in_from_side = [node for node in from_side_sorted if node.id in locked_node_ids]
+
+            if locked_in_from_side:
+                # Determine if dragged node is at the bottom of from_side
+                # CRITICAL: Use children list index, not Y coordinate!
+                # Y coordinates may be 0.0 for newly added nodes before layout
+                dragged_node = locked_in_from_side[-1]  # The dragged node
+
+                # Find the dragged node's index in the parent's children list
+                parent = dragged_node.parent
+                if parent:
+                    dragged_index = parent.children.index(dragged_node)
+                    is_dragged_to_bottom = (dragged_index == len(parent.children) - 1)
+                else:
+                    # Fallback: no parent, assume not at bottom
+                    is_dragged_to_bottom = False
+
+                # If dragged to bottom, reverse order: move from top first
+                # Otherwise: move from bottom first (reverse the list)
+                if is_dragged_to_bottom:
+                    # Dragged to bottom: protect bottom, move from top
+                    # Keep original order (top to bottom)
+                    pass
+                else:
+                    # Dragged to top/middle: protect top, move from bottom
+                    # Reverse order (bottom to top)
+                    candidates = list(reversed(candidates))
+        else:
+            # Default: no drag operation, move from bottom to keep top stable
+            # Reverse order: bottom to top
+            candidates = list(reversed(candidates))
 
         for node, height in candidates:
             if from_height <= to_height:
                 break
-            # Get spacing for this depth level
-            sibling_spacing = self._get_sibling_spacing_for_depth(node.depth)
+            # Get spacing based on the maximum depth of this node's subtree
+            sibling_spacing = self._get_sibling_spacing_for_nodes([node])
             # Try moving this node
             actual_move = height + (sibling_spacing if to_side else 0)
             actual_remove = height + (sibling_spacing if len(from_side) > 1 else 0)
@@ -465,10 +702,10 @@ class DefaultLayout(BaseLayout):
             # CRITICAL FIX: position[1] is the CENTER Y coordinate, not the top
             # CRITICAL: Border extends FULL border_width outward from rect (not half!)
             # Visual bounds = rect bounds + border_width on each side
-            border_width = getattr(node, 'border_width', 0)
+            visual_half_height = self._get_visual_height(node) / 2.0
 
-            node_top = node.position[1] - node.height / 2.0 - border_width
-            node_bottom = node.position[1] + node.height / 2.0 + border_width
+            node_top = node.position[1] - visual_half_height
+            node_bottom = node.position[1] + visual_half_height
             min_y = min(min_y, node_top)
             max_y = max(max_y, node_bottom)
 
@@ -479,6 +716,56 @@ class DefaultLayout(BaseLayout):
                 max_y = max(max_y, child_bottom)
 
         return (min_y, max_y)
+
+    def _get_top_most_node(self, node):
+        """
+        Get the top-most node in a subtree (the node with smallest Y position).
+
+        Args:
+            node: Root of the subtree
+
+        Returns:
+            The top-most node, or None if no nodes
+        """
+        if not node:
+            return None
+
+        top_node = node
+        top_y = node.position[1]
+
+        # Check all descendants
+        for child in node.children:
+            child_top = self._get_top_most_node(child)
+            if child_top and child_top.position[1] < top_y:
+                top_node = child_top
+                top_y = child_top.position[1]
+
+        return top_node
+
+    def _get_bottom_most_node(self, node):
+        """
+        Get the bottom-most node in a subtree (the node with largest Y position).
+
+        Args:
+            node: Root of the subtree
+
+        Returns:
+            The bottom-most node, or None if no nodes
+        """
+        if not node:
+            return None
+
+        bottom_node = node
+        bottom_y = node.position[1]
+
+        # Check all descendants
+        for child in node.children:
+            child_bottom = self._get_bottom_most_node(child)
+            if child_bottom and child_bottom.position[1] > bottom_y:
+                bottom_node = child_bottom
+                bottom_y = child_bottom.position[1]
+
+        return bottom_node
 
     def _layout_side(
         self, nodes: list, parent_node, canvas_height: float, direction: int
@@ -546,47 +833,26 @@ class DefaultLayout(BaseLayout):
             direction: -1 for left, 1 for right
             canvas_height: Canvas height for centering
         """
-        # Calculate total height of nodes only (not subtrees)
+        # Calculate total height with per-pair spacing
         # CRITICAL: Visual height includes border expansion on both top and bottom
-        nodes_height = sum(node.height + getattr(node, 'border_width', 0) * 2 for node in nodes)
-
-        # Get spacing based on node depth
-        if nodes:
-            sibling_spacing = self._get_sibling_spacing_for_depth(nodes[0].depth)
-        else:
-            sibling_spacing = self.sibling_spacing
-
-        nodes_spacing = (len(nodes) - 1) * sibling_spacing
-        total_height = nodes_height + nodes_spacing
+        # FIXED: Calculate spacing for each adjacent pair individually
+        total_height = 0.0
+        for i, node in enumerate(nodes):
+            total_height += self._get_visual_height(node)
+            if i < len(nodes) - 1:
+                # Calculate spacing between node[i] and node[i+1]
+                pair_spacing = self._get_spacing_for_adjacent_pair(nodes[i], nodes[i + 1])
+                total_height += pair_spacing
 
         # Calculate the aligned edge position for all sibling nodes
-        # This ensures all siblings align on the side closest to parent
-        # Use child's depth (parent.depth + 1) for spacing lookup
-        level_spacing = self._get_level_spacing_for_depth(parent_node.depth + 1)
-        aligned_edge_x = 0.0  # Will be set based on direction
-
-        # For left side (direction=-1): align right edge of children
-        # For right side (direction=1): align left edge of children
-        if direction == -1:  # Left side
-            # Parent left edge
-            parent_left_edge = parent_node.position[0] - parent_node.width / 2.0
-            # All children's right edge aligns at this position
-            aligned_edge_x = parent_left_edge - level_spacing
-        else:  # Right side
-            # Parent right edge
-            parent_right_edge = parent_node.position[0] + parent_node.width / 2.0
-            # All children's left edge aligns at this position
-            aligned_edge_x = parent_right_edge + level_spacing
+        aligned_edge_x = self._calculate_aligned_edge(parent_node, nodes, direction)
 
         # Special case: single node should be vertically centered with parent
         if len(nodes) == 1:
             # Single node: center it with parent's center
             node = nodes[0]
-            node_half_width = node.width / 2.0
-            if direction == -1:  # Left side - align right edge
-                node_x = aligned_edge_x - node_half_width
-            else:  # Right side - align left edge
-                node_x = aligned_edge_x + node_half_width
+            # Calculate node center position using unified method
+            node_x = self._calculate_node_position(node, aligned_edge_x, direction)
 
             # Center the node vertically with parent
             node_y = parent_center_y
@@ -605,42 +871,18 @@ class DefaultLayout(BaseLayout):
         # So we need to add half of first node's height to get its center
         # CRITICAL: Visual height includes border expansion
         if nodes:
-            first_node_border = getattr(nodes[0], 'border_width', 0)
-            first_node_visual_height = nodes[0].height + first_node_border * 2
+            first_node_visual_height = self._get_visual_height(nodes[0])
             start_y = parent_center_y - total_height / 2.0 + first_node_visual_height / 2.0
         else:
             start_y = parent_center_y
         current_y = start_y
 
         # Calculate the aligned edge position for all sibling nodes
-        # This ensures all siblings align on the side closest to parent
-        # Use child's depth (parent.depth + 1) for spacing lookup
-        level_spacing = self._get_level_spacing_for_depth(parent_node.depth + 1)
-        aligned_edge_x = 0.0  # Will be set based on direction
+        aligned_edge_x = self._calculate_aligned_edge(parent_node, nodes, direction)
 
-        # For left side (direction=-1): align right edge of children
-        # For right side (direction=1): align left edge of children
-        if direction == -1:  # Left side
-            # Parent left edge
-            parent_left_edge = parent_node.position[0] - parent_node.width / 2.0
-            # All children's right edge aligns at this position
-            aligned_edge_x = parent_left_edge - level_spacing
-        else:  # Right side
-            # Parent right edge
-            parent_right_edge = parent_node.position[0] + parent_node.width / 2.0
-            # All children's left edge aligns at this position
-            aligned_edge_x = parent_right_edge + level_spacing
-
-        for node in nodes:
-            # Position node so its aligned edge matches the calculated position
-            node_half_width = node.width / 2.0
-            if direction == -1:  # Left side - align right edge
-                # node.position[0] + node_half_width = aligned_edge_x
-                node_x = aligned_edge_x - node_half_width
-            else:  # Right side - align left edge
-                # node.position[0] - node_half_width = aligned_edge_x
-                node_x = aligned_edge_x + node_half_width
-
+        for i, node in enumerate(nodes):
+            # Calculate node center position using unified method
+            node_x = self._calculate_node_position(node, aligned_edge_x, direction)
             node.position = (node_x, current_y)
 
             # Layout children if any
@@ -666,8 +908,14 @@ class DefaultLayout(BaseLayout):
                     child_direction = 1 if node_center_x >= parent_center_x else -1
                 self._layout_side(node.children, node, canvas_height, child_direction)
 
-            # CRITICAL: Move current_y by visual height (including border expansion)
-            current_y += node.height + getattr(node, 'border_width', 0) * 2 + sibling_spacing
+            # CRITICAL: Move current_y by visual height + spacing to next node
+            if i < len(nodes) - 1:
+                # Use per-pair spacing for the gap to the next node
+                pair_spacing = self._get_spacing_for_adjacent_pair(node, nodes[i + 1])
+                current_y += self._get_visual_height(node) + pair_spacing
+            else:
+                # Last node, just add its height
+                current_y += self._get_visual_height(node)
 
     def _layout_branch_complex(
         self, nodes: list, parent_node, direction: int, canvas_height: float
@@ -688,21 +936,20 @@ class DefaultLayout(BaseLayout):
             canvas_height: Canvas height for centering
         """
         # Step 1: Initial vertical centering
-        nodes_height = sum(node.height for node in nodes)
+        # FIXED: Calculate spacing for each adjacent pair individually
+        total_height = 0.0
+        for i, node in enumerate(nodes):
+            total_height += self._get_visual_height(node)
+            if i < len(nodes) - 1:
+                # Calculate spacing between node[i] and node[i+1]
+                pair_spacing = self._get_spacing_for_adjacent_pair(nodes[i], nodes[i + 1])
+                total_height += pair_spacing
 
-        # Get spacing based on node depth
-        if nodes:
-            sibling_spacing = self._get_sibling_spacing_for_depth(nodes[0].depth)
-        else:
-            sibling_spacing = self.sibling_spacing
-
-        nodes_spacing = (len(nodes) - 1) * sibling_spacing
-        total_height = nodes_height + nodes_spacing
         # CRITICAL FIX: total_height is from top of first node to bottom of last node
         # So we need to add half of first node's height to get its center
         if nodes:
             start_y = (
-                parent_node.position[1] - total_height / 2.0 + nodes[0].height / 2.0
+                parent_node.position[1] - total_height / 2.0 + self._get_visual_height(nodes[0]) / 2.0
             )
         else:
             start_y = parent_node.position[1]
@@ -716,28 +963,31 @@ class DefaultLayout(BaseLayout):
 
         # For left side (direction=-1): align right edge of children
         # For right side (direction=1): align left edge of children
-        if direction == -1:  # Left side
-            # Parent left edge
-            parent_left_edge = parent_node.position[0] - parent_node.width / 2.0
-            # All children's right edge aligns at this position
-            aligned_edge_x = parent_left_edge - level_spacing
-        else:  # Right side
-            # Parent right edge
-            parent_right_edge = parent_node.position[0] + parent_node.width / 2.0
-            # All children's left edge aligns at this position
-            aligned_edge_x = parent_right_edge + level_spacing
+        # Use visual width for alignment
+        parent_visual_width = self._get_visual_width(parent_node)
 
-        for node in nodes:
-            # Default-style: Calculate X based on this node's parent with aligned edge
-            node_half_width = node.width / 2.0
-            if direction == -1:  # Left side - align right edge
-                node_x = aligned_edge_x - node_half_width
-            else:  # Right side - align left edge
-                node_x = aligned_edge_x + node_half_width
+        if direction == -1:  # Left side
+            # Parent's visual left edge
+            parent_visual_left = parent_node.position[0] - parent_visual_width / 2.0
+            aligned_edge_x = parent_visual_left - level_spacing
+        else:  # Right side
+            # Parent's visual right edge
+            parent_visual_right = parent_node.position[0] + parent_visual_width / 2.0
+            aligned_edge_x = parent_visual_right + level_spacing
+
+        for i, node in enumerate(nodes):
+            # Calculate node center position using unified method
+            node_x = self._calculate_node_position(node, aligned_edge_x, direction)
 
             node.position = (node_x, current_y)
-            # CRITICAL: Move current_y by visual height (including border expansion)
-            current_y += node.height + getattr(node, 'border_width', 0) * 2 + sibling_spacing
+            # CRITICAL: Move current_y by visual height + spacing to next node
+            if i < len(nodes) - 1:
+                # Use per-pair spacing for the gap to the next node
+                pair_spacing = self._get_spacing_for_adjacent_pair(node, nodes[i + 1])
+                current_y += self._get_visual_height(node) + pair_spacing
+            else:
+                # Last node, just add its height
+                current_y += self._get_visual_height(node)
 
         # Step 2: Layout children and detect overlaps iteratively
         max_iterations = 20
@@ -776,9 +1026,19 @@ class DefaultLayout(BaseLayout):
                     # Get bounds of subtree j
                     top_j, bottom_j = self._get_branch_bounds([nodes[j]])
 
-                    # CRITICAL: Use the current sibling nodes' depth for spacing
-                    # NOT child depth - we're checking spacing between siblings at this level
-                    sibling_spacing = self._get_sibling_spacing_for_depth(nodes[i].depth)
+                    # CRITICAL FIX: Find the closest nodes between two subtrees
+                    # The bottom-most node of subtree i and top-most node of subtree j
+                    bottom_node_i = self._get_bottom_most_node(nodes[i])
+                    top_node_j = self._get_top_most_node(nodes[j])
+
+                    # Use these nodes to calculate spacing
+                    if bottom_node_i and top_node_j:
+                        sibling_spacing = self._get_spacing_for_adjacent_pair(
+                            bottom_node_i, top_node_j
+                        )
+                    else:
+                        # Fallback: use parent nodes spacing
+                        sibling_spacing = self._get_sibling_spacing_for_nodes([nodes[i], nodes[j]])
 
                     # Check if subtree i overlaps with subtree j
                     if bottom_i + sibling_spacing > top_j:

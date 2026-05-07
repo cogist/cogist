@@ -248,8 +248,13 @@ class MindMapView(QGraphicsView):
         node.width = temp_item.node_width
         node.height = temp_item.node_height
         # CRITICAL: Sync border_width for layout algorithm to calculate visual bounds
+        # IMPORTANT: Only sync border_width if border is enabled!
         if hasattr(temp_item, 'template_style') and temp_item.template_style:
-            node.border_width = getattr(temp_item.template_style, 'border_width', 0)
+            border_enabled = getattr(temp_item.template_style, 'border_enabled', True)
+            if border_enabled:
+                node.border_width = getattr(temp_item.template_style, 'border_width', 0)
+            else:
+                node.border_width = 0  # Border disabled, set width to 0
         else:
             node.border_width = 0
 
@@ -263,6 +268,55 @@ class MindMapView(QGraphicsView):
 
         def measure_recursive(node: Node, branch_color: str | None = None):
             current_color = branch_color if branch_color else node.color
+
+            # CRITICAL: For nodes that are currently being edited, use the edit widget's dynamic width
+            # This ensures child nodes reposition in real-time during editing
+            if node.id in self.node_items:
+                item = self.node_items[node.id]
+                is_editing = hasattr(item, 'edit_widget') and item.edit_widget is not None
+                if is_editing:
+                    # Get the dynamic width from the edit widget
+                    doc = item.edit_widget.document()
+                    doc_size = doc.size()
+                    dynamic_text_width = doc_size.width()
+
+                    # CRITICAL: Add padding to get actual node width (same as normal measurement)
+                    # Use template_style if available, otherwise fallback to style config
+                    if hasattr(item, 'template_style') and item.template_style:
+                        padding_width = item.template_style.padding_w * 2  # Both sides
+                    else:
+                        # Fallback: get padding from role-based style
+                        from cogist.domain.styles import NodeRole
+                        role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
+                        role = role_map.get(node.depth, NodeRole.TERTIARY)
+                        if role in self.style_config.role_styles:
+                            padding_width = self.style_config.role_styles[role].padding_w * 2
+                        else:
+                            padding_width = 40  # Safe fallback
+
+                    # Update domain node width with dynamic width + padding
+                    node.width = dynamic_text_width + padding_width
+
+                    # CRITICAL: Sync border_width for layout algorithm (respecting border_enabled)
+                    if hasattr(item, 'template_style') and item.template_style:
+                        border_enabled = getattr(item.template_style, 'border_enabled', True)
+                        if border_enabled:
+                            node.border_width = getattr(item.template_style, 'border_width', 0)
+                        else:
+                            node.border_width = 0  # Border disabled
+                    else:
+                        node.border_width = 0
+
+                    # Still measure children
+                    for child in node.children:
+                        child_branch_color = None
+                        if node.is_root:
+                            idx = node.children.index(child) % len(color_pool)
+                            child_branch_color = color_pool[idx]
+                        else:
+                            child_branch_color = branch_color
+                        measure_recursive(child, child_branch_color)
+                    return
 
             # Create temporary item (not added to scene)
             temp_item = NodeItem(
@@ -281,8 +335,13 @@ class MindMapView(QGraphicsView):
             node.width = temp_item.node_width
             node.height = temp_item.node_height
             # CRITICAL: Sync border_width for layout algorithm to calculate visual bounds
+            # IMPORTANT: Only sync border_width if border is enabled!
             if hasattr(temp_item, 'template_style') and temp_item.template_style:
-                node.border_width = getattr(temp_item.template_style, 'border_width', 0)
+                border_enabled = getattr(temp_item.template_style, 'border_enabled', True)
+                if border_enabled:
+                    node.border_width = getattr(temp_item.template_style, 'border_width', 0)
+                else:
+                    node.border_width = 0  # Border disabled, set width to 0
             else:
                 node.border_width = 0
 
@@ -322,18 +381,27 @@ class MindMapView(QGraphicsView):
 
                 # CRITICAL: Sync domain node size to UI item
                 # Domain node width/height was updated by _measure_actual_sizes
+                # BUT: Skip size sync during editing to prevent overriding dynamic width
                 if (
                     abs(item.node_width - node.width) > 0.1
                     or abs(item.node_height - node.height) > 0.1
                 ):
-                    item.node_width = node.width
-                    item.node_height = node.height
-                    item.setRect(
-                        -node.width / 2, -node.height / 2, node.width, node.height
+                    # CRITICAL: Check if this node is currently being edited
+                    is_editing = (
+                        hasattr(item, 'edit_widget') and item.edit_widget is not None
                     )
 
-                    # Recalculate text position with new dimensions
-                    item._update_node_geometry(item.text_content)
+                    if not is_editing:
+                        # Not editing - safe to sync size from domain
+                        item.node_width = node.width
+                        item.node_height = node.height
+                        item.setRect(
+                            -node.width / 2, -node.height / 2, node.width, node.height
+                        )
+
+                        # Recalculate text position with new dimensions
+                        item._update_node_geometry(item.text_content)
+                    # else: Skip size update during editing to preserve dynamic width
 
                 created_nodes.add(node.id)
             else:
@@ -381,6 +449,7 @@ class MindMapView(QGraphicsView):
 
             canvas_color = self.style_config.special_colors["canvas_bg"]
             self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
+            self.scene.update()
 
     def _create_ui_items(self, root: Node):
         """Create UI items from node tree."""
@@ -525,12 +594,25 @@ class MindMapView(QGraphicsView):
     def focusOutEvent(self, event):
         """Handle focus lost event.
 
-        When the view loses keyboard focus, clear the node selection state
-        to ensure visual consistency with the focus state.
+        Save selected node state before losing focus to panel or other widgets.
         """
-        # Clear node selection when view loses focus
-        self._deselect_node()
+        # Save current selection state
+        if self.selected_node_id:
+            self._saved_selected_node_id = self.selected_node_id
         super().focusOutEvent(event)
+
+    def focusInEvent(self, event):
+        """Handle focus gained event.
+
+        Restore previously saved selection state when regaining focus.
+        """
+        super().focusInEvent(event)
+        # Restore selection if we had a saved state
+        if hasattr(self, '_saved_selected_node_id') and self._saved_selected_node_id:
+            if self._saved_selected_node_id in self.node_items:
+                self._select_node_by_id(self._saved_selected_node_id)
+            # Clear the saved state after restoration
+            self._saved_selected_node_id = None
 
     def keyPressEvent(self, event):
         """Handle key press events.
@@ -710,6 +792,10 @@ class MindMapView(QGraphicsView):
 
                 # Save initial relative positions of entire subtree
                 self._save_subtree_relative_positions(current_node)
+
+                # CRITICAL: Save state for undo/redo BEFORE drag starts
+                # This captures the complete state needed to restore after drag
+                self._save_drag_state_for_undo(current_node)
         else:
             self._deselect_node()
 
@@ -880,10 +966,12 @@ class MindMapView(QGraphicsView):
 
     def mouseReleaseEvent(self, event):
         """Handle mouse release - reparent node and refresh layout."""
+
         # Clear drag state FIRST to prevent further drag events
         dragged_id = self._dragged_node_id
         potential_parent = self._current_potential_parent
         is_cross_side = self._is_dragging_cross_side
+        drag_start_pos = getattr(self, '_drag_start_pos', None)
 
         self._dragged_node_id = None
         self._drag_offset = None
@@ -894,31 +982,53 @@ class MindMapView(QGraphicsView):
         if dragged_id:
             dragged_node = self._find_node_by_id(self.root_node, dragged_id)
 
-            if dragged_node and potential_parent:
-                new_parent = potential_parent
+            # Check if actual drag occurred (mouse moved from start position)
+            current_pos = self.mapToScene(event.position().toPoint())
 
-                if (
-                    dragged_node != new_parent
-                    and new_parent not in dragged_node.get_all_descendants()
-                ):
+            # Calculate distance moved
+            distance = 0
+            if drag_start_pos:
+                distance = (current_pos - drag_start_pos).manhattanLength()
+
+            # Only process drag if mouse actually moved
+            if drag_start_pos and distance > 5:
+                # Real drag occurred - process it
+                if dragged_node and potential_parent:
+                    new_parent = potential_parent
+
                     # Save old parent and index BEFORE modifying
                     old_parent = dragged_node.parent
                     old_index = (
                         old_parent.children.index(dragged_node) if old_parent else 0
                     )
 
-                    # Create and execute reparent command (Application Layer)
-                    from cogist.application.commands.reparent_node_command import (
-                        ReparentNodeCommand,
+                    # Create and execute drag command (Application Layer)
+                    from cogist.application.commands.drag_node_command import (
+                        DragNodeCommand,
                     )
 
-                    command = ReparentNodeCommand(
-                        dragged_node=dragged_node,
-                        old_parent=old_parent,
-                        new_parent=new_parent,
-                        old_index=old_index,
-                        is_cross_side=is_cross_side,
-                    )
+                    # Use saved drag state for undo/redo
+                    drag_state = getattr(self, '_drag_undo_state', None)
+                    if drag_state:
+                        command = DragNodeCommand(
+                            dragged_node=dragged_node,
+                            old_parent=drag_state['old_parent'],
+                            new_parent=new_parent,
+                            old_index=drag_state['old_index'],
+                            old_left_primary_node_ids=drag_state['old_left_primary_node_ids'],
+                            is_cross_side=is_cross_side,
+                        )
+                    else:
+                        # Fallback if state not saved
+                        command = DragNodeCommand(
+                            dragged_node=dragged_node,
+                            old_parent=old_parent,
+                            new_parent=new_parent,
+                            old_index=old_index,
+                            old_left_primary_node_ids=None,
+                            is_cross_side=is_cross_side,
+                        )
+
                     command.execute()
 
                     # Push to command history for undo/redo
@@ -942,8 +1052,13 @@ class MindMapView(QGraphicsView):
                                 dragged_node, new_parent_item.is_right_side
                             )
 
-                    # CRITICAL: Update the top-level node's position[0] to the new side
-                    # This ensures the layout algorithm assigns it to the correct side
+                    # CRITICAL: Node relationships have changed, must rebuild edges completely
+                    # Incremental update won't work because parent-child connections changed
+                    # FIX: Re-measure dragged node and all its descendants since depth may have changed
+                    self._measure_actual_sizes(dragged_node)
+
+                    # CRITICAL: Sync dragged node position to current UI position BEFORE layout
+                    # This ensures node.position matches the actual drag destination
                     def get_top_level_ancestor(node):
                         """Get the direct child of root for this node."""
                         current = node
@@ -952,37 +1067,36 @@ class MindMapView(QGraphicsView):
                         return current
 
                     top_level_node = get_top_level_ancestor(dragged_node)
+                    if top_level_node and top_level_node.id in self.node_items:
+                        # CRITICAL: Sync BOTH X and Y coordinates to actual UI position
+                        # Previously only X was synced, causing incorrect drag position detection
+                        # when sorting nodes by Y coordinate in layout algorithm
+                        ui_pos = self.node_items[top_level_node.id].scenePos()
+                        top_level_node.position = (ui_pos.x(), ui_pos.y())
+
+                    # Mark as locked to prevent layout from moving it during rebalancing
                     if top_level_node:
-                        # Use is_currently_right to determine the target side
-                        is_currently_right = self._is_node_on_right_side(dragged_id)
-
-                        # Update position[0] to a clear side indicator
-                        # This is CRITICAL for the layout algorithm to correctly assign the node
-                        if is_currently_right:
-                            # R node: position far to the right
-                            top_level_node.position = (800.0, top_level_node.position[1])
-                        else:
-                            # L node: position far to the left
-                            top_level_node.position = (400.0, top_level_node.position[1])
-
-                        # Mark as locked so layout won't move it during rebalancing
                         top_level_node.is_locked_position = True
 
-                    # CRITICAL: Node relationships have changed, must rebuild edges completely
-                    # Incremental update won't work because parent-child connections changed
-                    # FIX: Re-measure dragged node and all its descendants since depth may have changed
-                    self._measure_actual_sizes(dragged_node)
-
                     # Now refresh layout with skip_measurement=True since we just measured
-                    self._refresh_layout(skip_measurement=True, force_rebuild_edges=True)
+                    # CRITICAL: Clear locked positions after this layout - drag operation is complete!
+                    self._refresh_layout(
+                        skip_measurement=True,
+                        force_rebuild_edges=True,
+                        clear_locked_positions=True  # Clear after layout
+                    )
                 else:
                     # Parent didn't change, but still need to refresh layout to snap node back
                     self._measure_actual_sizes(dragged_node)
                     self._refresh_layout(skip_measurement=True, force_rebuild_edges=False)
-            elif dragged_node:
-                # No potential parent detected, refresh layout to snap node back to original position
+            elif dragged_node and distance > 5:
+                # No potential parent detected (mouse moved but no valid drop target)
+                # Only refresh if this was a real drag (not just a click)
                 self._measure_actual_sizes(dragged_node)
                 self._refresh_layout(skip_measurement=True, force_rebuild_edges=False)
+            else:
+                # Mouse didn't move enough - this is just a CLICK, not a drag
+                pass
 
         # Clean up temp edge
         if self._temp_drag_edge:
@@ -999,6 +1113,36 @@ class MindMapView(QGraphicsView):
                 self._restore_parent_edge(dragged_node)
 
         super().mouseReleaseEvent(event)
+
+    def _save_drag_state_for_undo(self, dragged_node):
+        """
+        Save minimal state before drag for undo/redo support.
+
+        Two scenarios:
+        1. Simple drag (no layout rebalance): Only old_parent and old_index
+        2. Cross-side drag (may trigger rebalance): Plus left side primary node IDs
+
+        Args:
+            dragged_node: The node being dragged
+        """
+        # Find old parent and index
+        old_parent = dragged_node.parent
+        old_index = old_parent.children.index(dragged_node) if old_parent else 0
+
+        # Save left side primary node IDs (only needed for cross-side drag)
+        # Using IDs instead of node references for memory efficiency
+        old_left_primary_node_ids = [
+            child.id for child in self.root_node.children
+            if not self._is_node_on_right_side(child.id)
+        ]
+
+        # Save all state
+        self._drag_undo_state = {
+            'old_parent': old_parent,
+            'old_index': old_index,
+            'old_left_primary_node_ids': old_left_primary_node_ids,
+            'is_cross_side': False,  # Will be updated during drag
+        }
 
     def _select_node(self, node_item: NodeItem):
         """Select a node."""
@@ -1580,7 +1724,14 @@ class MindMapView(QGraphicsView):
         Args:
             new_node: The newly added domain node
         """
+        # For new top-level nodes: force position to the right side
+        # This ensures new primary nodes always appear on the right by default
+        if new_node.parent and new_node.parent.is_root:
+            # Set initial position far to the right
+            new_node.position = (800.0, 0.0)
+
         # Mark new node as locked for rebalancing
+        # This prevents the balance algorithm from moving it to the left side
         new_node.is_locked_position = True
 
         # OPTIMIZATION: Only measure the new node, not the entire tree
@@ -1743,12 +1894,12 @@ class MindMapView(QGraphicsView):
                 # Find the node for measurement
                 node = self._find_node_by_id(self.root_node, editing_node_id)
                 if node:
-                    # OPTIMIZATION: Only measure the edited node, not the entire tree
-                    # This reduces layout time from O(n) to O(1) for text edits
-                    self._measure_single_node(node)
+                    # CRITICAL: Measure the ENTIRE tree to ensure layout algorithm has correct sizes
+                    # Without this, child nodes won't reposition when parent size changes
+                    self._measure_actual_sizes(self.root_node)
 
-                    # Re-layout with skip_measurement=True since we just measured
-                    self._refresh_layout(skip_measurement=True)
+                    # Re-layout with skip_measurement=False to use new measurements
+                    self._refresh_layout(skip_measurement=False)
 
                     # Check if we need to add a child node after editing (e.g., Tab was pressed)
                     if (
@@ -1850,6 +2001,15 @@ class MindMapView(QGraphicsView):
         context = (
             {"focused_node_id": saved_selection_id} if saved_selection_id else None
         )
+
+        # DEBUG: Log positions before layout
+        editing_nodes_before = {}
+        for node in self._traverse_tree(self.root_node):
+            if node.id in self.node_items:
+                item = self.node_items[node.id]
+                if hasattr(item, 'edit_widget') and item.edit_widget is not None:
+                    editing_nodes_before[node.id] = (node.position[0], node.position[1])
+
         layout.layout(
             self.root_node,
             canvas_width=canvas_width,
@@ -1857,12 +2017,28 @@ class MindMapView(QGraphicsView):
             context=context,
         )
 
+        # DEBUG: Log positions after layout
+        for node_id, old_pos in editing_nodes_before.items():
+            node = self._find_node_by_id(self.root_node, node_id)
+            if node:
+                new_pos = (node.position[0], node.position[1])
+                if abs(old_pos[0] - new_pos[0]) > 0.1 or abs(old_pos[1] - new_pos[1]) > 0.1:
+                    # CRITICAL: Restore original position for editing nodes
+                    # This prevents the editing node from moving while its width changes,
+                    # which would cause its children's aligned edge to shift.
+                    node.position = old_pos
+
         # Clear locked position flags after layout (only when requested)
         # This is typically done after drag operations or node additions
         # For undo/redo of text edits, we should preserve locked states
         if clear_locked_positions and self.root_node:
-            for child in self.root_node.children:
-                child.is_locked_position = False
+            # Recursively clear all locked positions in the tree
+            def clear_locks(node):
+                node.is_locked_position = False
+                for child in node.children:
+                    clear_locks(child)
+
+            clear_locks(self.root_node)
 
         # Step 3: OPTIMIZATION - Try incremental UI update first
         # This is much faster than clearing and recreating all items
@@ -1880,6 +2056,16 @@ class MindMapView(QGraphicsView):
             self.node_items.clear()
             self.edge_items.clear()
             self._create_ui_items(self.root_node)
+
+        # CRITICAL: Force scene update to ensure visual refresh during editing
+        self.scene.update()
+
+        # CRITICAL: Force viewport update to ensure visual refresh
+        self.viewport().update()
+
+        # CRITICAL: Process pending events immediately to ensure visual update during editing
+        from qtpy.QtWidgets import QApplication
+        QApplication.processEvents()
 
         # Update scene rect based on new content
         self.scene_manager.update_from_content()

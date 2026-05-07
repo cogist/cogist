@@ -112,6 +112,7 @@ class JSONSerializer:
             "color": node.color,
             "is_root": node.is_root,
             "depth": node.depth,  # Save depth for proper style resolution
+            "rainbow_branch_index": node.rainbow_branch_index,  # Fixed color index for rainbow mode
             "children": [JSONSerializer.node_to_dict(child) for child in node.children],
         }
 
@@ -144,6 +145,7 @@ class JSONSerializer:
             color=data.get("color", "#FF2196F3"),
             is_root=data.get("is_root", False),
             depth=data.get("depth", 0),  # Restore depth from saved data
+            rainbow_branch_index=data.get("rainbow_branch_index"),  # Restore rainbow branch index
         )
 
         # Set parent reference

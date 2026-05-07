@@ -20,6 +20,7 @@ os.environ["QT_LOGGING_RULES"] = (
 from qtpy.QtCore import Qt, qInstallMessageHandler
 from qtpy.QtGui import QAction, QKeySequence, QShortcut
 from qtpy.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QMainWindow,
     QMessageBox,
@@ -99,7 +100,7 @@ class MainWindow(QMainWindow):
 
         # Connect color scheme tab signals to advanced tab handlers
         self.style_panel.color_scheme_tab.style_changed.connect(
-            self.style_panel.advanced_tab._on_color_scheme_changed
+            self.style_panel.style_editor_tab._on_color_scheme_changed
         )
 
         # Create horizontal layout: ActivityBar | StylePanel | MindMapView
@@ -153,9 +154,9 @@ class MainWindow(QMainWindow):
         """Handle style config change (e.g., after loading a file)."""
         # CRITICAL: Update style panel's style_config reference to match mindmap view
         if hasattr(self, "style_panel") and hasattr(self.style_panel, "advanced_tab"):
-            self.style_panel.advanced_tab.style_config = self.mindmap_view.style_config
+            self.style_panel.style_editor_tab.style_config = self.mindmap_view.style_config
             # Refresh UI controls to match new style config
-            self.style_panel.advanced_tab.refresh_current_layer()
+            self.style_panel.style_editor_tab.refresh_current_layer()
 
         # Also update color scheme tab
         if hasattr(self, "style_panel") and hasattr(
@@ -502,7 +503,7 @@ class MainWindow(QMainWindow):
 
         # Toggle Style Panel
         toggle_style_panel_action = QAction("Toggle Style &Panel", self)
-        toggle_style_panel_action.setShortcut("Ctrl+Shift+S")
+        toggle_style_panel_action.setShortcut("Ctrl+L")
         toggle_style_panel_action.setCheckable(True)
         toggle_style_panel_action.triggered.connect(self._toggle_style_panel)
         view_menu.addAction(toggle_style_panel_action)
@@ -665,10 +666,12 @@ class MainWindow(QMainWindow):
             self.mindmap_service.node_service.command_history.peek_last_undo_command()
         )
         command_type_name = last_command and type(last_command).__name__
+
         is_add_node_command = command_type_name == "AddNodeCommand"
         is_edit_text_command = command_type_name == "EditTextCommand"
         is_delete_node_command = command_type_name == "DeleteNodeCommand"
         is_reparent_command = command_type_name == "ReparentNodeCommand"
+        is_drag_command = command_type_name == "DragNodeCommand"
         is_change_style_command = command_type_name == "ChangeStyleCommand"
 
         # Save selection state BEFORE undo
@@ -711,15 +714,15 @@ class MainWindow(QMainWindow):
                 # Update style panel controls to reflect the undone state
                 if hasattr(self, "style_panel") and self.style_panel.isVisible():
                     # Prevent command creation during undo/redo refresh
-                    self.style_panel.advanced_tab._updating_from_undo_redo = True
-                    self.style_panel.advanced_tab.refresh_current_layer()
+                    self.style_panel.style_editor_tab._updating_from_undo_redo = True
+                    self.style_panel.style_editor_tab.refresh_current_layer()
 
                     # Sync color scheme tab with current style_config (for rainbow switch)
                     self.style_panel.color_scheme_tab.set_style_config(
                         self.mindmap_view.style_config
                     )
 
-                    self.style_panel.advanced_tab._updating_from_undo_redo = False
+                    self.style_panel.style_editor_tab._updating_from_undo_redo = False
                 # Re-apply styles to all nodes
                 if hasattr(self.mindmap_view, "node_items"):
                     for node_item in self.mindmap_view.node_items.values():
@@ -727,27 +730,31 @@ class MainWindow(QMainWindow):
                             node_item.update_style(self.mindmap_view.style_config)
                 # Apply spacing configuration to mindmap_view and refresh layout
                 if hasattr(self, "style_panel") and self.style_panel.isVisible():
-                    self.style_panel.advanced_tab._apply_styles_to_mindmap()
+                    self.style_panel.style_editor_tab._apply_styles_to_mindmap()
                 return
 
             # Determine if we need to re-measure dimensions
             # EditTextCommand: Text change affects node size -> must re-measure
             # DeleteNodeCommand undo: Restoring nodes -> must re-measure
             # ReparentNodeCommand undo: Depth changes may affect styles -> must re-measure
+            # DragNodeCommand undo: Structure changes -> must re-measure
             # AddNodeCommand undo: Removing nodes -> can skip (old sizes preserved)
             needs_measurement = (
-                is_edit_text_command or is_delete_node_command or is_reparent_command
+                is_edit_text_command
+                or is_delete_node_command
+                or is_reparent_command
+                or is_drag_command
             )
 
             # For text edits, preserve locked position states
-            # For node structure changes (add/delete/reparent), clear locked positions
+            # For node structure changes (add/delete/reparent/drag), clear locked positions
             should_clear_locks = not is_edit_text_command
 
             self.mindmap_view._refresh_layout(
                 skip_measurement=not needs_measurement,
                 saved_selection_id=node_id_before_undo,
                 parent_id=parent_id_before_undo,
-                force_rebuild_edges=is_reparent_command,  # Rebuild edges for reparent
+                force_rebuild_edges=is_reparent_command or is_drag_command,  # Rebuild edges for reparent/drag
                 clear_locked_positions=should_clear_locks,
             )
 
@@ -807,15 +814,15 @@ class MainWindow(QMainWindow):
                 # Update style panel controls to reflect the redone state
                 if hasattr(self, "style_panel") and self.style_panel.isVisible():
                     # Prevent command creation during undo/redo refresh
-                    self.style_panel.advanced_tab._updating_from_undo_redo = True
-                    self.style_panel.advanced_tab.refresh_current_layer()
+                    self.style_panel.style_editor_tab._updating_from_undo_redo = True
+                    self.style_panel.style_editor_tab.refresh_current_layer()
 
                     # Sync color scheme tab with current style_config (for rainbow switch)
                     self.style_panel.color_scheme_tab.set_style_config(
                         self.mindmap_view.style_config
                     )
 
-                    self.style_panel.advanced_tab._updating_from_undo_redo = False
+                    self.style_panel.style_editor_tab._updating_from_undo_redo = False
                 # Re-apply styles to all nodes
                 if hasattr(self.mindmap_view, "node_items"):
                     for node_item in self.mindmap_view.node_items.values():
@@ -823,7 +830,7 @@ class MainWindow(QMainWindow):
                             node_item.update_style(self.mindmap_view.style_config)
                 # Apply spacing configuration to mindmap_view and refresh layout
                 if hasattr(self, "style_panel") and self.style_panel.isVisible():
-                    self.style_panel.advanced_tab._apply_styles_to_mindmap()
+                    self.style_panel.style_editor_tab._apply_styles_to_mindmap()
                 return
 
             # Determine if we need to re-measure dimensions
@@ -1038,25 +1045,36 @@ class MainWindow(QMainWindow):
 
         if not is_visible:
             # Opening panel: viewport shrinks
+            # Record current scroll value before changing visibility
+            current_scroll = h_bar.value()
             self.style_panel.setVisible(True)
             self.activity_bar.setVisible(True)
             # Content shifts right, scroll left to compensate
-            h_bar.setValue(h_bar.value() + compensation)
+            # Delay scroll adjustment to next event loop to allow layout update
+            from qtpy.QtCore import QTimer
+            QTimer.singleShot(0, lambda: h_bar.setValue(current_scroll + compensation))
         else:
             # Closing panel: viewport expands
+            # Record current scroll value before changing visibility
+            current_scroll = h_bar.value()
             self.style_panel.setVisible(False)
             self.activity_bar.setVisible(False)
             # Content shifts left, scroll right to compensate
-            h_bar.setValue(h_bar.value() - compensation)
+            # Delay scroll adjustment to next event loop to allow layout update
+            from qtpy.QtCore import QTimer
+            QTimer.singleShot(0, lambda: h_bar.setValue(current_scroll - compensation))
 
         # Update activity bar button state
         if not is_visible:
-            # If showing, activate color scheme by default
-            self.activity_bar.activate_panel("color_scheme")
+            # If showing, restore the last active panel from session state
+            last_panel = self.style_panel._session_state.get("current_panel", "color_scheme")
+            self.activity_bar.activate_panel(last_panel)
         else:
-            # If hiding, uncheck all buttons
+            # If hiding, uncheck all buttons (block signals to prevent recursive calls)
             for btn in self.activity_bar.buttons.values():
+                btn.blockSignals(True)
                 btn.setChecked(False)
+                btn.blockSignals(False)
 
     def _open_style_panel(self):
         """Open the style panel via activity bar."""
@@ -1066,7 +1084,6 @@ class MainWindow(QMainWindow):
 
 def main():
     """Main entry point for the application."""
-    from qtpy.QtWidgets import QApplication
 
     # Set application name for macOS menu bar
     app = QApplication(sys.argv)

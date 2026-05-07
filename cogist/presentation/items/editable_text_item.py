@@ -98,9 +98,9 @@ class EditableTextItem(QGraphicsTextItem):
             # Update the underlying text_item with current edit content
             self._parent_node.text_item.setPlainText(self.toPlainText())
 
-            # TODO: Trigger real-time layout refresh here
-            # For now, just update the text. Layout refresh will be added later.
-            # Example: self._parent_node._refresh_layout_with_animation()
+            # CRITICAL: Emit text_changed signal to trigger layout refresh
+            # This ensures child nodes reposition in real-time during editing
+            self.text_changed.emit(self.toPlainText())
 
         # Update layout to recalculate width
         self._update_layout()

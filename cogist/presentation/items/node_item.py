@@ -247,6 +247,9 @@ class NodeItem(QGraphicsRectItem):
         # Z-value: nodes above edges
         self.setZValue(1)
 
+        # Track selection state to manage Z-value for focus frame visibility
+        self._is_selected = False
+
         # Inline editing support
         self.edit_widget = None
         self.edit_proxy = None
@@ -297,12 +300,17 @@ class NodeItem(QGraphicsRectItem):
         # === Color Resolution ===
         # Check if rainbow branches are enabled
         if self.style_config.use_rainbow_branches and len(color_pool) >= 8:
-            # Level 1: Use rainbow colors
+            # Level 1: Use fixed rainbow branch index
             if depth == 1 and self.domain_node and self.domain_node.parent:
                 try:
-                    branch_idx = self.domain_node.parent.children.index(
-                        self.domain_node
-                    )
+                    # Use fixed rainbow_branch_index if available, otherwise fallback to dynamic calculation
+                    if self.domain_node.rainbow_branch_index is not None:
+                        branch_idx = self.domain_node.rainbow_branch_index
+                    else:
+                        # Fallback for old data without rainbow_branch_index
+                        branch_idx = self.domain_node.parent.children.index(
+                            self.domain_node
+                        )
                     base_color = color_pool[branch_idx % 8]  # Cycle through 8 colors
 
                     # Apply background color with adjustments
@@ -351,9 +359,14 @@ class NodeItem(QGraphicsRectItem):
                 if level_1_ancestor:
                     try:
                         if level_1_ancestor.parent:
-                            branch_idx = level_1_ancestor.parent.children.index(
-                                level_1_ancestor
-                            )
+                            # Use fixed rainbow_branch_index if available, otherwise fallback
+                            if level_1_ancestor.rainbow_branch_index is not None:
+                                branch_idx = level_1_ancestor.rainbow_branch_index
+                            else:
+                                # Fallback for old data without rainbow_branch_index
+                                branch_idx = level_1_ancestor.parent.children.index(
+                                    level_1_ancestor
+                                )
                             ancestor_color = color_pool[branch_idx % 8]
 
                             # Background
@@ -924,9 +937,14 @@ class NodeItem(QGraphicsRectItem):
                         ):
                             # Get branch index from parent's children list
                             try:
-                                branch_idx = self.domain_node.parent.children.index(
-                                    self.domain_node
-                                )
+                                # Use fixed rainbow_branch_index if available, otherwise fallback
+                                if self.domain_node.rainbow_branch_index is not None:
+                                    branch_idx = self.domain_node.rainbow_branch_index
+                                else:
+                                    # Fallback for old data without rainbow_branch_index
+                                    branch_idx = self.domain_node.parent.children.index(
+                                        self.domain_node
+                                    )
                                 from cogist.domain.styles.extended_styles import (
                                     get_rainbow_branch_color,
                                 )
@@ -982,11 +1000,16 @@ class NodeItem(QGraphicsRectItem):
                                 try:
                                     # Find the Level 1 node's position in its parent's children
                                     if level_1_ancestor.parent:
-                                        branch_idx = (
-                                            level_1_ancestor.parent.children.index(
-                                                level_1_ancestor
+                                        # Use fixed rainbow_branch_index if available, otherwise fallback
+                                        if level_1_ancestor.rainbow_branch_index is not None:
+                                            branch_idx = level_1_ancestor.rainbow_branch_index
+                                        else:
+                                            # Fallback for old data without rainbow_branch_index
+                                            branch_idx = (
+                                                level_1_ancestor.parent.children.index(
+                                                    level_1_ancestor
+                                                )
                                             )
-                                        )
                                         from cogist.domain.styles.extended_styles import (
                                             get_rainbow_branch_color,
                                         )
@@ -1236,7 +1259,7 @@ class NodeItem(QGraphicsRectItem):
         self.update()
 
     def itemChange(self, change, value):
-        """Handle position changes - update edges and children."""
+        """Handle position changes and selection state changes."""
         if change == QGraphicsRectItem.ItemPositionHasChanged:
             new_pos = value
             offset = new_pos - self._last_pos
@@ -1251,6 +1274,17 @@ class NodeItem(QGraphicsRectItem):
             # Update all connected edges (both incoming from parent and outgoing to children)
             for edge in self.connected_edges:
                 edge.update_curve()
+
+        # Handle selection state changes - bring selected node to front
+        elif change == QGraphicsRectItem.ItemSelectedHasChanged:
+            is_selected = bool(value)
+            if is_selected != self._is_selected:
+                self._is_selected = is_selected
+                # Bring selected node to front so focus frame is not obscured
+                if is_selected:
+                    self.setZValue(2)  # Higher than normal nodes (1)
+                else:
+                    self.setZValue(1)  # Back to normal
 
         return super().itemChange(change, value)
 
@@ -1392,13 +1426,11 @@ class NodeItem(QGraphicsRectItem):
             # Ring 3: Outer focus ring (semi-transparent glow, 8px, outside inner ring)
 
             # Get node's outer edge path (this is where node border ends)
-            node_outer_rect = rect.adjusted(
-                -style_config.get("border_width", 0) / 2.0,
-                -style_config.get("border_width", 0) / 2.0,
-                style_config.get("border_width", 0) / 2.0,
-                style_config.get("border_width", 0) / 2.0,
-            )
-            node_outer_radius = style_config.get("border_radius", 8) + style_config.get("border_width", 0) / 2.0
+            # Only include border_width if border is enabled
+            border_enabled = self.template_style.border_enabled if self.template_style else True
+            border_width = style_config.get("border_width", 0) if border_enabled else 0
+            node_outer_rect = rect.adjusted(-border_width, -border_width, border_width, border_width)
+            node_outer_radius = style_config.get("border_radius", 8) + border_width
 
             node_outer_path = QPainterPath()
             if shape_type == "circle":
@@ -1608,6 +1640,9 @@ class NodeItem(QGraphicsRectItem):
         if self.edit_widget is not None:
             return  # Already editing
 
+        # CRITICAL: Store mindmap_view reference for layout refresh during editing
+        self._mindmap_view = mindmap_view
+
         # Create editable text item with proper Tab key handling
         # CRITICAL: Read max_text_width from template_style, never use hardcoded constants
         if hasattr(self, "template_style") and self.template_style:
@@ -1760,9 +1795,16 @@ class NodeItem(QGraphicsRectItem):
             for edge in self.connected_edges:
                 edge.update_curve()
 
-        def on_text_changed(new_text):
+        def on_text_changed(_new_text):
             """Handle text changes during editing."""
-            pass  # Width change handler will take care of everything
+            # CRITICAL: Directly trigger layout refresh when text changes
+            # This ensures child nodes reposition in real-time
+            if self._mindmap_view:
+                try:
+                    self._mindmap_view._refresh_layout()
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
 
         def on_tab_pressed():
             """Handle Tab key press - set flag to add child after editing."""

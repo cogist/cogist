@@ -54,6 +54,12 @@ class AddNodeCommand(Command):
             # Lock the new node's position to prevent layout rebalancing from moving it
             self.new_node.is_locked_position = True
 
+            # Assign fixed rainbow branch index for Level 1 nodes (children of root)
+            if self.parent_node.is_root:
+                # Count existing Level 1 children to assign next available index
+                existing_level_1_count = len(self.parent_node.children)
+                self.new_node.rainbow_branch_index = existing_level_1_count % 8
+
         # Add to parent
         self.parent_node.add_child(self.new_node)
 

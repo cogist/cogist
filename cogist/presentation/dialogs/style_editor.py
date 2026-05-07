@@ -1,7 +1,7 @@
 """
-Style Panel - Advanced Mode for Template Creation (Refactored)
+Style Editor - Real-time Style Editing and Template Creation (Refactored)
 
-A dockable panel for real-time style debugging and template creation.
+A dockable panel for real-time style editing and template creation.
 Uses modular components with lazy initialization for better performance.
 
 Refactored version: Uses component-based architecture from style_widgets/
@@ -23,8 +23,8 @@ from .style_widgets import (
 )
 
 
-class AdvancedStyleTab(QWidget):
-    """Advanced mode tab using modular components with lazy initialization.
+class StyleEditorTab(QWidget):
+    """Style editor tab using modular components with lazy initialization.
 
     This refactored version uses component-based architecture:
     - LayerSelector: Layer switching
@@ -459,7 +459,7 @@ class AdvancedStyleTab(QWidget):
         self.spacing_section = SpacingSection(parent=self)
         self.node_style_section = NodeStyleSection(parent=self)
         self.font_style_section = FontStyleSection()
-        self.shadow_section = ShadowSection()
+        self.shadow_section = ShadowSection(parent=self)
         self.border_section = BorderSection(parent=self)
         self.connector_section = ConnectorSection(parent=self)
 
@@ -489,7 +489,7 @@ class AdvancedStyleTab(QWidget):
     def _apply_styles(self):
         """Apply custom QSS styles to the panel."""
         self.setStyleSheet("""
-            AdvancedStyleTab {
+            StyleEditorTab {
                 background-color: #F5F5F5;
             }
             QGroupBox {
@@ -555,29 +555,11 @@ class AdvancedStyleTab(QWidget):
         if "bg_color" not in style:
             return
 
-        new_color = style["bg_color"]
+        # Note: CanvasPanel already updated style_config.special_colors["canvas_bg"]
+        # and created undo command. Just need to refresh the UI.
 
-        # Update canvas background in special_colors
-        self.style_config.special_colors["canvas_bg"] = new_color
-
-        # Apply styles to mindmap
+        # Apply styles to mindmap (this will update canvas background)
         self._apply_styles_to_mindmap()
-
-        # Use command system if available
-        if self.command_history:
-            from cogist.application.commands import ChangeStyleCommand
-            from cogist.application.commands.change_style_command import StyleChange
-
-            change = StyleChange(
-                layer="canvas",
-                style_updates={"bg_color": new_color},
-            )
-            command = ChangeStyleCommand(
-                style_config=self.style_config,
-                changes=[change],
-            )
-            command.execute()
-            self.command_history.push(command)
 
     def _on_layer_changed(self, layer_name: str):
         """Handle layer selection change."""
@@ -892,7 +874,13 @@ class AdvancedStyleTab(QWidget):
 
         # Update using command system if available
         if self.current_layer != "canvas":
-            if self.command_history:
+            # Skip command creation if we're updating from undo/redo
+            if self._updating_from_undo_redo:
+                # Direct update without creating a command
+                self._update_role_style_in_config(
+                    self.current_layer, {"shadow_enabled": enabled}
+                )
+            elif self.command_history:
                 from cogist.application.commands import ChangeStyleCommand
                 from cogist.application.commands.change_style_command import StyleChange
 
@@ -978,7 +966,13 @@ class AdvancedStyleTab(QWidget):
 
         # Update using command system if available
         if self.current_layer != "canvas":
-            if self.command_history:
+            # Skip command creation if we're updating from undo/redo
+            if self._updating_from_undo_redo:
+                # Direct update without creating a command
+                self._update_role_style_in_config(
+                    self.current_layer, {"shadow_enabled": enabled}
+                )
+            elif self.command_history:
                 from cogist.application.commands import ChangeStyleCommand
                 from cogist.application.commands.change_style_command import StyleChange
 

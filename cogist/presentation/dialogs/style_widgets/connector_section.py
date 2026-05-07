@@ -45,10 +45,10 @@ class ConnectorSection(CollapsiblePanel):
     def __init__(self, parent=None):
         super().__init__("Connector Style", collapsed=True, parent=parent)
 
-        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        # Get LABEL_WIDTH from parent (StyleEditorTab) if available, otherwise use class default
         self._label_width = getattr(parent, 'LABEL_WIDTH', self.LABEL_WIDTH) if parent else self.LABEL_WIDTH
 
-        # Store reference to AdvancedStyleTab for accessing style_config
+        # Store reference to StyleEditorTab for accessing style_config
         self._advanced_tab = parent
 
         # State

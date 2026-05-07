@@ -16,13 +16,14 @@ from qtpy.QtWidgets import (
 from cogist.presentation.widgets import ColorPoolPopup, ToggleSwitch
 
 from .collapsible_panel import CollapsiblePanel
+from .color_dialog_undo import ColorDialogUndoMixin
 from .color_picker import create_color_picker
 from .dialog_utils import position_color_dialog
 from .menu_button import MenuButton
 from .spinbox import SpinBox
 
 
-class BorderSection(CollapsiblePanel):
+class BorderSection(ColorDialogUndoMixin, CollapsiblePanel):
     """Border style settings with lazy initialization.
 
     Signals:
@@ -39,14 +40,14 @@ class BorderSection(CollapsiblePanel):
     def __init__(self, parent=None):
         super().__init__("Border Style", collapsed=True, parent=parent)
 
-        # Get LABEL_WIDTH from parent (AdvancedStyleTab) if available, otherwise use class default
+        # Get LABEL_WIDTH from parent (StyleEditorTab) if available, otherwise use class default
         self._label_width = (
             getattr(parent, "LABEL_WIDTH", self.LABEL_WIDTH)
             if parent
             else self.LABEL_WIDTH
         )
 
-        # Store reference to AdvancedStyleTab for accessing style_config
+        # Store reference to StyleEditorTab for accessing style_config
         # Note: parent() returns _content_widget, so we need to store the actual parent
         self._advanced_tab = parent
 
@@ -327,7 +328,7 @@ class BorderSection(CollapsiblePanel):
 
     def _on_color_clicked(self):
         """Handle border color button click."""
-        # Use stored reference to AdvancedStyleTab instead of parent()
+        # Use stored reference to StyleEditorTab instead of parent()
         parent = self._advanced_tab
 
         if not (parent and hasattr(parent, "style_config") and parent.style_config):
@@ -348,10 +349,16 @@ class BorderSection(CollapsiblePanel):
                     Qt.WidgetAttribute.WA_DeleteOnClose, True
                 )
 
-            # Get current color from special_colors["root_border"]
-            current_color = parent.style_config.special_colors["root_border"]
+            # Setup undo support using mixin
+            self.setup_color_dialog_undo(
+                color_picker=self._color_picker,
+                layer="root",
+                style_key="border_color",
+                get_current_color=lambda: parent.style_config.special_colors["root_border"],
+            )
 
             # Set current color (MUST call before show!)
+            current_color = parent.style_config.special_colors["root_border"]
             self._color_picker.set_current_color(current_color)
 
             # Show color picker
@@ -423,10 +430,15 @@ class BorderSection(CollapsiblePanel):
         # Emit style changed
         self._emit_style_changed()
 
+    def _get_final_color(self):
+        """Get final root border color."""
+        parent = self._advanced_tab
+        if parent and hasattr(parent, 'style_config') and parent.style_config:
+            return parent.style_config.special_colors["root_border"]
+        return None
+
     def _on_border_color_selected(self, hex_color: str):
-        """Handle border color selection from picker (root mode only)."""
-        # Update the color in special_colors["root_border"]
-        # Use stored reference to AdvancedStyleTab instead of parent()
+        """Handle border color selection from picker (root mode only - real-time preview)."""
         parent = self._advanced_tab
 
         if (
@@ -435,7 +447,7 @@ class BorderSection(CollapsiblePanel):
             and parent.style_config
             and self.is_root_mode
         ):
-            # Root mode: update special_colors["root_border"] (same as CanvasPanel)
+            # Real-time preview: update style_config for immediate UI feedback
             parent.style_config.special_colors["root_border"] = hex_color
 
             # CRITICAL: Update current_style to match CanvasPanel behavior
@@ -452,8 +464,10 @@ class BorderSection(CollapsiblePanel):
                     "text-align: left;"
                 )
 
-            # Emit style changed
-            self._emit_style_changed()
+            # DO NOT emit signal in root mode - mixin will create undo command on dialog close
+            # Just trigger UI refresh without creating commands
+            if hasattr(parent, '_apply_styles_to_mindmap'):
+                parent._apply_styles_to_mindmap(force_rebuild=False)
 
     def _on_brightness_changed(self, value: int):
         """Handle border brightness change."""

@@ -43,6 +43,8 @@ NUMERIC_STYLE_FIELDS = {
     "shadow_offset_x",
     "shadow_offset_y",
     "shadow_blur",
+    # Color fields (for real-time preview with single undo step)
+    "bg_color",
 }
 
 
@@ -88,18 +90,20 @@ class ChangeStyleCommand(Command):
         Execute the command - apply style changes.
 
         This applies all style changes and backs up old values for undo.
+        For coalesced commands, only backup old values on first execution.
         """
-        self.old_values = []
+        # Only backup old values if not already backed up (for coalescing support)
+        if not self.old_values:
+            for change in self.changes:
+                # Backup old values
+                old_values_for_layer = self._backup_layer_style(change.layer, change.style_updates.keys())
+                self.old_values.append({
+                    "layer": change.layer,
+                    "old_values": old_values_for_layer,
+                })
 
+        # Always apply new values
         for change in self.changes:
-            # Backup old values
-            old_values_for_layer = self._backup_layer_style(change.layer, change.style_updates.keys())
-            self.old_values.append({
-                "layer": change.layer,
-                "old_values": old_values_for_layer,
-            })
-
-            # Apply new values
             self._apply_layer_style(change.layer, change.style_updates)
 
     def undo(self) -> None:
@@ -135,6 +139,22 @@ class ChangeStyleCommand(Command):
             for key in keys:
                 if key == "bg_color":
                     backup[key] = self.style_config.special_colors["canvas_bg"]
+        elif layer == "root":
+            # Root layer uses special_colors for bg_color and border_color
+            from cogist.domain.styles import NodeRole
+
+            for key in keys:
+                if key == "bg_color":
+                    backup[key] = self.style_config.special_colors["root_background"]
+                elif key == "border_color":
+                    backup[key] = self.style_config.special_colors["root_border"]
+                else:
+                    # Other properties from role_styles
+                    role = NodeRole.ROOT
+                    if role in self.style_config.role_styles:
+                        role_style = self.style_config.role_styles[role]
+                        if hasattr(role_style, key):
+                            backup[key] = getattr(role_style, key)
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}
@@ -210,10 +230,6 @@ class ChangeStyleCommand(Command):
                                 # Backup border radius
                                 if hasattr(role_style, 'border_radius'):
                                     backup[key] = role_style.border_radius
-                            elif key == "bg_color":
-                                # Background color: root layer uses special_colors["root_background"] directly
-                                # For other layers, this shouldn't happen (they use bg_color_index)
-                                backup[key] = None  # Skip backup for bg_color
                             elif key == "text_color":
                                 # Text color from role_style
                                 backup[key] = role_style.text_color
@@ -250,6 +266,22 @@ class ChangeStyleCommand(Command):
         if layer == "canvas":
             if "bg_color" in style_updates:
                 self.style_config.special_colors["canvas_bg"] = style_updates["bg_color"]
+        elif layer == "root":
+            # Root layer uses special_colors for bg_color and border_color
+            from cogist.domain.styles import NodeRole
+
+            if "bg_color" in style_updates:
+                self.style_config.special_colors["root_background"] = style_updates["bg_color"]
+            if "border_color" in style_updates:
+                self.style_config.special_colors["root_border"] = style_updates["border_color"]
+
+            # Other properties go to role_styles
+            role = NodeRole.ROOT
+            if role in self.style_config.role_styles:
+                role_style = self.style_config.role_styles[role]
+                for key, value in style_updates.items():
+                    if key not in ("bg_color", "border_color") and hasattr(role_style, key):
+                        setattr(role_style, key, value)
         else:
             # Check if this is a spacing or connector config change (layer-level, not role-level)
             spacing_keys = {"parent_child_spacing", "sibling_spacing"}
