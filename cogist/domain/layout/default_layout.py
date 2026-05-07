@@ -124,8 +124,7 @@ class DefaultLayout(BaseLayout):
         level_spacing = self._get_level_spacing_for_depth(parent_node.depth + 1)
 
         # Use visual width/height (including border expansion)
-        parent_border = getattr(parent_node, 'border_width', 0)
-        parent_visual_width = parent_node.width + parent_border * 2
+        parent_visual_width = self._get_visual_width(parent_node)
 
         aligned_edge_x = 0.0  # Will be set based on direction
 
@@ -147,9 +146,9 @@ class DefaultLayout(BaseLayout):
         node,
         aligned_edge_x: float,
         direction: int,
-    ) -> tuple[float, float]:
+    ) -> float:
         """
-        Calculate node center position based on aligned edge.
+        Calculate node center X position based on aligned edge.
 
         Args:
             node: The node to position
@@ -157,11 +156,10 @@ class DefaultLayout(BaseLayout):
             direction: -1 for left side, 1 for right side
 
         Returns:
-            Tuple of (node_x, node_y) - node center position
+            node_x - node center X position
         """
         # Calculate visual half width (including border expansion)
-        node_border = getattr(node, 'border_width', 0)
-        node_visual_half_width = (node.width + node_border * 2) / 2.0
+        node_visual_half_width = self._get_visual_width(node) / 2.0
 
         if direction == -1:  # Left side - align right visual edge
             # Visual center = aligned_edge_x - visual_half_width
@@ -184,6 +182,19 @@ class DefaultLayout(BaseLayout):
         """
         border_width = getattr(node, 'border_width', 0)
         return node.height + border_width * 2
+
+    def _get_visual_width(self, node) -> float:
+        """
+        Get the visual width of a node (including border expansion).
+
+        Args:
+            node: The node to measure
+
+        Returns:
+            Visual width including border on left and right
+        """
+        border_width = getattr(node, 'border_width', 0)
+        return node.width + border_width * 2
 
     def layout(
         self,
@@ -771,8 +782,7 @@ class DefaultLayout(BaseLayout):
         # DEBUG: Log aligned edge calculation for all nodes
         print(f"[LAYOUT ALGO] _layout_side - direction={direction}, parent='{parent_node.text}'")
         print(f"[LAYOUT ALGO]   Parent position: {parent_node.position}, width: {parent_node.width}")
-        parent_border = getattr(parent_node, 'border_width', 0)
-        parent_visual_width = parent_node.width + parent_border * 2
+        parent_visual_width = self._get_visual_width(parent_node)
         if direction == -1:
             parent_visual_left = parent_node.position[0] - parent_visual_width / 2.0
             print(f"[LAYOUT ALGO]   Parent visual left edge: {parent_visual_left}")
@@ -789,8 +799,8 @@ class DefaultLayout(BaseLayout):
 
             # DEBUG: Log calculated position and edge
             if node.text.startswith('fasfsdaj'):
-                node_border = getattr(node, 'border_width', 0)
-                node_visual_half_width = (node.width + node_border * 2) / 2.0
+                # Calculate visual half width (including border expansion)
+                node_visual_half_width = self._get_visual_width(node) / 2.0
                 if direction == -1:
                     calculated_left_edge = node_x - node_visual_half_width
                     print(f"[LAYOUT ALGO] Node '{node.text}' - node_x: {node_x}, half_width: {node_visual_half_width}, left_edge: {calculated_left_edge}, aligned_edge_x: {aligned_edge_x}")
@@ -884,9 +894,8 @@ class DefaultLayout(BaseLayout):
 
         # For left side (direction=-1): align right edge of children
         # For right side (direction=1): align left edge of children
-        # Use visual width (including border expansion)
-        parent_border = getattr(parent_node, 'border_width', 0)
-        parent_visual_width = parent_node.width + parent_border * 2
+        # Use visual width for alignment
+        parent_visual_width = self._get_visual_width(parent_node)
 
         if direction == -1:  # Left side
             # Parent's visual left edge

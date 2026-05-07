@@ -248,8 +248,13 @@ class MindMapView(QGraphicsView):
         node.width = temp_item.node_width
         node.height = temp_item.node_height
         # CRITICAL: Sync border_width for layout algorithm to calculate visual bounds
+        # IMPORTANT: Only sync border_width if border is enabled!
         if hasattr(temp_item, 'template_style') and temp_item.template_style:
-            node.border_width = getattr(temp_item.template_style, 'border_width', 0)
+            border_enabled = getattr(temp_item.template_style, 'border_enabled', True)
+            if border_enabled:
+                node.border_width = getattr(temp_item.template_style, 'border_width', 0)
+            else:
+                node.border_width = 0  # Border disabled, set width to 0
         else:
             node.border_width = 0
 
@@ -293,6 +298,16 @@ class MindMapView(QGraphicsView):
                     old_width = node.width
                     node.width = dynamic_text_width + padding_width
 
+                    # CRITICAL: Sync border_width for layout algorithm (respecting border_enabled)
+                    if hasattr(item, 'template_style') and item.template_style:
+                        border_enabled = getattr(item.template_style, 'border_enabled', True)
+                        if border_enabled:
+                            node.border_width = getattr(item.template_style, 'border_width', 0)
+                        else:
+                            node.border_width = 0  # Border disabled
+                    else:
+                        node.border_width = 0
+
                     print(f"[MEASURE] Editing node '{node.text}' - text_width={dynamic_text_width}, padding={padding_width}, total_width={node.width} (was {old_width})")
 
                     # Still measure children
@@ -323,8 +338,13 @@ class MindMapView(QGraphicsView):
             node.width = temp_item.node_width
             node.height = temp_item.node_height
             # CRITICAL: Sync border_width for layout algorithm to calculate visual bounds
+            # IMPORTANT: Only sync border_width if border is enabled!
             if hasattr(temp_item, 'template_style') and temp_item.template_style:
-                node.border_width = getattr(temp_item.template_style, 'border_width', 0)
+                border_enabled = getattr(temp_item.template_style, 'border_enabled', True)
+                if border_enabled:
+                    node.border_width = getattr(temp_item.template_style, 'border_width', 0)
+                else:
+                    node.border_width = 0  # Border disabled, set width to 0
             else:
                 node.border_width = 0
 
