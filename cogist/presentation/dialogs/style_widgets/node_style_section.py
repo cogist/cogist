@@ -385,8 +385,12 @@ class NodeStyleSection(CollapsiblePanel):
                 self._color_picker.color_selected.connect(self._on_bg_color_selected)
                 # Ensure dialog closes when parent window closes
                 self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+                # Reset reference when dialog closes
+                self._color_picker.finished.connect(self._on_root_bg_color_dialog_closed)
 
+            # Save original color for undo command
             current_color = parent.style_config.special_colors["root_background"]
+            self._original_root_bg_color = current_color
 
             # Set current color (MUST call before show!)
             self._color_picker.set_current_color(current_color)
@@ -493,14 +497,53 @@ class NodeStyleSection(CollapsiblePanel):
         # Emit style changed
         self._emit_style_changed()
 
+    def _on_root_bg_color_dialog_closed(self):
+        """Handle root background color dialog close - create undo command."""
+        parent = self._advanced_tab
+        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
+            return
+
+        if not hasattr(parent, 'command_history') or not parent.command_history:
+            return
+
+        if not self.is_root_mode:
+            return
+
+        # Get final color (already updated by real-time preview)
+        final_color = parent.style_config.special_colors["root_background"]
+        original_color = getattr(self, '_original_root_bg_color', None)
+
+        if original_color is None:
+            return
+
+        # Only create undo command if color actually changed
+        if final_color != original_color:
+            from cogist.application.commands import ChangeStyleCommand
+            from cogist.application.commands.change_style_command import StyleChange
+
+            change = StyleChange(
+                layer="root",
+                style_updates={"bg_color": final_color}
+            )
+            command = ChangeStyleCommand(
+                style_config=parent.style_config,
+                changes=[change]
+            )
+            # Manually set old_values to the original color before any changes
+            command.old_values.append({
+                "layer": "root",
+                "old_values": {"bg_color": original_color}
+            })
+            command.execute()
+            parent.command_history.push(command)
+
     def _on_bg_color_selected(self, hex_color: str):
-        """Handle color selection from picker (root mode only)."""
-        # Update the color in color_pool
-        # Use stored reference to StyleEditorTab instead of parent()
+        """Handle color selection from picker (root mode only - real-time preview)."""
         parent = self._advanced_tab
 
         if parent and hasattr(parent, 'style_config') and parent.style_config:
             if self.is_root_mode:
+                # Real-time preview: update style_config for immediate UI feedback
                 parent.style_config.special_colors["root_background"] = hex_color
 
                 # CRITICAL: Update current_style to match CanvasPanel behavior

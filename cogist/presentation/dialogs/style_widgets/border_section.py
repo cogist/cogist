@@ -347,9 +347,12 @@ class BorderSection(CollapsiblePanel):
                 self._color_picker.setAttribute(
                     Qt.WidgetAttribute.WA_DeleteOnClose, True
                 )
+                # Reset reference and create undo command when dialog closes
+                self._color_picker.finished.connect(self._on_root_border_color_dialog_closed)
 
-            # Get current color from special_colors["root_border"]
+            # Save original color for undo command
             current_color = parent.style_config.special_colors["root_border"]
+            self._original_root_border_color = current_color
 
             # Set current color (MUST call before show!)
             self._color_picker.set_current_color(current_color)
@@ -423,10 +426,48 @@ class BorderSection(CollapsiblePanel):
         # Emit style changed
         self._emit_style_changed()
 
+    def _on_root_border_color_dialog_closed(self):
+        """Handle root border color dialog close - create undo command."""
+        parent = self._advanced_tab
+        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
+            return
+
+        if not hasattr(parent, 'command_history') or not parent.command_history:
+            return
+
+        if not self.is_root_mode:
+            return
+
+        # Get final color (already updated by real-time preview)
+        final_color = parent.style_config.special_colors["root_border"]
+        original_color = getattr(self, '_original_root_border_color', None)
+
+        if original_color is None:
+            return
+
+        # Only create undo command if color actually changed
+        if final_color != original_color:
+            from cogist.application.commands import ChangeStyleCommand
+            from cogist.application.commands.change_style_command import StyleChange
+
+            change = StyleChange(
+                layer="root",
+                style_updates={"border_color": final_color}
+            )
+            command = ChangeStyleCommand(
+                style_config=parent.style_config,
+                changes=[change]
+            )
+            # Manually set old_values to the original color before any changes
+            command.old_values.append({
+                "layer": "root",
+                "old_values": {"border_color": original_color}
+            })
+            command.execute()
+            parent.command_history.push(command)
+
     def _on_border_color_selected(self, hex_color: str):
-        """Handle border color selection from picker (root mode only)."""
-        # Update the color in special_colors["root_border"]
-        # Use stored reference to StyleEditorTab instead of parent()
+        """Handle border color selection from picker (root mode only - real-time preview)."""
         parent = self._advanced_tab
 
         if (
@@ -435,7 +476,7 @@ class BorderSection(CollapsiblePanel):
             and parent.style_config
             and self.is_root_mode
         ):
-            # Root mode: update special_colors["root_border"] (same as CanvasPanel)
+            # Real-time preview: update style_config for immediate UI feedback
             parent.style_config.special_colors["root_border"] = hex_color
 
             # CRITICAL: Update current_style to match CanvasPanel behavior
