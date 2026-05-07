@@ -36,6 +36,10 @@ class DefaultLayout(BaseLayout):
         supports_mixed=False,
     )
 
+    # Balance hysteresis threshold: prevent oscillation when spacing changes
+    # Only rebalance when height difference exceeds this threshold (in pixels)
+    BALANCE_HYSTERESIS_THRESHOLD = 100.0
+
     def __init__(self, config: DefaultLayoutConfig | None = None):
         """
         Initialize layout algorithm.
@@ -508,8 +512,18 @@ class DefaultLayout(BaseLayout):
         left_height = left_total
         right_height = right_total
 
-        # Determine which side is taller and try to move nodes from it
-        if left_height > right_height:
+        # CRITICAL FIX: Add hysteresis threshold to prevent oscillation
+        # When sibling spacing changes slightly, the height difference between
+        # left/right sides may flip-flop, causing nodes to jump back and forth.
+        # We only rebalance when the height difference exceeds a fixed threshold.
+        # Threshold: 100px - significant enough to prevent oscillation from spacing changes
+        height_diff = abs(left_height - right_height)
+
+        if height_diff <= self.BALANCE_HYSTERESIS_THRESHOLD:
+            # Height difference is within tolerance, keep original distribution
+            # This prevents oscillation when spacing changes slightly
+            pass
+        elif left_height > right_height:
             # Move nodes from left to right
             self._rebalance_branches(
                 from_side=left_children,
