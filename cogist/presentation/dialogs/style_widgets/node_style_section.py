@@ -672,6 +672,10 @@ class NodeStyleSection(ColorDialogUndoMixin, CollapsiblePanel):
                 if not self.use_rainbow or self.is_root_mode:
                     self._update_background_controls_visibility()
 
+            # Update shadow enabled toggle
+            if "shadow_enabled" in style and hasattr(self, 'shadow_enabled_toggle'):
+                self.shadow_enabled_toggle.set_checked(style["shadow_enabled"])
+
             # Update brightness spinbox (support multiple field names)
             if "brightness" in style and hasattr(self, 'brightness_spin'):
                 self.brightness_spin.setValue(int(style["brightness"] * 100))

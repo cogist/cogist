@@ -874,7 +874,13 @@ class StyleEditorTab(QWidget):
 
         # Update using command system if available
         if self.current_layer != "canvas":
-            if self.command_history:
+            # Skip command creation if we're updating from undo/redo
+            if self._updating_from_undo_redo:
+                # Direct update without creating a command
+                self._update_role_style_in_config(
+                    self.current_layer, {"shadow_enabled": enabled}
+                )
+            elif self.command_history:
                 from cogist.application.commands import ChangeStyleCommand
                 from cogist.application.commands.change_style_command import StyleChange
 
@@ -960,7 +966,13 @@ class StyleEditorTab(QWidget):
 
         # Update using command system if available
         if self.current_layer != "canvas":
-            if self.command_history:
+            # Skip command creation if we're updating from undo/redo
+            if self._updating_from_undo_redo:
+                # Direct update without creating a command
+                self._update_role_style_in_config(
+                    self.current_layer, {"shadow_enabled": enabled}
+                )
+            elif self.command_history:
                 from cogist.application.commands import ChangeStyleCommand
                 from cogist.application.commands.change_style_command import StyleChange
 
