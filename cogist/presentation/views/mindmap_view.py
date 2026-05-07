@@ -273,13 +273,27 @@ class MindMapView(QGraphicsView):
                     # Get the dynamic width from the edit widget
                     doc = item.edit_widget.document()
                     doc_size = doc.size()
-                    dynamic_width = doc_size.width()
+                    dynamic_text_width = doc_size.width()
 
-                    # Update domain node width with dynamic width
+                    # CRITICAL: Add padding to get actual node width (same as normal measurement)
+                    # Use template_style if available, otherwise fallback to style config
+                    if hasattr(item, 'template_style') and item.template_style:
+                        padding_width = item.template_style.padding_w * 2  # Both sides
+                    else:
+                        # Fallback: get padding from role-based style
+                        from cogist.domain.styles import NodeRole
+                        role_map = {0: NodeRole.ROOT, 1: NodeRole.PRIMARY, 2: NodeRole.SECONDARY}
+                        role = role_map.get(node.depth, NodeRole.TERTIARY)
+                        if role in self.style_config.role_styles:
+                            padding_width = self.style_config.role_styles[role].padding_w * 2
+                        else:
+                            padding_width = 40  # Safe fallback
+
+                    # Update domain node width with dynamic width + padding
                     old_width = node.width
-                    node.width = dynamic_width
+                    node.width = dynamic_text_width + padding_width
 
-                    print(f"[MEASURE] Editing node '{node.text}' - width changed from {old_width} to {dynamic_width}")
+                    print(f"[MEASURE] Editing node '{node.text}' - text_width={dynamic_text_width}, padding={padding_width}, total_width={node.width} (was {old_width})")
 
                     # Still measure children
                     for child in node.children:
