@@ -1065,8 +1065,9 @@ class MainWindow(QMainWindow):
 
         # Update activity bar button state
         if not is_visible:
-            # If showing, activate color scheme by default
-            self.activity_bar.activate_panel("color_scheme")
+            # If showing, restore the last active panel from session state
+            last_panel = self.style_panel._session_state.get("current_panel", "color_scheme")
+            self.activity_bar.activate_panel(last_panel)
         else:
             # If hiding, uncheck all buttons (block signals to prevent recursive calls)
             for btn in self.activity_bar.buttons.values():

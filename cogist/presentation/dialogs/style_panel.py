@@ -34,6 +34,11 @@ class StylePanel(QWidget):
         # Track previously selected node ID for focus restoration
         self._previous_selected_node_id = None
 
+        # Session state - remember panel state during this session
+        self._session_state = {
+            "current_panel": "color_scheme",  # Which panel is active: "color_scheme" or "advanced"
+        }
+
         # Set fixed width
         self.setMinimumWidth(self.PANEL_WIDTH)
         self.setMaximumWidth(self.PANEL_WIDTH)
@@ -59,7 +64,7 @@ class StylePanel(QWidget):
 
         # Initially show color scheme tab (first)
         main_layout.addWidget(self.color_scheme_tab)
-        self.current_panel = "color_scheme"
+        self.current_panel = self._session_state.get("current_panel", "color_scheme")
 
     def switch_panel(self, panel_name: str):
         """Switch between color scheme and advanced panels."""
@@ -84,6 +89,9 @@ class StylePanel(QWidget):
             layout.addWidget(self.style_editor_tab)
 
         self.current_panel = panel_name
+
+        # Save state for session restoration
+        self._session_state["current_panel"] = panel_name
 
     def _on_focus_changed(self, old: QWidget, now: QWidget):
         """Handle global focus changes."""
