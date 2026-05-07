@@ -337,27 +337,77 @@ class DefaultLayout(BaseLayout):
         """
         Get the appropriate sibling spacing for a list of nodes.
 
-        For adjacent subtrees, use spacing based on the maximum depth among all subtrees.
-        This ensures uniform spacing between nodes at the same visual level.
+        Strategy:
+        1. If NO node has children → use nodes' own depth spacing
+        2. If ANY node has children → use max depth across all subtrees
+
+        This ensures:
+        - Direct siblings without children use their level spacing
+        - Subtrees with children use the deepest level spacing for visual uniformity
 
         Args:
             nodes: List of sibling nodes
             parent_depth: Optional parent depth (used to determine spacing level)
 
         Returns:
-            Sibling spacing based on the maximum subtree depth
+            Sibling spacing based on subtree depth analysis
         """
         if not nodes:
             return self.sibling_spacing
 
-        # Find the maximum depth across all subtrees
-        # This ensures adjacent subtrees use consistent spacing
-        max_depth = max(self._get_max_subtree_depth(node) for node in nodes)
+        # Check if any node has children
+        has_children = any(node.children for node in nodes)
 
-        # Use spacing at the deepest level
-        # Cap at depth 3 to avoid excessive spacing
-        effective_depth = min(max_depth, 3)
-        return self._get_sibling_spacing_for_depth(effective_depth)
+        if has_children:
+            # Strategy 2: At least one node has children
+            # Use the maximum depth across all subtrees
+            max_depth = max(self._get_max_subtree_depth(node) for node in nodes)
+            # Cap at depth 3 to avoid excessive spacing
+            effective_depth = min(max_depth, 3)
+            return self._get_sibling_spacing_for_depth(effective_depth)
+        else:
+            # Strategy 1: No node has children
+            # Use nodes' own depth
+            return self._get_sibling_spacing_for_depth(nodes[0].depth)
+
+    def _get_spacing_for_adjacent_pair(self, node1, node2) -> float:
+        """
+        Get spacing between two adjacent sibling nodes.
+
+        Strategy:
+        - Calculate spacing based on subtree depth
+        - Ensure spacing is at least the maximum of both nodes' own level spacing
+
+        Args:
+            node1: First node in the pair
+            node2: Second node in the pair
+
+        Returns:
+            Spacing between the two nodes
+        """
+        # Check if either node has children
+        has_children = node1.children or node2.children
+
+        if has_children:
+            # At least one has children: use max subtree depth
+            max_depth = max(
+                self._get_max_subtree_depth(node1),
+                self._get_max_subtree_depth(node2)
+            )
+            effective_depth = min(max_depth, 3)
+            subtree_spacing = self._get_sibling_spacing_for_depth(effective_depth)
+        else:
+            # Neither has children: use their own depth
+            subtree_spacing = self._get_sibling_spacing_for_depth(node1.depth)
+
+        # CRITICAL: Ensure spacing meets both nodes' minimum level requirements
+        # Use max() to satisfy both nodes' spacing needs
+        node1_level_spacing = self._get_sibling_spacing_for_depth(node1.depth)
+        node2_level_spacing = self._get_sibling_spacing_for_depth(node2.depth)
+        min_required_spacing = max(node1_level_spacing, node2_level_spacing)
+
+        # Final spacing = max(subtree-based spacing, minimum required spacing)
+        return max(subtree_spacing, min_required_spacing)
 
     def _balance_branches(
         self, nodes: list, locked_side_child=None, parent_node=None
@@ -653,6 +703,56 @@ class DefaultLayout(BaseLayout):
 
         return (min_y, max_y)
 
+    def _get_top_most_node(self, node):
+        """
+        Get the top-most node in a subtree (the node with smallest Y position).
+
+        Args:
+            node: Root of the subtree
+
+        Returns:
+            The top-most node, or None if no nodes
+        """
+        if not node:
+            return None
+
+        top_node = node
+        top_y = node.position[1]
+
+        # Check all descendants
+        for child in node.children:
+            child_top = self._get_top_most_node(child)
+            if child_top and child_top.position[1] < top_y:
+                top_node = child_top
+                top_y = child_top.position[1]
+
+        return top_node
+
+    def _get_bottom_most_node(self, node):
+        """
+        Get the bottom-most node in a subtree (the node with largest Y position).
+
+        Args:
+            node: Root of the subtree
+
+        Returns:
+            The bottom-most node, or None if no nodes
+        """
+        if not node:
+            return None
+
+        bottom_node = node
+        bottom_y = node.position[1]
+
+        # Check all descendants
+        for child in node.children:
+            child_bottom = self._get_bottom_most_node(child)
+            if child_bottom and child_bottom.position[1] > bottom_y:
+                bottom_node = child_bottom
+                bottom_y = child_bottom.position[1]
+
+        return bottom_node
+
     def _layout_side(
         self, nodes: list, parent_node, canvas_height: float, direction: int
     ) -> None:
@@ -719,29 +819,16 @@ class DefaultLayout(BaseLayout):
             direction: -1 for left, 1 for right
             canvas_height: Canvas height for centering
         """
-        # Calculate total height of nodes only (not subtrees)
+        # Calculate total height with per-pair spacing
         # CRITICAL: Visual height includes border expansion on both top and bottom
-        nodes_height = sum(self._get_visual_height(node) for node in nodes)
-
-        # Rule 1: Sibling spacing must be >= nodes' own level spacing (minimum requirement)
-        nodes_level_spacing = self._get_sibling_spacing_for_depth(nodes[0].depth)
-
-        # Rule 2: If nodes have children, spacing between their subtrees
-        # uses the deepest level among adjacent subtrees
-        # Final spacing = max(rule1_minimum, rule2_subtree_spacing)
-        if any(node.children for node in nodes):
-            # Find max depth across all subtrees
-            max_depth = max(self._get_max_subtree_depth(node) for node in nodes if node.children)
-            effective_depth = min(max_depth, 3)
-            subtree_spacing = self._get_sibling_spacing_for_depth(effective_depth)
-            # Must satisfy BOTH rules: >= nodes' level AND use subtree depth
-            sibling_spacing = max(nodes_level_spacing, subtree_spacing)
-        else:
-            # No children, just use nodes' own level spacing
-            sibling_spacing = nodes_level_spacing
-
-        nodes_spacing = (len(nodes) - 1) * sibling_spacing
-        total_height = nodes_height + nodes_spacing
+        # FIXED: Calculate spacing for each adjacent pair individually
+        total_height = 0.0
+        for i, node in enumerate(nodes):
+            total_height += self._get_visual_height(node)
+            if i < len(nodes) - 1:
+                # Calculate spacing between node[i] and node[i+1]
+                pair_spacing = self._get_spacing_for_adjacent_pair(nodes[i], nodes[i + 1])
+                total_height += pair_spacing
 
         # Calculate the aligned edge position for all sibling nodes
         aligned_edge_x = self._calculate_aligned_edge(parent_node, nodes, direction)
@@ -793,7 +880,7 @@ class DefaultLayout(BaseLayout):
         for node in nodes:
             print(f"[LAYOUT ALGO]   Node '{node.text}' width: {node.width}, old position: {node.position}")
 
-        for node in nodes:
+        for i, node in enumerate(nodes):
             # Calculate node center position using unified method
             node_x = self._calculate_node_position(node, aligned_edge_x, direction)
 
@@ -833,8 +920,14 @@ class DefaultLayout(BaseLayout):
                     child_direction = 1 if node_center_x >= parent_center_x else -1
                 self._layout_side(node.children, node, canvas_height, child_direction)
 
-            # CRITICAL: Move current_y by visual height (including border expansion)
-            current_y += self._get_visual_height(node) + sibling_spacing
+            # CRITICAL: Move current_y by visual height + spacing to next node
+            if i < len(nodes) - 1:
+                # Use per-pair spacing for the gap to the next node
+                pair_spacing = self._get_spacing_for_adjacent_pair(node, nodes[i + 1])
+                current_y += self._get_visual_height(node) + pair_spacing
+            else:
+                # Last node, just add its height
+                current_y += self._get_visual_height(node)
 
     def _layout_branch_complex(
         self, nodes: list, parent_node, direction: int, canvas_height: float
@@ -855,27 +948,15 @@ class DefaultLayout(BaseLayout):
             canvas_height: Canvas height for centering
         """
         # Step 1: Initial vertical centering
-        nodes_height = sum(self._get_visual_height(node) for node in nodes)
+        # FIXED: Calculate spacing for each adjacent pair individually
+        total_height = 0.0
+        for i, node in enumerate(nodes):
+            total_height += self._get_visual_height(node)
+            if i < len(nodes) - 1:
+                # Calculate spacing between node[i] and node[i+1]
+                pair_spacing = self._get_spacing_for_adjacent_pair(nodes[i], nodes[i + 1])
+                total_height += pair_spacing
 
-        # Rule 1: Sibling spacing must be >= nodes' own level spacing (minimum requirement)
-        nodes_level_spacing = self._get_sibling_spacing_for_depth(nodes[0].depth)
-
-        # Rule 2: If nodes have children, spacing between their subtrees
-        # uses the deepest level among adjacent subtrees
-        # Final spacing = max(rule1_minimum, rule2_subtree_spacing)
-        if any(node.children for node in nodes):
-            # Find max depth across all subtrees
-            max_depth = max(self._get_max_subtree_depth(node) for node in nodes if node.children)
-            effective_depth = min(max_depth, 3)
-            subtree_spacing = self._get_sibling_spacing_for_depth(effective_depth)
-            # Must satisfy BOTH rules: >= nodes' level AND use subtree depth
-            sibling_spacing = max(nodes_level_spacing, subtree_spacing)
-        else:
-            # No children, just use nodes' own level spacing
-            sibling_spacing = nodes_level_spacing
-
-        nodes_spacing = (len(nodes) - 1) * sibling_spacing
-        total_height = nodes_height + nodes_spacing
         # CRITICAL FIX: total_height is from top of first node to bottom of last node
         # So we need to add half of first node's height to get its center
         if nodes:
@@ -906,13 +987,19 @@ class DefaultLayout(BaseLayout):
             parent_visual_right = parent_node.position[0] + parent_visual_width / 2.0
             aligned_edge_x = parent_visual_right + level_spacing
 
-        for node in nodes:
+        for i, node in enumerate(nodes):
             # Calculate node center position using unified method
             node_x = self._calculate_node_position(node, aligned_edge_x, direction)
 
             node.position = (node_x, current_y)
-            # CRITICAL: Move current_y by visual height (including border expansion)
-            current_y += self._get_visual_height(node) + sibling_spacing
+            # CRITICAL: Move current_y by visual height + spacing to next node
+            if i < len(nodes) - 1:
+                # Use per-pair spacing for the gap to the next node
+                pair_spacing = self._get_spacing_for_adjacent_pair(node, nodes[i + 1])
+                current_y += self._get_visual_height(node) + pair_spacing
+            else:
+                # Last node, just add its height
+                current_y += self._get_visual_height(node)
 
         # Step 2: Layout children and detect overlaps iteratively
         max_iterations = 20
@@ -951,9 +1038,19 @@ class DefaultLayout(BaseLayout):
                     # Get bounds of subtree j
                     top_j, bottom_j = self._get_branch_bounds([nodes[j]])
 
-                    # CRITICAL: Use the maximum depth between the two subtrees for spacing
-                    # This ensures we use the appropriate spacing for the deepest level
-                    sibling_spacing = self._get_sibling_spacing_for_nodes([nodes[i], nodes[j]])
+                    # CRITICAL FIX: Find the closest nodes between two subtrees
+                    # The bottom-most node of subtree i and top-most node of subtree j
+                    bottom_node_i = self._get_bottom_most_node(nodes[i])
+                    top_node_j = self._get_top_most_node(nodes[j])
+
+                    # Use these nodes to calculate spacing
+                    if bottom_node_i and top_node_j:
+                        sibling_spacing = self._get_spacing_for_adjacent_pair(
+                            bottom_node_i, top_node_j
+                        )
+                    else:
+                        # Fallback: use parent nodes spacing
+                        sibling_spacing = self._get_sibling_spacing_for_nodes([nodes[i], nodes[j]])
 
                     # Check if subtree i overlaps with subtree j
                     if bottom_i + sibling_spacing > top_j:
