@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4] - 2026-05-07
+
+### Fixed
+- **Shadow Toggle Undo**: Fixed shadow toggle requiring two undo presses to restore state
+  - Removed duplicate signal emission in `_on_font_shadow_toggled`
+  - Added `_updating_from_undo_redo` check in `_on_font_shadow_enabled_changed`
+- **Shadow Panel Controls**: Made each shadow control (offset_x, offset_y, blur) create separate undo commands
+  - Modified `_on_shadow_changed` to only emit changed fields
+  - Each adjustment now creates independent command for granular undo
+- **Font Shadow Color Undo**: Added full undo/redo support for font shadow color picker
+  - Made `ShadowSection` inherit `ColorDialogUndoMixin`
+  - Real-time preview without creating commands until dialog closes
+  - Consistent behavior with canvas background and root node background color pickers
+
+### Changed
+- **Root Layer Style Storage**: Corrected root layer bg_color and border_color to use special_colors
+  - Per design document specification in MINDMAP_STYLE_DATA_STRUCTURE.md
+  - Other border properties remain in role_styles[NodeRole.ROOT]
+
 ## [0.5.3] - 2026-05-04
 
 ### Fixed

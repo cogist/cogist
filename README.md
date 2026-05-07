@@ -4,8 +4,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
-[![PyQt6 6.8+](https://img.shields.io/badge/PyQt6-6.8+-green.svg)](https://www.riverbankcomputing.com/software/pyqt/)
-[![Version: 0.5.3](https://img.shields.io/badge/version-0.5.3-purple.svg)](https://github.com/cogist/cogist/releases/tag/v0.5.3)
+[![Qt 6.7+](https://img.shields.io/badge/Qt-6.7+-green.svg)](https://www.qt.io/)
+[![Version: 0.5.4](https://img.shields.io/badge/version-0.5.4-purple.svg)](https://github.com/cogist/cogist/releases/tag/v0.5.4)
 [![Changelog](https://img.shields.io/badge/changelog-latest-orange.svg)](CHANGELOG.md)
 
 ## ✨ Core Features
