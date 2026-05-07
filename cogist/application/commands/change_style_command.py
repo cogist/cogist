@@ -43,6 +43,8 @@ NUMERIC_STYLE_FIELDS = {
     "shadow_offset_x",
     "shadow_offset_y",
     "shadow_blur",
+    # Color fields (for real-time preview with single undo step)
+    "bg_color",
 }
 
 
@@ -88,18 +90,20 @@ class ChangeStyleCommand(Command):
         Execute the command - apply style changes.
 
         This applies all style changes and backs up old values for undo.
+        For coalesced commands, only backup old values on first execution.
         """
-        self.old_values = []
+        # Only backup old values if not already backed up (for coalescing support)
+        if not self.old_values:
+            for change in self.changes:
+                # Backup old values
+                old_values_for_layer = self._backup_layer_style(change.layer, change.style_updates.keys())
+                self.old_values.append({
+                    "layer": change.layer,
+                    "old_values": old_values_for_layer,
+                })
 
+        # Always apply new values
         for change in self.changes:
-            # Backup old values
-            old_values_for_layer = self._backup_layer_style(change.layer, change.style_updates.keys())
-            self.old_values.append({
-                "layer": change.layer,
-                "old_values": old_values_for_layer,
-            })
-
-            # Apply new values
             self._apply_layer_style(change.layer, change.style_updates)
 
     def undo(self) -> None:

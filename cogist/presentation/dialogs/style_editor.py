@@ -555,29 +555,11 @@ class StyleEditorTab(QWidget):
         if "bg_color" not in style:
             return
 
-        new_color = style["bg_color"]
+        # Note: CanvasPanel already updated style_config.special_colors["canvas_bg"]
+        # and created undo command. Just need to refresh the UI.
 
-        # Update canvas background in special_colors
-        self.style_config.special_colors["canvas_bg"] = new_color
-
-        # Apply styles to mindmap
+        # Apply styles to mindmap (this will update canvas background)
         self._apply_styles_to_mindmap()
-
-        # Use command system if available
-        if self.command_history:
-            from cogist.application.commands import ChangeStyleCommand
-            from cogist.application.commands.change_style_command import StyleChange
-
-            change = StyleChange(
-                layer="canvas",
-                style_updates={"bg_color": new_color},
-            )
-            command = ChangeStyleCommand(
-                style_config=self.style_config,
-                changes=[change],
-            )
-            command.execute()
-            self.command_history.push(command)
 
     def _on_layer_changed(self, layer_name: str):
         """Handle layer selection change."""

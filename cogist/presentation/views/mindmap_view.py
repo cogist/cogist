@@ -449,6 +449,7 @@ class MindMapView(QGraphicsView):
 
             canvas_color = self.style_config.special_colors["canvas_bg"]
             self.scene.setBackgroundBrush(QBrush(QColor(canvas_color)))
+            self.scene.update()
 
     def _create_ui_items(self, root: Node):
         """Create UI items from node tree."""

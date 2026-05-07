@@ -666,6 +666,7 @@ class MainWindow(QMainWindow):
             self.mindmap_service.node_service.command_history.peek_last_undo_command()
         )
         command_type_name = last_command and type(last_command).__name__
+
         is_add_node_command = command_type_name == "AddNodeCommand"
         is_edit_text_command = command_type_name == "EditTextCommand"
         is_delete_node_command = command_type_name == "DeleteNodeCommand"

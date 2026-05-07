@@ -129,20 +129,19 @@ class CanvasPanel(CollapsiblePanel):
             self._color_picker.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
             # Reset reference when dialog closes (WA_DeleteOnClose destroys the object)
-            self._color_picker.finished.connect(lambda: setattr(self, '_color_picker', None))
+            self._color_picker.finished.connect(self._on_color_dialog_closed)
 
         # Get current color from style data object (no fallback)
-        # Use stored reference to StyleEditorTab instead of parent()
         parent = self._advanced_tab
 
-        if parent and hasattr(parent, 'style_config') and parent.style_config:
-            current_color = parent.style_config.special_colors["canvas_bg"]
-        else:
-            # Should not happen - style_config is required
+        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
             return
 
+        # Save original color for undo command
+        self._original_canvas_color = parent.style_config.special_colors["canvas_bg"]
+
         # Set current color (MUST call before show!)
-        self._color_picker.set_current_color(current_color)
+        self._color_picker.set_current_color(self._original_canvas_color)
 
         # Show color picker
         self._color_picker.show()
@@ -152,11 +151,21 @@ class CanvasPanel(CollapsiblePanel):
         # Position dialog
         position_color_dialog(self._color_picker, self.bg_color_btn)
 
-    def _on_bg_color_selected(self, hex_color: str):
-        """Handle color selection from picker."""
-        self.current_style["bg_color"] = hex_color
+    def _on_color_dialog_closed(self):
+        """Handle color dialog close - reset reference."""
+        # WA_DeleteOnClose has already destroyed the object, just reset the reference
+        self._color_picker = None
 
-        # Update button color directly (like color pool)
+    def _on_bg_color_selected(self, hex_color: str):
+        """Handle color selection from picker (real-time preview with undo support)."""
+        parent = self._advanced_tab
+        if not (parent and hasattr(parent, 'style_config') and parent.style_config):
+            return
+
+        # Real-time preview: update style_config for immediate UI feedback
+        parent.style_config.special_colors["canvas_bg"] = hex_color
+
+        # Update button color directly
         if hasattr(self, 'bg_color_btn'):
             self.bg_color_btn.setStyleSheet(
                 f"background-color: {hex_color}; "
@@ -167,4 +176,30 @@ class CanvasPanel(CollapsiblePanel):
                 "text-align: left;"
             )
 
+        # Create undo command immediately (same as numeric styles - will be coalesced)
+        if hasattr(parent, 'command_history') and parent.command_history:
+            from cogist.application.commands import ChangeStyleCommand
+            from cogist.application.commands.change_style_command import StyleChange
+
+            change = StyleChange(
+                layer="canvas",
+                style_updates={"bg_color": hex_color}
+            )
+            command = ChangeStyleCommand(
+                style_config=parent.style_config,
+                changes=[change]
+            )
+
+            # Manually backup the original color (saved when dialog opened)
+            original_color = getattr(self, '_original_canvas_color', None)
+            if original_color and not command.old_values:
+                command.old_values.append({
+                    "layer": "canvas",
+                    "old_values": {"bg_color": original_color}
+                })
+
+            command.execute()
+            parent.command_history.push(command)
+
+        # Emit style changed signal (triggers UI refresh)
         self._emit_style_changed()
